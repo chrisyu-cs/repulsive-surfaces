@@ -71,6 +71,6 @@ set(SRCS
 )
 
 # To change the name of your executable, change "gc_project" in the lines below to whatever you want
-add_executable(gc_project "${SRCS}")
-target_include_directories(gc_project PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
-target_link_libraries(gc_project geometry-central polyscope)
+add_executable(rsurfaces "${SRCS}")
+target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
+target_link_libraries(rsurfaces geometry-central polyscope)
