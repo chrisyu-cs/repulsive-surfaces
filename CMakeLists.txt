@@ -66,6 +66,7 @@ add_subdirectory(deps/polyscope)
 # == Build our project stuff
 
 set(SRCS 
+  src/tpe_energy_surface.cpp
   src/main.cpp
 	# add any other source files here
 )
