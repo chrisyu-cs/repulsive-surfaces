@@ -1,0 +1,42 @@
+\documentclass[11pt]{article}
+
+\usepackage{texyousei}
+\usepackage{tabularx}
+
+\lhead{}
+\chead{The Tangent-Point Energy}
+\rhead{}
+
+\usepackage{comment}
+\excludecomment{oops}
+
+\setlength{\leftmargini}{0.3in}
+
+\DeclarePairedDelimiter{\inner}{\langle}{\rangle}
+\newcommand{\ddx}{\frac{d}{dx}}
+\newcommand{\ddy}{\frac{d}{dy}}
+\newcommand{\ddn}{\frac{d}{dn}}
+\newcommand{\ddm}{\frac{d}{dm}}
+\newcommand{\sgn}[1]{\ \textrm{sgn}\left(#1\right)}
+\newcommand{\calDf}{\mathcal{D}_f}
+
+\begin{document}
+
+\maketitle{The Tangent-Point Energy on Surfaces}{}
+
+\thispagestyle{empty}
+
+\section{Overview}
+
+On surfaces, the tangent-point energy has a slightly simpler expression, due to the ambient dimension of 1 (versus 2 for curves). The kernel can be written as:
+\begin{equation}
+K_f(x, y) = \frac{\inner{N(x), f(x) - f(y)}^{\alpha}}{\norm{f(x) - f(y)}^{\beta}}
+\end{equation}
+Because there is a unique normal direction, it suffices to use the inner product with the normal, instead of the cross product (as we used for curves).
+
+\subsection{Differential}
+
+Still to be written down...
+
+\end{document}
+

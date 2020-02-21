@@ -7,6 +7,7 @@
 
 #include "args/args.hxx"
 #include "imgui.h"
+#include "surface_derivatives.h"
 
 using namespace geometrycentral;
 using namespace geometrycentral::surface;
@@ -23,7 +24,8 @@ float param1 = 42.0;
 
 // Example computation function -- this one computes and registers a scalar
 // quantity
-void doWork() {
+void doWork()
+{
   polyscope::warning("Computing Gaussian curvature.\nalso, parameter value = " +
                      std::to_string(param1));
 
@@ -36,35 +38,44 @@ void doWork() {
 // A user-defined callback, for creating control panels (etc)
 // Use ImGUI commands to build whatever you want here, see
 // https://github.com/ocornut/imgui/blob/master/imgui.h
-void myCallback() {
+void myCallback()
+{
 
-  if (ImGui::Button("do work")) {
+  if (ImGui::Button("do work"))
+  {
     doWork();
   }
 
   ImGui::SliderFloat("param", &param1, 0., 100.);
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
 
   // Configure the argument parser
   args::ArgumentParser parser("geometry-central & Polyscope example project");
   args::Positional<std::string> inputFilename(parser, "mesh", "A mesh file.");
 
   // Parse args
-  try {
+  try
+  {
     parser.ParseCLI(argc, argv);
-  } catch (args::Help) {
+  }
+  catch (args::Help)
+  {
     std::cout << parser;
     return 0;
-  } catch (args::ParseError e) {
+  }
+  catch (args::ParseError e)
+  {
     std::cerr << e.what() << std::endl;
     std::cerr << parser;
     return 1;
   }
 
   // Make sure a mesh name was given
-  if (!inputFilename) {
+  if (!inputFilename)
+  {
     std::cerr << "Please specify a mesh file as argument" << std::endl;
     return EXIT_FAILURE;
   }
@@ -77,6 +88,8 @@ int main(int argc, char **argv) {
 
   // Load mesh
   std::tie(mesh, geometry) = loadMesh(args::get(inputFilename));
+  geometry->requireVertexPositions();
+  geometry->requireFaceNormals();
 
   // Register the mesh with polyscope
   psMesh = polyscope::registerSurfaceMesh(
@@ -84,6 +97,7 @@ int main(int argc, char **argv) {
       geometry->inputVertexPositions, mesh->getFaceVertexList(),
       polyscopePermutations(*mesh));
 
+  rsurfaces::SurfaceDerivs::numericalCheck(mesh, geometry, 0.0001);
   // Give control to the polyscope gui
   polyscope::show();
 
