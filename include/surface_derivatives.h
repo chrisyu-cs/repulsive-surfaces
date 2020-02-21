@@ -9,6 +9,7 @@ struct Jacobian
     Vector3 col2;
     Vector3 col3;
 
+    // Multiplies v^T * J.
     Vector3 LeftMultiply(Vector3 v)
     {
         // Interpret v as a row vector multiplied on the left.
@@ -19,6 +20,7 @@ struct Jacobian
         return Vector3{x, y, z};
     }
 
+    // Multiplies J * v.
     Vector3 RightMultiply(Vector3 v)
     {
         // Interpret v as a column vector multiplied on the right.
