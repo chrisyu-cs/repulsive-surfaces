@@ -53,11 +53,17 @@ struct Jacobian
     }
 };
 
+Jacobian operator+(const Jacobian& a, const Jacobian& b);
+Jacobian operator-(const Jacobian& a, const Jacobian& b);
+Jacobian operator*(const Jacobian& a, double c);
+Jacobian operator*(double c, const Jacobian& a);
+
 class SurfaceDerivs
 {
 public:
     static Jacobian barycenterWrtVertex(GCFace &face, GCVertex &wrt);
     static Jacobian normalWrtVertex(const GeomPtr &geom, GCFace &face, GCVertex &wrt);
+    static Vector3 triangleAreaWrtVertex(const GeomPtr &geom, GCFace &face, GCVertex &wrt);
     static void numericalCheck(const MeshPtr &mesh, const GeomPtr &geom, double eps);
 };
 } // namespace rsurfaces

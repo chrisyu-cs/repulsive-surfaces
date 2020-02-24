@@ -30,13 +30,38 @@
 
 On surfaces, the tangent-point energy has a slightly simpler expression, due to the ambient dimension of 1 (versus 2 for curves). The kernel can be written as:
 \begin{equation}
-K_f(x, y) = \frac{\inner{N(x), f(x) - f(y)}^{\alpha}}{\norm{f(x) - f(y)}^{\beta}}
+K_f(S, T) = \frac{\inner{N_f(S), X_f(S) - X_f(T)}^{\alpha}}{\norm{X_f(S) - X_f(T)}^{\beta}}
 \end{equation}
-Because there is a unique normal direction, it suffices to use the inner product with the normal, instead of the cross product (as we used for curves).
+Because there is a unique normal direction, it suffices to use the inner product with the normal, instead of the cross product (as we used for curves). Here we use $X_f(S)$ and $X_f(T)$ to denote the barycenters of triangles $S$ and $T$ under the embedding $f$.
 
 \subsection{Differential}
 
-Still to be written down...
+Let $A$ be the numerator of $K_f(S, T)$, and let $B$ be the denominator. Then we just need $\ddx A$ and $\ddx B$ to be able to assemble the full differential $\ddx K_f(S, T)$ using the product rule, where $x$ is a vertex position.
+
+First we differentiate $A$:
+\begin{align*}
+\ddx A &= \ddx \inner{N_f(S), X_f(S) - X_f(T)}^{\alpha}\\
+&= \left(\alpha \inner{N_f(S), X_f(S) - X_f(T)}^{\alpha - 1}\right) \left(\ddx \inner{N_f(S), X_f(S) - X_f(T)}\right)\\
+&= \left(\cdots\right) \left(\ddx N_f(S) \left(X_f(S) - X_f(T)\right) + \ddx \left(X_f(S) - X_f(T)\right) N_f(S)\right)
+\end{align*}
+Both of the remaining inner derivatives have simple expressions. For the normal, we have
+$$\ddx N_f(S) = \left\{
+\begin{array}{lr}
+\frac{1}{2 A_f(S)} (e_{x,S} \times N_f(S)) N_f(S)^{\top} & x \in S \\
+0 & x \not\in S
+\end{array}\right.$$
+where $e_{x,S}$ is the vector along the opposite edge from vertex $x$ in triangle $S$. And for the barycenter, we just have a Jacobian with $1/3$ along the diagonal if $x \in S$, and 0 otherwise.
+
+Next, we differentiate $B$:
+\begin{align*}
+\ddx B &= \ddx \norm{X_f(S) - X_f(T)}^{\beta}\\
+&= \beta \norm{X_f(S) - X_f(T)}^{\beta - 1} \ddx \norm{X_f(S) - X_f(T)}\\
+&= \beta \norm{X_f(S) - X_f(T)}^{\beta - 1} \frac{X_f(S) - X_f(T)}{\norm{X_f(S) - X_f(T)}} \ddx \left(X_f(S) - X_f(T)\right)
+\end{align*}
+
+Finally, we just write down the quotient rule:
+$$\ddx K_f(S, T) = \ddx \frac{A}{B} = \frac{(\ddx A) B - (\ddx B) A}{B^2}$$
+
 
 \end{document}
 
