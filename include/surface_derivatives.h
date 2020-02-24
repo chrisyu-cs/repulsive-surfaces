@@ -1,3 +1,5 @@
+#pragma once
+
 #include "rsurface_types.h"
 #include <iomanip>
 

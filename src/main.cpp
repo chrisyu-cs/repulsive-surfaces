@@ -98,7 +98,7 @@ int main(int argc, char **argv)
       geometry->inputVertexPositions, mesh->getFaceVertexList(),
       polyscopePermutations(*mesh));
     
-  rsurfaces::SurfaceTPE tpe(std::move(mesh), std::move(geometry), 3, 6);
+  rsurfaces::TPEKernel tpe(std::move(mesh), std::move(geometry), 3, 6);
   tpe.numericalTest();
   
   // Give control to the polyscope gui
