@@ -17,7 +17,7 @@ inline Vector3 faceBarycenter(GeomPtr const &geom, GCFace f)
     int count = 0;
     for (GCVertex v : f.adjacentVertices())
     {
-        sum += geom->vertexPositions[v];
+        sum += geom->inputVertexPositions[v];
         count++;
     }
     return sum / count;
@@ -71,6 +71,53 @@ Vector3 SurfaceTPE::tpe_gradient_Kf(GCFace f1, GCFace f2, GCVertex wrt)
     Vector3 numer = deriv_A * B - A * deriv_B;
     double denom = B * B;
     return numer / denom;
+}
+
+Vector3 SurfaceTPE::tpe_gradient_Kf_num(GCFace f1, GCFace f2, GCVertex wrt, double eps) {
+    double origEnergy = tpe_Kf(f1, f2);
+    Vector3 origPos = geom->inputVertexPositions[wrt];
+
+    geom->inputVertexPositions[wrt] = origPos + Vector3{eps, 0, 0};
+    double energy_x = tpe_Kf(f1, f2);
+    geom->inputVertexPositions[wrt] = origPos + Vector3{0, eps, 0};
+    double energy_y = tpe_Kf(f1, f2);
+    geom->inputVertexPositions[wrt] = origPos + Vector3{0, 0, eps};
+    double energy_z = tpe_Kf(f1, f2);
+    geom->inputVertexPositions[wrt] = origPos;
+
+    double dx = (energy_x - origEnergy) / eps;
+    double dy = (energy_y - origEnergy) / eps;
+    double dz = (energy_z - origEnergy) / eps;
+
+    return Vector3{dx, dy, dz};
+}
+
+void SurfaceTPE::numericalTest() {
+    double avg = 0;
+    int count = 0;
+
+    for (GCFace f1 : mesh->faces()) {
+        for (GCFace f2 : mesh->faces()) {
+            if (f1 == f2) continue;
+            GCVertex vert = f2.halfedge().vertex();
+
+            Vector3 grad_num = tpe_gradient_Kf_num(f1, f2, vert, 0.001);
+            Vector3 grad_a = tpe_gradient_Kf(f1, f2, vert);
+
+            double pct_diff = 100 * norm(grad_num - grad_a) / norm(grad_num);
+            avg += pct_diff;
+
+            if (count % 10000 == 0) {
+                std::cout << "Analytic =  " << grad_a << std::endl;
+                std::cout << "Numerical = " << grad_num << std::endl;
+            }
+
+            count++;
+        }
+    }
+
+    avg /= count;
+    std::cout << "average relative diff = " << avg << " percent" << std::endl;
 }
 
 Vector3 SurfaceTPE::tpe_gradient_pair(GCFace f1, GCFace f2, GCVertex wrt)

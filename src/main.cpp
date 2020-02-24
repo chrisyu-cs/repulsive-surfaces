@@ -8,6 +8,7 @@
 #include "args/args.hxx"
 #include "imgui.h"
 #include "surface_derivatives.h"
+#include "tpe_energy_surface.h"
 
 using namespace geometrycentral;
 using namespace geometrycentral::surface;
@@ -96,8 +97,10 @@ int main(int argc, char **argv)
       polyscope::guessNiceNameFromPath(args::get(inputFilename)),
       geometry->inputVertexPositions, mesh->getFaceVertexList(),
       polyscopePermutations(*mesh));
-
-  rsurfaces::SurfaceDerivs::numericalCheck(mesh, geometry, 0.0001);
+    
+  rsurfaces::SurfaceTPE tpe(std::move(mesh), std::move(geometry), 3, 6);
+  tpe.numericalTest();
+  
   // Give control to the polyscope gui
   polyscope::show();
 

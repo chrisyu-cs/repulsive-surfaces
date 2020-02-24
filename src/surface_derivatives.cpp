@@ -56,46 +56,9 @@ Jacobian SurfaceDerivs::normalWrtVertex(const GeomPtr &geom, GCFace &face, GCVer
     }
     // The next halfedge is on the opposite edge from wrt
     he = he.next();
-    Vector3 e = geom->vertexPositions[he.twin().vertex()] - geom->vertexPositions[he.vertex()];
+    Vector3 e = geom->inputVertexPositions[he.twin().vertex()] - geom->inputVertexPositions[he.vertex()];
     Vector3 exN = 1.0 / (2 * area) * cross(e, N);
     return Jacobian::OuterProductToJacobian(exN, N);
-}
-
-void SurfaceDerivs::numericalCheck(const MeshPtr &mesh, const GeomPtr &geom, double eps)
-{
-    std::cout << "Did it" << std::endl;
-    for (GCFace face : mesh->faces())
-    {
-        for (GCVertex vert : face.adjacentVertices())
-        {
-            std::cout << face.getIndex() << " / " << vert.getIndex() << std::endl;
-            Jacobian deriv = normalWrtVertex(geom, face, vert);
-
-            Vector3 orig = geom->inputVertexPositions[vert];
-            Vector3 origN = geom->faceNormal(face);
-
-            geom->inputVertexPositions[vert] = orig + Vector3{eps, 0, 0};
-            Vector3 xN = geom->faceNormal(face);
-            Vector3 deriv_x = (xN - origN) / eps;
-
-            geom->inputVertexPositions[vert] = orig + Vector3{0, eps, 0};
-            Vector3 yN = geom->faceNormal(face);
-            Vector3 deriv_y = (yN - origN) / eps;
-
-            geom->inputVertexPositions[vert] = orig + Vector3{0, 0, eps};
-            Vector3 zN = geom->faceNormal(face);
-            Vector3 deriv_z = (zN - origN) / eps;
-
-            geom->inputVertexPositions[vert] = orig;
-
-            Jacobian numDeriv{deriv_x, deriv_y, deriv_z};
-
-            std::cout << "Derivative: " << std::endl;
-            deriv.Print();
-            std::cout << "Numerical derivative: " << std::endl;
-            numDeriv.Print();
-        }
-    }
 }
 
 Vector3 SurfaceDerivs::triangleAreaWrtVertex(const GeomPtr &geom, GCFace &face, GCVertex &wrt)
@@ -109,7 +72,7 @@ Vector3 SurfaceDerivs::triangleAreaWrtVertex(const GeomPtr &geom, GCFace &face, 
     }
     // The next halfedge is on the opposite edge from wrt
     he = he.next();
-    Vector3 u = geom->vertexPositions[he.twin().vertex()] - geom->vertexPositions[he.vertex()];
+    Vector3 u = geom->inputVertexPositions[he.twin().vertex()] - geom->inputVertexPositions[he.vertex()];
     // Get the vector pointing away from the opposite edge
     Vector3 N = geom->faceNormal(face);
     return cross(N, u) / 2.0;
