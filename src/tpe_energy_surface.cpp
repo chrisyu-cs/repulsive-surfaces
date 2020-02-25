@@ -4,23 +4,12 @@
 namespace rsurfaces
 {
 
-TPEKernel::TPEKernel(MeshPtr m, GeomPtr g, double a, double b)
-    : mesh(std::move(m)), geom(std::move(g))
+TPEKernel::TPEKernel(const MeshPtr &m, const GeomPtr &g, double a, double b)
 {
+    mesh = m;
+    geom = g;
     alpha = a;
     beta = b;
-}
-
-inline Vector3 faceBarycenter(GeomPtr const &geom, GCFace f)
-{
-    Vector3 sum{0, 0, 0};
-    int count = 0;
-    for (GCVertex v : f.adjacentVertices())
-    {
-        sum += geom->inputVertexPositions[v];
-        count++;
-    }
-    return sum / count;
 }
 
 double TPEKernel::tpe_Kf(GCFace f1, GCFace f2) {

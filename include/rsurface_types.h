@@ -9,8 +9,10 @@
 namespace rsurfaces
 {
 using namespace geometrycentral;
-typedef std::unique_ptr<surface::HalfedgeMesh> MeshPtr;
-typedef std::unique_ptr<surface::VertexPositionGeometry> GeomPtr;
+typedef std::unique_ptr<surface::HalfedgeMesh> MeshUPtr;
+typedef std::unique_ptr<surface::VertexPositionGeometry> GeomUPtr;
+typedef std::shared_ptr<surface::HalfedgeMesh> MeshPtr;
+typedef std::shared_ptr<surface::VertexPositionGeometry> GeomPtr;
 typedef surface::Vertex GCVertex;
 typedef surface::Halfedge GCHalfedge;
 typedef surface::Edge GCEdge;

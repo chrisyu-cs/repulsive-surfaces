@@ -3,26 +3,6 @@
 namespace rsurfaces
 {
 
-inline bool findVertex(GCFace &face, GCVertex &vert, GCHalfedge &output)
-{
-    GCHalfedge he = face.halfedge();
-    GCHalfedge start = he;
-    bool found = false;
-    do
-    {
-        if (he.vertex() == vert)
-        {
-            found = true;
-            break;
-        }
-        else
-            he = he.next();
-    } while (he != start);
-
-    output = he;
-    return found;
-}
-
 Jacobian SurfaceDerivs::barycenterWrtVertex(GCFace &face, GCVertex &wrt)
 {
     GCHalfedge start = face.halfedge();
@@ -49,7 +29,7 @@ Jacobian SurfaceDerivs::normalWrtVertex(const GeomPtr &geom, GCFace &face, GCVer
     Vector3 N = geom->faceNormal(face);
     // First go to the halfedge that is based at wrt
     GCHalfedge he;
-    bool found = findVertex(face, wrt, he);
+    bool found = findVertexInTriangle(face, wrt, he);
     if (!found)
     {
         return Jacobian{Vector3{0, 0, 0}, Vector3{0, 0, 0}, Vector3{0, 0, 0}};
@@ -65,7 +45,7 @@ Vector3 SurfaceDerivs::triangleAreaWrtVertex(const GeomPtr &geom, GCFace &face, 
 {
     // First go to the halfedge that is based at wrt
     GCHalfedge he;
-    bool found = findVertex(face, wrt, he);
+    bool found = findVertexInTriangle(face, wrt, he);
     if (!found)
     {
         return Vector3{0, 0, 0};

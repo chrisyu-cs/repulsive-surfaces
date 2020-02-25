@@ -1,4 +1,5 @@
 #include "all_pairs_tpe.h"
+#include "helpers.h"
 
 #include <unordered_set>
 
@@ -37,24 +38,8 @@ void AllPairsTPEnergy::Differential(Eigen::MatrixXd &output)
                 continue;
             // Find the set of vertices that are on the boundary of either
             // triangle, without duplicates
-            std::unordered_set<size_t> vertInds;
             std::vector<GCVertex> verts;
-            for (GCVertex v : f1.adjacentVertices())
-            {
-                if (vertInds.count(indices[v]) == 0)
-                {
-                    verts.push_back(v);
-                    vertInds.insert(indices[v]);
-                }
-            }
-            for (GCVertex v : f2.adjacentVertices())
-            {
-                if (vertInds.count(indices[v]) == 0)
-                {
-                    verts.push_back(v);
-                    vertInds.insert(indices[v]);
-                }
-            }
+            GetVerticesWithoutDuplicates(f1, f2, verts);
 
             for (GCVertex v : verts)
             {

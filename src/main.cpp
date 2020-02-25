@@ -97,8 +97,11 @@ int main(int argc, char **argv)
       polyscope::guessNiceNameFromPath(args::get(inputFilename)),
       geometry->inputVertexPositions, mesh->getFaceVertexList(),
       polyscopePermutations(*mesh));
-    
-  rsurfaces::TPEKernel tpe(std::move(mesh), std::move(geometry), 3, 6);
+
+  rsurfaces::MeshPtr meshShared = std::move(mesh);
+  rsurfaces::GeomPtr geomShared = std::move(geometry);
+
+  rsurfaces::TPEKernel tpe(meshShared, geomShared, 3, 6);
   tpe.numericalTest();
   
   // Give control to the polyscope gui

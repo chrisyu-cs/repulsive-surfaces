@@ -67,4 +67,25 @@ public:
     static Jacobian normalWrtVertex(const GeomPtr &geom, GCFace &face, GCVertex &wrt);
     static Vector3 triangleAreaWrtVertex(const GeomPtr &geom, GCFace &face, GCVertex &wrt);
 };
+
+inline bool findVertexInTriangle(GCFace &face, GCVertex &vert, GCHalfedge &output)
+{
+    GCHalfedge he = face.halfedge();
+    GCHalfedge start = he;
+    bool found = false;
+    do
+    {
+        if (he.vertex() == vert)
+        {
+            found = true;
+            break;
+        }
+        else
+            he = he.next();
+    } while (he != start);
+
+    output = he;
+    return found;
+}
+
 } // namespace rsurfaces
