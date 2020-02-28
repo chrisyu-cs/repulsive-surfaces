@@ -18,7 +18,7 @@ double TPEKernel::tpe_Kf(GCFace f1, GCFace f2) {
     Vector3 v2 = faceBarycenter(geom, f2);
 
     Vector3 displacement = v1 - v2;
-    double numer = pow(dot(n1, displacement), alpha);
+    double numer = pow(fabs(dot(n1, displacement)), alpha);
     double denom = pow(displacement.norm(), beta);
     return numer / denom;
 }
@@ -30,6 +30,12 @@ double TPEKernel::tpe_pair(GCFace f1, GCFace f2)
     return tpe_Kf(f1, f2) * w1 * w2;
 }
 
+inline int sgn_fn(double x) {
+    if (x > 0) return 1;
+    else if (x < 0) return -1;
+    else return 0;
+}
+
 Vector3 TPEKernel::tpe_gradient_Kf(GCFace f1, GCFace f2, GCVertex wrt)
 {
     Vector3 n1 = geom->faceNormal(f1);
@@ -37,11 +43,13 @@ Vector3 TPEKernel::tpe_gradient_Kf(GCFace f1, GCFace f2, GCVertex wrt)
     Vector3 v2 = faceBarycenter(geom, f2);
     Vector3 displacement = v1 - v2;
 
-    double A = pow(dot(n1, displacement), alpha);
+    double dot_nD = dot(n1, displacement);
+    double A = pow(fabs(dot_nD), alpha);
     double B = pow(displacement.norm(), beta);
 
     // Derivative of A
-    double deriv_A_coeff = alpha * pow(dot(n1, displacement), alpha - 1);
+    double deriv_A_coeff = alpha * pow(fabs(dot_nD), alpha - 1);
+    double sgn_dot = sgn_fn(dot_nD);
 
     Jacobian ddx_N = SurfaceDerivs::normalWrtVertex(geom, f1, wrt);
     Jacobian ddx_v1 = SurfaceDerivs::barycenterWrtVertex(f1, wrt);
@@ -50,7 +58,7 @@ Vector3 TPEKernel::tpe_gradient_Kf(GCFace f1, GCFace f2, GCVertex wrt)
 
     Vector3 deriv_A_prod1 = ddx_N.LeftMultiply(displacement);
     Vector3 deriv_A_prod2 = ddx_v1_v2.LeftMultiply(n1);
-    Vector3 deriv_A = deriv_A_coeff * (deriv_A_prod1 + deriv_A_prod2);
+    Vector3 deriv_A = deriv_A_coeff * sgn_dot * (deriv_A_prod1 + deriv_A_prod2);
 
     // Derivative of B
     double deriv_B_coeff = beta * pow(displacement.norm(), beta - 1);

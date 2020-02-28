@@ -79,3 +79,6 @@ set(SRCS
 add_executable(rsurfaces "${SRCS}")
 target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 target_link_libraries(rsurfaces geometry-central polyscope)
+
+target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include")
+
