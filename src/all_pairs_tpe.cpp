@@ -29,7 +29,6 @@ double AllPairsTPEnergy::Value()
 void AllPairsTPEnergy::Differential(Eigen::MatrixXd &output)
 {
     surface::VertexData<size_t> indices = kernel->mesh->getVertexIndices();
-
     for (GCFace f1 : kernel->mesh->faces())
     {
         for (GCFace f2 : kernel->mesh->faces())
@@ -53,6 +52,14 @@ void AllPairsTPEnergy::Differential(Eigen::MatrixXd &output)
             }
         }
     }
+}
+
+MeshPtr AllPairsTPEnergy::GetMesh() {
+    return kernel->mesh;
+}
+
+GeomPtr AllPairsTPEnergy::GetGeom() {
+    return kernel->geom;
 }
 
 } // namespace rsurfaces

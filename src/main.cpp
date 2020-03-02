@@ -1,50 +1,58 @@
+#include "main.h"
+
 #include "geometrycentral/surface/halfedge_mesh.h"
 #include "geometrycentral/surface/meshio.h"
 #include "geometrycentral/surface/vertex_position_geometry.h"
 
-#include "polyscope/polyscope.h"
-#include "polyscope/surface_mesh.h"
 
 #include "args/args.hxx"
 #include "imgui.h"
 #include "surface_derivatives.h"
 #include "tpe_energy_surface.h"
 
+#include "all_pairs_tpe.h"
+
 using namespace geometrycentral;
 using namespace geometrycentral::surface;
 
-// == Geometry-central data
-std::unique_ptr<HalfedgeMesh> mesh;
-std::unique_ptr<VertexPositionGeometry> geometry;
+namespace rsurfaces {
 
-// Polyscope visualization handle, to quickly add data to the surface
-polyscope::SurfaceMesh *psMesh;
+    MainApp* MainApp::instance = 0;
+
+    MainApp::MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow* flow_, polyscope::SurfaceMesh* psMesh_) {
+      mesh = mesh_;
+      geom = geom_;
+      flow = flow_;
+      psMesh = psMesh_;
+    }
+
+    void MainApp::TakeNaiveStep(double t) {
+      std::cout << geom->inputVertexPositions[mesh->vertex(0)] << " -> ";
+      flow->StepNaive(t);
+      std::cout << geom->inputVertexPositions[mesh->vertex(0)] << std::endl;
+    }
+
+    void MainApp::updatePolyscopeMesh() {
+      psMesh->updateVertexPositions(geom->inputVertexPositions);
+      polyscope::requestRedraw();
+    }
+}
 
 // Some algorithm parameters
 float param1 = 42.0;
-
-// Example computation function -- this one computes and registers a scalar
-// quantity
-void doWork()
-{
-  polyscope::warning("Computing Gaussian curvature.\nalso, parameter value = " +
-                     std::to_string(param1));
-
-  geometry->requireVertexGaussianCurvatures();
-  psMesh->addVertexScalarQuantity("curvature",
-                                  geometry->vertexGaussianCurvatures,
-                                  polyscope::DataType::SYMMETRIC);
-}
+bool run = false;
 
 // A user-defined callback, for creating control panels (etc)
 // Use ImGUI commands to build whatever you want here, see
 // https://github.com/ocornut/imgui/blob/master/imgui.h
 void myCallback()
 {
+  ImGui::Checkbox("Run flow", &run);
 
-  if (ImGui::Button("do work"))
+  if (ImGui::Button("do work") || run)
   {
-    doWork();
+    rsurfaces::MainApp::instance->TakeNaiveStep(0.1);
+    rsurfaces::MainApp::instance->updatePolyscopeMesh();
   }
 
   ImGui::SliderFloat("param", &param1, 0., 100.);
@@ -87,23 +95,28 @@ int main(int argc, char **argv)
   // Set the callback function
   polyscope::state::userCallback = myCallback;
 
+  std::unique_ptr<HalfedgeMesh> u_mesh;
+  std::unique_ptr<VertexPositionGeometry> u_geometry;
   // Load mesh
-  std::tie(mesh, geometry) = loadMesh(args::get(inputFilename));
-  geometry->requireVertexPositions();
-  geometry->requireFaceNormals();
+  std::tie(u_mesh, u_geometry) = loadMesh(args::get(inputFilename));
+  u_geometry->requireVertexPositions();
+  u_geometry->requireFaceNormals();
 
   // Register the mesh with polyscope
-  psMesh = polyscope::registerSurfaceMesh(
+  polyscope::SurfaceMesh* psMesh = polyscope::registerSurfaceMesh(
       polyscope::guessNiceNameFromPath(args::get(inputFilename)),
-      geometry->inputVertexPositions, mesh->getFaceVertexList(),
-      polyscopePermutations(*mesh));
+      u_geometry->inputVertexPositions, u_mesh->getFaceVertexList(),
+      polyscopePermutations(*u_mesh));
 
-  rsurfaces::MeshPtr meshShared = std::move(mesh);
-  rsurfaces::GeomPtr geomShared = std::move(geometry);
+  rsurfaces::MeshPtr meshShared = std::move(u_mesh);
+  rsurfaces::GeomPtr geomShared = std::move(u_geometry);
 
-  rsurfaces::TPEKernel tpe(meshShared, geomShared, 3, 6);
-  tpe.numericalTest();
-  
+  rsurfaces::TPEKernel* tpe = new rsurfaces::TPEKernel(meshShared, geomShared, 3, 6);
+  rsurfaces::AllPairsTPEnergy* energy = new rsurfaces::AllPairsTPEnergy(tpe);
+  rsurfaces::SurfaceFlow* flow = new rsurfaces::SurfaceFlow(energy);
+
+  rsurfaces::MainApp::instance = new rsurfaces::MainApp(meshShared, geomShared, flow, psMesh);
+
   // Give control to the polyscope gui
   polyscope::show();
 

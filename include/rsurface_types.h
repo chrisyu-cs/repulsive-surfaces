@@ -28,6 +28,10 @@ class SurfaceEnergy {
     // V x 3 matrix, where each row holds the differential (a 3-vector) with
     // respect to the corresponding vertex.
     virtual void Differential(Eigen::MatrixXd &output) = 0;
+    // Get the mesh associated with this energy.
+    virtual MeshPtr GetMesh() = 0;
+    // Get the geometry associated with this geometry.
+    virtual GeomPtr GetGeom() = 0;
 };
 
 } // namespace rsurfaces

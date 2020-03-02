@@ -30,4 +30,8 @@ inline void GetVerticesWithoutDuplicates(GCFace f1, GCFace f2, std::vector<GCVer
     }
 }
 
+inline Vector3 GetRow(Eigen::MatrixXd &A, int i) {
+    return Vector3{A(i, 0), A(i, 1), A(i, 2)};
+}
+
 } // namespace rsurfaces
