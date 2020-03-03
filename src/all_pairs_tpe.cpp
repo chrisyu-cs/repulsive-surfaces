@@ -40,25 +40,27 @@ void AllPairsTPEnergy::Differential(Eigen::MatrixXd &output)
             std::vector<GCVertex> verts;
             GetVerticesWithoutDuplicates(f1, f2, verts);
 
-            for (GCVertex v : verts)
+            for (GCVertex &v : verts)
             {
                 Vector3 deriv1 = kernel->tpe_gradient_pair(f1, f2, v);
-                Vector3 deriv2 = kernel->tpe_gradient_pair(f2, f1, v);
-                Vector3 sum = deriv1 + deriv2;
-                int r = indices[v];
-                output(r, 0) = sum.x;
-                output(r, 1) = sum.y;
-                output(r, 2) = sum.z;
+                Vector3 sum = deriv1;
+                size_t r = indices[v];
+
+                output(r, 0) += sum.x;
+                output(r, 1) += sum.y;
+                output(r, 2) += sum.z;
             }
         }
     }
 }
 
-MeshPtr AllPairsTPEnergy::GetMesh() {
+MeshPtr AllPairsTPEnergy::GetMesh()
+{
     return kernel->mesh;
 }
 
-GeomPtr AllPairsTPEnergy::GetGeom() {
+GeomPtr AllPairsTPEnergy::GetGeom()
+{
     return kernel->geom;
 }
 

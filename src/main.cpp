@@ -4,13 +4,13 @@
 #include "geometrycentral/surface/meshio.h"
 #include "geometrycentral/surface/vertex_position_geometry.h"
 
-
 #include "args/args.hxx"
 #include "imgui.h"
 #include "surface_derivatives.h"
 #include "tpe_energy_surface.h"
 
 #include "all_pairs_tpe.h"
+#include "helpers.h"
 
 using namespace geometrycentral;
 using namespace geometrycentral::surface;
@@ -27,14 +27,37 @@ namespace rsurfaces {
     }
 
     void MainApp::TakeNaiveStep(double t) {
-      std::cout << geom->inputVertexPositions[mesh->vertex(0)] << " -> ";
       flow->StepNaive(t);
-      std::cout << geom->inputVertexPositions[mesh->vertex(0)] << std::endl;
+    }
+
+    void MainApp::TakeLineSearchStep() {
+      flow->StepLineSearch();
     }
 
     void MainApp::updatePolyscopeMesh() {
       psMesh->updateVertexPositions(geom->inputVertexPositions);
       polyscope::requestRedraw();
+    }
+
+    void MainApp::PlotL2Gradient() {
+      long start = currentTimeMilliseconds();
+
+      Eigen::MatrixXd d;
+      d.setZero(mesh->nVertices(), 3);
+      flow->BaseEnergy()->Differential(d);
+
+      std::vector<Vector3> vecs(mesh->nVertices());
+
+      for (size_t i = 0; i < mesh->nVertices(); i++) {
+        Vector3 v = GetRow(d, i);
+        vecs[i] = v;
+      }
+
+      psMesh->addVertexVectorQuantity("L2 gradient", vecs);
+
+      long end = currentTimeMilliseconds();
+
+      std::cout << "Plotted gradient in " << (end - start) << " ms" << std::endl;
     }
 }
 
@@ -49,10 +72,16 @@ void myCallback()
 {
   ImGui::Checkbox("Run flow", &run);
 
-  if (ImGui::Button("do work") || run)
+  if (ImGui::Button("Take step") || run)
   {
-    rsurfaces::MainApp::instance->TakeNaiveStep(0.1);
+    rsurfaces::MainApp::instance->TakeLineSearchStep();
+    // rsurfaces::MainApp::instance->TakeNaiveStep(0.01);
     rsurfaces::MainApp::instance->updatePolyscopeMesh();
+  }
+
+  if (ImGui::Button("Plot gradient"))
+  {
+    rsurfaces::MainApp::instance->PlotL2Gradient();
   }
 
   ImGui::SliderFloat("param", &param1, 0., 100.);
@@ -111,7 +140,7 @@ int main(int argc, char **argv)
   rsurfaces::MeshPtr meshShared = std::move(u_mesh);
   rsurfaces::GeomPtr geomShared = std::move(u_geometry);
 
-  rsurfaces::TPEKernel* tpe = new rsurfaces::TPEKernel(meshShared, geomShared, 3, 6);
+  rsurfaces::TPEKernel* tpe = new rsurfaces::TPEKernel(meshShared, geomShared, 4, 8);
   rsurfaces::AllPairsTPEnergy* energy = new rsurfaces::AllPairsTPEnergy(tpe);
   rsurfaces::SurfaceFlow* flow = new rsurfaces::SurfaceFlow(energy);
 

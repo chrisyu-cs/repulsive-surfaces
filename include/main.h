@@ -14,8 +14,11 @@ class MainApp
     static MainApp* instance;
     MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow* flow_, polyscope::SurfaceMesh* psMesh_);
 
-    void TakeNaiveStep(double t);
     void updatePolyscopeMesh();
+    void PlotL2Gradient();
+
+    void TakeNaiveStep(double t);
+    void TakeLineSearchStep();
 
     MeshPtr mesh;
     GeomPtr geom;

@@ -80,8 +80,7 @@ inline bool findVertexInTriangle(GCFace &face, GCVertex &vert, GCHalfedge &outpu
             found = true;
             break;
         }
-        else
-            he = he.next();
+        he = he.next();
     } while (he != start);
 
     output = he;
