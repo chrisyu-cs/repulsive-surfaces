@@ -1,16 +1,9 @@
 #pragma once
 
-#include "rsurface_types.h"
+#include "spatial/mass_point.h"
 
 namespace rsurfaces
 {
-
-struct MassPoint
-{
-    double mass;
-    Vector3 point;
-    size_t elementID;
-};
 
 enum class BVHNodeType
 {

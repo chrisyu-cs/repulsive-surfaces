@@ -1,4 +1,4 @@
-#include "tpe_energy_surface.h"
+#include "energy/tpe_energy_surface.h"
 #include "surface_derivatives.h"
 #include "helpers.h"
 
@@ -35,6 +35,10 @@ inline int sgn_fn(double x) {
     if (x > 0) return 1;
     else if (x < 0) return -1;
     else return 0;
+}
+
+Vector3 TPEKernel::tpe_gradient_Kf(GCFace f1, MassPoint p2, GCVertex wrt) {
+
 }
 
 Vector3 TPEKernel::tpe_gradient_Kf(GCFace f1, GCFace f2, GCVertex wrt)

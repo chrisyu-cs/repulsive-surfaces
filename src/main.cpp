@@ -7,9 +7,9 @@
 #include "args/args.hxx"
 #include "imgui.h"
 #include "surface_derivatives.h"
-#include "tpe_energy_surface.h"
 
-#include "all_pairs_tpe.h"
+#include "energy/tpe_energy_surface.h"
+#include "energy/all_pairs_tpe.h"
 #include "helpers.h"
 
 using namespace geometrycentral;

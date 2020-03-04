@@ -1,4 +1,4 @@
-#include "all_pairs_tpe.h"
+#include "energy/all_pairs_tpe.h"
 #include "helpers.h"
 
 #include <unordered_set>

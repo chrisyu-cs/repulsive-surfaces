@@ -1,6 +1,6 @@
 #pragma once
 
-#include "rsurface_types.h"
+#include "spatial/mass_point.h"
 
 namespace rsurfaces
 {
@@ -22,6 +22,7 @@ public:
     private:
     double tpe_Kf(GCFace f1, GCFace f2);
     Vector3 tpe_gradient_Kf(GCFace f1, GCFace f2, GCVertex wrt);
+    Vector3 tpe_gradient_Kf(GCFace f1, MassPoint p2, GCVertex wrt);
     Vector3 tpe_gradient_pair_num(GCFace f1, GCFace f2, GCVertex wrt, double eps);
 
 };

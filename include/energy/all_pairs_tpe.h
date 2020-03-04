@@ -1,6 +1,6 @@
 #pragma once
 
-#include "tpe_energy_surface.h"
+#include "energy/tpe_energy_surface.h"
 
 namespace rsurfaces
 {
