@@ -42,4 +42,26 @@ inline long currentTimeMilliseconds()
     return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 }
 
+inline Vector3 faceBarycenter(GeomPtr const &geom, GCFace f)
+{
+    Vector3 sum{0, 0, 0};
+    int count = 0;
+    for (GCVertex v : f.adjacentVertices())
+    {
+        sum += geom->inputVertexPositions[v];
+        count++;
+    }
+    return sum / count;
+}
+
+inline Vector3 vectorMin(Vector3 v1, Vector3 v2)
+{
+    return Vector3{fmin(v1.x, v2.x), fmin(v1.y, v2.y), fmin(v1.z, v2.z)};
+}
+
+inline Vector3 vectorMax(Vector3 v1, Vector3 v2)
+{
+    return Vector3{fmax(v1.x, v2.x), fmax(v1.y, v2.y), fmax(v1.z, v2.z)};
+}
+
 } // namespace rsurfaces

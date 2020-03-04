@@ -18,6 +18,8 @@ typedef surface::Halfedge GCHalfedge;
 typedef surface::Edge GCEdge;
 typedef surface::Face GCFace;
 
+typedef surface::VertexData<size_t> VertexIndices;
+typedef surface::FaceData<size_t> FaceIndices;
 
 class SurfaceEnergy {
     public:

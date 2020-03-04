@@ -26,6 +26,9 @@ MainApp::MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow *flow_, polyscope::Su
   geom = geom_;
   flow = flow_;
   psMesh = psMesh_;
+
+  tree = CreateBVHFromMesh(mesh, geom);
+  tree->printSummary();
 }
 
 void MainApp::TakeNaiveStep(double t)

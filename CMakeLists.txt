@@ -66,6 +66,7 @@ add_subdirectory(deps/polyscope)
 # == Build our project stuff
 
 set(SRCS 
+  src/spatial/bvh_3d.cpp
   src/all_pairs_tpe.cpp
   src/fractional_laplacian.cpp
   src/surface_derivatives.cpp

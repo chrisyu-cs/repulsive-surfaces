@@ -1,5 +1,6 @@
 #include "tpe_energy_surface.h"
 #include "surface_derivatives.h"
+#include "helpers.h"
 
 namespace rsurfaces
 {

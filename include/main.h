@@ -5,6 +5,7 @@
 
 #include "polyscope/polyscope.h"
 #include "polyscope/surface_mesh.h"
+#include "spatial/bvh_3d.h"
 
 namespace rsurfaces
 {
@@ -24,5 +25,6 @@ class MainApp
     GeomPtr geom;
     SurfaceFlow* flow;
     polyscope::SurfaceMesh *psMesh;
+    BVHNode3D* tree;
 };
 } // namespace rsurfaces

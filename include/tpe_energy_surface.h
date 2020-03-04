@@ -6,18 +6,6 @@ namespace rsurfaces
 {
 using namespace geometrycentral;
 
-inline Vector3 faceBarycenter(GeomPtr const &geom, GCFace f)
-{
-    Vector3 sum{0, 0, 0};
-    int count = 0;
-    for (GCVertex v : f.adjacentVertices())
-    {
-        sum += geom->inputVertexPositions[v];
-        count++;
-    }
-    return sum / count;
-}
-
 class TPEKernel
 {
 public:
