@@ -39,6 +39,8 @@ public:
     void recomputeCentersOfMass(MeshPtr &mesh, GeomPtr &geom);
     bool shouldUseCell(Vector3 vertPos);
     void printSummary();
+    MassPoint GetMassPoint();
+    GCFace getSingleFace(MeshPtr &mesh);
 
 private:
     double AxisSplittingPlane(std::vector<MassPoint> &points, int axis);

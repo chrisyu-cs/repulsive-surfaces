@@ -13,15 +13,18 @@ TPEKernel::TPEKernel(const MeshPtr &m, const GeomPtr &g, double a, double b)
     beta = b;
 }
 
-double TPEKernel::tpe_Kf(GCFace f1, GCFace f2) {
-    Vector3 n1 = geom->faceNormal(f1);
-    Vector3 v1 = faceBarycenter(geom, f1);
-    Vector3 v2 = faceBarycenter(geom, f2);
-
+double TPEKernel::tpe_Kf(Vector3 v1, Vector3 v2, Vector3 n1) {
     Vector3 displacement = v1 - v2;
     double numer = pow(fabs(dot(n1, displacement)), alpha);
     double denom = pow(displacement.norm(), beta);
     return numer / denom;
+}
+
+double TPEKernel::tpe_Kf(GCFace f1, GCFace f2) {
+    Vector3 n1 = geom->faceNormal(f1);
+    Vector3 v1 = faceBarycenter(geom, f1);
+    Vector3 v2 = faceBarycenter(geom, f2);
+    return tpe_Kf(v1, v2, n1);
 }
 
 double TPEKernel::tpe_pair(GCFace f1, GCFace f2)
@@ -29,6 +32,14 @@ double TPEKernel::tpe_pair(GCFace f1, GCFace f2)
     double w1 = geom->faceArea(f1);
     double w2 = geom->faceArea(f2);
     return tpe_Kf(f1, f2) * w1 * w2;
+}
+
+double TPEKernel::tpe_pair(GCFace f1, MassPoint p2) {
+    double w1 = geom->faceArea(f1);
+    double w2 = p2.mass;
+    Vector3 v1 = faceBarycenter(geom, f1);
+    Vector3 n1 = geom->faceNormal(f1);
+    return tpe_Kf(v1, p2.point, n1) * w1 * w2;
 }
 
 inline int sgn_fn(double x) {

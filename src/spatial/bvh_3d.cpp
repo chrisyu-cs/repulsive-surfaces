@@ -19,7 +19,7 @@ inline int NextAxis(int axis)
     }
 }
 
-inline MassPoint meshVertToBody(const GCFace &f, GeomPtr &geom, FaceIndices &indices)
+inline MassPoint meshFaceToBody(const GCFace &f, GeomPtr &geom, FaceIndices &indices)
 {
     Vector3 pos = faceBarycenter(geom, f);
     double mass = geom->faceArea(f);
@@ -52,7 +52,7 @@ BVHNode3D *CreateBVHFromMesh(MeshPtr &mesh, GeomPtr &geom)
     // Loop over all the vertices
     for (const GCFace &f : mesh->faces())
     {
-        MassPoint curBody = meshVertToBody(f, geom, indices);
+        MassPoint curBody = meshFaceToBody(f, geom, indices);
         // Put vertex body into full list
         verts[curBody.elementID] = curBody;
     }
@@ -159,6 +159,20 @@ void BVHNode3D::printSummary()
             child->printSummary();
         }
     }
+}
+
+MassPoint BVHNode3D::GetMassPoint()
+{
+    return MassPoint{totalMass, centerOfMass, elementID};
+}
+
+GCFace BVHNode3D::getSingleFace(MeshPtr &mesh)
+{
+    if (nodeType != BVHNodeType::Leaf) {
+        std::cerr << "Tried to getSingleFace() from a non-leaf node" << std::endl;
+        exit(1);
+    }
+    return mesh->face(elementID);
 }
 
 void BVHNode3D::averageDataFromChildren()
