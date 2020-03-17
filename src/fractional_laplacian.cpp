@@ -1,7 +1,6 @@
 #include "fractional_laplacian.h"
 #include "helpers.h"
 #include "surface_derivatives.h"
-#include "energy/tpe_energy_surface.h"
 
 namespace rsurfaces
 {

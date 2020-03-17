@@ -67,7 +67,7 @@ add_subdirectory(deps/polyscope)
 
 set(SRCS 
   src/energy/all_pairs_tpe.cpp
-  src/energy/tpe_energy_surface.cpp
+  src/energy/tpe_kernel.cpp
   src/spatial/bvh_3d.cpp
   src/fractional_laplacian.cpp
   src/surface_derivatives.cpp

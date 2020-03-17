@@ -1,4 +1,4 @@
-#include "energy/tpe_energy_surface.h"
+#include "energy/tpe_kernel.h"
 #include "surface_derivatives.h"
 #include "helpers.h"
 
@@ -46,10 +46,6 @@ inline int sgn_fn(double x) {
     if (x > 0) return 1;
     else if (x < 0) return -1;
     else return 0;
-}
-
-Vector3 TPEKernel::tpe_gradient_Kf(GCFace f1, MassPoint p2, GCVertex wrt) {
-
 }
 
 Vector3 TPEKernel::tpe_gradient_Kf(GCFace f1, GCFace f2, GCVertex wrt)
@@ -122,6 +118,27 @@ void TPEKernel::numericalTest() {
     std::cout << "Max analytic norm = " << max_norm_a << ", numerical = " << max_norm_n << std::endl;
     std::cout << "max diff = " << max_err << " percent" << std::endl;
     std::cout << "average relative diff = " << avg << " percent" << std::endl;
+}
+
+Vector3 TPEKernel::tpe_Kf_partial_wrt_v1(Vector3 v1, Vector3 v2, Vector3 n1) {
+    double n_dot = dot(n1, v1 - v2);
+    double A = pow(fabs(n_dot), alpha);
+    double front_dA = alpha * pow(fabs(n_dot), alpha - 1) * sgn_fn(n_dot);
+    Vector3 deriv_A = front_dA * n1;
+    
+    double norm_dist = norm(v1 - v2);
+    double B = pow(norm_dist, beta);
+    Vector3 deriv_B = beta * pow(norm_dist, beta - 1) * ((v1 - v2) / norm_dist);
+    return (deriv_A * B - deriv_B * A) / (B * B);
+}
+
+Vector3 TPEKernel::tpe_Kf_partial_wrt_n1(Vector3 v1, Vector3 v2, Vector3 n1) {
+    double n_dot = dot(n1, v1 - v2);
+    double A = pow(fabs(n_dot), alpha);
+    double front_dA = alpha * pow(fabs(n_dot), alpha - 1) * sgn_fn(n_dot);
+    Vector3 deriv_A = front_dA * (v1 - v2);
+    double B = pow(norm(v1 - v2), beta);
+    return deriv_A / B;
 }
 
 Vector3 TPEKernel::tpe_gradient_pair(GCFace f1, GCFace f2, GCVertex wrt)

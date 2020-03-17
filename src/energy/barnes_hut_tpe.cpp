@@ -65,14 +65,27 @@ void BarnesHutTPEnergy::Differential(Eigen::MatrixXd &output)
 
 void BarnesHutTPEnergy::addVOfPair(GCFace face, BVHNode3D *bvhRoot, Eigen::VectorXd &V)
 {
-    // Each face produces 3 derivatives of the term with that face,
-    // corresponding to the three surrounding vertices
-    for (GCVertex vert : face.adjacentVertices())
-    {
+    if (bvhRoot->nodeType == BVHNodeType::Empty) {
+        return;
+    }
+    else if (bvhRoot->nodeType == BVHNodeType::Leaf) {
+        // derivative of kernel wrt single position
+        Vector3 normal = kernel->geom->faceNormal(face);
+        Vector3 bcenter = faceBarycenter(kernel->geom, face);
+
+        Vector3 dK_dxI = kernel->tpe_Kf_partial_wrt_v1(bcenter, bvhRoot->centerOfMass, normal);
+        Vector3 dK_dNI = kernel->tpe_Kf_partial_wrt_n1(bcenter, bvhRoot->centerOfMass, normal);
+    }
+    else {
+        // Each face produces 3 derivatives of the term with that face,
+        // corresponding to the three surrounding vertices
+        for (GCVertex vert : face.adjacentVertices())
+        {
+            
+        }
     }
     // TODO: add the term here
 }
-} // namespace rsurfaces
 
 MeshPtr BarnesHutTPEnergy::GetMesh()
 {
