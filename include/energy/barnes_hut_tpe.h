@@ -19,7 +19,13 @@ private:
     TPEKernel *kernel;
     BVHNode3D *root;
     double computeEnergyOfFace(GCFace face, BVHNode3D *bvhRoot);
-    void addVOfPair(GCFace face, BVHNode3D *bvhRoot, Eigen::VectorXd &V);
+    void addV(BVHNode3D *bvhRoot, Eigen::MatrixXd &V, VertexIndices &indices);
+    void addVOfFace(GCFace face, BVHNode3D *node, Eigen::MatrixXd &V, VertexIndices &indices);
+    void addW(BVHNode3D *bvhRoot, Eigen::MatrixXd &W, VertexIndices &indices);
+    void addWForAllClusters(BVHNode3D *node, Eigen::MatrixXd &W, std::vector<double> &xi,
+                            std::vector<Vector3> &eta, VertexIndices &indices);
+    void accumulateWValues(GCFace face, BVHNode3D *node, std::vector<double> &xi,
+                           std::vector<Vector3> &eta);
 };
 
 } // namespace rsurfaces

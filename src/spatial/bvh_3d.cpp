@@ -58,6 +58,7 @@ BVHNode3D *CreateBVHFromMesh(MeshPtr &mesh, GeomPtr &geom)
     }
 
     BVHNode3D *tree = new BVHNode3D(verts, 0, 0);
+    tree->assignIDsRecursively(0);
     return tree;
 }
 
@@ -79,6 +80,7 @@ BVHNode3D::BVHNode3D(std::vector<MassPoint> &points, int axis, BVHNode3D *root)
         totalMass = 0;
         centerOfMass = Vector3{0, 0, 0};
         elementID = -1;
+        numNodesInBranch = 1;
     }
     // If we have only one point, then the node is a leaf
     else if (points.size() == 1)
@@ -90,6 +92,7 @@ BVHNode3D::BVHNode3D(std::vector<MassPoint> &points, int axis, BVHNode3D *root)
         minCoords = mp.point;
         maxCoords = mp.point;
         elementID = mp.elementID;
+        numNodesInBranch = 1;
     }
     // Otherwise, we need to recursively split and compute averages
     else
@@ -126,6 +129,7 @@ BVHNode3D::BVHNode3D(std::vector<MassPoint> &points, int axis, BVHNode3D *root)
         BVHNode3D *greaterNode = new BVHNode3D(greaterPoints, nextAxis, nextRoot);
         children.push_back(lesserNode);
         children.push_back(greaterNode);
+        numNodesInBranch = lesserNode->numNodesInBranch + greaterNode->numNodesInBranch + 1;
         // Get the averages from children
         averageDataFromChildren();
     }
@@ -136,6 +140,34 @@ BVHNode3D::~BVHNode3D()
     for (size_t i = 0; i < children.size(); i++)
     {
         delete children[i];
+    }
+}
+
+size_t BVHNode3D::assignIDsRecursively(size_t startID)
+{
+    nodeID = startID;
+    size_t nextID = nodeID + 1;
+    if (nodeType == BVHNodeType::Interior)
+    {
+        for (size_t i = 0; i < children.size(); i++)
+        {
+            nextID = children[i]->assignIDsRecursively(nextID);
+        }
+    }
+    return nextID;
+}
+
+void BVHNode3D::addAllFaces(MeshPtr &mesh, std::vector<GCFace> &faces) {
+    if (nodeType == BVHNodeType::Empty) {
+        return;
+    }
+    else if (nodeType == BVHNodeType::Leaf) {
+        faces.push_back(getSingleFace(mesh));
+    }
+    else {
+        for (BVHNode3D* child : children) {
+            child->addAllFaces(mesh, faces);
+        }
     }
 }
 
@@ -168,7 +200,8 @@ MassPoint BVHNode3D::GetMassPoint()
 
 GCFace BVHNode3D::getSingleFace(MeshPtr &mesh)
 {
-    if (nodeType != BVHNodeType::Leaf) {
+    if (nodeType != BVHNodeType::Leaf)
+    {
         std::cerr << "Tried to getSingleFace() from a non-leaf node" << std::endl;
         exit(1);
     }
@@ -225,13 +258,17 @@ double BVHNode3D::AxisSplittingPlane(std::vector<MassPoint> &points, int axis)
     return splitPoint;
 }
 
-bool BVHNode3D::shouldUseCell(Vector3 atPos)
+bool BVHNode3D::isAdmissibleFrom(Vector3 atPos)
 {
-    double d = norm(centerOfMass - atPos);
-    // Vector2 ratios = viewspaceBounds(vertPos) / d;
-    // TODO: take into account some tangent-related criteria?
-    // return fmax(ratios.x, ratios.y) < thresholdTheta;
-    return nodeRatio(d) < thresholdTheta;
+    if (nodeType == BVHNodeType::Leaf) {
+        if (centerOfMass == atPos) return false;
+        else return true;
+    }
+    if (nodeType == BVHNodeType::Interior) {
+        double d = norm(centerOfMass - atPos);
+        return nodeRatio(d) < thresholdTheta;
+    }
+    else return true;
 }
 
 void BVHNode3D::recomputeCentersOfMass(MeshPtr &mesh, GeomPtr &geom)

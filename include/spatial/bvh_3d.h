@@ -34,10 +34,16 @@ public:
     int splitAxis;
     double splitPoint;
     double thresholdTheta;
+    size_t nodeID;
+    size_t assignIDsRecursively(size_t startID);
+    size_t numNodesInBranch;
+
+    void addAllFaces(MeshPtr &mesh, std::vector<GCFace> &faces);
 
     // Recursively recompute all centers of mass in this tree
     void recomputeCentersOfMass(MeshPtr &mesh, GeomPtr &geom);
-    bool shouldUseCell(Vector3 vertPos);
+    bool isAdmissibleFrom(Vector3 vertPos);
+
     void printSummary();
     MassPoint GetMassPoint();
     GCFace getSingleFace(MeshPtr &mesh);

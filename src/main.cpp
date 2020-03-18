@@ -8,8 +8,9 @@
 #include "imgui.h"
 #include "surface_derivatives.h"
 
-#include "energy/tpe_energy_surface.h"
+#include "energy/tpe_kernel.h"
 #include "energy/all_pairs_tpe.h"
+#include "energy/barnes_hut_tpe.h"
 #include "helpers.h"
 
 using namespace geometrycentral;
@@ -28,7 +29,7 @@ MainApp::MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow *flow_, polyscope::Su
   psMesh = psMesh_;
 
   tree = CreateBVHFromMesh(mesh, geom);
-  tree->printSummary();
+  std::cout << tree->numNodesInBranch << " total nodes in BVH" << std::endl;
 }
 
 void MainApp::TakeNaiveStep(double t)
@@ -173,6 +174,12 @@ int main(int argc, char **argv)
   rsurfaces::SurfaceFlow *flow = new rsurfaces::SurfaceFlow(energy);
 
   rsurfaces::MainApp::instance = new rsurfaces::MainApp(meshShared, geomShared, flow, psMesh);
+
+  rsurfaces::BarnesHutTPEnergy *bh_energy = new rsurfaces::BarnesHutTPEnergy(tpe, rsurfaces::MainApp::instance->tree);
+  Eigen::MatrixXd bh_deriv;
+  bh_deriv.setZero(meshShared->nVertices(), 3);
+  bh_energy->Differential(bh_deriv);
+  std::cout << "BH derivative norm = " << bh_deriv.norm() << std::endl;
 
   // Give control to the polyscope gui
   polyscope::show();
