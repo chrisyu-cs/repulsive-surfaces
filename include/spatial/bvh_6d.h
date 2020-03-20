@@ -5,24 +5,25 @@
 namespace rsurfaces
 {
 
-class BVHNode3D
+class BVHNode6D
 {
 public:
     // Build a BVH of the given points
-    BVHNode3D(std::vector<MassPoint> &points, int axis, BVHNode3D *root);
-    ~BVHNode3D();
+    BVHNode6D(std::vector<MassNormalPoint> &points, int axis, BVHNode6D *root);
+    ~BVHNode6D();
 
     // Basic spatial data
     double totalMass;
     Vector3 centerOfMass;
+    Vector3 averageNormal;
     Vector3 minCoords;
     Vector3 maxCoords;
     // Vector3 averageTangent;
     size_t elementID;
     // Every node knows the root of the tree
-    BVHNode3D *bvhRoot;
+    BVHNode6D *bvhRoot;
     // Children
-    std::vector<BVHNode3D *> children;
+    std::vector<BVHNode6D *> children;
     BVHNodeType nodeType;
     int splitAxis;
     double splitPoint;
@@ -37,11 +38,11 @@ public:
     void recomputeCentersOfMass(MeshPtr &mesh, GeomPtr &geom);
     bool isAdmissibleFrom(Vector3 vertPos);
     void printSummary();
-    MassPoint GetMassPoint();
+    MassNormalPoint GetMassNormalPoint();
     GCFace getSingleFace(MeshPtr &mesh);
 
 private:
-    double AxisSplittingPlane(std::vector<MassPoint> &points, int axis);
+    double AxisSplittingPlane(std::vector<MassNormalPoint> &points, int axis);
     void averageDataFromChildren();
 
     inline double nodeRatio(double d)
@@ -53,5 +54,5 @@ private:
     }
 };
 
-BVHNode3D *Create3DBVHFromMesh(MeshPtr &mesh, GeomPtr &geom);
+BVHNode6D *Create6DBVHFromMesh(MeshPtr &mesh, GeomPtr &geom);
 } // namespace rsurfaces

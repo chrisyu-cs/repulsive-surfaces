@@ -6,10 +6,10 @@
 namespace rsurfaces
 {
 
-class BarnesHutTPEnergy : public SurfaceEnergy
+class BarnesHutTPEnergy3D : public SurfaceEnergy
 {
 public:
-    BarnesHutTPEnergy(TPEKernel *kernel_, BVHNode3D *root_);
+    BarnesHutTPEnergy3D(TPEKernel *kernel_, BVHNode3D *root_);
     virtual double Value();
     virtual void Differential(Eigen::MatrixXd &output);
     virtual MeshPtr GetMesh();

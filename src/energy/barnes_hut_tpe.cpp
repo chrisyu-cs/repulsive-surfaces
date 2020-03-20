@@ -5,13 +5,13 @@
 namespace rsurfaces
 {
 
-BarnesHutTPEnergy::BarnesHutTPEnergy(TPEKernel *kernel_, BVHNode3D *root_)
+BarnesHutTPEnergy3D::BarnesHutTPEnergy3D(TPEKernel *kernel_, BVHNode3D *root_)
 {
     kernel = kernel_;
     root = root_;
 }
 
-double BarnesHutTPEnergy::Value()
+double BarnesHutTPEnergy3D::Value()
 {
     double sum = 0;
     for (GCFace f : kernel->mesh->faces())
@@ -21,7 +21,7 @@ double BarnesHutTPEnergy::Value()
     return sum;
 }
 
-double BarnesHutTPEnergy::computeEnergyOfFace(GCFace face, BVHNode3D *bvhRoot)
+double BarnesHutTPEnergy3D::computeEnergyOfFace(GCFace face, BVHNode3D *bvhRoot)
 {
     Vector3 bcenter = faceBarycenter(kernel->geom, face);
 
@@ -36,24 +36,27 @@ double BarnesHutTPEnergy::computeEnergyOfFace(GCFace face, BVHNode3D *bvhRoot)
         GCFace f2 = bvhRoot->getSingleFace(kernel->mesh);
         return kernel->tpe_pair(face, f2);
     }
-    if (bvhRoot->isAdmissibleFrom(bcenter))
-    {
-        // Use the cluster approximation
-        return kernel->tpe_pair(face, bvhRoot->GetMassPoint());
-    }
     else
     {
-        // Recursively compute it on all children
-        double sum = 0;
-        for (BVHNode3D *child : bvhRoot->children)
+        if (bvhRoot->isAdmissibleFrom(bcenter))
         {
-            sum += computeEnergyOfFace(face, child);
+            // Use the cluster approximation
+            return kernel->tpe_pair(face, bvhRoot->GetMassPoint());
         }
-        return sum;
+        else
+        {
+            // Recursively compute it on all children
+            double sum = 0;
+            for (BVHNode3D *child : bvhRoot->children)
+            {
+                sum += computeEnergyOfFace(face, child);
+            }
+            return sum;
+        }
     }
 }
 
-void BarnesHutTPEnergy::Differential(Eigen::MatrixXd &output)
+void BarnesHutTPEnergy3D::Differential(Eigen::MatrixXd &output)
 {
     Eigen::MatrixXd V, W;
     V.setZero(kernel->mesh->nVertices(), 3);
@@ -71,7 +74,7 @@ void BarnesHutTPEnergy::Differential(Eigen::MatrixXd &output)
     output = V + W;
 }
 
-void BarnesHutTPEnergy::addV(BVHNode3D *bvhRoot, Eigen::MatrixXd &V, VertexIndices &indices)
+void BarnesHutTPEnergy3D::addV(BVHNode3D *bvhRoot, Eigen::MatrixXd &V, VertexIndices &indices)
 {
     for (GCFace face : kernel->mesh->faces())
     {
@@ -79,7 +82,7 @@ void BarnesHutTPEnergy::addV(BVHNode3D *bvhRoot, Eigen::MatrixXd &V, VertexIndic
     }
 }
 
-void BarnesHutTPEnergy::addVOfFace(GCFace face, BVHNode3D *node, Eigen::MatrixXd &V, VertexIndices &indices)
+void BarnesHutTPEnergy3D::addVOfFace(GCFace face, BVHNode3D *node, Eigen::MatrixXd &V, VertexIndices &indices)
 {
     if (node->nodeType == BVHNodeType::Empty)
     {
@@ -126,7 +129,7 @@ void BarnesHutTPEnergy::addVOfFace(GCFace face, BVHNode3D *node, Eigen::MatrixXd
     }
 }
 
-void BarnesHutTPEnergy::addW(BVHNode3D *bvhRoot, Eigen::MatrixXd &W, VertexIndices &indices)
+void BarnesHutTPEnergy3D::addW(BVHNode3D *bvhRoot, Eigen::MatrixXd &W, VertexIndices &indices)
 {
     size_t nNodes = bvhRoot->numNodesInBranch;
     std::vector<double> xi(nNodes);
@@ -147,8 +150,8 @@ void BarnesHutTPEnergy::addW(BVHNode3D *bvhRoot, Eigen::MatrixXd &W, VertexIndic
     addWForAllClusters(bvhRoot, W, xi, eta, indices);
 }
 
-void BarnesHutTPEnergy::addWForAllClusters(BVHNode3D *node, Eigen::MatrixXd &W, std::vector<double> &xi,
-                                           std::vector<Vector3> &eta, VertexIndices &indices)
+void BarnesHutTPEnergy3D::addWForAllClusters(BVHNode3D *node, Eigen::MatrixXd &W, std::vector<double> &xi,
+                                             std::vector<Vector3> &eta, VertexIndices &indices)
 {
     size_t i = node->nodeID;
     if (xi[i] != 0 || eta[i] != Vector3{0, 0, 0})
@@ -187,8 +190,8 @@ void BarnesHutTPEnergy::addWForAllClusters(BVHNode3D *node, Eigen::MatrixXd &W, 
     }
 }
 
-void BarnesHutTPEnergy::accumulateWValues(GCFace face, BVHNode3D *node, std::vector<double> &xi,
-                                          std::vector<Vector3> &eta)
+void BarnesHutTPEnergy3D::accumulateWValues(GCFace face, BVHNode3D *node, std::vector<double> &xi,
+                                            std::vector<Vector3> &eta)
 {
     if (node->nodeType == BVHNodeType::Empty)
     {
@@ -220,12 +223,12 @@ void BarnesHutTPEnergy::accumulateWValues(GCFace face, BVHNode3D *node, std::vec
     }
 }
 
-MeshPtr BarnesHutTPEnergy::GetMesh()
+MeshPtr BarnesHutTPEnergy3D::GetMesh()
 {
     return kernel->mesh;
 }
 
-GeomPtr BarnesHutTPEnergy::GetGeom()
+GeomPtr BarnesHutTPEnergy3D::GetGeom()
 {
     return kernel->geom;
 }

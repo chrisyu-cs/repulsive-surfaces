@@ -28,8 +28,8 @@ MainApp::MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow *flow_, polyscope::Su
   flow = flow_;
   psMesh = psMesh_;
 
-  tree = CreateBVHFromMesh(mesh, geom);
-  std::cout << tree->numNodesInBranch << " total nodes in BVH" << std::endl;
+  tree3D = Create3DBVHFromMesh(mesh, geom);
+  std::cout << tree3D->numNodesInBranch << " total nodes in BVH" << std::endl;
 }
 
 void MainApp::TakeNaiveStep(double t)
@@ -175,11 +175,34 @@ int main(int argc, char **argv)
 
   rsurfaces::MainApp::instance = new rsurfaces::MainApp(meshShared, geomShared, flow, psMesh);
 
-  rsurfaces::BarnesHutTPEnergy *bh_energy = new rsurfaces::BarnesHutTPEnergy(tpe, rsurfaces::MainApp::instance->tree);
-  Eigen::MatrixXd bh_deriv;
+  rsurfaces::BarnesHutTPEnergy3D *bh_energy = new rsurfaces::BarnesHutTPEnergy3D(tpe, rsurfaces::MainApp::instance->tree3D);
+  Eigen::MatrixXd bh_deriv, exact_deriv;
   bh_deriv.setZero(meshShared->nVertices(), 3);
+  exact_deriv.setZero(meshShared->nVertices(), 3);
   bh_energy->Differential(bh_deriv);
-  std::cout << "BH derivative norm = " << bh_deriv.norm() << std::endl;
+  energy->Differential(exact_deriv);
+  std::cout << "BH derivative norm    = " << bh_deriv.norm() << std::endl;
+  std::cout << "Exact derivative norm = " << exact_deriv.norm() << std::endl;
+
+  double bh_value = bh_energy->Value();
+  double exact_value = energy->Value();
+
+  std::cout << "BH energy    = " << bh_value << std::endl;
+  std::cout << "Exact energy = " << exact_value << std::endl;
+
+  Eigen::VectorXd bh_vec(3 * meshShared->nVertices());
+  Eigen::VectorXd exact_vec(3 * meshShared->nVertices());
+
+  for (size_t i = 0; i < meshShared->nVertices(); i++) {
+    bh_vec(3 * i + 0) = bh_deriv(i, 0);
+    bh_vec(3 * i + 1) = bh_deriv(i, 1);
+    bh_vec(3 * i + 2) = bh_deriv(i, 2);
+  }
+
+  bh_vec = bh_vec / bh_vec.norm();
+  exact_vec = exact_vec / exact_vec.norm();
+  double dir_dot = bh_vec.dot(exact_vec);
+  std::cout << "Dot product of directions = " << dir_dot << std::endl;
 
   // Give control to the polyscope gui
   polyscope::show();

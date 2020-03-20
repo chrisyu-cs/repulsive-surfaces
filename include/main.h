@@ -25,6 +25,6 @@ class MainApp
     GeomPtr geom;
     SurfaceFlow* flow;
     polyscope::SurfaceMesh *psMesh;
-    BVHNode3D* tree;
+    BVHNode3D* tree3D;
 };
 } // namespace rsurfaces

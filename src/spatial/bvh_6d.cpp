@@ -1,4 +1,4 @@
-#include "spatial/bvh_3d.h"
+#include "spatial/bvh_6d.h"
 #include "helpers.h"
 
 namespace rsurfaces
@@ -19,15 +19,16 @@ inline int NextAxis(int axis)
     }
 }
 
-inline MassPoint meshFaceToBody(const GCFace &f, GeomPtr &geom, FaceIndices &indices)
+inline MassNormalPoint meshFaceToBody(const GCFace &f, GeomPtr &geom, FaceIndices &indices)
 {
     Vector3 pos = faceBarycenter(geom, f);
     double mass = geom->faceArea(f);
+    Vector3 n = geom->faceNormal(f);
 
-    return MassPoint{mass, pos, indices[f]};
+    return MassNormalPoint{mass, n, pos, indices[f]};
 }
 
-inline double GetCoordFromBody(MassPoint &mp, int axis)
+inline double GetCoordFromBody(MassNormalPoint &mp, int axis)
 {
     switch (axis)
     {
@@ -37,6 +38,12 @@ inline double GetCoordFromBody(MassPoint &mp, int axis)
         return mp.point.y;
     case 2:
         return mp.point.z;
+    case 3:
+        return mp.normal.x;
+    case 4:
+        return mp.normal.y;
+    case 5:
+        return mp.normal.z;
     default:
         std::cout << "Invalid axis passed to GetCoordFromBody: " << axis << std::endl;
         exit(1);
@@ -44,25 +51,25 @@ inline double GetCoordFromBody(MassPoint &mp, int axis)
     }
 }
 
-BVHNode3D *Create3DBVHFromMesh(MeshPtr &mesh, GeomPtr &geom)
+BVHNode6D *Create6DBVHFromMesh(MeshPtr &mesh, GeomPtr &geom)
 {
-    std::vector<MassPoint> verts(mesh->nFaces());
+    std::vector<MassNormalPoint> verts(mesh->nFaces());
     FaceIndices indices = mesh->getFaceIndices();
 
     // Loop over all the vertices
     for (const GCFace &f : mesh->faces())
     {
-        MassPoint curBody = meshFaceToBody(f, geom, indices);
+        MassNormalPoint curBody = meshFaceToBody(f, geom, indices);
         // Put vertex body into full list
         verts[curBody.elementID] = curBody;
     }
 
-    BVHNode3D *tree = new BVHNode3D(verts, 0, 0);
+    BVHNode6D *tree = new BVHNode6D(verts, 0, 0);
     tree->assignIDsRecursively(0);
     return tree;
 }
 
-BVHNode3D::BVHNode3D(std::vector<MassPoint> &points, int axis, BVHNode3D *root)
+BVHNode6D::BVHNode6D(std::vector<MassNormalPoint> &points, int axis, BVHNode6D *root)
 {
     // Split the points into sets somehow
     thresholdTheta = 0.25;
@@ -79,16 +86,18 @@ BVHNode3D::BVHNode3D(std::vector<MassPoint> &points, int axis, BVHNode3D *root)
         nodeType = BVHNodeType::Empty;
         totalMass = 0;
         centerOfMass = Vector3{0, 0, 0};
+        averageNormal = Vector3{0, 0, 0};
         elementID = -1;
         numNodesInBranch = 1;
     }
     // If we have only one point, then the node is a leaf
     else if (points.size() == 1)
     {
-        MassPoint mp = points[0];
+        MassNormalPoint mp = points[0];
         nodeType = BVHNodeType::Leaf;
         totalMass = mp.mass;
         centerOfMass = mp.point;
+        averageNormal = mp.normal;
         minCoords = mp.point;
         maxCoords = mp.point;
         elementID = mp.elementID;
@@ -101,9 +110,9 @@ BVHNode3D::BVHNode3D(std::vector<MassPoint> &points, int axis, BVHNode3D *root)
         elementID = -1;
         // Reserve space for splitting the points into lesser and greater
         int nPoints = points.size();
-        std::vector<MassPoint> lesserPoints;
+        std::vector<MassNormalPoint> lesserPoints;
         lesserPoints.reserve(nPoints / 2 + 1);
-        std::vector<MassPoint> greaterPoints;
+        std::vector<MassNormalPoint> greaterPoints;
         greaterPoints.reserve(nPoints / 2 + 1);
 
         // Compute the plane over which to split the points
@@ -123,10 +132,10 @@ BVHNode3D::BVHNode3D(std::vector<MassPoint> &points, int axis, BVHNode3D *root)
 
         // If a root node was provided when constructing this, keep it;
         // otherwise, this must be the root, so use it.
-        BVHNode3D *nextRoot = (root) ? root : this;
+        BVHNode6D *nextRoot = (root) ? root : this;
         // Add the children
-        BVHNode3D *lesserNode = new BVHNode3D(lesserPoints, nextAxis, nextRoot);
-        BVHNode3D *greaterNode = new BVHNode3D(greaterPoints, nextAxis, nextRoot);
+        BVHNode6D *lesserNode = new BVHNode6D(lesserPoints, nextAxis, nextRoot);
+        BVHNode6D *greaterNode = new BVHNode6D(greaterPoints, nextAxis, nextRoot);
         children.push_back(lesserNode);
         children.push_back(greaterNode);
         numNodesInBranch = lesserNode->numNodesInBranch + greaterNode->numNodesInBranch + 1;
@@ -135,7 +144,7 @@ BVHNode3D::BVHNode3D(std::vector<MassPoint> &points, int axis, BVHNode3D *root)
     }
 }
 
-BVHNode3D::~BVHNode3D()
+BVHNode6D::~BVHNode6D()
 {
     for (size_t i = 0; i < children.size(); i++)
     {
@@ -143,7 +152,7 @@ BVHNode3D::~BVHNode3D()
     }
 }
 
-size_t BVHNode3D::assignIDsRecursively(size_t startID)
+size_t BVHNode6D::assignIDsRecursively(size_t startID)
 {
     nodeID = startID;
     size_t nextID = nodeID + 1;
@@ -157,7 +166,7 @@ size_t BVHNode3D::assignIDsRecursively(size_t startID)
     return nextID;
 }
 
-void BVHNode3D::addAllFaces(MeshPtr &mesh, std::vector<GCFace> &faces) {
+void BVHNode6D::addAllFaces(MeshPtr &mesh, std::vector<GCFace> &faces) {
     if (nodeType == BVHNodeType::Empty) {
         return;
     }
@@ -165,13 +174,13 @@ void BVHNode3D::addAllFaces(MeshPtr &mesh, std::vector<GCFace> &faces) {
         faces.push_back(getSingleFace(mesh));
     }
     else {
-        for (BVHNode3D* child : children) {
+        for (BVHNode6D* child : children) {
             child->addAllFaces(mesh, faces);
         }
     }
 }
 
-void BVHNode3D::printSummary()
+void BVHNode6D::printSummary()
 {
     if (nodeType == BVHNodeType::Empty)
     {
@@ -186,19 +195,19 @@ void BVHNode3D::printSummary()
         std::cout << "Interior node (mass " << totalMass << ",\n  center " << centerOfMass
                   << ",\n  " << children.size() << " children)" << std::endl;
 
-        for (BVHNode3D *child : children)
+        for (BVHNode6D *child : children)
         {
             child->printSummary();
         }
     }
 }
 
-MassPoint BVHNode3D::GetMassPoint()
+MassNormalPoint BVHNode6D::GetMassNormalPoint()
 {
-    return MassPoint{totalMass, centerOfMass, elementID};
+    return MassNormalPoint{totalMass, averageNormal, centerOfMass, elementID};
 }
 
-GCFace BVHNode3D::getSingleFace(MeshPtr &mesh)
+GCFace BVHNode6D::getSingleFace(MeshPtr &mesh)
 {
     if (nodeType != BVHNodeType::Leaf)
     {
@@ -208,25 +217,28 @@ GCFace BVHNode3D::getSingleFace(MeshPtr &mesh)
     return mesh->face(elementID);
 }
 
-void BVHNode3D::averageDataFromChildren()
+void BVHNode6D::averageDataFromChildren()
 {
     totalMass = 0;
     centerOfMass = Vector3{0, 0, 0};
+    averageNormal = Vector3{0, 0, 0};
     minCoords = children[0]->minCoords;
     maxCoords = children[0]->maxCoords;
 
-    for (BVHNode3D *child : children)
+    for (BVHNode6D *child : children)
     {
         totalMass += child->totalMass;
         centerOfMass += child->totalMass * child->centerOfMass;
+        averageNormal += child->totalMass * child->averageNormal;
         minCoords = vectorMin(minCoords, child->minCoords);
         maxCoords = vectorMax(maxCoords, child->maxCoords);
     }
 
     centerOfMass /= totalMass;
+    averageNormal = averageNormal.normalize();
 }
 
-double BVHNode3D::AxisSplittingPlane(std::vector<MassPoint> &points, int axis)
+double BVHNode6D::AxisSplittingPlane(std::vector<MassNormalPoint> &points, int axis)
 {
     size_t nPoints = points.size();
     std::vector<double> coords(nPoints);
@@ -258,7 +270,7 @@ double BVHNode3D::AxisSplittingPlane(std::vector<MassPoint> &points, int axis)
     return splitPoint;
 }
 
-bool BVHNode3D::isAdmissibleFrom(Vector3 atPos)
+bool BVHNode6D::isAdmissibleFrom(Vector3 atPos)
 {
     if (nodeType == BVHNodeType::Leaf) {
         if (centerOfMass == atPos) return false;
@@ -271,7 +283,7 @@ bool BVHNode3D::isAdmissibleFrom(Vector3 atPos)
     else return true;
 }
 
-void BVHNode3D::recomputeCentersOfMass(MeshPtr &mesh, GeomPtr &geom)
+void BVHNode6D::recomputeCentersOfMass(MeshPtr &mesh, GeomPtr &geom)
 {
     if (nodeType == BVHNodeType::Empty)
     {

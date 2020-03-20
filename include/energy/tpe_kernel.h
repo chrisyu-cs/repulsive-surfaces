@@ -1,6 +1,6 @@
 #pragma once
 
-#include "spatial/mass_point.h"
+#include "spatial/bvh_types.h"
 
 namespace rsurfaces
 {

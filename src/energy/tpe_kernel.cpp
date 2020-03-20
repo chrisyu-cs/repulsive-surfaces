@@ -13,14 +13,20 @@ TPEKernel::TPEKernel(const MeshPtr &m, const GeomPtr &g, double a, double b)
     beta = b;
 }
 
-double TPEKernel::tpe_Kf(Vector3 v1, Vector3 v2, Vector3 n1) {
+double TPEKernel::tpe_Kf(Vector3 v1, Vector3 v2, Vector3 n1)
+{
     Vector3 displacement = v1 - v2;
     double numer = pow(fabs(dot(n1, displacement)), alpha);
     double denom = pow(displacement.norm(), beta);
     return numer / denom;
 }
 
-double TPEKernel::tpe_Kf(GCFace f1, GCFace f2) {
+double TPEKernel::tpe_Kf(GCFace f1, GCFace f2)
+{
+    if (f1 == f2)
+    {
+        return 0;
+    }
     Vector3 n1 = geom->faceNormal(f1);
     Vector3 v1 = faceBarycenter(geom, f1);
     Vector3 v2 = faceBarycenter(geom, f2);
@@ -34,7 +40,8 @@ double TPEKernel::tpe_pair(GCFace f1, GCFace f2)
     return tpe_Kf(f1, f2) * w1 * w2;
 }
 
-double TPEKernel::tpe_pair(GCFace f1, MassPoint p2) {
+double TPEKernel::tpe_pair(GCFace f1, MassPoint p2)
+{
     double w1 = geom->faceArea(f1);
     double w2 = p2.mass;
     Vector3 v1 = faceBarycenter(geom, f1);
@@ -42,10 +49,14 @@ double TPEKernel::tpe_pair(GCFace f1, MassPoint p2) {
     return tpe_Kf(v1, p2.point, n1) * w1 * w2;
 }
 
-inline int sgn_fn(double x) {
-    if (x > 0) return 1;
-    else if (x < 0) return -1;
-    else return 0;
+inline int sgn_fn(double x)
+{
+    if (x > 0)
+        return 1;
+    else if (x < 0)
+        return -1;
+    else
+        return 0;
 }
 
 Vector3 TPEKernel::tpe_gradient_Kf(GCFace f1, GCFace f2, GCVertex wrt)
@@ -82,7 +93,8 @@ Vector3 TPEKernel::tpe_gradient_Kf(GCFace f1, GCFace f2, GCVertex wrt)
     return numer / denom;
 }
 
-void TPEKernel::numericalTest() {
+void TPEKernel::numericalTest()
+{
     double avg = 0;
     int count = 0;
     double max_err = 0;
@@ -90,9 +102,12 @@ void TPEKernel::numericalTest() {
     double max_norm_a = 0;
     double max_norm_n = 0;
 
-    for (GCFace f1 : mesh->faces()) {
-        for (GCFace f2 : mesh->faces()) {
-            if (f1 == f2) continue;
+    for (GCFace f1 : mesh->faces())
+    {
+        for (GCFace f2 : mesh->faces())
+        {
+            if (f1 == f2)
+                continue;
             GCVertex vert = f2.halfedge().vertex();
 
             Vector3 grad_num = tpe_gradient_pair_num(f1, f2, vert, 0.001);
@@ -101,7 +116,8 @@ void TPEKernel::numericalTest() {
             double pct_diff = 100 * norm(grad_num - grad_a) / norm(grad_num);
             avg += pct_diff;
 
-            if (pct_diff > max_err) {
+            if (pct_diff > max_err)
+            {
                 std::cout << "Analytic =  " << grad_a << std::endl;
                 std::cout << "Numerical = " << grad_num << std::endl;
             }
@@ -120,12 +136,13 @@ void TPEKernel::numericalTest() {
     std::cout << "average relative diff = " << avg << " percent" << std::endl;
 }
 
-Vector3 TPEKernel::tpe_Kf_partial_wrt_v1(Vector3 v1, Vector3 v2, Vector3 n1) {
+Vector3 TPEKernel::tpe_Kf_partial_wrt_v1(Vector3 v1, Vector3 v2, Vector3 n1)
+{
     double n_dot = dot(n1, v1 - v2);
     double A = pow(fabs(n_dot), alpha);
     double front_dA = alpha * pow(fabs(n_dot), alpha - 1) * sgn_fn(n_dot);
     Vector3 deriv_A = front_dA * n1;
-    
+
     double norm_dist = norm(v1 - v2);
     double B = pow(norm_dist, beta);
     Vector3 deriv_B = beta * pow(norm_dist, beta - 1) * ((v1 - v2) / norm_dist);
@@ -133,11 +150,13 @@ Vector3 TPEKernel::tpe_Kf_partial_wrt_v1(Vector3 v1, Vector3 v2, Vector3 n1) {
     return (deriv_A * B - deriv_B * A) / (B * B);
 }
 
-Vector3 TPEKernel::tpe_Kf_partial_wrt_v2(Vector3 v1, Vector3 v2, Vector3 n1) {
+Vector3 TPEKernel::tpe_Kf_partial_wrt_v2(Vector3 v1, Vector3 v2, Vector3 n1)
+{
     return -tpe_Kf_partial_wrt_v1(v1, v2, n1);
 }
 
-Vector3 TPEKernel::tpe_Kf_partial_wrt_n1(Vector3 v1, Vector3 v2, Vector3 n1) {
+Vector3 TPEKernel::tpe_Kf_partial_wrt_n1(Vector3 v1, Vector3 v2, Vector3 n1)
+{
     double n_dot = dot(n1, v1 - v2);
     double A = pow(fabs(n_dot), alpha);
     double front_dA = alpha * pow(fabs(n_dot), alpha - 1) * sgn_fn(n_dot);
@@ -162,7 +181,8 @@ Vector3 TPEKernel::tpe_gradient_pair(GCFace f1, GCFace f2, GCVertex wrt)
     return term1 + term2 + term3;
 }
 
-Vector3 TPEKernel::tpe_gradient_pair_num(GCFace f1, GCFace f2, GCVertex wrt, double eps) {
+Vector3 TPEKernel::tpe_gradient_pair_num(GCFace f1, GCFace f2, GCVertex wrt, double eps)
+{
     double origEnergy = tpe_pair(f1, f2);
     Vector3 origPos = geom->inputVertexPositions[wrt];
 
@@ -180,6 +200,5 @@ Vector3 TPEKernel::tpe_gradient_pair_num(GCFace f1, GCFace f2, GCVertex wrt, dou
 
     return Vector3{dx, dy, dz};
 }
-
 
 } // namespace rsurfaces
