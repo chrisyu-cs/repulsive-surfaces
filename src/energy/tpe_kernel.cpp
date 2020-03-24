@@ -93,6 +93,39 @@ Vector3 TPEKernel::tpe_gradient_Kf(GCFace f1, GCFace f2, GCVertex wrt)
     return numer / denom;
 }
 
+Vector3 TPEKernel::tpe_gradient_Kf(GCFace f1, MassNormalPoint f2, GCVertex wrt)
+{
+    // Same as normal case, but derivatives of f2 wrt the vertex are all 0.
+    Vector3 n1 = geom->faceNormal(f1);
+    Vector3 v1 = faceBarycenter(geom, f1);
+    Vector3 v2 = f2.point;
+    Vector3 displacement = v1 - v2;
+
+    double dot_nD = dot(n1, displacement);
+    double A = pow(fabs(dot_nD), alpha);
+    double B = pow(displacement.norm(), beta);
+
+    // Derivative of A
+    double deriv_A_coeff = alpha * pow(fabs(dot_nD), alpha - 1);
+    double sgn_dot = sgn_fn(dot_nD);
+
+    Jacobian ddx_N = SurfaceDerivs::normalWrtVertex(geom, f1, wrt);
+    Jacobian ddx_v1 = SurfaceDerivs::barycenterWrtVertex(f1, wrt);
+
+    Vector3 deriv_A_prod1 = ddx_N.LeftMultiply(displacement);
+    Vector3 deriv_A_prod2 = ddx_v1.LeftMultiply(n1);
+    Vector3 deriv_A = deriv_A_coeff * sgn_dot * (deriv_A_prod1 + deriv_A_prod2);
+
+    // Derivative of B
+    double deriv_B_coeff = beta * pow(displacement.norm(), beta - 1);
+    Vector3 disp_normalized = displacement.normalize();
+    Vector3 deriv_B = deriv_B_coeff * ddx_v1.LeftMultiply(disp_normalized);
+
+    Vector3 numer = deriv_A * B - A * deriv_B;
+    double denom = B * B;
+    return numer / denom;
+}
+
 void TPEKernel::numericalTest()
 {
     double avg = 0;
@@ -179,6 +212,22 @@ Vector3 TPEKernel::tpe_gradient_pair(GCFace f1, GCFace f2, GCVertex wrt)
     Vector3 term3 = Kf * area1 * grad_area2;
 
     return term1 + term2 + term3;
+}
+
+Vector3 TPEKernel::tpe_gradient_pair(GCFace f1, MassNormalPoint f2, GCVertex wrt)
+{
+    // In this case, we can assume f2 is not near the vertex,
+    // so derivatives of f2 are 0.
+    double Kf = tpe_Kf(faceBarycenter(geom, f1), f2.point, geom->faceNormal(f1));
+    Vector3 grad_Kf = tpe_gradient_Kf(f1, f2, wrt);
+    double area1 = geom->faceArea(f1);
+    Vector3 grad_area1 = SurfaceDerivs::triangleAreaWrtVertex(geom, f1, wrt);
+    double area2 = f2.mass;
+
+    Vector3 term1 = grad_Kf * area1 * area2;
+    Vector3 term2 = Kf * grad_area1 * area2;
+
+    return term1 + term2;
 }
 
 Vector3 TPEKernel::tpe_gradient_pair_num(GCFace f1, GCFace f2, GCVertex wrt, double eps)

@@ -19,6 +19,8 @@ private:
     TPEKernel *kernel;
     BVHNode6D *root;
     double computeEnergyOfFace(GCFace face, BVHNode6D *bvhRoot);
+    void accumulateTPEGradient(Eigen::MatrixXd &gradients, BVHNode6D *node, GCFace face1,
+                               surface::VertexData<size_t> indices);
 };
 
 } // namespace rsurfaces
