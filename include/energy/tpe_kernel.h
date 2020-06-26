@@ -31,6 +31,7 @@ public:
     private:
     Vector3 tpe_gradient_Kf(GCFace f1, GCFace f2, GCVertex wrt);
     Vector3 tpe_gradient_Kf(GCFace f1, MassNormalPoint f2, GCVertex wrt);
+    Vector3 tpe_gradient_Kf(MassNormalPoint f1, GCFace f2, GCVertex wrt);
     Vector3 tpe_gradient_pair_num(GCFace f1, GCFace f2, GCVertex wrt, double eps);
 
 };

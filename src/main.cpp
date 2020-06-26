@@ -12,6 +12,7 @@
 #include "energy/all_pairs_tpe.h"
 #include "energy/barnes_hut_tpe.h"
 #include "helpers.h"
+#include <memory>
 
 using namespace geometrycentral;
 using namespace geometrycentral::surface;
@@ -27,9 +28,6 @@ MainApp::MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow *flow_, polyscope::Su
   geom = geom_;
   flow = flow_;
   psMesh = psMesh_;
-
-  tree3D = Create3DBVHFromMesh(mesh, geom);
-  std::cout << tree3D->numNodesInBranch << " total nodes in BVH" << std::endl;
 }
 
 void MainApp::TakeNaiveStep(double t)
@@ -116,8 +114,53 @@ void myCallback()
   }
 }
 
+void testBarnesHut(rsurfaces::TPEKernel *tpe, rsurfaces::MeshPtr mesh, rsurfaces::GeomPtr geom, rsurfaces::BVHNode6D* bvh) {
+  using namespace rsurfaces;
+
+  std::unique_ptr<AllPairsTPEnergy> exact_energy = std::unique_ptr<AllPairsTPEnergy>(new AllPairsTPEnergy(tpe));
+  std::unique_ptr<BarnesHutTPEnergy6D> bh_energy = std::unique_ptr<BarnesHutTPEnergy6D>(new BarnesHutTPEnergy6D(tpe, bvh));
+  Eigen::MatrixXd bh_deriv, exact_deriv;
+
+  bh_deriv.setZero(mesh->nVertices(), 3);
+  exact_deriv.setZero(mesh->nVertices(), 3);
+
+  bh_energy->Differential(bh_deriv);
+  exact_energy->Differential(exact_deriv);
+
+  std::cout << "BH derivative norm    = " << bh_deriv.norm() << std::endl;
+  std::cout << "Exact derivative norm = " << exact_deriv.norm() << std::endl;
+
+  std::cout << "BH first three rows:\n" << bh_deriv.block(0, 0, 9, 3) << std::endl;
+  std::cout << "Exact first three rows:\n" << exact_deriv.block(0, 0, 9, 3) << std::endl;
+
+  double bh_value = bh_energy->Value();
+  double exact_value = exact_energy->Value();
+
+  std::cout << "BH energy    = " << bh_value << std::endl;
+  std::cout << "Exact energy = " << exact_value << std::endl;
+
+  Eigen::VectorXd bh_vec(3 * mesh->nVertices());
+  Eigen::VectorXd exact_vec(3 * mesh->nVertices());
+
+  for (size_t i = 0; i < mesh->nVertices(); i++) {
+    bh_vec(3 * i + 0) = bh_deriv(i, 0);
+    bh_vec(3 * i + 1) = bh_deriv(i, 1);
+    bh_vec(3 * i + 2) = bh_deriv(i, 2);
+
+    exact_vec(3 * i + 0) = exact_deriv(i, 0);
+    exact_vec(3 * i + 1) = exact_deriv(i, 1);
+    exact_vec(3 * i + 2) = exact_deriv(i, 2);
+  }
+
+  bh_vec = bh_vec / bh_vec.norm();
+  exact_vec = exact_vec / exact_vec.norm();
+  double dir_dot = bh_vec.dot(exact_vec);
+  std::cout << "Dot product of directions = " << dir_dot << std::endl;
+}
+
 int main(int argc, char **argv)
 {
+  using namespace rsurfaces;
 
   // Configure the argument parser
   args::ArgumentParser parser("geometry-central & Polyscope example project");
@@ -166,43 +209,17 @@ int main(int argc, char **argv)
       u_geometry->inputVertexPositions, u_mesh->getFaceVertexList(),
       polyscopePermutations(*u_mesh));
 
-  rsurfaces::MeshPtr meshShared = std::move(u_mesh);
-  rsurfaces::GeomPtr geomShared = std::move(u_geometry);
+  MeshPtr meshShared = std::move(u_mesh);
+  GeomPtr geomShared = std::move(u_geometry);
 
-  rsurfaces::TPEKernel *tpe = new rsurfaces::TPEKernel(meshShared, geomShared, 4, 8);
-  rsurfaces::AllPairsTPEnergy *energy = new rsurfaces::AllPairsTPEnergy(tpe);
-  rsurfaces::SurfaceFlow *flow = new rsurfaces::SurfaceFlow(energy);
+  TPEKernel *tpe = new rsurfaces::TPEKernel(meshShared, geomShared, 4, 8);
+  BVHNode6D *tree6D = Create6DBVHFromMesh(meshShared, geomShared);
+  BarnesHutTPEnergy6D *bh_energy = new BarnesHutTPEnergy6D(tpe, tree6D);
+  AllPairsTPEnergy *ap_energy = new AllPairsTPEnergy(tpe);
 
-  rsurfaces::MainApp::instance = new rsurfaces::MainApp(meshShared, geomShared, flow, psMesh);
-
-  rsurfaces::BarnesHutTPEnergy3D *bh_energy = new rsurfaces::BarnesHutTPEnergy3D(tpe, rsurfaces::MainApp::instance->tree3D);
-  Eigen::MatrixXd bh_deriv, exact_deriv;
-  bh_deriv.setZero(meshShared->nVertices(), 3);
-  exact_deriv.setZero(meshShared->nVertices(), 3);
-  bh_energy->Differential(bh_deriv);
-  energy->Differential(exact_deriv);
-  std::cout << "BH derivative norm    = " << bh_deriv.norm() << std::endl;
-  std::cout << "Exact derivative norm = " << exact_deriv.norm() << std::endl;
-
-  double bh_value = bh_energy->Value();
-  double exact_value = energy->Value();
-
-  std::cout << "BH energy    = " << bh_value << std::endl;
-  std::cout << "Exact energy = " << exact_value << std::endl;
-
-  Eigen::VectorXd bh_vec(3 * meshShared->nVertices());
-  Eigen::VectorXd exact_vec(3 * meshShared->nVertices());
-
-  for (size_t i = 0; i < meshShared->nVertices(); i++) {
-    bh_vec(3 * i + 0) = bh_deriv(i, 0);
-    bh_vec(3 * i + 1) = bh_deriv(i, 1);
-    bh_vec(3 * i + 2) = bh_deriv(i, 2);
-  }
-
-  bh_vec = bh_vec / bh_vec.norm();
-  exact_vec = exact_vec / exact_vec.norm();
-  double dir_dot = bh_vec.dot(exact_vec);
-  std::cout << "Dot product of directions = " << dir_dot << std::endl;
+  SurfaceFlow *flow = new SurfaceFlow(bh_energy);
+  MainApp::instance = new MainApp(meshShared, geomShared, flow, psMesh);
+  testBarnesHut(tpe, meshShared, geomShared, tree6D);
 
   // Give control to the polyscope gui
   polyscope::show();

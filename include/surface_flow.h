@@ -20,6 +20,7 @@ private:
     MeshPtr mesh;
     GeomPtr geom;
     Eigen::MatrixXd origPositions;
+    unsigned int stepCount;
 
     void SaveCurrentPositions();
     void RestorePositions();

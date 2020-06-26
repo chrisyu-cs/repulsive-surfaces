@@ -10,16 +10,16 @@ SurfaceFlow::SurfaceFlow(SurfaceEnergy *energy_)
     energy = energy_;
     mesh = energy->GetMesh();
     geom = energy->GetGeom();
+    stepCount = 0;
 }
 
 void SurfaceFlow::StepNaive(double t)
 {
+    stepCount++;
     double energyBefore = energy->Value();
     Eigen::MatrixXd gradient;
     gradient.setZero(mesh->nVertices(), 3);
-
     energy->Differential(gradient);
-
     surface::VertexData<size_t> indices = mesh->getVertexIndices();
 
     for (GCVertex v : mesh->vertices())
@@ -35,7 +35,11 @@ void SurfaceFlow::StepNaive(double t)
 
 void SurfaceFlow::StepLineSearch()
 {
+    stepCount++;
+    std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
+
     double energyBefore = energy->Value();
+    long timeStart = currentTimeMilliseconds();
     Eigen::MatrixXd gradient;
     gradient.setZero(mesh->nVertices(), 3);
 
@@ -46,9 +50,11 @@ void SurfaceFlow::StepLineSearch()
 
     LineSearchStep(gradient, initGuess, 1);
 
+    long timeEnd = currentTimeMilliseconds();
     double energyAfter = energy->Value();
 
-    std::cout << "Energy: " << energyBefore << " -> " << energyAfter << std::endl;
+    std::cout << "  Step took " << (timeEnd - timeStart) << " ms" << std::endl;
+    std::cout << "  Energy: " << energyBefore << " -> " << energyAfter << std::endl;
 }
 
 
@@ -114,7 +120,7 @@ double SurfaceFlow::LineSearchStep(Eigen::MatrixXd &gradient, double initGuess, 
 
     if (gradNorm < 1e-10)
     {
-        std::cout << "Gradient is very close to zero" << std::endl;
+        std::cout << "* Gradient is very close to zero" << std::endl;
         return 0;
     }
 
@@ -140,14 +146,14 @@ double SurfaceFlow::LineSearchStep(Eigen::MatrixXd &gradient, double initGuess, 
 
     if (delta <= LS_STEP_THRESHOLD)
     {
-        std::cout << "Failed to find a non-trivial step after " << numBacktracks << " backtracks" << std::endl;
+        std::cout << "* Failed to find a non-trivial step after " << numBacktracks << " backtracks" << std::endl;
         // Restore initial positions if step size goes to 0
         RestorePositions();
         return 0;
     }
     else
     {
-        std::cout << "Took step of size " << delta << " after " << numBacktracks << " backtracks" << std::endl;
+        std::cout << "* Took step of size " << delta << " after " << numBacktracks << " backtracks" << std::endl;
         return delta;
     }
 }

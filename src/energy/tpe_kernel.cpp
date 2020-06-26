@@ -126,6 +126,38 @@ Vector3 TPEKernel::tpe_gradient_Kf(GCFace f1, MassNormalPoint f2, GCVertex wrt)
     return numer / denom;
 }
 
+Vector3 TPEKernel::tpe_gradient_Kf(MassNormalPoint f1, GCFace f2, GCVertex wrt)
+{
+    // Same as normal case, but derivatives of f1 wrt the vertex are all 0.
+    Vector3 n1 = f1.normal;
+    Vector3 v1 = f1.point;
+    Vector3 v2 = faceBarycenter(geom, f2);
+    Vector3 displacement = v1 - v2;
+
+    double dot_nD = dot(n1, displacement);
+    double A = pow(fabs(dot_nD), alpha);
+    double B = pow(displacement.norm(), beta);
+
+    // Derivative of A
+    double deriv_A_coeff = alpha * pow(fabs(dot_nD), alpha - 1);
+    double sgn_dot = sgn_fn(dot_nD);
+
+    Jacobian ddx_v2 = SurfaceDerivs::barycenterWrtVertex(f2, wrt);
+    Jacobian ddx_neg_v2 = -1 * ddx_v2;
+
+    Vector3 deriv_A_prod2 = ddx_neg_v2.LeftMultiply(n1);
+    Vector3 deriv_A = deriv_A_coeff * sgn_dot * deriv_A_prod2;
+
+    // Derivative of B
+    double deriv_B_coeff = beta * pow(displacement.norm(), beta - 1);
+    Vector3 disp_normalized = displacement.normalize();
+    Vector3 deriv_B = deriv_B_coeff * ddx_neg_v2.LeftMultiply(disp_normalized);
+
+    Vector3 numer = deriv_A * B - A * deriv_B;
+    double denom = B * B;
+    return numer / denom;
+}
+
 void TPEKernel::numericalTest()
 {
     double avg = 0;
@@ -228,6 +260,20 @@ Vector3 TPEKernel::tpe_gradient_pair(GCFace f1, MassNormalPoint f2, GCVertex wrt
     Vector3 term2 = Kf * grad_area1 * area2;
 
     return term1 + term2;
+}
+
+Vector3 TPEKernel::tpe_gradient_pair(MassNormalPoint f1, GCFace f2, GCVertex wrt)
+{
+    double Kf = tpe_Kf(f1.point, faceBarycenter(geom, f2), f1.normal);
+    Vector3 grad_Kf = tpe_gradient_Kf(f1, f2, wrt);
+    double area1 = f1.mass;
+    double area2 = geom->faceArea(f2);
+    Vector3 grad_area2 = SurfaceDerivs::triangleAreaWrtVertex(geom, f2, wrt);
+
+    Vector3 term1 = grad_Kf * area1 * area2;
+    Vector3 term3 = Kf * area1 * grad_area2;
+
+    return term1 + term3;
 }
 
 Vector3 TPEKernel::tpe_gradient_pair_num(GCFace f1, GCFace f2, GCVertex wrt, double eps)

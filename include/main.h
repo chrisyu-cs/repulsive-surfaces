@@ -5,7 +5,7 @@
 
 #include "polyscope/polyscope.h"
 #include "polyscope/surface_mesh.h"
-#include "spatial/bvh_3d.h"
+#include "energy/barnes_hut_tpe_6d.h"
 
 namespace rsurfaces
 {
@@ -17,6 +17,7 @@ class MainApp
 
     void updatePolyscopeMesh();
     void PlotL2Gradient();
+    void TestBarnesHut();
 
     void TakeNaiveStep(double t);
     void TakeLineSearchStep();
@@ -25,6 +26,5 @@ class MainApp
     GeomPtr geom;
     SurfaceFlow* flow;
     polyscope::SurfaceMesh *psMesh;
-    BVHNode3D* tree3D;
 };
 } // namespace rsurfaces

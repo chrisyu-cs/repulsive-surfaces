@@ -57,7 +57,12 @@ double BarnesHutTPEnergy6D::computeEnergyOfFace(GCFace face, BVHNode6D *bvhRoot)
 
 void BarnesHutTPEnergy6D::Differential(Eigen::MatrixXd &output)
 {
-    std::cout << "TODO: 6D differential" << std::endl;
+    VertexIndices indices = kernel->mesh->getVertexIndices();
+
+    for (GCFace f : kernel->mesh->faces())
+    {
+        accumulateTPEGradient(output, root, f, indices);
+    }
 }
 
 inline void addToRow(Eigen::MatrixXd &M, size_t row, Vector3 v)
@@ -125,9 +130,7 @@ void BarnesHutTPEnergy6D::accumulateTPEGradient(Eigen::MatrixXd &gradients, BVHN
             {
                 // Derivatives of both foward and reverse terms
                 addToRow(gradients, indices[v], kernel->tpe_gradient_pair(face1, mnp2, v));
-
-                // addToRow(gradients, indices[v], TPESC::tpe_grad(i_pt, j, alpha, beta, i_n));
-                // addToRow(gradients, indices[v], TPESC::tpe_grad(j, i_pt, alpha, beta, i_n));
+                addToRow(gradients, indices[v], kernel->tpe_gradient_pair(mnp2, face1, v));
             }
         }
         else
