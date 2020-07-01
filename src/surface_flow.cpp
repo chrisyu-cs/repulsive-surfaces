@@ -1,6 +1,9 @@
 #include "surface_flow.h"
 #include "fractional_laplacian.h"
 #include "helpers.h"
+#include "sobolev_matrices.h"
+
+#include <Eigen/SparseCholesky>
 
 namespace rsurfaces
 {
@@ -46,7 +49,23 @@ void SurfaceFlow::StepLineSearch()
     energy->Differential(gradient);
     double initGuess = 1.0 / gradient.norm();
 
-    surface::VertexData<size_t> indices = mesh->getVertexIndices();
+    // Assemble the metric matrix
+    std::vector<Triplet> triplets, triplets3x;
+    H1::getTriplets(triplets, mesh, geom);
+    Constraints::addBarycenterTriplets(triplets, mesh, geom, mesh->nVertices());
+
+    MatrixUtils::TripleTriplets(triplets, triplets3x);
+    Eigen::SparseMatrix<double> metric(3 * mesh->nVertices() + 3, 3 * mesh->nVertices() + 3);
+    metric.setFromTriplets(triplets3x.begin(), triplets3x.end());
+
+    // Flatten the gradient into a single column
+    Eigen::VectorXd gradientCol;
+    gradientCol.setZero(3 * mesh->nVertices() + 3);
+    MatrixUtils::MatrixIntoColumn(gradient, gradientCol);
+
+    // Invert the metric
+    MatrixUtils::SolveSparseSystem(metric, gradientCol, gradientCol);
+    MatrixUtils::ColumnIntoMatrix(gradientCol, gradient);
 
     LineSearchStep(gradient, initGuess, 1);
 

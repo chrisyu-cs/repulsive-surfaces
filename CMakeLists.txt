@@ -76,6 +76,8 @@ set(SRCS
   src/surface_derivatives.cpp
   src/surface_flow.cpp
   src/main.cpp
+  src/matrix_utils.cpp
+  src/sobolev_matrices.cpp
 	# add any other source files here
 )
 
