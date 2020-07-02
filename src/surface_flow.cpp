@@ -48,6 +48,8 @@ void SurfaceFlow::StepLineSearch()
 
     energy->Differential(gradient);
     double initGuess = 1.0 / gradient.norm();
+    long timeDiff = currentTimeMilliseconds();
+    std::cout << "  * Gradient assembly: " << (timeDiff - timeStart) << " ms" << std::endl;
 
     // Assemble the metric matrix
     std::vector<Triplet> triplets, triplets3x;
@@ -57,6 +59,8 @@ void SurfaceFlow::StepLineSearch()
     MatrixUtils::TripleTriplets(triplets, triplets3x);
     Eigen::SparseMatrix<double> metric(3 * mesh->nVertices() + 3, 3 * mesh->nVertices() + 3);
     metric.setFromTriplets(triplets3x.begin(), triplets3x.end());
+    long timeAssemble = currentTimeMilliseconds();
+    std::cout << "  * Metric assembly: " << (timeAssemble - timeDiff) << " ms" << std::endl;
 
     // Flatten the gradient into a single column
     Eigen::VectorXd gradientCol;
@@ -66,13 +70,17 @@ void SurfaceFlow::StepLineSearch()
     // Invert the metric
     MatrixUtils::SolveSparseSystem(metric, gradientCol, gradientCol);
     MatrixUtils::ColumnIntoMatrix(gradientCol, gradient);
+    long timeInvert = currentTimeMilliseconds();
+    std::cout << "  * Metric inversion: " << (timeInvert - timeAssemble) << " ms" << std::endl;
 
     LineSearchStep(gradient, initGuess, 1);
+    long timeLS = currentTimeMilliseconds();
+    std::cout << "  * Line search: " << (timeLS - timeInvert) << " ms" << std::endl;
 
     long timeEnd = currentTimeMilliseconds();
     double energyAfter = energy->Value();
 
-    std::cout << "  Step took " << (timeEnd - timeStart) << " ms" << std::endl;
+    std::cout << "  Total time: " << (timeEnd - timeStart) << " ms" << std::endl;
     std::cout << "  Energy: " << energyBefore << " -> " << energyAfter << std::endl;
 }
 

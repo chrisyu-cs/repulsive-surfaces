@@ -215,11 +215,10 @@ int main(int argc, char **argv)
   TPEKernel *tpe = new rsurfaces::TPEKernel(meshShared, geomShared, 4, 8);
   BVHNode6D *tree6D = Create6DBVHFromMesh(meshShared, geomShared);
   BarnesHutTPEnergy6D *bh_energy = new BarnesHutTPEnergy6D(tpe, tree6D);
-  AllPairsTPEnergy *ap_energy = new AllPairsTPEnergy(tpe);
+  // AllPairsTPEnergy *ap_energy = new AllPairsTPEnergy(tpe);
 
   SurfaceFlow *flow = new SurfaceFlow(bh_energy);
   MainApp::instance = new MainApp(meshShared, geomShared, flow, psMesh);
-  testBarnesHut(tpe, meshShared, geomShared, tree6D);
 
   // Give control to the polyscope gui
   polyscope::show();
