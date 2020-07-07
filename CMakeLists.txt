@@ -70,6 +70,9 @@ set(SRCS
   src/energy/barnes_hut_tpe.cpp
   src/energy/barnes_hut_tpe_6d.cpp
   src/energy/tpe_kernel.cpp
+  src/sobolev/h1.cpp
+  src/sobolev/hs.cpp
+  src/sobolev/constraints.cpp
   src/spatial/bvh_3d.cpp
   src/spatial/bvh_6d.cpp
   src/fractional_laplacian.cpp
@@ -77,7 +80,6 @@ set(SRCS
   src/surface_flow.cpp
   src/main.cpp
   src/matrix_utils.cpp
-  src/sobolev_matrices.cpp
 	# add any other source files here
 )
 

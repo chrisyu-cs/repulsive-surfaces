@@ -13,7 +13,7 @@ public:
     SurfaceEnergy *BaseEnergy();
     double LineSearchStep(Eigen::MatrixXd &gradient, double initGuess, double gradDot);
 
-    const double LS_STEP_THRESHOLD = 1e-10;
+    const double LS_STEP_THRESHOLD = 1e-20;
 
 private:
     SurfaceEnergy *energy;

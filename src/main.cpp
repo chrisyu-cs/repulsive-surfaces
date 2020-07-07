@@ -212,12 +212,12 @@ int main(int argc, char **argv)
   MeshPtr meshShared = std::move(u_mesh);
   GeomPtr geomShared = std::move(u_geometry);
 
-  TPEKernel *tpe = new rsurfaces::TPEKernel(meshShared, geomShared, 4, 8);
+  TPEKernel *tpe = new rsurfaces::TPEKernel(meshShared, geomShared, 6, 12);
   BVHNode6D *tree6D = Create6DBVHFromMesh(meshShared, geomShared);
-  BarnesHutTPEnergy6D *bh_energy = new BarnesHutTPEnergy6D(tpe, tree6D);
-  // AllPairsTPEnergy *ap_energy = new AllPairsTPEnergy(tpe);
+  // BarnesHutTPEnergy6D *energy = new BarnesHutTPEnergy6D(tpe, tree6D);
+  AllPairsTPEnergy *energy = new AllPairsTPEnergy(tpe);
 
-  SurfaceFlow *flow = new SurfaceFlow(bh_energy);
+  SurfaceFlow *flow = new SurfaceFlow(energy);
   MainApp::instance = new MainApp(meshShared, geomShared, flow, psMesh);
 
   // Give control to the polyscope gui

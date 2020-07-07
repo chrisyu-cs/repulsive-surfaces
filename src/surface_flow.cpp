@@ -1,7 +1,9 @@
 #include "surface_flow.h"
 #include "fractional_laplacian.h"
 #include "helpers.h"
-#include "sobolev_matrices.h"
+
+#include "sobolev/h1.h"
+#include "sobolev/constraints.h"
 
 #include <Eigen/SparseCholesky>
 
@@ -142,6 +144,7 @@ double SurfaceFlow::LineSearchStep(Eigen::MatrixXd &gradient, double initGuess, 
     double initialEnergy = energy->Value();
     double gradNorm = gradient.norm();
     int numBacktracks = 0;
+    int numDoubles = 0;
     double sigma = 0.01;
     double nextEnergy = initialEnergy;
 
@@ -167,7 +170,13 @@ double SurfaceFlow::LineSearchStep(Eigen::MatrixXd &gradient, double initGuess, 
         // Otherwise, accept the current step.
         else
         {
-            break;
+            if (numBacktracks == 0 && numDoubles < 2) {
+                delta *= 2;
+                numDoubles++;
+            }
+            else {
+                break;
+            }
         }
     }
 
@@ -180,7 +189,7 @@ double SurfaceFlow::LineSearchStep(Eigen::MatrixXd &gradient, double initGuess, 
     }
     else
     {
-        std::cout << "* Took step of size " << delta << " after " << numBacktracks << " backtracks" << std::endl;
+        std::cout << "* Took step of size " << delta << " after " << numBacktracks << " backtracks, " << numDoubles << " doubles" << std::endl;
         return delta;
     }
 }
