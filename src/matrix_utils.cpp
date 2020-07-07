@@ -1,5 +1,6 @@
 #include "matrix_utils.h"
 #include <Eigen/SparseCholesky>
+#include <Eigen/LU>
 
 namespace rsurfaces
 {
@@ -12,6 +13,19 @@ namespace rsurfaces
                 output.push_back(Triplet(3 * t.row(), 3 * t.col(), t.value()));
                 output.push_back(Triplet(3 * t.row() + 1, 3 * t.col() + 1, t.value()));
                 output.push_back(Triplet(3 * t.row() + 2, 3 * t.col() + 2, t.value()));
+            }
+        }
+
+        void TripleMatrix(Eigen::MatrixXd &M, Eigen::MatrixXd &out)
+        {
+            for (int i = 0; i < M.rows(); i++)
+            {
+                for (int j = 0; j < M.cols(); j++)
+                {
+                    out(3 * i, 3 * j) = M(i, j);
+                    out(3 * i + 1, 3 * j + 1) = M(i, j);
+                    out(3 * i + 2, 3 * j + 2) = M(i, j);
+                }
             }
         }
 
@@ -62,6 +76,12 @@ namespace rsurfaces
                 std::cout << "Sparse solve failed. Exiting." << std::endl;
                 std::exit(1);
             }
+        }
+
+        void SolveDenseSystem(Eigen::MatrixXd &M, Eigen::VectorXd &rhs, Eigen::VectorXd &output)
+        {
+            Eigen::PartialPivLU<Eigen::MatrixXd> solver = M.partialPivLu();
+            output = solver.solve(rhs);
         }
 
     } // namespace MatrixUtils

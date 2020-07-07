@@ -1,5 +1,6 @@
 #include "sobolev/hs.h"
 #include "helpers.h"
+#include "sobolev/constraints.h"
 
 namespace rsurfaces
 {
@@ -83,6 +84,29 @@ namespace rsurfaces
                     AddTriangleContribution(M, s, f1, f2, geom, indices);
                 }
             }
+        }
+
+        void ProjectGradient(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom)
+        {
+            // Assemble the metric matrix
+            Eigen::MatrixXd M_small, M;
+            int nVerts = mesh->nVertices();
+            M_small.setZero(nVerts + 1, nVerts + 1);
+            int dims = 3 * nVerts + 3;
+            M.setZero(dims, dims);
+            FillMatrix(M_small, alpha, beta, mesh, geom);
+            Constraints::addBarycenterEntries(M_small, mesh, geom, nVerts);
+            // Reduplicate entries 3x along diagonals
+            MatrixUtils::TripleMatrix(M_small, M);
+
+            // Flatten the gradient into a single column
+            Eigen::VectorXd gradientCol;
+            gradientCol.setZero(3 * mesh->nVertices() + 3);
+            MatrixUtils::MatrixIntoColumn(gradient, gradientCol);
+
+            // Invert the metric, and write it into the destination
+            MatrixUtils::SolveDenseSystem(M, gradientCol, gradientCol);
+            MatrixUtils::ColumnIntoMatrix(gradientCol, dest);
         }
     } // namespace Hs
 

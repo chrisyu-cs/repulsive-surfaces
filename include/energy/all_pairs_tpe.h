@@ -13,6 +13,7 @@ public:
     virtual void Differential(Eigen::MatrixXd &output);
     virtual MeshPtr GetMesh();
     virtual GeomPtr GetGeom();
+    virtual Vector2 GetExponents();
 
 private:
     TPEKernel *kernel;

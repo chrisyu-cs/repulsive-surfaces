@@ -8,5 +8,6 @@ namespace rsurfaces
     namespace Constraints
     {
         void addBarycenterTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow);
+        void addBarycenterEntries(Eigen::MatrixXd &M, MeshPtr &mesh, GeomPtr &geom, int baseRow);
     } // namespace Constraints
 } // namespace rsurfaces

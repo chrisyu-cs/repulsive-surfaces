@@ -214,8 +214,8 @@ int main(int argc, char **argv)
 
   TPEKernel *tpe = new rsurfaces::TPEKernel(meshShared, geomShared, 6, 12);
   BVHNode6D *tree6D = Create6DBVHFromMesh(meshShared, geomShared);
-  // BarnesHutTPEnergy6D *energy = new BarnesHutTPEnergy6D(tpe, tree6D);
-  AllPairsTPEnergy *energy = new AllPairsTPEnergy(tpe);
+  BarnesHutTPEnergy6D *energy = new BarnesHutTPEnergy6D(tpe, tree6D);
+  // AllPairsTPEnergy *energy = new AllPairsTPEnergy(tpe);
 
   SurfaceFlow *flow = new SurfaceFlow(energy);
   MainApp::instance = new MainApp(meshShared, geomShared, flow, psMesh);

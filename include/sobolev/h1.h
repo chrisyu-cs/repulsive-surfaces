@@ -8,5 +8,6 @@ namespace rsurfaces
     namespace H1
     {
         void getTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom);
+        void ProjectGradient(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, MeshPtr &mesh, GeomPtr &geom);
     }
 } // namespace rsurfaces

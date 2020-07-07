@@ -34,6 +34,8 @@ class SurfaceEnergy {
     virtual MeshPtr GetMesh() = 0;
     // Get the geometry associated with this geometry.
     virtual GeomPtr GetGeom() = 0;
+    // Get the exponents of this energy; only applies to tangent-point energies.
+    virtual Vector2 GetExponents() = 0;
 };
 
 } // namespace rsurfaces
