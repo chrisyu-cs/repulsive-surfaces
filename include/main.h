@@ -17,7 +17,7 @@ class MainApp
 
     void updatePolyscopeMesh();
     void PlotL2Gradient();
-    void TestBarnesHut();
+    void TestConvolution();
 
     void TakeNaiveStep(double t);
     void TakeLineSearchStep();
@@ -26,5 +26,6 @@ class MainApp
     GeomPtr geom;
     SurfaceFlow* flow;
     polyscope::SurfaceMesh *psMesh;
+    BVHNode6D *vertBVH;
 };
 } // namespace rsurfaces

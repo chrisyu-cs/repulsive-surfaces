@@ -67,14 +67,13 @@ add_subdirectory(deps/polyscope)
 
 set(SRCS 
   src/energy/all_pairs_tpe.cpp
-  src/energy/barnes_hut_tpe.cpp
   src/energy/barnes_hut_tpe_6d.cpp
   src/energy/tpe_kernel.cpp
   src/sobolev/h1.cpp
   src/sobolev/hs.cpp
   src/sobolev/constraints.cpp
-  src/spatial/bvh_3d.cpp
   src/spatial/bvh_6d.cpp
+  src/spatial/convolution_kernel.cpp
   src/fractional_laplacian.cpp
   src/surface_derivatives.cpp
   src/surface_flow.cpp

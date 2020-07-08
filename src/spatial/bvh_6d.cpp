@@ -28,6 +28,15 @@ inline MassNormalPoint meshFaceToBody(const GCFace &f, GeomPtr &geom, FaceIndice
     return MassNormalPoint{mass, n, pos, indices[f]};
 }
 
+inline MassNormalPoint meshVertexToBody(const GCVertex &v, GeomPtr &geom, VertexIndices &indices)
+{
+    Vector3 pos = geom->inputVertexPositions[v];
+    double mass = geom->vertexDualAreas[v];
+    Vector3 n = geom->vertexNormals[v];
+
+    return MassNormalPoint{mass, n, pos, indices[v]};
+}
+
 inline double GetCoordFromBody(MassNormalPoint &mp, int axis)
 {
     switch (axis)
@@ -51,7 +60,7 @@ inline double GetCoordFromBody(MassNormalPoint &mp, int axis)
     }
 }
 
-BVHNode6D *Create6DBVHFromMesh(MeshPtr &mesh, GeomPtr &geom)
+BVHNode6D *Create6DBVHFromMeshFaces(MeshPtr &mesh, GeomPtr &geom)
 {
     std::vector<MassNormalPoint> verts(mesh->nFaces());
     FaceIndices indices = mesh->getFaceIndices();
@@ -60,6 +69,24 @@ BVHNode6D *Create6DBVHFromMesh(MeshPtr &mesh, GeomPtr &geom)
     for (const GCFace &f : mesh->faces())
     {
         MassNormalPoint curBody = meshFaceToBody(f, geom, indices);
+        // Put vertex body into full list
+        verts[curBody.elementID] = curBody;
+    }
+
+    BVHNode6D *tree = new BVHNode6D(verts, 0, 0);
+    tree->assignIDsRecursively(0);
+    return tree;
+}
+
+BVHNode6D *Create6DBVHFromMeshVerts(MeshPtr &mesh, GeomPtr &geom)
+{
+    std::vector<MassNormalPoint> verts(mesh->nVertices());
+    VertexIndices indices = mesh->getVertexIndices();
+
+    // Loop over all the vertices
+    for (const GCVertex &f : mesh->vertices())
+    {
+        MassNormalPoint curBody = meshVertexToBody(f, geom, indices);
         // Put vertex body into full list
         verts[curBody.elementID] = curBody;
     }
@@ -215,6 +242,24 @@ GCFace BVHNode6D::getSingleFace(MeshPtr &mesh)
         exit(1);
     }
     return mesh->face(elementID);
+}
+
+void BVHNode6D::propagateCustomData(Eigen::MatrixXd &data) {
+    if (nodeType == BVHNodeType::Empty) {
+        return;
+    }
+    else if (nodeType == BVHNodeType::Leaf) {
+        customData = GetRow(data, elementID);
+    }
+    else {
+        customData = Vector3{0, 0, 0};
+        for (BVHNode6D* child : children) {
+            child->propagateCustomData(data);
+            customData += child->customData * child->totalMass;
+        }
+        customData /= totalMass;
+    }
+
 }
 
 void BVHNode6D::averageDataFromChildren()

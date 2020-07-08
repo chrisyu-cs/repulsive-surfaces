@@ -10,9 +10,12 @@
 
 #include "energy/tpe_kernel.h"
 #include "energy/all_pairs_tpe.h"
-#include "energy/barnes_hut_tpe.h"
 #include "helpers.h"
 #include <memory>
+
+#include "sobolev/hs.h"
+#include "spatial/convolution.h"
+#include "spatial/convolution_kernel.h"
 
 using namespace geometrycentral;
 using namespace geometrycentral::surface;
@@ -20,54 +23,105 @@ using namespace geometrycentral::surface;
 namespace rsurfaces
 {
 
-MainApp *MainApp::instance = 0;
+  MainApp *MainApp::instance = 0;
 
-MainApp::MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow *flow_, polyscope::SurfaceMesh *psMesh_)
-{
-  mesh = mesh_;
-  geom = geom_;
-  flow = flow_;
-  psMesh = psMesh_;
-}
-
-void MainApp::TakeNaiveStep(double t)
-{
-  flow->StepNaive(t);
-}
-
-void MainApp::TakeLineSearchStep()
-{
-  flow->StepLineSearch();
-}
-
-void MainApp::updatePolyscopeMesh()
-{
-  psMesh->updateVertexPositions(geom->inputVertexPositions);
-  polyscope::requestRedraw();
-}
-
-void MainApp::PlotL2Gradient()
-{
-  long start = currentTimeMilliseconds();
-
-  Eigen::MatrixXd d;
-  d.setZero(mesh->nVertices(), 3);
-  flow->BaseEnergy()->Differential(d);
-
-  std::vector<Vector3> vecs(mesh->nVertices());
-
-  for (size_t i = 0; i < mesh->nVertices(); i++)
+  MainApp::MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow *flow_, polyscope::SurfaceMesh *psMesh_)
   {
-    Vector3 v = GetRow(d, i);
-    vecs[i] = v;
+    mesh = mesh_;
+    geom = geom_;
+    flow = flow_;
+    psMesh = psMesh_;
+    vertBVH = 0;
   }
 
-  psMesh->addVertexVectorQuantity("L2 gradient", vecs);
+  void MainApp::TakeNaiveStep(double t)
+  {
+    flow->StepNaive(t);
+  }
 
-  long end = currentTimeMilliseconds();
+  void MainApp::TakeLineSearchStep()
+  {
+    flow->StepLineSearch();
+  }
 
-  std::cout << "Plotted gradient in " << (end - start) << " ms" << std::endl;
-}
+  void MainApp::updatePolyscopeMesh()
+  {
+    psMesh->updateVertexPositions(geom->inputVertexPositions);
+    polyscope::requestRedraw();
+  }
+
+  void MainApp::PlotL2Gradient()
+  {
+    long start = currentTimeMilliseconds();
+
+    Eigen::MatrixXd d;
+    d.setZero(mesh->nVertices(), 3);
+    flow->BaseEnergy()->Differential(d);
+
+    std::vector<Vector3> vecs(mesh->nVertices());
+
+    for (size_t i = 0; i < mesh->nVertices(); i++)
+    {
+      Vector3 v = GetRow(d, i);
+      vecs[i] = v;
+    }
+
+    psMesh->addVertexVectorQuantity("L2 gradient", vecs);
+
+    long end = currentTimeMilliseconds();
+
+    std::cout << "Plotted gradient in " << (end - start) << " ms" << std::endl;
+  }
+
+  void MainApp::TestConvolution()
+  {
+    if (vertBVH) {
+      delete vertBVH;
+    }
+
+    vertBVH = Create6DBVHFromMeshVerts(mesh, geom);
+
+    int nVerts = mesh->nVertices();
+    SurfaceEnergy *energy = flow->BaseEnergy();
+
+    Eigen::MatrixXd gradient, gradient_conv, gradient_conv2, gradient_proj;
+    gradient.setZero(nVerts, 3);
+    gradient_conv.setZero(nVerts, 3);
+    gradient_conv2.setZero(nVerts, 3);
+    gradient_proj.setZero(nVerts, 3);
+    energy->Differential(gradient);
+    Vector2 exps = energy->GetExponents();
+    double s = Hs::get_s(exps.x, exps.y);
+
+    Eigen::MatrixXd sxs;
+    sxs.setZero(nVerts, 6);
+
+    std::cout << "s = " << s << std::endl;
+
+    Hs::ProjectGradient(gradient, gradient_proj, exps.x, exps.y, mesh, geom);
+
+    RieszKernel kernel(2. - s / 2.);
+    ConvolveExact(mesh, geom, kernel, gradient, gradient_conv);
+    ConvolveExact(mesh, geom, kernel, gradient_conv, gradient_conv2);
+
+    sxs.block(0, 0, nVerts, 3) = gradient_proj;
+    sxs.block(0, 3, nVerts, 3) = gradient_conv2;
+
+    std::vector<Vector3> vecs_conv, vecs_proj, vecs_orig;
+    
+    for (int i = 0; i < nVerts; i++) {
+      vecs_conv.push_back(GetRow(gradient_conv2, i));
+      vecs_proj.push_back(GetRow(gradient_proj, i));
+      vecs_orig.push_back(GetRow(gradient, i));
+    }
+
+    psMesh->addVertexVectorQuantity("original", vecs_orig);
+    psMesh->addVertexVectorQuantity("convolved", vecs_conv);
+    psMesh->addVertexVectorQuantity("projected", vecs_proj);
+
+    std::cout << sxs << std::endl;
+  }
+
 } // namespace rsurfaces
 
 // UI parameters
@@ -103,9 +157,15 @@ void myCallback()
     rsurfaces::MainApp::instance->TakeLineSearchStep();
     // rsurfaces::MainApp::instance->TakeNaiveStep(0.01);
     rsurfaces::MainApp::instance->updatePolyscopeMesh();
-    if (takeScreenshots) {
+    if (takeScreenshots)
+    {
       saveScreenshot(screenshotNum++);
     }
+  }
+
+  if (ImGui::Button("Test convolution"))
+  {
+    rsurfaces::MainApp::instance->TestConvolution();
   }
 
   if (ImGui::Button("Plot gradient"))
@@ -114,7 +174,8 @@ void myCallback()
   }
 }
 
-void testBarnesHut(rsurfaces::TPEKernel *tpe, rsurfaces::MeshPtr mesh, rsurfaces::GeomPtr geom, rsurfaces::BVHNode6D* bvh) {
+void testBarnesHut(rsurfaces::TPEKernel *tpe, rsurfaces::MeshPtr mesh, rsurfaces::GeomPtr geom, rsurfaces::BVHNode6D *bvh)
+{
   using namespace rsurfaces;
 
   std::unique_ptr<AllPairsTPEnergy> exact_energy = std::unique_ptr<AllPairsTPEnergy>(new AllPairsTPEnergy(tpe));
@@ -130,8 +191,10 @@ void testBarnesHut(rsurfaces::TPEKernel *tpe, rsurfaces::MeshPtr mesh, rsurfaces
   std::cout << "BH derivative norm    = " << bh_deriv.norm() << std::endl;
   std::cout << "Exact derivative norm = " << exact_deriv.norm() << std::endl;
 
-  std::cout << "BH first three rows:\n" << bh_deriv.block(0, 0, 9, 3) << std::endl;
-  std::cout << "Exact first three rows:\n" << exact_deriv.block(0, 0, 9, 3) << std::endl;
+  std::cout << "BH first three rows:\n"
+            << bh_deriv.block(0, 0, 9, 3) << std::endl;
+  std::cout << "Exact first three rows:\n"
+            << exact_deriv.block(0, 0, 9, 3) << std::endl;
 
   double bh_value = bh_energy->Value();
   double exact_value = exact_energy->Value();
@@ -142,7 +205,8 @@ void testBarnesHut(rsurfaces::TPEKernel *tpe, rsurfaces::MeshPtr mesh, rsurfaces
   Eigen::VectorXd bh_vec(3 * mesh->nVertices());
   Eigen::VectorXd exact_vec(3 * mesh->nVertices());
 
-  for (size_t i = 0; i < mesh->nVertices(); i++) {
+  for (size_t i = 0; i < mesh->nVertices(); i++)
+  {
     bh_vec(3 * i + 0) = bh_deriv(i, 0);
     bh_vec(3 * i + 1) = bh_deriv(i, 1);
     bh_vec(3 * i + 2) = bh_deriv(i, 2);
@@ -203,17 +267,21 @@ int main(int argc, char **argv)
   u_geometry->requireVertexPositions();
   u_geometry->requireFaceNormals();
 
+  std::string mesh_name = polyscope::guessNiceNameFromPath(args::get(inputFilename));
+
   // Register the mesh with polyscope
-  polyscope::SurfaceMesh *psMesh = polyscope::registerSurfaceMesh(
-      polyscope::guessNiceNameFromPath(args::get(inputFilename)),
+  polyscope::SurfaceMesh *psMesh = polyscope::registerSurfaceMesh(mesh_name,
       u_geometry->inputVertexPositions, u_mesh->getFaceVertexList(),
       polyscopePermutations(*u_mesh));
 
   MeshPtr meshShared = std::move(u_mesh);
   GeomPtr geomShared = std::move(u_geometry);
 
+  geomShared->requireVertexDualAreas();
+  geomShared->requireVertexNormals();
+
   TPEKernel *tpe = new rsurfaces::TPEKernel(meshShared, geomShared, 6, 12);
-  BVHNode6D *tree6D = Create6DBVHFromMesh(meshShared, geomShared);
+  BVHNode6D *tree6D = Create6DBVHFromMeshFaces(meshShared, geomShared);
   BarnesHutTPEnergy6D *energy = new BarnesHutTPEnergy6D(tpe, tree6D);
   // AllPairsTPEnergy *energy = new AllPairsTPEnergy(tpe);
 

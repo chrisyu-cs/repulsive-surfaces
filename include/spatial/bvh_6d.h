@@ -18,8 +18,10 @@ public:
     Vector3 averageNormal;
     Vector3 minCoords;
     Vector3 maxCoords;
-    // Vector3 averageTangent;
     size_t elementID;
+
+    Vector3 customData;
+
     // Every node knows the root of the tree
     BVHNode6D *bvhRoot;
     // Children
@@ -41,6 +43,8 @@ public:
     MassNormalPoint GetMassNormalPoint();
     GCFace getSingleFace(MeshPtr &mesh);
 
+    void propagateCustomData(Eigen::MatrixXd &data);
+
 private:
     double AxisSplittingPlane(std::vector<MassNormalPoint> &points, int axis);
     void averageDataFromChildren();
@@ -54,5 +58,6 @@ private:
     }
 };
 
-BVHNode6D *Create6DBVHFromMesh(MeshPtr &mesh, GeomPtr &geom);
+BVHNode6D *Create6DBVHFromMeshFaces(MeshPtr &mesh, GeomPtr &geom);
+BVHNode6D *Create6DBVHFromMeshVerts(MeshPtr &mesh, GeomPtr &geom);
 } // namespace rsurfaces
