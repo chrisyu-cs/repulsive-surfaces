@@ -46,7 +46,24 @@ namespace rsurfaces
 
   void MainApp::updatePolyscopeMesh()
   {
-    psMesh->updateVertexPositions(geom->inputVertexPositions);
+    if (normalizeView)
+    {
+      double scale = 0;
+      for (GCVertex v : mesh->vertices())
+      {
+        scale = fmax(scale, norm(geom->inputVertexPositions[v]));
+      }
+      std::vector<Vector3> scaled(mesh->nVertices());
+      VertexIndices inds = mesh->getVertexIndices();
+      for (GCVertex v : mesh->vertices()) {
+        scaled[inds[v]] = geom->inputVertexPositions[v] / scale;
+      }
+      psMesh->updateVertexPositions(scaled);
+    }
+    else
+    {
+      psMesh->updateVertexPositions(geom->inputVertexPositions);
+    }
     polyscope::requestRedraw();
   }
 
@@ -75,7 +92,8 @@ namespace rsurfaces
 
   void MainApp::TestConvolution()
   {
-    if (vertBVH) {
+    if (vertBVH)
+    {
       delete vertBVH;
     }
 
@@ -93,6 +111,8 @@ namespace rsurfaces
     Vector2 exps = energy->GetExponents();
     double s = Hs::get_s(exps.x, exps.y);
 
+    std::cout << "Norm of gradient = " << gradient.norm() << std::endl;
+
     Eigen::MatrixXd sxs;
     sxs.setZero(nVerts, 6);
 
@@ -100,7 +120,10 @@ namespace rsurfaces
 
     Hs::ProjectGradient(gradient, gradient_proj, exps.x, exps.y, mesh, geom);
 
-    RieszKernel kernel(2. - s / 2.);
+    VertexIndices inds = mesh->getVertexIndices();
+
+    FixBarycenter(mesh, geom, inds, gradient);
+    RieszKernel kernel((2. - s) / 2.);
     ConvolveExact(mesh, geom, kernel, gradient, gradient_conv);
     ConvolveExact(mesh, geom, kernel, gradient_conv, gradient_conv2);
 
@@ -108,8 +131,9 @@ namespace rsurfaces
     sxs.block(0, 3, nVerts, 3) = gradient_conv2;
 
     std::vector<Vector3> vecs_conv, vecs_proj, vecs_orig;
-    
-    for (int i = 0; i < nVerts; i++) {
+
+    for (int i = 0; i < nVerts; i++)
+    {
       vecs_conv.push_back(GetRow(gradient_conv2, i));
       vecs_proj.push_back(GetRow(gradient_proj, i));
       vecs_orig.push_back(GetRow(gradient, i));
@@ -119,7 +143,7 @@ namespace rsurfaces
     psMesh->addVertexVectorQuantity("convolved", vecs_conv);
     psMesh->addVertexVectorQuantity("projected", vecs_proj);
 
-    std::cout << sxs << std::endl;
+    // std::cout << sxs << std::endl;
   }
 
 } // namespace rsurfaces
@@ -128,6 +152,7 @@ namespace rsurfaces
 bool run = false;
 bool takeScreenshots = false;
 uint screenshotNum = 0;
+bool uiNormalizeView = false;
 
 void saveScreenshot(uint i)
 {
@@ -146,6 +171,13 @@ void myCallback()
   ImGui::Checkbox("Run flow", &run);
 
   ImGui::Checkbox("Take screenshots", &takeScreenshots);
+
+  ImGui::Checkbox("Normalize view", &uiNormalizeView);
+
+  if (uiNormalizeView != rsurfaces::MainApp::instance->normalizeView) {
+    rsurfaces::MainApp::instance->normalizeView = uiNormalizeView;
+    rsurfaces::MainApp::instance->updatePolyscopeMesh();
+  }
 
   if (takeScreenshots && screenshotNum == 0)
   {
@@ -271,8 +303,8 @@ int main(int argc, char **argv)
 
   // Register the mesh with polyscope
   polyscope::SurfaceMesh *psMesh = polyscope::registerSurfaceMesh(mesh_name,
-      u_geometry->inputVertexPositions, u_mesh->getFaceVertexList(),
-      polyscopePermutations(*u_mesh));
+                                                                  u_geometry->inputVertexPositions, u_mesh->getFaceVertexList(),
+                                                                  polyscopePermutations(*u_mesh));
 
   MeshPtr meshShared = std::move(u_mesh);
   GeomPtr geomShared = std::move(u_geometry);
@@ -282,8 +314,8 @@ int main(int argc, char **argv)
 
   TPEKernel *tpe = new rsurfaces::TPEKernel(meshShared, geomShared, 6, 12);
   BVHNode6D *tree6D = Create6DBVHFromMeshFaces(meshShared, geomShared);
-  BarnesHutTPEnergy6D *energy = new BarnesHutTPEnergy6D(tpe, tree6D);
-  // AllPairsTPEnergy *energy = new AllPairsTPEnergy(tpe);
+  // BarnesHutTPEnergy6D *energy = new BarnesHutTPEnergy6D(tpe, tree6D);
+  AllPairsTPEnergy *energy = new AllPairsTPEnergy(tpe);
 
   SurfaceFlow *flow = new SurfaceFlow(energy);
   MainApp::instance = new MainApp(meshShared, geomShared, flow, psMesh);

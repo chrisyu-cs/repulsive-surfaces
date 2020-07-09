@@ -1,6 +1,8 @@
 #include "sobolev/hs.h"
 #include "helpers.h"
 #include "sobolev/constraints.h"
+#include "spatial/convolution.h"
+#include "spatial/convolution_kernel.h"
 
 namespace rsurfaces
 {
@@ -42,8 +44,17 @@ namespace rsurfaces
             return altitude / (length * length);
         }
 
+        inline double MetricDistanceTerm(double s, Vector3 v1, Vector3 v2)
+        {
+            double dist_term = 1.0 / pow(norm(v1 - v2), 2 * (s - 1) + 2);
+            return dist_term;
+        }
+
         void AddTriangleContribution(Eigen::MatrixXd &M, double s, GCFace f1, GCFace f2, GeomPtr &geom, VertexIndices &indices)
         {
+            std::vector<GCVertex> verts;
+            GetVerticesWithoutDuplicates(f1, f2, verts);
+
             double area1 = geom->faceArea(f1);
             double area2 = geom->faceArea(f2);
 
@@ -52,9 +63,9 @@ namespace rsurfaces
 
             double dist_term = MetricDistanceTerm(s, mid1, mid2);
 
-            for (GCVertex u : f1.adjacentVertices())
+            for (GCVertex u : verts)
             {
-                for (GCVertex v : f2.adjacentVertices())
+                for (GCVertex v : verts)
                 {
                     Vector3 u_hat_f1 = HatGradientOnTriangle(f1, u, geom);
                     Vector3 u_hat_f2 = HatGradientOnTriangle(f2, u, geom);
@@ -69,7 +80,7 @@ namespace rsurfaces
 
         double get_s(double alpha, double beta)
         {
-            return (beta - 1) / alpha;
+            return (beta - 2.0) / alpha;
         }
 
         void FillMatrix(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom)
@@ -94,7 +105,7 @@ namespace rsurfaces
             M_small.setZero(nVerts + 1, nVerts + 1);
             int dims = 3 * nVerts + 3;
             M.setZero(dims, dims);
-            FillMatrix(M_small, alpha, beta, mesh, geom);
+            FillMatrix(M_small, get_s(alpha, beta), mesh, geom);
             Constraints::addBarycenterEntries(M_small, mesh, geom, nVerts);
             // Reduplicate entries 3x along diagonals
             MatrixUtils::TripleMatrix(M_small, M);
@@ -107,6 +118,17 @@ namespace rsurfaces
             // Invert the metric, and write it into the destination
             MatrixUtils::SolveDenseSystem(M, gradientCol, gradientCol);
             MatrixUtils::ColumnIntoMatrix(gradientCol, dest);
+        }
+
+        void ProjectViaConvolution(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom)
+        {
+            double s = get_s(alpha, beta);
+            RieszKernel ker((2. - s) / 2.);
+            Eigen::MatrixXd temp;
+            temp.setZero(dest.rows(), dest.cols());
+
+            ConvolveExact(mesh, geom, ker, gradient, temp);
+            ConvolveExact(mesh, geom, ker, temp, dest);
         }
     } // namespace Hs
 

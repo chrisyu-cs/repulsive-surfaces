@@ -5,6 +5,7 @@
 #include "sobolev/h1.h"
 #include "sobolev/hs.h"
 #include "sobolev/constraints.h"
+#include "spatial/convolution.h"
 
 #include <Eigen/SparseCholesky>
 
@@ -51,13 +52,16 @@ namespace rsurfaces
         gradientProj.setZero(mesh->nVertices(), 3);
 
         energy->Differential(gradient);
-        double initGuess = 1.0 / gradient.norm();
+        double gNorm = gradient.norm();
+        double initGuess = (gNorm < 1) ? 1.0 / sqrt(gNorm) : 1.0 / gNorm;
         long timeDiff = currentTimeMilliseconds();
         std::cout << "  * Gradient assembly: " << (timeDiff - timeStart) << " ms" << std::endl;
 
         Vector2 alpha_beta = energy->GetExponents();
+
         // H1::ProjectGradient(gradient, gradientProj, mesh, geom);
         Hs::ProjectGradient(gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom);
+        // Hs::ProjectViaConvolution(gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom);
         long timeProject = currentTimeMilliseconds();
         std::cout << "  * Gradient projection: " << (timeProject - timeDiff) << " ms" << std::endl;
         double gradDot = (gradient.transpose() * gradientProj).trace() / (gradient.norm() * gradientProj.norm());
@@ -165,7 +169,7 @@ namespace rsurfaces
             // Otherwise, accept the current step.
             else
             {
-                if (numBacktracks == 0 && numDoubles < 2)
+                if (numBacktracks == 0 && numDoubles < 4)
                 {
                     delta *= 2;
                     numDoubles++;

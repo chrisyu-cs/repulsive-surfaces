@@ -99,7 +99,7 @@ BVHNode6D *Create6DBVHFromMeshVerts(MeshPtr &mesh, GeomPtr &geom)
 BVHNode6D::BVHNode6D(std::vector<MassNormalPoint> &points, int axis, BVHNode6D *root)
 {
     // Split the points into sets somehow
-    thresholdTheta = 0.25;
+    thresholdTheta = 0.2;
     splitAxis = axis;
 
     if (!root)

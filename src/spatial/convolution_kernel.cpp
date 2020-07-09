@@ -8,8 +8,7 @@ namespace rsurfaces
 
     double RieszKernel::Coefficient(Vector3 x, Vector3 y)
     {
-        if (x == y) return 0;
-        std::cout << "Distance = " << norm(x - y) << ", value = " << 1.0 / pow(norm(x - y), s) << std::endl;
+        if (norm2(x - y) < 1e-8) return 0;
         return 1.0 / pow(norm(x - y), s);
     }
 } // namespace rsurfaces

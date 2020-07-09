@@ -27,5 +27,6 @@ class MainApp
     SurfaceFlow* flow;
     polyscope::SurfaceMesh *psMesh;
     BVHNode6D *vertBVH;
+    bool normalizeView;
 };
 } // namespace rsurfaces
