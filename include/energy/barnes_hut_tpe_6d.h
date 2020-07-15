@@ -9,9 +9,10 @@ namespace rsurfaces
 class BarnesHutTPEnergy6D : public SurfaceEnergy
 {
 public:
-    BarnesHutTPEnergy6D(TPEKernel *kernel_, BVHNode6D *root_);
+    BarnesHutTPEnergy6D(TPEKernel *kernel_, double theta_);
     virtual double Value();
     virtual void Differential(Eigen::MatrixXd &output);
+    virtual void Update();
     virtual MeshPtr GetMesh();
     virtual GeomPtr GetGeom();
     virtual Vector2 GetExponents();
@@ -19,6 +20,7 @@ public:
 private:
     TPEKernel *kernel;
     BVHNode6D *root;
+    double theta;
     double computeEnergyOfFace(GCFace face, BVHNode6D *bvhRoot);
     void accumulateTPEGradient(Eigen::MatrixXd &gradients, BVHNode6D *node, GCFace face1,
                                surface::VertexData<size_t> indices);

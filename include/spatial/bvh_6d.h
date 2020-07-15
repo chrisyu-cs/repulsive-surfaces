@@ -9,7 +9,7 @@ class BVHNode6D
 {
 public:
     // Build a BVH of the given points
-    BVHNode6D(std::vector<MassNormalPoint> &points, int axis, BVHNode6D *root);
+    BVHNode6D(std::vector<MassNormalPoint> &points, int axis, BVHNode6D *root, double theta);
     ~BVHNode6D();
 
     // Basic spatial data
@@ -58,6 +58,6 @@ private:
     }
 };
 
-BVHNode6D *Create6DBVHFromMeshFaces(MeshPtr &mesh, GeomPtr &geom);
-BVHNode6D *Create6DBVHFromMeshVerts(MeshPtr &mesh, GeomPtr &geom);
+BVHNode6D *Create6DBVHFromMeshFaces(MeshPtr &mesh, GeomPtr &geom, double theta);
+BVHNode6D *Create6DBVHFromMeshVerts(MeshPtr &mesh, GeomPtr &geom, double theta);
 } // namespace rsurfaces

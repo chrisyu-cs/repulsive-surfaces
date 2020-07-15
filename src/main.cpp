@@ -55,7 +55,8 @@ namespace rsurfaces
       }
       std::vector<Vector3> scaled(mesh->nVertices());
       VertexIndices inds = mesh->getVertexIndices();
-      for (GCVertex v : mesh->vertices()) {
+      for (GCVertex v : mesh->vertices())
+      {
         scaled[inds[v]] = geom->inputVertexPositions[v] / scale;
       }
       psMesh->updateVertexPositions(scaled);
@@ -97,7 +98,8 @@ namespace rsurfaces
       delete vertBVH;
     }
 
-    vertBVH = Create6DBVHFromMeshVerts(mesh, geom);
+    VertexIndices inds = mesh->getVertexIndices();
+    vertBVH = Create6DBVHFromMeshVerts(mesh, geom, 0.25);
 
     int nVerts = mesh->nVertices();
     SurfaceEnergy *energy = flow->BaseEnergy();
@@ -111,8 +113,6 @@ namespace rsurfaces
     Vector2 exps = energy->GetExponents();
     double s = Hs::get_s(exps.x, exps.y);
 
-    std::cout << "Norm of gradient = " << gradient.norm() << std::endl;
-
     Eigen::MatrixXd sxs;
     sxs.setZero(nVerts, 6);
 
@@ -120,12 +120,11 @@ namespace rsurfaces
 
     Hs::ProjectGradient(gradient, gradient_proj, exps.x, exps.y, mesh, geom);
 
-    VertexIndices inds = mesh->getVertexIndices();
-
+    RieszKernel kernel(2. - s);
     FixBarycenter(mesh, geom, inds, gradient);
-    RieszKernel kernel((2. - s) / 2.);
     ConvolveExact(mesh, geom, kernel, gradient, gradient_conv);
     ConvolveExact(mesh, geom, kernel, gradient_conv, gradient_conv2);
+    FixBarycenter(mesh, geom, inds, gradient_conv2);
 
     sxs.block(0, 0, nVerts, 3) = gradient_proj;
     sxs.block(0, 3, nVerts, 3) = gradient_conv2;
@@ -138,6 +137,31 @@ namespace rsurfaces
       vecs_proj.push_back(GetRow(gradient_proj, i));
       vecs_orig.push_back(GetRow(gradient, i));
     }
+
+    Vector3 center{0, 0, 0};
+    Vector3 centerProj = center;
+    Vector3 centerConv = center;
+    double sumArea = 0;
+
+    std::cout << "Norm orig = " << gradient.norm() << std::endl;
+    std::cout << "Norm proj = " << gradient_proj.norm() << std::endl;
+    std::cout << "Norm conv = " << gradient_conv2.norm() << std::endl;
+
+    for (GCVertex v : mesh->vertices())
+    {
+      center += GetRow(gradient, inds[v]) * geom->vertexDualAreas[v];
+      centerProj += GetRow(gradient_proj, inds[v]) * geom->vertexDualAreas[v];
+      centerConv += GetRow(gradient_conv2, inds[v]) * geom->vertexDualAreas[v];
+      sumArea += geom->vertexDualAreas[v];
+    }
+
+    center /= sumArea;
+    centerProj /= sumArea;
+    centerConv /= sumArea;
+
+    std::cout << "Orig barycenter = " << center << std::endl;
+    std::cout << "Proj barycenter = " << centerProj << std::endl;
+    std::cout << "Conv barycenter = " << centerConv << std::endl;
 
     psMesh->addVertexVectorQuantity("original", vecs_orig);
     psMesh->addVertexVectorQuantity("convolved", vecs_conv);
@@ -174,7 +198,8 @@ void myCallback()
 
   ImGui::Checkbox("Normalize view", &uiNormalizeView);
 
-  if (uiNormalizeView != rsurfaces::MainApp::instance->normalizeView) {
+  if (uiNormalizeView != rsurfaces::MainApp::instance->normalizeView)
+  {
     rsurfaces::MainApp::instance->normalizeView = uiNormalizeView;
     rsurfaces::MainApp::instance->updatePolyscopeMesh();
   }
@@ -211,7 +236,7 @@ void testBarnesHut(rsurfaces::TPEKernel *tpe, rsurfaces::MeshPtr mesh, rsurfaces
   using namespace rsurfaces;
 
   std::unique_ptr<AllPairsTPEnergy> exact_energy = std::unique_ptr<AllPairsTPEnergy>(new AllPairsTPEnergy(tpe));
-  std::unique_ptr<BarnesHutTPEnergy6D> bh_energy = std::unique_ptr<BarnesHutTPEnergy6D>(new BarnesHutTPEnergy6D(tpe, bvh));
+  std::unique_ptr<BarnesHutTPEnergy6D> bh_energy = std::unique_ptr<BarnesHutTPEnergy6D>(new BarnesHutTPEnergy6D(tpe, 0.25));
   Eigen::MatrixXd bh_deriv, exact_deriv;
 
   bh_deriv.setZero(mesh->nVertices(), 3);
@@ -261,6 +286,7 @@ int main(int argc, char **argv)
   // Configure the argument parser
   args::ArgumentParser parser("geometry-central & Polyscope example project");
   args::Positional<std::string> inputFilename(parser, "mesh", "A mesh file.");
+  args::ValueFlag<double> thetaFlag(parser, "Theta", "Theta value for Barnes-Hut approximation; 0 means exact.", args::Matcher{'t', "theta"});
 
   // Parse args
   try
@@ -284,6 +310,16 @@ int main(int argc, char **argv)
   {
     std::cerr << "Please specify a mesh file as argument" << std::endl;
     return EXIT_FAILURE;
+  }
+
+  double theta = 0.5;
+  if (!thetaFlag)
+  {
+    std::cout << "Barnes-Hut theta value not specified; defaulting to theta = 0.5." << std::endl;
+  }
+  else
+  {
+    theta = args::get(thetaFlag);
   }
 
   // Initialize polyscope
@@ -313,9 +349,19 @@ int main(int argc, char **argv)
   geomShared->requireVertexNormals();
 
   TPEKernel *tpe = new rsurfaces::TPEKernel(meshShared, geomShared, 6, 12);
-  BVHNode6D *tree6D = Create6DBVHFromMeshFaces(meshShared, geomShared);
-  // BarnesHutTPEnergy6D *energy = new BarnesHutTPEnergy6D(tpe, tree6D);
-  AllPairsTPEnergy *energy = new AllPairsTPEnergy(tpe);
+
+  SurfaceEnergy *energy;
+
+  if (theta <= 0)
+  {
+    std::cout << "Theta was zero (or negative); using exact all-pairs energy." << std::endl;
+    energy = new AllPairsTPEnergy(tpe);
+  }
+  else
+  {
+    std::cout << "Using Barnes-Hut energy with theta = " << theta << "." << std::endl;
+    energy = new BarnesHutTPEnergy6D(tpe, theta);
+  }
 
   SurfaceFlow *flow = new SurfaceFlow(energy);
   MainApp::instance = new MainApp(meshShared, geomShared, flow, psMesh);

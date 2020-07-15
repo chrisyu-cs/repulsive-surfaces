@@ -82,19 +82,19 @@ namespace rsurfaces
         {
             Vector3 result1{0, 0, 0};
             Vector3 p1 = geom->inputVertexPositions[v1];
-            double area1 = geom->vertexDualAreas[v1];
+            double sumWeight = 0;
 
             for (GCVertex v2 : mesh->vertices())
             {
                 Vector3 val2 = GetRow(data, indices[v2]);
                 Vector3 p2 = geom->inputVertexPositions[v2];
-                double area2 = geom->vertexDualAreas[v2];
-                Vector3 contrib = val2 * ker.Coefficient(p1, p2) * area2;
-                result1 += contrib;
+                double wt =  ker.Coefficient(p1, p2) * geom->vertexDualAreas[v2];
+                result1 += val2 * wt;
+                sumWeight += wt;
             }
-            MatrixUtils::SetRowFromVector3(output, indices[v1], result1);
+            MatrixUtils::SetRowFromVector3(output, indices[v1], result1 / sumWeight);
         }
-        FixBarycenter(mesh, geom, indices, output);
+        // FixBarycenter(mesh, geom, indices, output);
     }
 
 } // namespace rsurfaces

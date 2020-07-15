@@ -18,6 +18,8 @@ struct MassNormalPoint
     double mass;
     Vector3 normal;
     Vector3 point;
+    Vector3 minCoords;
+    Vector3 maxCoords;
     size_t elementID;
 };
 

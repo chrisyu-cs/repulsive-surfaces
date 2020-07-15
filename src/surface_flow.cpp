@@ -44,6 +44,7 @@ namespace rsurfaces
     {
         stepCount++;
         std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
+        energy->Update();
 
         double energyBefore = energy->Value();
         long timeStart = currentTimeMilliseconds();

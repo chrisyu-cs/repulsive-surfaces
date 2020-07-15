@@ -5,14 +5,20 @@
 namespace rsurfaces
 {
 
-    BarnesHutTPEnergy6D::BarnesHutTPEnergy6D(TPEKernel *kernel_, BVHNode6D *root_)
+    BarnesHutTPEnergy6D::BarnesHutTPEnergy6D(TPEKernel *kernel_, double theta_)
     {
         kernel = kernel_;
-        root = root_;
+        theta = theta_;
+        root = 0;
     }
 
     double BarnesHutTPEnergy6D::Value()
     {
+        if (!root) {
+            std::cerr << "BVH for BarnesHutTPEnergy6D was not initialized. Call Update() first." << std::endl;
+            std::exit(1);
+        }
+        
         double sum = 0;
         for (GCFace f : kernel->mesh->faces())
         {
@@ -57,6 +63,11 @@ namespace rsurfaces
 
     void BarnesHutTPEnergy6D::Differential(Eigen::MatrixXd &output)
     {
+        if (!root) {
+            std::cerr << "BVH for BarnesHutTPEnergy6D was not initialized. Call Update() first." << std::endl;
+            std::exit(1);
+        }
+        
         VertexIndices indices = kernel->mesh->getVertexIndices();
 
         for (GCFace f : kernel->mesh->faces())
@@ -145,6 +156,15 @@ namespace rsurfaces
                 }
             }
         }
+    }
+
+    void BarnesHutTPEnergy6D::Update()
+    {
+        if (root)
+        {
+            delete root;
+        }
+        root = Create6DBVHFromMeshFaces(kernel->mesh, kernel->geom, theta);
     }
 
     MeshPtr BarnesHutTPEnergy6D::GetMesh()

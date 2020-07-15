@@ -54,6 +54,10 @@ namespace rsurfaces
         }
     }
 
+    void AllPairsTPEnergy::Update() {
+        // There is no data structure aside from the mesh to update
+    }
+
     MeshPtr AllPairsTPEnergy::GetMesh()
     {
         return kernel->mesh;
