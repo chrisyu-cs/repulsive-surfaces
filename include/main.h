@@ -18,6 +18,7 @@ class MainApp
     void updatePolyscopeMesh();
     void PlotL2Gradient();
     void TestConvolution();
+    void TestLML();
 
     void TakeNaiveStep(double t);
     void TakeLineSearchStep();

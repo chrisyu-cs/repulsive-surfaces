@@ -13,7 +13,11 @@
 #include "helpers.h"
 #include <memory>
 
+#include <Eigen/Sparse>
+
+#include "sobolev/constraints.h"
 #include "sobolev/hs.h"
+#include "sobolev/h1.h"
 #include "spatial/convolution.h"
 #include "spatial/convolution_kernel.h"
 
@@ -91,6 +95,63 @@ namespace rsurfaces
     std::cout << "Plotted gradient in " << (end - start) << " ms" << std::endl;
   }
 
+  void PlotMatrix(Eigen::MatrixXd &mat, polyscope::SurfaceMesh *psMesh, std::string name) {
+    std::vector<Vector3> vecs;
+    for (int i = 0; i < mat.rows(); i++) {
+      Vector3 row_i = GetRow(mat, i);
+      vecs.push_back(row_i);
+    }
+    psMesh->addVertexVectorQuantity(name, vecs);
+  }
+
+  void PlotVector(Eigen::VectorXd &vec, int nVerts, polyscope::SurfaceMesh *psMesh, std::string name) {
+    Eigen::MatrixXd M;
+    M.setZero(nVerts, 3);
+    MatrixUtils::ColumnIntoMatrix(vec, M);
+    PlotMatrix(M, psMesh, name);
+  }
+
+  void MainApp::TestLML() {
+    SurfaceEnergy *energy = flow->BaseEnergy();
+    Vector2 exps = energy->GetExponents();
+    energy->Update();
+    double s = Hs::get_s(exps.x, exps.y);
+
+    std::vector<Triplet> triplets, triplets3x;
+    H1::getTriplets(triplets, mesh, geom);
+    Constraints::addBarycenterTriplets(triplets, mesh, geom, mesh->nVertices());
+    MatrixUtils::TripleTriplets(triplets, triplets3x);
+    Eigen::SparseMatrix<double> L(3 * mesh->nVertices() + 3, 3 * mesh->nVertices() + 3);
+    L.setFromTriplets(triplets3x.begin(), triplets3x.end());
+
+    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> L_inv;
+    L_inv.compute(L);
+
+    Eigen::MatrixXd gradient(mesh->nVertices(), 3);
+    energy->Differential(gradient);
+    PlotMatrix(gradient, psMesh, "original");
+
+    // Multiply by L^{-1} once
+    Eigen::VectorXd gradientRow;
+    gradientRow.setZero(3 * mesh->nVertices() + 3);
+    MatrixUtils::MatrixIntoColumn(gradient, gradientRow);
+    gradientRow = L_inv.solve(gradientRow);
+    PlotVector(gradientRow, mesh->nVertices(), psMesh, "L_inv x");
+
+    // Multiply by L^{2 - s}, a fractional Laplacian
+    Eigen::MatrixXd M, M3;
+    M.setZero(mesh->nVertices() + 1, mesh->nVertices() + 1);
+    M3.setZero(3 * mesh->nVertices() + 3, 3 * mesh->nVertices() + 3);
+    Hs::FillMatrix(M, 2 - s, mesh, geom);
+    // Constraints::addBarycenterEntries(M, mesh, geom, mesh->nVertices());
+    MatrixUtils::TripleMatrix(M, M3);
+    PlotVector(gradientRow, mesh->nVertices(), psMesh, "M L_inv x");
+
+    // Multiply by L^{-1} again
+    gradientRow = L_inv.solve(gradientRow);
+    PlotVector(gradientRow, mesh->nVertices(), psMesh, "L_inv M L_inv x");
+  }
+
   void MainApp::TestConvolution()
   {
     if (vertBVH)
@@ -103,6 +164,8 @@ namespace rsurfaces
 
     int nVerts = mesh->nVertices();
     SurfaceEnergy *energy = flow->BaseEnergy();
+
+    energy->Update();
 
     Eigen::MatrixXd gradient, gradient_conv, gradient_conv2, gradient_proj;
     gradient.setZero(nVerts, 3);
@@ -223,6 +286,11 @@ void myCallback()
   if (ImGui::Button("Test convolution"))
   {
     rsurfaces::MainApp::instance->TestConvolution();
+  }
+
+  if (ImGui::Button("Test LML inverse"))
+  {
+    rsurfaces::MainApp::instance->TestLML();
   }
 
   if (ImGui::Button("Plot gradient"))
