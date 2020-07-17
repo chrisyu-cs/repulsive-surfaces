@@ -9,7 +9,6 @@ namespace rsurfaces
         void getTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom)
         {
             geom->requireEdgeCotanWeights();
-            geom->requireVertexDualAreas();
             VertexIndices indices = mesh->getVertexIndices();
             for (GCVertex v : mesh->vertices())
             {
@@ -21,11 +20,10 @@ namespace rsurfaces
                     GCVertex opp = getOppositeVertex(e, v);
                     double wt = geom->edgeCotanWeight(e);
                     rowSum += wt;
-                    triplets.push_back(Triplet(indices[v], indices[opp], -wt / area));
+                    triplets.push_back(Triplet(indices[v], indices[opp], -wt));
                 }
-                triplets.push_back(Triplet(indices[v], indices[v], rowSum / area));
+                triplets.push_back(Triplet(indices[v], indices[v], rowSum));
             }
-            geom->unrequireVertexDualAreas();
             geom->unrequireEdgeCotanWeights();
         }
 

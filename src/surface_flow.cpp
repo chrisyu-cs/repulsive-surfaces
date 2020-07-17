@@ -54,18 +54,20 @@ namespace rsurfaces
 
         energy->Differential(gradient);
         double gNorm = gradient.norm();
-        double initGuess = (gNorm < 1) ? 1.0 / sqrt(gNorm) : 1.0 / gNorm;
+
         long timeDiff = currentTimeMilliseconds();
-        std::cout << "  * Gradient assembly: " << (timeDiff - timeStart) << " ms" << std::endl;
+        std::cout << "  * Gradient assembly: " << (timeDiff - timeStart) << " ms (norm = " << gNorm << ")" << std::endl;
 
         Vector2 alpha_beta = energy->GetExponents();
 
         // H1::ProjectGradient(gradient, gradientProj, mesh, geom);
-        Hs::ProjectGradient(gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom);
+        // Hs::ProjectGradient(gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom);
         // Hs::ProjectViaConvolution(gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom);
+        Hs::ProjectViaSparse(gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom);
         long timeProject = currentTimeMilliseconds();
-        std::cout << "  * Gradient projection: " << (timeProject - timeDiff) << " ms" << std::endl;
-        double gradDot = (gradient.transpose() * gradientProj).trace() / (gradient.norm() * gradientProj.norm());
+        double gProjNorm = gradientProj.norm();
+        std::cout << "  * Gradient projection: " << (timeProject - timeDiff) << " ms (norm = " << gProjNorm << ")" << std::endl;
+        double gradDot = (gradient.transpose() * gradientProj).trace() / (gNorm * gProjNorm);
         std::cout << "  * Dot product of search directions = " << gradDot << std::endl;
 
         if (gradDot < 0)
@@ -74,6 +76,14 @@ namespace rsurfaces
             gradDot = -gradDot;
             std::cout << "  * Dot product negative; negating search direction" << std::endl;
         }
+
+        // Guess a step size
+        double initGuess = prevStep * 1.25;
+        if (prevStep <= LS_STEP_THRESHOLD)
+        {
+            initGuess = (gProjNorm < 1) ? 1.0 / sqrt(gProjNorm) : 1.0 / gProjNorm;
+        }
+        std::cout << "  * Initial step size guess = " << initGuess << std::endl;
 
         // Take the step
         LineSearchStep(gradientProj, initGuess, gradDot);
@@ -144,7 +154,6 @@ namespace rsurfaces
         double initialEnergy = energy->Value();
         double gradNorm = gradient.norm();
         int numBacktracks = 0;
-        int numDoubles = 0;
         double sigma = 0.01;
         double nextEnergy = initialEnergy;
 
@@ -170,28 +179,22 @@ namespace rsurfaces
             // Otherwise, accept the current step.
             else
             {
-                if (numBacktracks == 0 && numDoubles < 4)
-                {
-                    delta *= 2;
-                    numDoubles++;
-                }
-                else
-                {
-                    break;
-                }
+                prevStep = delta;
+                break;
             }
         }
 
         if (delta <= LS_STEP_THRESHOLD)
         {
             std::cout << "* Failed to find a non-trivial step after " << numBacktracks << " backtracks" << std::endl;
+            prevStep = 0;
             // Restore initial positions if step size goes to 0
             RestorePositions();
             return 0;
         }
         else
         {
-            std::cout << "* Took step of size " << delta << " after " << numBacktracks << " backtracks, " << numDoubles << " doubles" << std::endl;
+            std::cout << "  * Took step of size " << delta << " after " << numBacktracks << " backtracks" << std::endl;
             return delta;
         }
     }

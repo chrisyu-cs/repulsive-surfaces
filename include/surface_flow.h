@@ -22,6 +22,7 @@ private:
     Eigen::MatrixXd origPositions;
     unsigned int stepCount;
 
+    double prevStep;
     void SaveCurrentPositions();
     void RestorePositions();
     void SetGradientStep(Eigen::MatrixXd &gradient, double delta);

@@ -69,13 +69,14 @@ namespace rsurfaces
                 std::cout << "Sparse solve failed. Exiting." << std::endl;
                 std::exit(1);
             }
-            output = solver.solve(rhs);
+            Eigen::VectorXd x = solver.solve(rhs);
             if (solver.info() != Eigen::Success)
             {
                 // solving failed
                 std::cout << "Sparse solve failed. Exiting." << std::endl;
                 std::exit(1);
             }
+            output = x;
         }
 
         void SolveDenseSystem(Eigen::MatrixXd &M, Eigen::VectorXd &rhs, Eigen::VectorXd &output)

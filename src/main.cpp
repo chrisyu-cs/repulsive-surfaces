@@ -72,29 +72,6 @@ namespace rsurfaces
     polyscope::requestRedraw();
   }
 
-  void MainApp::PlotL2Gradient()
-  {
-    long start = currentTimeMilliseconds();
-
-    Eigen::MatrixXd d;
-    d.setZero(mesh->nVertices(), 3);
-    flow->BaseEnergy()->Differential(d);
-
-    std::vector<Vector3> vecs(mesh->nVertices());
-
-    for (size_t i = 0; i < mesh->nVertices(); i++)
-    {
-      Vector3 v = GetRow(d, i);
-      vecs[i] = v;
-    }
-
-    psMesh->addVertexVectorQuantity("L2 gradient", vecs);
-
-    long end = currentTimeMilliseconds();
-
-    std::cout << "Plotted gradient in " << (end - start) << " ms" << std::endl;
-  }
-
   void PlotMatrix(Eigen::MatrixXd &mat, polyscope::SurfaceMesh *psMesh, std::string name) {
     std::vector<Vector3> vecs;
     for (int i = 0; i < mat.rows(); i++) {
@@ -109,6 +86,26 @@ namespace rsurfaces
     M.setZero(nVerts, 3);
     MatrixUtils::ColumnIntoMatrix(vec, M);
     PlotMatrix(M, psMesh, name);
+  }
+
+  void MainApp::PlotL2Gradient()
+  {
+    long start = currentTimeMilliseconds();
+    flow->BaseEnergy()->Update();
+
+    Eigen::MatrixXd d;
+    d.setZero(mesh->nVertices(), 3);
+    Eigen::MatrixXd h1 = d;
+    Eigen::MatrixXd hs = d;
+    flow->BaseEnergy()->Differential(d);
+    
+    PlotMatrix(d, psMesh, "L2 gradient");
+
+    Vector2 ab = flow->BaseEnergy()->GetExponents();
+    H1::ProjectGradient(d, h1, mesh, geom);
+    Hs::ProjectGradient(d, hs, ab.x, ab.y, mesh, geom);
+    PlotMatrix(h1, psMesh, "H1 gradient");
+    PlotMatrix(hs, psMesh, "Hs gradient");
   }
 
   void MainApp::TestLML() {
@@ -130,10 +127,10 @@ namespace rsurfaces
     Eigen::MatrixXd gradient(mesh->nVertices(), 3);
     energy->Differential(gradient);
     PlotMatrix(gradient, psMesh, "original");
-
-    // Multiply by L^{-1} once
     Eigen::VectorXd gradientRow;
     gradientRow.setZero(3 * mesh->nVertices() + 3);
+
+    // Multiply by L^{-1} once
     MatrixUtils::MatrixIntoColumn(gradient, gradientRow);
     gradientRow = L_inv.solve(gradientRow);
     PlotVector(gradientRow, mesh->nVertices(), psMesh, "L_inv x");
@@ -143,8 +140,9 @@ namespace rsurfaces
     M.setZero(mesh->nVertices() + 1, mesh->nVertices() + 1);
     M3.setZero(3 * mesh->nVertices() + 3, 3 * mesh->nVertices() + 3);
     Hs::FillMatrix(M, 2 - s, mesh, geom);
-    // Constraints::addBarycenterEntries(M, mesh, geom, mesh->nVertices());
+    Constraints::addBarycenterEntries(M, mesh, geom, mesh->nVertices());
     MatrixUtils::TripleMatrix(M, M3);
+    gradientRow = M3 * gradientRow;
     PlotVector(gradientRow, mesh->nVertices(), psMesh, "M L_inv x");
 
     // Multiply by L^{-1} again
@@ -269,6 +267,10 @@ void myCallback()
 
   if (takeScreenshots && screenshotNum == 0)
   {
+    saveScreenshot(screenshotNum++);
+  }
+
+  if (ImGui::Button("Take screenshot")) {
     saveScreenshot(screenshotNum++);
   }
 

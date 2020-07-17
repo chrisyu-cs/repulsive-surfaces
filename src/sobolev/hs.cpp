@@ -3,6 +3,10 @@
 #include "sobolev/constraints.h"
 #include "spatial/convolution.h"
 #include "spatial/convolution_kernel.h"
+#include "sobolev/h1.h"
+
+#include "Eigen/Sparse"
+
 
 namespace rsurfaces
 {
@@ -123,12 +127,50 @@ namespace rsurfaces
         void ProjectViaConvolution(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom)
         {
             double s = get_s(alpha, beta);
-            RieszKernel ker((2. - s) / 2.);
+            RieszKernel ker(2. - s);
             Eigen::MatrixXd temp;
             temp.setZero(dest.rows(), dest.cols());
+            VertexIndices inds = mesh->getVertexIndices();
 
             ConvolveExact(mesh, geom, ker, gradient, temp);
             ConvolveExact(mesh, geom, ker, temp, dest);
+            FixBarycenter(mesh, geom, inds, dest);
+        }
+
+        void ProjectViaSparse(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom)
+        {
+            double s = Hs::get_s(alpha, beta);
+
+            // Assemble the cotan Laplacian
+            std::vector<Triplet> triplets, triplets3x;
+            H1::getTriplets(triplets, mesh, geom);
+            Constraints::addBarycenterTriplets(triplets, mesh, geom, mesh->nVertices());
+            MatrixUtils::TripleTriplets(triplets, triplets3x);
+            // Pre-factorize the cotal Laplacian
+            Eigen::SparseMatrix<double> L(3 * mesh->nVertices() + 3, 3 * mesh->nVertices() + 3);
+            L.setFromTriplets(triplets3x.begin(), triplets3x.end());
+            Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> L_inv;
+            L_inv.compute(L);
+
+            Eigen::VectorXd gradientRow;
+            gradientRow.setZero(3 * mesh->nVertices() + 3);
+
+            // Multiply by L^{-1} once
+            MatrixUtils::MatrixIntoColumn(gradient, gradientRow);
+            gradientRow = L_inv.solve(gradientRow);
+
+            // Multiply by L^{2 - s}, a fractional Laplacian
+            Eigen::MatrixXd M, M3;
+            M.setZero(mesh->nVertices() + 1, mesh->nVertices() + 1);
+            M3.setZero(3 * mesh->nVertices() + 3, 3 * mesh->nVertices() + 3);
+            Hs::FillMatrix(M, 2 - s, mesh, geom);
+            Constraints::addBarycenterEntries(M, mesh, geom, mesh->nVertices());
+            MatrixUtils::TripleMatrix(M, M3);
+            gradientRow = M3 * gradientRow;
+
+            // Multiply by L^{-1} again
+            gradientRow = L_inv.solve(gradientRow);
+            MatrixUtils::ColumnIntoMatrix(gradientRow, dest);
         }
     } // namespace Hs
 
