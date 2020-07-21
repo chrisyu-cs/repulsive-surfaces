@@ -69,6 +69,7 @@ namespace rsurfaces
         }
         
         VertexIndices indices = kernel->mesh->getVertexIndices();
+        output.setZero();
 
         for (GCFace f : kernel->mesh->faces())
         {

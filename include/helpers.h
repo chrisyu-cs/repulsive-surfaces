@@ -44,6 +44,37 @@ namespace rsurfaces
         }
     }
 
+    inline void MultiplyVecByMass(Eigen::VectorXd &A, MeshPtr const &mesh, GeomPtr const &geom)
+    {
+        VertexIndices inds = mesh->getVertexIndices();
+        for (GCVertex v : mesh->vertices())
+        {
+            int i = inds[v];
+            A(3 * i) *= geom->vertexDualAreas[v];
+            A(3 * i + 1) *= geom->vertexDualAreas[v];
+            A(3 * i + 2) *= geom->vertexDualAreas[v];
+        }
+    }
+
+
+    inline void MultiplyByMass(Eigen::MatrixXd &A, MeshPtr const &mesh, GeomPtr const &geom)
+    {
+        VertexIndices inds = mesh->getVertexIndices();
+        for (GCVertex v : mesh->vertices())
+        {
+            A.row(inds[v]) *= geom->vertexDualAreas[v];
+        }
+    }
+
+    inline void MultiplyByInvMass(Eigen::MatrixXd &A, MeshPtr const &mesh, GeomPtr const &geom)
+    {
+        VertexIndices inds = mesh->getVertexIndices();
+        for (GCVertex v : mesh->vertices())
+        {
+            A.row(inds[v]) /= geom->vertexDualAreas[v];
+        }
+    }
+
     inline Vector3 GetRow(Eigen::MatrixXd &A, int i)
     {
         return Vector3{A(i, 0), A(i, 1), A(i, 2)};

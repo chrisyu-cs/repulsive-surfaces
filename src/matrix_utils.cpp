@@ -66,7 +66,7 @@ namespace rsurfaces
             if (solver.info() != Eigen::Success)
             {
                 // decomposition failed
-                std::cout << "Sparse solve failed. Exiting." << std::endl;
+                std::cout << "Sparse decomposition failed. Exiting." << std::endl;
                 std::exit(1);
             }
             Eigen::VectorXd x = solver.solve(rhs);

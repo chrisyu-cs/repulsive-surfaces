@@ -112,42 +112,15 @@ namespace rsurfaces
     SurfaceEnergy *energy = flow->BaseEnergy();
     Vector2 exps = energy->GetExponents();
     energy->Update();
-    double s = Hs::get_s(exps.x, exps.y);
-
-    std::vector<Triplet> triplets, triplets3x;
-    H1::getTriplets(triplets, mesh, geom);
-    Constraints::addBarycenterTriplets(triplets, mesh, geom, mesh->nVertices());
-    MatrixUtils::TripleTriplets(triplets, triplets3x);
-    Eigen::SparseMatrix<double> L(3 * mesh->nVertices() + 3, 3 * mesh->nVertices() + 3);
-    L.setFromTriplets(triplets3x.begin(), triplets3x.end());
-
-    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> L_inv;
-    L_inv.compute(L);
 
     Eigen::MatrixXd gradient(mesh->nVertices(), 3);
     energy->Differential(gradient);
-    PlotMatrix(gradient, psMesh, "original");
-    Eigen::VectorXd gradientRow;
-    gradientRow.setZero(3 * mesh->nVertices() + 3);
+    Eigen::MatrixXd result = gradient;
 
-    // Multiply by L^{-1} once
-    MatrixUtils::MatrixIntoColumn(gradient, gradientRow);
-    gradientRow = L_inv.solve(gradientRow);
-    PlotVector(gradientRow, mesh->nVertices(), psMesh, "L_inv x");
+    Hs::ProjectViaSparse(gradient, result, exps.x, exps.y, mesh, geom);
 
-    // Multiply by L^{2 - s}, a fractional Laplacian
-    Eigen::MatrixXd M, M3;
-    M.setZero(mesh->nVertices() + 1, mesh->nVertices() + 1);
-    M3.setZero(3 * mesh->nVertices() + 3, 3 * mesh->nVertices() + 3);
-    Hs::FillMatrix(M, 2 - s, mesh, geom);
-    Constraints::addBarycenterEntries(M, mesh, geom, mesh->nVertices());
-    MatrixUtils::TripleMatrix(M, M3);
-    gradientRow = M3 * gradientRow;
-    PlotVector(gradientRow, mesh->nVertices(), psMesh, "M L_inv x");
-
-    // Multiply by L^{-1} again
-    gradientRow = L_inv.solve(gradientRow);
-    PlotVector(gradientRow, mesh->nVertices(), psMesh, "L_inv M L_inv x");
+    std::cout << result << std::endl;
+    PlotMatrix(result, psMesh, "LML approx");
   }
 
   void MainApp::TestConvolution()
@@ -238,6 +211,8 @@ bool run = false;
 bool takeScreenshots = false;
 uint screenshotNum = 0;
 bool uiNormalizeView = false;
+int stepLimit;
+int numSteps;
 
 void saveScreenshot(uint i)
 {
@@ -258,6 +233,8 @@ void myCallback()
   ImGui::Checkbox("Take screenshots", &takeScreenshots);
 
   ImGui::Checkbox("Normalize view", &uiNormalizeView);
+
+  ImGui::InputInt("Step limit", &stepLimit);
 
   if (uiNormalizeView != rsurfaces::MainApp::instance->normalizeView)
   {
@@ -282,6 +259,10 @@ void myCallback()
     if (takeScreenshots)
     {
       saveScreenshot(screenshotNum++);
+    }
+    numSteps++;
+    if (stepLimit > 0 && numSteps >= stepLimit) {
+      run = false;
     }
   }
 

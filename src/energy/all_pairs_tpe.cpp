@@ -28,6 +28,7 @@ namespace rsurfaces
 
     void AllPairsTPEnergy::Differential(Eigen::MatrixXd &output)
     {
+        output.setZero();
         surface::VertexData<size_t> indices = kernel->mesh->getVertexIndices();
         for (GCFace f1 : kernel->mesh->faces())
         {

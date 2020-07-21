@@ -60,7 +60,7 @@ namespace rsurfaces
 
         Vector2 alpha_beta = energy->GetExponents();
 
-        // H1::ProjectGradient(gradient, gradientProj, mesh, geom);
+        // H1::ProjectGradient(gradient, gradientProj, mesh, geom, false);
         // Hs::ProjectGradient(gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom);
         // Hs::ProjectViaConvolution(gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom);
         Hs::ProjectViaSparse(gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom);

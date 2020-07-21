@@ -7,13 +7,12 @@
 
 #include "Eigen/Sparse"
 
-
 namespace rsurfaces
 {
 
     namespace Hs
     {
-        Vector3 HatGradientOnTriangle(GCFace face, GCVertex vert, GeomPtr &geom)
+        inline Vector3 HatGradientOnTriangle(GCFace face, GCVertex vert, GeomPtr &geom)
         {
             // Find the half-edge starting at vert in face
             GCHalfedge he = face.halfedge();
@@ -48,13 +47,33 @@ namespace rsurfaces
             return altitude / (length * length);
         }
 
+        inline double HatAtTriangleCenter(GCFace face, GCVertex vert)
+        {
+            // If vert is adjacent to face, the value at the barycenter is 1/3
+            for (GCVertex v : face.adjacentVertices())
+            {
+                if (v == vert)
+                {
+                    return 1. / 3.;
+                }
+            }
+            // Otherwise, the value is 0
+            return 0;
+        }
+
         inline double MetricDistanceTerm(double s, Vector3 v1, Vector3 v2)
         {
             double dist_term = 1.0 / pow(norm(v1 - v2), 2 * (s - 1) + 2);
             return dist_term;
         }
 
-        void AddTriangleContribution(Eigen::MatrixXd &M, double s, GCFace f1, GCFace f2, GeomPtr &geom, VertexIndices &indices)
+        inline double MetricDistanceTermLow(double s, Vector3 v1, Vector3 v2)
+        {
+            double dist_term = 1.0 / pow(norm(v1 - v2), 2 * s + 2);
+            return dist_term;
+        }
+
+        inline void AddTriangleGradientTerm(Eigen::MatrixXd &M, double s, GCFace f1, GCFace f2, GeomPtr &geom, VertexIndices &indices)
         {
             std::vector<GCVertex> verts;
             GetVerticesWithoutDuplicates(f1, f2, verts);
@@ -82,12 +101,40 @@ namespace rsurfaces
             }
         }
 
+        inline void AddTriangleCenterTerm(Eigen::MatrixXd &M, double s, GCFace f1, GCFace f2, GeomPtr &geom, VertexIndices &indices)
+        {
+            std::vector<GCVertex> verts;
+            GetVerticesWithoutDuplicates(f1, f2, verts);
+
+            double area1 = geom->faceArea(f1);
+            double area2 = geom->faceArea(f2);
+
+            Vector3 mid1 = faceBarycenter(geom, f1);
+            Vector3 mid2 = faceBarycenter(geom, f2);
+
+            double dist_term = MetricDistanceTermLow(s, mid1, mid2);
+
+            for (GCVertex u : verts)
+            {
+                for (GCVertex v : verts)
+                {
+                    double u_hat_f1 = HatAtTriangleCenter(f1, u);
+                    double u_hat_f2 = HatAtTriangleCenter(f2, u);
+                    double v_hat_f1 = HatAtTriangleCenter(f1, v);
+                    double v_hat_f2 = HatAtTriangleCenter(f2, v);
+
+                    double numer = (u_hat_f1 - u_hat_f2) * (v_hat_f1 - v_hat_f2);
+                    M(indices[u], indices[v]) += numer * dist_term * area1 * area2;
+                }
+            }
+        }
+
         double get_s(double alpha, double beta)
         {
             return (beta - 2.0) / alpha;
         }
 
-        void FillMatrix(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom)
+        void FillMatrixHigh(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom)
         {
             VertexIndices indices = mesh->getVertexIndices();
             for (GCFace f1 : mesh->faces())
@@ -96,7 +143,22 @@ namespace rsurfaces
                 {
                     if (f1 == f2)
                         continue;
-                    AddTriangleContribution(M, s, f1, f2, geom, indices);
+                    AddTriangleGradientTerm(M, s, f1, f2, geom, indices);
+                }
+            }
+        }
+
+        void FillMatrixFracOnly(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom)
+        {
+            VertexIndices indices = mesh->getVertexIndices();
+
+            for (GCFace f1 : mesh->faces())
+            {
+                for (GCFace f2 : mesh->faces())
+                {
+                    if (f1 == f2)
+                        continue;
+                    AddTriangleCenterTerm(M, s, f1, f2, geom, indices);
                 }
             }
         }
@@ -109,7 +171,7 @@ namespace rsurfaces
             M_small.setZero(nVerts + 1, nVerts + 1);
             int dims = 3 * nVerts + 3;
             M.setZero(dims, dims);
-            FillMatrix(M_small, get_s(alpha, beta), mesh, geom);
+            FillMatrixHigh(M_small, get_s(alpha, beta), mesh, geom);
             Constraints::addBarycenterEntries(M_small, mesh, geom, nVerts);
             // Reduplicate entries 3x along diagonals
             MatrixUtils::TripleMatrix(M_small, M);
@@ -146,7 +208,7 @@ namespace rsurfaces
             H1::getTriplets(triplets, mesh, geom);
             Constraints::addBarycenterTriplets(triplets, mesh, geom, mesh->nVertices());
             MatrixUtils::TripleTriplets(triplets, triplets3x);
-            // Pre-factorize the cotal Laplacian
+            // Pre-factorize the cotan Laplacian
             Eigen::SparseMatrix<double> L(3 * mesh->nVertices() + 3, 3 * mesh->nVertices() + 3);
             L.setFromTriplets(triplets3x.begin(), triplets3x.end());
             Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> L_inv;
@@ -155,20 +217,22 @@ namespace rsurfaces
             Eigen::VectorXd gradientRow;
             gradientRow.setZero(3 * mesh->nVertices() + 3);
 
-            // Multiply by L^{-1} once
+            // Multiply by L^{-1} once by solving Lx = Mb
             MatrixUtils::MatrixIntoColumn(gradient, gradientRow);
+            MultiplyVecByMass(gradientRow, mesh, geom);
             gradientRow = L_inv.solve(gradientRow);
 
-            // Multiply by L^{2 - s}, a fractional Laplacian
+            // Multiply by L^{2 - s}, a fractional Laplacian; this has order 4 - 2s
             Eigen::MatrixXd M, M3;
             M.setZero(mesh->nVertices() + 1, mesh->nVertices() + 1);
             M3.setZero(3 * mesh->nVertices() + 3, 3 * mesh->nVertices() + 3);
-            Hs::FillMatrix(M, 2 - s, mesh, geom);
+            Hs::FillMatrixFracOnly(M, 4 - 2 * s, mesh, geom);
             Constraints::addBarycenterEntries(M, mesh, geom, mesh->nVertices());
             MatrixUtils::TripleMatrix(M, M3);
             gradientRow = M3 * gradientRow;
 
-            // Multiply by L^{-1} again
+            // Multiply by L^{-1} again by solving Lx = Mb
+            MultiplyVecByMass(gradientRow, mesh, geom);
             gradientRow = L_inv.solve(gradientRow);
             MatrixUtils::ColumnIntoMatrix(gradientRow, dest);
         }
