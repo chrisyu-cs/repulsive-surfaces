@@ -169,16 +169,19 @@ namespace rsurfaces
             Eigen::MatrixXd M_small, M;
             int nVerts = mesh->nVertices();
             M_small.setZero(nVerts + 1, nVerts + 1);
-            int dims = 3 * nVerts + 3;
+            int dims = 3 * nVerts + 6;
             M.setZero(dims, dims);
             FillMatrixHigh(M_small, get_s(alpha, beta), mesh, geom);
+            // Add single row in small block for barycenter
             Constraints::addBarycenterEntries(M_small, mesh, geom, nVerts);
-            // Reduplicate entries 3x along diagonals
+            // Reduplicate entries 3x along diagonals; barycenter row gets tripled
             MatrixUtils::TripleMatrix(M_small, M);
+            // Add rows for scaling to tripled block
+            Constraints::addScalingEntries(M, mesh, geom, 3 * nVerts + 3);
 
             // Flatten the gradient into a single column
             Eigen::VectorXd gradientCol;
-            gradientCol.setZero(3 * mesh->nVertices() + 3);
+            gradientCol.setZero(dims);
             MatrixUtils::MatrixIntoColumn(gradient, gradientCol);
 
             // Invert the metric, and write it into the destination
@@ -219,7 +222,7 @@ namespace rsurfaces
 
             // Multiply by L^{-1} once by solving Lx = Mb
             MatrixUtils::MatrixIntoColumn(gradient, gradientRow);
-            MultiplyVecByMass(gradientRow, mesh, geom);
+            // MultiplyVecByMass(gradientRow, mesh, geom);
             gradientRow = L_inv.solve(gradientRow);
 
             // Multiply by L^{2 - s}, a fractional Laplacian; this has order 4 - 2s
@@ -232,7 +235,7 @@ namespace rsurfaces
             gradientRow = M3 * gradientRow;
 
             // Multiply by L^{-1} again by solving Lx = Mb
-            MultiplyVecByMass(gradientRow, mesh, geom);
+            // MultiplyVecByMass(gradientRow, mesh, geom);
             gradientRow = L_inv.solve(gradientRow);
             MatrixUtils::ColumnIntoMatrix(gradientRow, dest);
         }
