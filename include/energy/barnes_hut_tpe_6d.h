@@ -16,6 +16,7 @@ public:
     virtual MeshPtr GetMesh();
     virtual GeomPtr GetGeom();
     virtual Vector2 GetExponents();
+    virtual BVHNode6D* GetBVH();
 
 private:
     TPEKernel *kernel;

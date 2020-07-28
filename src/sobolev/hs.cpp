@@ -61,18 +61,6 @@ namespace rsurfaces
             return 0;
         }
 
-        inline double MetricDistanceTerm(double s, Vector3 v1, Vector3 v2)
-        {
-            double dist_term = 1.0 / pow(norm(v1 - v2), 2 * (s - 1) + 2);
-            return dist_term;
-        }
-
-        inline double MetricDistanceTermLow(double s, Vector3 v1, Vector3 v2)
-        {
-            double dist_term = 1.0 / pow(norm(v1 - v2), 2 * s + 2);
-            return dist_term;
-        }
-
         inline void AddTriangleGradientTerm(Eigen::MatrixXd &M, double s, GCFace f1, GCFace f2, GeomPtr &geom, VertexIndices &indices)
         {
             std::vector<GCVertex> verts;
@@ -112,7 +100,7 @@ namespace rsurfaces
             Vector3 mid1 = faceBarycenter(geom, f1);
             Vector3 mid2 = faceBarycenter(geom, f2);
 
-            double dist_term = MetricDistanceTermLow(s, mid1, mid2);
+            double dist_term = MetricDistanceTermFrac(s, mid1, mid2);
 
             for (GCVertex u : verts)
             {

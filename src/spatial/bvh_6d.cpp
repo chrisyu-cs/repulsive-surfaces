@@ -28,7 +28,8 @@ namespace rsurfaces
         Vector3 minCoord = geom->inputVertexPositions[f.halfedge().vertex()];
         Vector3 maxCoord = geom->inputVertexPositions[f.halfedge().vertex()];
 
-        for (GCVertex v : f.adjacentVertices()) {
+        for (GCVertex v : f.adjacentVertices())
+        {
             minCoord = vectorMin(minCoord, geom->inputVertexPositions[v]);
             maxCoord = vectorMax(maxCoord, geom->inputVertexPositions[v]);
         }
@@ -124,6 +125,7 @@ namespace rsurfaces
             averageNormal = Vector3{0, 0, 0};
             elementID = -1;
             numNodesInBranch = 1;
+            nElements = 0;
         }
         // If we have only one point, then the node is a leaf
         else if (points.size() == 1)
@@ -137,6 +139,9 @@ namespace rsurfaces
             maxCoords = mp.maxCoords;
             elementID = mp.elementID;
             numNodesInBranch = 1;
+            nElements = 1;
+            clusterIndices.resize(1);
+            clusterIndices[0] = elementID;
         }
         // Otherwise, we need to recursively split and compute averages
         else
@@ -174,8 +179,10 @@ namespace rsurfaces
             children.push_back(lesserNode);
             children.push_back(greaterNode);
             numNodesInBranch = lesserNode->numNodesInBranch + greaterNode->numNodesInBranch + 1;
+
             // Get the averages from children
             averageDataFromChildren();
+            mergeIndicesFromChildren();
         }
     }
 
@@ -289,6 +296,7 @@ namespace rsurfaces
         averageNormal = Vector3{0, 0, 0};
         minCoords = children[0]->minCoords;
         maxCoords = children[0]->maxCoords;
+        nElements = 0;
 
         for (BVHNode6D *child : children)
         {
@@ -297,10 +305,26 @@ namespace rsurfaces
             averageNormal += child->totalMass * child->averageNormal;
             minCoords = vectorMin(minCoords, child->minCoords);
             maxCoords = vectorMax(maxCoords, child->maxCoords);
+            nElements += child->nElements;
         }
 
         centerOfMass /= totalMass;
         averageNormal = averageNormal.normalize();
+    }
+
+    void BVHNode6D::mergeIndicesFromChildren()
+    {
+        clusterIndices.resize(nElements);
+        int currI = 0;
+
+        for (BVHNode6D *child : children)
+        {
+            for (size_t i = 0; i < child->clusterIndices.size(); i++)
+            {
+                clusterIndices[currI] = child->clusterIndices[i];
+                currI++;
+            }
+        }
     }
 
     double BVHNode6D::AxisSplittingPlane(std::vector<MassNormalPoint> &points, int axis)

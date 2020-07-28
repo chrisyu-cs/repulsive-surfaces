@@ -20,6 +20,7 @@
 #include "sobolev/h1.h"
 #include "spatial/convolution.h"
 #include "spatial/convolution_kernel.h"
+#include "block_cluster_tree.h"
 
 using namespace geometrycentral;
 using namespace geometrycentral::surface;
@@ -123,87 +124,69 @@ namespace rsurfaces
     PlotMatrix(result, psMesh, "LML approx");
   }
 
-  void MainApp::TestConvolution()
-  {
-    if (vertBVH)
-    {
-      delete vertBVH;
-    }
-
-    VertexIndices inds = mesh->getVertexIndices();
-    vertBVH = Create6DBVHFromMeshVerts(mesh, geom, 0.25);
-
-    int nVerts = mesh->nVertices();
+  void MainApp::TestMVProduct() {
+    long gradientStartTime = currentTimeMilliseconds();
+    // Use the differential of the energy as the test case
     SurfaceEnergy *energy = flow->BaseEnergy();
-
     energy->Update();
-
-    Eigen::MatrixXd gradient, gradient_conv, gradient_conv2, gradient_proj;
-    gradient.setZero(nVerts, 3);
-    gradient_conv.setZero(nVerts, 3);
-    gradient_conv2.setZero(nVerts, 3);
-    gradient_proj.setZero(nVerts, 3);
+    Eigen::MatrixXd gradient(mesh->nVertices(), 3);
     energy->Differential(gradient);
+    Eigen::VectorXd gVec(3 * mesh->nVertices());
+    MatrixUtils::MatrixIntoColumn(gradient, gVec);
     Vector2 exps = energy->GetExponents();
     double s = Hs::get_s(exps.x, exps.y);
+    long gradientEndTime = currentTimeMilliseconds();
 
-    Eigen::MatrixXd sxs;
-    sxs.setZero(nVerts, 6);
+    long denseStartTime = currentTimeMilliseconds();
+    // Dense multiplication
+    // Assemble the dense operator
+    Eigen::MatrixXd dense, dense_small;
+    dense_small.setZero(mesh->nVertices(), mesh->nVertices());
+    dense.setZero(3 * mesh->nVertices(), 3 * mesh->nVertices());
+    Hs::FillMatrixFracOnly(dense_small, s, mesh, geom);
+    MatrixUtils::TripleMatrix(dense_small, dense);
+    long denseAssemblyTime = currentTimeMilliseconds();
+    // Multiply dense
+    Eigen::VectorXd denseRes = dense * gVec;
+    long denseEndTime = currentTimeMilliseconds();
 
-    std::cout << "s = " << s << std::endl;
+    // Block cluster tree multiplication
+    long bctStartTime = currentTimeMilliseconds();
+    BVHNode6D* bvh = energy->GetBVH();
+    BlockClusterTree *bct = new BlockClusterTree(mesh, geom, bvh, 0.5, exps.x, exps.y);
+    long bctAssemblyTime = currentTimeMilliseconds();
+    Eigen::VectorXd bctRes = gVec;
+    bct->MultiplyVector3(gVec, bctRes);
+    long bctEndTime = currentTimeMilliseconds();
 
-    Hs::ProjectGradient(gradient, gradient_proj, exps.x, exps.y, mesh, geom);
+    Eigen::MatrixXd comp(3 * mesh->nVertices(), 2);
+    comp.col(0) = denseRes;
+    comp.col(1) = bctRes;
+    std::cout << comp << std::endl;
 
-    RieszKernel kernel(2. - s);
-    FixBarycenter(mesh, geom, inds, gradient);
-    ConvolveExact(mesh, geom, kernel, gradient, gradient_conv);
-    ConvolveExact(mesh, geom, kernel, gradient_conv, gradient_conv2);
-    FixBarycenter(mesh, geom, inds, gradient_conv2);
+    Eigen::VectorXd diff = denseRes - bctRes;
+    double error = 100 * diff.norm() / denseRes.norm();
 
-    sxs.block(0, 0, nVerts, 3) = gradient_proj;
-    sxs.block(0, 3, nVerts, 3) = gradient_conv2;
+    std::cout << "Dense multiply norm = " << denseRes.norm() << std::endl;
+    std::cout << "Hierarchical multiply norm = " << bctRes.norm() << std::endl;
+    std::cout << "Relative error = " << error << " percent" << std::endl;
+    
+    long gradientAssembly = gradientEndTime - gradientStartTime;
+    long denseAssembly = denseAssemblyTime - denseStartTime;
+    long denseMult = denseEndTime - denseAssemblyTime;
+    long bctAssembly = bctAssemblyTime - bctStartTime;
+    long bctMult = bctEndTime - bctAssemblyTime;
 
-    std::vector<Vector3> vecs_conv, vecs_proj, vecs_orig;
+    std::cout << "Gradient assembly time = " << gradientAssembly << " ms" << std::endl;
+    std::cout << "Dense time = " << (denseAssembly + denseMult) << " ms" << std::endl;
+    std::cout << "  * Dense matrix assembly = " << denseAssembly << " ms" << std::endl;
+    std::cout << "  * Dense multiply = " << denseMult << " ms" << std::endl; 
+    std::cout << "Hierarchical time = " << (bctAssembly + bctMult) << " ms" << std::endl;
+    std::cout << "  * Tree assembly = " << bctAssembly << " ms" << std::endl;
+    std::cout << "  * Tree multiply = " << bctMult << " ms" << std::endl;
 
-    for (int i = 0; i < nVerts; i++)
-    {
-      vecs_conv.push_back(GetRow(gradient_conv2, i));
-      vecs_proj.push_back(GetRow(gradient_proj, i));
-      vecs_orig.push_back(GetRow(gradient, i));
-    }
-
-    Vector3 center{0, 0, 0};
-    Vector3 centerProj = center;
-    Vector3 centerConv = center;
-    double sumArea = 0;
-
-    std::cout << "Norm orig = " << gradient.norm() << std::endl;
-    std::cout << "Norm proj = " << gradient_proj.norm() << std::endl;
-    std::cout << "Norm conv = " << gradient_conv2.norm() << std::endl;
-
-    for (GCVertex v : mesh->vertices())
-    {
-      center += GetRow(gradient, inds[v]) * geom->vertexDualAreas[v];
-      centerProj += GetRow(gradient_proj, inds[v]) * geom->vertexDualAreas[v];
-      centerConv += GetRow(gradient_conv2, inds[v]) * geom->vertexDualAreas[v];
-      sumArea += geom->vertexDualAreas[v];
-    }
-
-    center /= sumArea;
-    centerProj /= sumArea;
-    centerConv /= sumArea;
-
-    std::cout << "Orig barycenter = " << center << std::endl;
-    std::cout << "Proj barycenter = " << centerProj << std::endl;
-    std::cout << "Conv barycenter = " << centerConv << std::endl;
-
-    psMesh->addVertexVectorQuantity("original", vecs_orig);
-    psMesh->addVertexVectorQuantity("convolved", vecs_conv);
-    psMesh->addVertexVectorQuantity("projected", vecs_proj);
-
-    // std::cout << sxs << std::endl;
+    delete bct;
   }
-
 } // namespace rsurfaces
 
 // UI parameters
@@ -266,14 +249,14 @@ void myCallback()
     }
   }
 
-  if (ImGui::Button("Test convolution"))
-  {
-    rsurfaces::MainApp::instance->TestConvolution();
-  }
-
   if (ImGui::Button("Test LML inverse"))
   {
     rsurfaces::MainApp::instance->TestLML();
+  }
+
+  if (ImGui::Button("Test mat-vec product"))
+  {
+    rsurfaces::MainApp::instance->TestMVProduct();
   }
 
   if (ImGui::Button("Plot gradient"))

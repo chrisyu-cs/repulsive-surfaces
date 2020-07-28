@@ -14,11 +14,12 @@ namespace rsurfaces
 
     double BarnesHutTPEnergy6D::Value()
     {
-        if (!root) {
+        if (!root)
+        {
             std::cerr << "BVH for BarnesHutTPEnergy6D was not initialized. Call Update() first." << std::endl;
             std::exit(1);
         }
-        
+
         double sum = 0;
         for (GCFace f : kernel->mesh->faces())
         {
@@ -63,11 +64,12 @@ namespace rsurfaces
 
     void BarnesHutTPEnergy6D::Differential(Eigen::MatrixXd &output)
     {
-        if (!root) {
+        if (!root)
+        {
             std::cerr << "BVH for BarnesHutTPEnergy6D was not initialized. Call Update() first." << std::endl;
             std::exit(1);
         }
-        
+
         VertexIndices indices = kernel->mesh->getVertexIndices();
         output.setZero();
 
@@ -181,6 +183,11 @@ namespace rsurfaces
     Vector2 BarnesHutTPEnergy6D::GetExponents()
     {
         return Vector2{kernel->alpha, kernel->beta};
+    }
+
+    BVHNode6D *BarnesHutTPEnergy6D::GetBVH()
+    {
+        return root;
     }
 
 } // namespace rsurfaces

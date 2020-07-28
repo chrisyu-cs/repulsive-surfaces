@@ -74,6 +74,7 @@ set(SRCS
   src/sobolev/constraints.cpp
   src/spatial/bvh_6d.cpp
   src/spatial/convolution_kernel.cpp
+  src/block_cluster_tree.cpp
   src/fractional_laplacian.cpp
   src/surface_derivatives.cpp
   src/surface_flow.cpp
