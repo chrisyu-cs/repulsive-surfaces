@@ -100,6 +100,7 @@ namespace rsurfaces
 
         b_mid_adm += b_mid_inadm;
 
+        b.setZero();
         Hs::ApplyMidOperatorTranspose(mesh, geom, b_mid_adm, b);
     }
 

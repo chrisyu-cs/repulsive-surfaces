@@ -221,17 +221,13 @@ namespace rsurfaces
                 M3.setZero(3 * mesh->nVertices() + 3, 3 * mesh->nVertices() + 3);
                 Hs::FillMatrixFracOnly(M, 4 - 2 * s, mesh, geom);
                 MatrixUtils::TripleMatrix(M, M3);
-                std::cout << "Norm before = " << gradientRow.norm() << std::endl;
                 gradientRow = M3 * gradientRow;
-                std::cout << "Norm after = " << gradientRow.norm() << std::endl;
             }
 
             else {
                 std::cout << "  * Using block cluster tree to multiply" << std::endl;
                 BlockClusterTree *bct = new BlockClusterTree(mesh, geom, bvh, 0.5, 4 - 2 * s);
-                std::cout << "Norm before = " << gradientRow.norm() << std::endl;
                 bct->MultiplyVector3(gradientRow, gradientRow);
-                std::cout << "Norm after = " << gradientRow.norm() << std::endl;
                 delete bct;
             }
 
