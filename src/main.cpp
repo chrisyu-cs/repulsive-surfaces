@@ -10,6 +10,7 @@
 
 #include "energy/tpe_kernel.h"
 #include "energy/all_pairs_tpe.h"
+#include "energy/all_pairs_with_bvh.h"
 #include "helpers.h"
 #include <memory>
 
@@ -73,16 +74,19 @@ namespace rsurfaces
     polyscope::requestRedraw();
   }
 
-  void PlotMatrix(Eigen::MatrixXd &mat, polyscope::SurfaceMesh *psMesh, std::string name) {
+  void PlotMatrix(Eigen::MatrixXd &mat, polyscope::SurfaceMesh *psMesh, std::string name)
+  {
     std::vector<Vector3> vecs;
-    for (int i = 0; i < mat.rows(); i++) {
+    for (int i = 0; i < mat.rows(); i++)
+    {
       Vector3 row_i = GetRow(mat, i);
       vecs.push_back(row_i);
     }
     psMesh->addVertexVectorQuantity(name, vecs);
   }
 
-  void PlotVector(Eigen::VectorXd &vec, int nVerts, polyscope::SurfaceMesh *psMesh, std::string name) {
+  void PlotVector(Eigen::VectorXd &vec, int nVerts, polyscope::SurfaceMesh *psMesh, std::string name)
+  {
     Eigen::MatrixXd M;
     M.setZero(nVerts, 3);
     MatrixUtils::ColumnIntoMatrix(vec, M);
@@ -99,7 +103,7 @@ namespace rsurfaces
     Eigen::MatrixXd h1 = d;
     Eigen::MatrixXd hs = d;
     flow->BaseEnergy()->Differential(d);
-    
+
     PlotMatrix(d, psMesh, "L2 gradient");
 
     Vector2 ab = flow->BaseEnergy()->GetExponents();
@@ -109,7 +113,8 @@ namespace rsurfaces
     PlotMatrix(hs, psMesh, "Hs gradient");
   }
 
-  void MainApp::TestLML() {
+  void MainApp::TestLML()
+  {
     SurfaceEnergy *energy = flow->BaseEnergy();
     Vector2 exps = energy->GetExponents();
     energy->Update();
@@ -118,13 +123,52 @@ namespace rsurfaces
     energy->Differential(gradient);
     Eigen::MatrixXd result = gradient;
 
-    Hs::ProjectViaSparse(gradient, result, exps.x, exps.y, mesh, geom);
+    Hs::ProjectViaSparse(gradient, result, exps.x, exps.y, mesh, geom, 0);
 
     std::cout << result << std::endl;
     PlotMatrix(result, psMesh, "LML approx");
   }
 
-  void MainApp::TestMVProduct() {
+  void MainApp::TestHierarchical()
+  {
+    // Use the differential of the energy as the test case
+    SurfaceEnergy *energy = flow->BaseEnergy();
+    energy->Update();
+    Eigen::MatrixXd gradient(mesh->nVertices(), 3);
+    energy->Differential(gradient);
+    Vector2 exps = energy->GetExponents();
+    double s = Hs::get_s(exps.x, exps.y);
+
+    Eigen::MatrixXd denseRes = gradient;
+    Eigen::MatrixXd hierRes = gradient;
+
+    Hs::ProjectViaSparse(gradient, denseRes, exps.x, exps.y, mesh, geom, 0);
+    Hs::ProjectViaSparse(gradient, hierRes, exps.x, exps.y, mesh, geom, energy->GetBVH());
+
+    PlotMatrix(denseRes, psMesh, "dense LML");
+    PlotMatrix(hierRes, psMesh, "hierarchical LML");
+
+    Eigen::MatrixXd diff = hierRes - denseRes;
+    double err = 100 * diff.norm() / denseRes.norm();
+
+    Eigen::VectorXd denseRow(mesh->nVertices() * 3);
+    Eigen::VectorXd hierRow(mesh->nVertices() * 3);
+
+    MatrixUtils::MatrixIntoColumn(denseRes, denseRow);
+    MatrixUtils::MatrixIntoColumn(hierRes, hierRow);
+
+    denseRow /= denseRow.norm();
+    hierRow /= hierRow.norm();
+
+    std::cout << "Dense LML norm = " << denseRes.norm() << std::endl;
+    std::cout << "Hierarchical LML norm = " << hierRes.norm() << std::endl;
+    std::cout << "Hierarchical norm / dense norm = " << hierRes.norm() / denseRes.norm() << std::endl;
+    std::cout << "Relative error = " << err << " percent" << std::endl;
+    std::cout << "Normalized dot product = " << denseRow.dot(hierRow) << std::endl;
+  }
+
+  void MainApp::TestMVProduct()
+  {
     long gradientStartTime = currentTimeMilliseconds();
     // Use the differential of the energy as the test case
     SurfaceEnergy *energy = flow->BaseEnergy();
@@ -135,57 +179,69 @@ namespace rsurfaces
     MatrixUtils::MatrixIntoColumn(gradient, gVec);
     Vector2 exps = energy->GetExponents();
     double s = Hs::get_s(exps.x, exps.y);
+    s = 0.6;
+
     long gradientEndTime = currentTimeMilliseconds();
 
-    long denseStartTime = currentTimeMilliseconds();
-    // Dense multiplication
-    // Assemble the dense operator
-    Eigen::MatrixXd dense, dense_small;
-    dense_small.setZero(mesh->nVertices(), mesh->nVertices());
-    dense.setZero(3 * mesh->nVertices(), 3 * mesh->nVertices());
-    Hs::FillMatrixFracOnly(dense_small, s, mesh, geom);
-    MatrixUtils::TripleMatrix(dense_small, dense);
-    long denseAssemblyTime = currentTimeMilliseconds();
-    // Multiply dense
-    Eigen::VectorXd denseRes = dense * gVec;
-    long denseEndTime = currentTimeMilliseconds();
+    for (int i = 0; i < 1; i++)
+    {
+      std::cout << "\nTesting for s = " << s << std::endl;
+      long denseStartTime = currentTimeMilliseconds();
+      // Dense multiplication
+      // Assemble the dense operator
+      Eigen::MatrixXd dense, dense_small;
+      dense_small.setZero(mesh->nVertices(), mesh->nVertices());
+      dense.setZero(3 * mesh->nVertices(), 3 * mesh->nVertices());
+      Hs::FillMatrixFracOnly(dense_small, s, mesh, geom);
+      MatrixUtils::TripleMatrix(dense_small, dense);
+      long denseAssemblyTime = currentTimeMilliseconds();
+      // Multiply dense
+      Eigen::VectorXd denseRes = dense * gVec;
+      long denseEndTime = currentTimeMilliseconds();
 
-    // Block cluster tree multiplication
-    long bctStartTime = currentTimeMilliseconds();
-    BVHNode6D* bvh = energy->GetBVH();
-    BlockClusterTree *bct = new BlockClusterTree(mesh, geom, bvh, 0.5, exps.x, exps.y);
-    long bctAssemblyTime = currentTimeMilliseconds();
-    Eigen::VectorXd bctRes = gVec;
-    bct->MultiplyVector3(gVec, bctRes);
-    long bctEndTime = currentTimeMilliseconds();
+      // Block cluster tree multiplication
+      long bctStartTime = currentTimeMilliseconds();
+      BVHNode6D *bvh = energy->GetBVH();
 
-    Eigen::MatrixXd comp(3 * mesh->nVertices(), 2);
-    comp.col(0) = denseRes;
-    comp.col(1) = bctRes;
-    std::cout << comp << std::endl;
+      BlockClusterTree *bct = new BlockClusterTree(mesh, geom, bvh, 0, s);
+      bct->PrintData();
+      long bctAssemblyTime = currentTimeMilliseconds();
+      Eigen::VectorXd bctRes = gVec;
+      bct->MultiplyVector3(gVec, bctRes);
+      long bctEndTime = currentTimeMilliseconds();
 
-    Eigen::VectorXd diff = denseRes - bctRes;
-    double error = 100 * diff.norm() / denseRes.norm();
+      // Eigen::MatrixXd comp(3 * mesh->nVertices(), 2);
+      // comp.col(0) = denseRes;
+      // comp.col(1) = bctRes;
+      // std::cout << comp << std::endl;
 
-    std::cout << "Dense multiply norm = " << denseRes.norm() << std::endl;
-    std::cout << "Hierarchical multiply norm = " << bctRes.norm() << std::endl;
-    std::cout << "Relative error = " << error << " percent" << std::endl;
-    
-    long gradientAssembly = gradientEndTime - gradientStartTime;
-    long denseAssembly = denseAssemblyTime - denseStartTime;
-    long denseMult = denseEndTime - denseAssemblyTime;
-    long bctAssembly = bctAssemblyTime - bctStartTime;
-    long bctMult = bctEndTime - bctAssemblyTime;
+      Eigen::VectorXd diff = denseRes - bctRes;
+      double error = 100 * diff.norm() / denseRes.norm();
 
-    std::cout << "Gradient assembly time = " << gradientAssembly << " ms" << std::endl;
-    std::cout << "Dense time = " << (denseAssembly + denseMult) << " ms" << std::endl;
-    std::cout << "  * Dense matrix assembly = " << denseAssembly << " ms" << std::endl;
-    std::cout << "  * Dense multiply = " << denseMult << " ms" << std::endl; 
-    std::cout << "Hierarchical time = " << (bctAssembly + bctMult) << " ms" << std::endl;
-    std::cout << "  * Tree assembly = " << bctAssembly << " ms" << std::endl;
-    std::cout << "  * Tree multiply = " << bctMult << " ms" << std::endl;
+      std::cout << "Dense multiply norm = " << denseRes.norm() << std::endl;
+      std::cout << "Hierarchical multiply norm = " << bctRes.norm() << std::endl;
+      std::cout << "Relative error = " << error << " percent" << std::endl;
+      std::cout << "Dot product of directions = " << denseRes.dot(bctRes) / (denseRes.norm() * bctRes.norm()) << std::endl;
 
-    delete bct;
+      long gradientAssembly = gradientEndTime - gradientStartTime;
+      long denseAssembly = denseAssemblyTime - denseStartTime;
+      long denseMult = denseEndTime - denseAssemblyTime;
+      long bctAssembly = bctAssemblyTime - bctStartTime;
+      long bctMult = bctEndTime - bctAssemblyTime;
+
+      bct->PrintData();
+
+      std::cout << "Gradient assembly time = " << gradientAssembly << " ms" << std::endl;
+      std::cout << "Dense time = " << (denseAssembly + denseMult) << " ms" << std::endl;
+      std::cout << "  * Dense matrix assembly = " << denseAssembly << " ms" << std::endl;
+      std::cout << "  * Dense multiply = " << denseMult << " ms" << std::endl;
+      std::cout << "Hierarchical time = " << (bctAssembly + bctMult) << " ms" << std::endl;
+      std::cout << "  * Tree assembly = " << bctAssembly << " ms" << std::endl;
+      std::cout << "  * Tree multiply = " << bctMult << " ms" << std::endl;
+
+      delete bct;
+      s -= 0.2;
+    }
   }
 } // namespace rsurfaces
 
@@ -230,7 +286,8 @@ void myCallback()
     saveScreenshot(screenshotNum++);
   }
 
-  if (ImGui::Button("Take screenshot")) {
+  if (ImGui::Button("Take screenshot"))
+  {
     saveScreenshot(screenshotNum++);
   }
 
@@ -244,7 +301,8 @@ void myCallback()
       saveScreenshot(screenshotNum++);
     }
     numSteps++;
-    if (stepLimit > 0 && numSteps >= stepLimit) {
+    if (stepLimit > 0 && numSteps >= stepLimit)
+    {
       run = false;
     }
   }
@@ -257,6 +315,11 @@ void myCallback()
   if (ImGui::Button("Test mat-vec product"))
   {
     rsurfaces::MainApp::instance->TestMVProduct();
+  }
+
+  if (ImGui::Button("Test hierarchical"))
+  {
+    rsurfaces::MainApp::instance->TestHierarchical();
   }
 
   if (ImGui::Button("Plot gradient"))

@@ -19,6 +19,7 @@ class MainApp
     void PlotL2Gradient();
     void TestLML();
     void TestMVProduct();
+    void TestHierarchical();
 
     void TakeNaiveStep(double t);
     void TakeLineSearchStep();

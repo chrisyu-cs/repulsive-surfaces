@@ -6,11 +6,12 @@
 namespace rsurfaces
 {
 
-    // Evaluates energy and differential using Barnes-Hut with a BVH.
-    class BarnesHutTPEnergy6D : public SurfaceEnergy
+    // Evaluates energy and differential naively with all pairs, but
+    // provides a BVH when GetBVH() is called. For testing purposes.
+    class AllPairsWithBVH : public SurfaceEnergy
     {
     public:
-        BarnesHutTPEnergy6D(TPEKernel *kernel_, double theta_);
+        AllPairsWithBVH(TPEKernel *kernel_, double theta_);
         virtual double Value();
         virtual void Differential(Eigen::MatrixXd &output);
         virtual void Update();
@@ -23,9 +24,6 @@ namespace rsurfaces
         TPEKernel *kernel;
         BVHNode6D *root;
         double theta;
-        double computeEnergyOfFace(GCFace face, BVHNode6D *bvhRoot);
-        void accumulateTPEGradient(Eigen::MatrixXd &gradients, BVHNode6D *node, GCFace face1,
-                                   surface::VertexData<size_t> indices);
     };
 
 } // namespace rsurfaces

@@ -17,7 +17,7 @@ namespace rsurfaces
 
         void ProjectGradient(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom);
         void ProjectViaConvolution(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom);
-        void ProjectViaSparse(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom);
+        void ProjectViaSparse(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D* bvh);
 
         inline double MetricDistanceTerm(double s, Vector3 v1, Vector3 v2)
         {
@@ -39,13 +39,13 @@ namespace rsurfaces
 
             for (GCFace face : mesh->faces())
             {
-                double avg = 0;
+                double total = 0;
                 // Get one-third the value on all adjacent vertices
                 for (GCVertex vert : face.adjacentVertices())
                 {
-                    avg += a(vInds[vert]) / 3.0;
+                    total += a(vInds[vert]) / 3.0;
                 }
-                out(fInds[face]) += avg;
+                out(fInds[face]) += total;
             }
         }
 

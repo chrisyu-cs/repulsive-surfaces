@@ -14,11 +14,11 @@ namespace rsurfaces
     long BlockClusterTree::wellSepTime = 0;
     long BlockClusterTree::traversalTime = 0;
 
-    BlockClusterTree::BlockClusterTree(MeshPtr mesh_, GeomPtr geom_, BVHNode6D *root, double sepCoeff, double a, double b, double e)
+    BlockClusterTree::BlockClusterTree(MeshPtr mesh_, GeomPtr geom_, BVHNode6D *root, double sepCoeff, double s_, double e)
     {
         mesh = mesh_;
         geom = geom_;
-        exp_s = Hs::get_s(a, b);
+        exp_s = s_;
         separationCoeff = sepCoeff;
         epsilon = e;
 

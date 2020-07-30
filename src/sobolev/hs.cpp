@@ -4,6 +4,7 @@
 #include "spatial/convolution.h"
 #include "spatial/convolution_kernel.h"
 #include "sobolev/h1.h"
+#include "block_cluster_tree.h"
 
 #include "Eigen/Sparse"
 
@@ -157,7 +158,7 @@ namespace rsurfaces
             Eigen::MatrixXd M_small, M;
             int nVerts = mesh->nVertices();
             M_small.setZero(nVerts + 1, nVerts + 1);
-            int dims = 3 * nVerts + 6;
+            int dims = 3 * nVerts + 3;
             M.setZero(dims, dims);
             FillMatrixHigh(M_small, get_s(alpha, beta), mesh, geom);
             // Add single row in small block for barycenter
@@ -165,7 +166,7 @@ namespace rsurfaces
             // Reduplicate entries 3x along diagonals; barycenter row gets tripled
             MatrixUtils::TripleMatrix(M_small, M);
             // Add rows for scaling to tripled block
-            Constraints::addScalingEntries(M, mesh, geom, 3 * nVerts + 3);
+            // Constraints::addScalingEntries(M, mesh, geom, 3 * nVerts + 3);
 
             // Flatten the gradient into a single column
             Eigen::VectorXd gradientCol;
@@ -190,7 +191,7 @@ namespace rsurfaces
             FixBarycenter(mesh, geom, inds, dest);
         }
 
-        void ProjectViaSparse(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom)
+        void ProjectViaSparse(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D* bvh)
         {
             double s = Hs::get_s(alpha, beta);
 
@@ -208,22 +209,33 @@ namespace rsurfaces
             Eigen::VectorXd gradientRow;
             gradientRow.setZero(3 * mesh->nVertices() + 3);
 
-            // Multiply by L^{-1} once by solving Lx = Mb
+            // Multiply by L^{-1} once by solving Lx = b
             MatrixUtils::MatrixIntoColumn(gradient, gradientRow);
-            // MultiplyVecByMass(gradientRow, mesh, geom);
             gradientRow = L_inv.solve(gradientRow);
 
-            // Multiply by L^{2 - s}, a fractional Laplacian; this has order 4 - 2s
-            Eigen::MatrixXd M, M3;
-            M.setZero(mesh->nVertices() + 1, mesh->nVertices() + 1);
-            M3.setZero(3 * mesh->nVertices() + 3, 3 * mesh->nVertices() + 3);
-            Hs::FillMatrixFracOnly(M, 4 - 2 * s, mesh, geom);
-            Constraints::addBarycenterEntries(M, mesh, geom, mesh->nVertices());
-            MatrixUtils::TripleMatrix(M, M3);
-            gradientRow = M3 * gradientRow;
+            if (!bvh) {
+                std::cout << "  * Assembling dense matrix to multiply" << std::endl;
+                // Multiply by L^{2 - s}, a fractional Laplacian; this has order 4 - 2s
+                Eigen::MatrixXd M, M3;
+                M.setZero(mesh->nVertices(), mesh->nVertices());
+                M3.setZero(3 * mesh->nVertices() + 3, 3 * mesh->nVertices() + 3);
+                Hs::FillMatrixFracOnly(M, 4 - 2 * s, mesh, geom);
+                MatrixUtils::TripleMatrix(M, M3);
+                std::cout << "Norm before = " << gradientRow.norm() << std::endl;
+                gradientRow = M3 * gradientRow;
+                std::cout << "Norm after = " << gradientRow.norm() << std::endl;
+            }
 
-            // Multiply by L^{-1} again by solving Lx = Mb
-            // MultiplyVecByMass(gradientRow, mesh, geom);
+            else {
+                std::cout << "  * Using block cluster tree to multiply" << std::endl;
+                BlockClusterTree *bct = new BlockClusterTree(mesh, geom, bvh, 0.5, 4 - 2 * s);
+                std::cout << "Norm before = " << gradientRow.norm() << std::endl;
+                bct->MultiplyVector3(gradientRow, gradientRow);
+                std::cout << "Norm after = " << gradientRow.norm() << std::endl;
+                delete bct;
+            }
+
+            // Multiply by L^{-1} again by solving Lx = b
             gradientRow = L_inv.solve(gradientRow);
             MatrixUtils::ColumnIntoMatrix(gradientRow, dest);
         }

@@ -22,7 +22,7 @@ namespace rsurfaces
         static long wellSepTime;
         static long traversalTime;
 
-        BlockClusterTree(MeshPtr mesh, GeomPtr geom, BVHNode6D *root, double sepCoeff, double a, double b, double e = 0.0);
+        BlockClusterTree(MeshPtr mesh, GeomPtr geom, BVHNode6D *root, double sepCoeff, double s_, double e = 0.0);
         ~BlockClusterTree();
         // Loop over all currently inadmissible cluster pairs
         // and subdivide them to their children.

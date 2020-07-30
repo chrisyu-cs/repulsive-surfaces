@@ -1,0 +1,9 @@
+(times are gradient assembly + gradient projection)
+
+1510 faces
+
+Exact projected: 7068 + 6327
+Exact LML: 7068 + 1650
+BH projected: 1624 + 6356
+BH LML: 1629 + 184
+
