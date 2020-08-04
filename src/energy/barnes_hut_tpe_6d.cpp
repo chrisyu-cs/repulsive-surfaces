@@ -47,8 +47,7 @@ namespace rsurfaces
         {
             // Use the cluster approximation
             MassNormalPoint mnp = bvhRoot->GetMassNormalPoint();
-            MassPoint mp{mnp.mass, mnp.point, mnp.elementID};
-            return kernel->tpe_pair(face, mp);
+            return kernel->tpe_pair(face, mnp);
         }
         else
         {

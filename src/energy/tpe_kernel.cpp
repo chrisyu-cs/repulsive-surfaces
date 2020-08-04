@@ -40,7 +40,7 @@ double TPEKernel::tpe_pair(GCFace f1, GCFace f2)
     return tpe_Kf(f1, f2) * w1 * w2;
 }
 
-double TPEKernel::tpe_pair(GCFace f1, MassPoint p2)
+double TPEKernel::tpe_pair(GCFace f1, MassNormalPoint p2)
 {
     double w1 = geom->faceArea(f1);
     double w2 = p2.mass;

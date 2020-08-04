@@ -11,7 +11,7 @@ class TPEKernel
 public:
     TPEKernel(const MeshPtr &m, const GeomPtr &g, double alpha, double beta);
     double tpe_pair(GCFace f1, GCFace f2);
-    double tpe_pair(GCFace f1, MassPoint p2);
+    double tpe_pair(GCFace f1, MassNormalPoint p2);
     Vector3 tpe_gradient_pair(GCFace f1, GCFace f2, GCVertex wrt);
     Vector3 tpe_gradient_pair(GCFace f1, MassNormalPoint f2, GCVertex wrt);
     Vector3 tpe_gradient_pair(MassNormalPoint f1, GCFace f2, GCVertex wrt);
