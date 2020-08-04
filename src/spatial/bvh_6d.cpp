@@ -267,28 +267,6 @@ namespace rsurfaces
         return mesh->face(elementID);
     }
 
-    void BVHNode6D::propagateCustomData(Eigen::MatrixXd &data)
-    {
-        if (nodeType == BVHNodeType::Empty)
-        {
-            return;
-        }
-        else if (nodeType == BVHNodeType::Leaf)
-        {
-            customData = GetRow(data, elementID);
-        }
-        else
-        {
-            customData = Vector3{0, 0, 0};
-            for (BVHNode6D *child : children)
-            {
-                child->propagateCustomData(data);
-                customData += child->customData * child->totalMass;
-            }
-            customData /= totalMass;
-        }
-    }
-
     void BVHNode6D::averageDataFromChildren()
     {
         totalMass = 0;

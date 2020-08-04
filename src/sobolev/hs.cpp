@@ -178,19 +178,6 @@ namespace rsurfaces
             MatrixUtils::ColumnIntoMatrix(gradientCol, dest);
         }
 
-        void ProjectViaConvolution(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom)
-        {
-            double s = get_s(alpha, beta);
-            RieszKernel ker(2. - s);
-            Eigen::MatrixXd temp;
-            temp.setZero(dest.rows(), dest.cols());
-            VertexIndices inds = mesh->getVertexIndices();
-
-            ConvolveExact(mesh, geom, ker, gradient, temp);
-            ConvolveExact(mesh, geom, ker, temp, dest);
-            FixBarycenter(mesh, geom, inds, dest);
-        }
-
         void ProjectViaSparse(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D* bvh)
         {
             double s = Hs::get_s(alpha, beta);

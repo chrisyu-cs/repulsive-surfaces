@@ -243,6 +243,23 @@ namespace rsurfaces
       s -= 0.2;
     }
   }
+    
+  class VectorInit {
+      public:
+      static void Init(Vector3 &data, BVHNode6D* node) {
+        data = Vector3{1, 2, 3};
+      }
+  };
+
+  void MainApp::TestPercolation()
+  {
+    SurfaceEnergy *energy = flow->BaseEnergy();
+    energy->Update();
+    BVHNode6D* root = energy->GetBVH();
+
+    DataTree<Vector3>* dtree = root->CreateDataTree<Vector3, VectorInit>();
+    std::cout << dtree->data << std::endl;
+  }
 } // namespace rsurfaces
 
 // UI parameters
@@ -310,6 +327,12 @@ void myCallback()
   if (ImGui::Button("Test LML inverse"))
   {
     rsurfaces::MainApp::instance->TestLML();
+  }
+
+  if (ImGui::Button("Test percolation"))
+  {
+
+    rsurfaces::MainApp::instance->TestPercolation();
   }
 
   if (ImGui::Button("Test mat-vec product"))

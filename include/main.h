@@ -20,6 +20,7 @@ class MainApp
     void TestLML();
     void TestMVProduct();
     void TestHierarchical();
+    void TestPercolation();
 
     void TakeNaiveStep(double t);
     void TakeLineSearchStep();

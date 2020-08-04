@@ -1,6 +1,7 @@
 #pragma once
 
 #include "bvh_types.h"
+#include "data_tree.h"
 
 namespace rsurfaces
 {
@@ -19,7 +20,6 @@ namespace rsurfaces
         Vector3 minCoords;
         Vector3 maxCoords;
         size_t elementID;
-        Vector3 customData;
 
         // Every node knows the root of the tree
         BVHNode6D *bvhRoot;
@@ -44,7 +44,6 @@ namespace rsurfaces
         void printSummary();
         MassNormalPoint GetMassNormalPoint();
         GCFace getSingleFace(MeshPtr &mesh);
-        void propagateCustomData(Eigen::MatrixXd &data);
 
         inline size_t NumElements()
         {
@@ -59,6 +58,22 @@ namespace rsurfaces
             return diag.norm() / d;
         }
 
+        template <typename Data, typename Init = DefaultInit<Data>>
+        DataTree<Data> *CreateDataTree()
+        {
+            DataTree<Data> *droot = new DataTree<Data>(this);
+            Init::Init(droot->data, this);
+            if (nodeType == BVHNodeType::Interior)
+            {
+                for (BVHNode6D *child : children)
+                {
+                    DataTree<Data> *childData = child->CreateDataTree<Data, Init>();
+                    droot->children.push_back(childData);
+                }
+            }
+            return droot;
+        }
+
     private:
         size_t nElements;
         double AxisSplittingPlane(std::vector<MassNormalPoint> &points, int axis);
@@ -68,4 +83,5 @@ namespace rsurfaces
 
     BVHNode6D *Create6DBVHFromMeshFaces(MeshPtr &mesh, GeomPtr &geom, double theta);
     BVHNode6D *Create6DBVHFromMeshVerts(MeshPtr &mesh, GeomPtr &geom, double theta);
+
 } // namespace rsurfaces
