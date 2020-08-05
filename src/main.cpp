@@ -167,6 +167,60 @@ namespace rsurfaces
     std::cout << "Normalized dot product = " << denseRow.dot(hierRow) << std::endl;
   }
 
+  void MainApp::TestBarnesHut() {
+    TPEKernel *tpe = new rsurfaces::TPEKernel(mesh, geom, 6, 12);
+    SurfaceEnergy *energy_ap;
+    SurfaceEnergy *energy_bh;
+    energy_ap = new AllPairsTPEnergy(tpe);
+    energy_bh = new BarnesHutTPEnergy6D(tpe, bh_theta);
+
+    energy_ap->Update();
+    energy_bh->Update();
+
+    Eigen::MatrixXd grad_ap(mesh->nVertices(), 3);
+    Eigen::MatrixXd grad_bh(mesh->nVertices(), 3);
+    grad_ap.setZero();
+    grad_bh.setZero();
+
+    long start_ape = currentTimeMilliseconds();
+    double value_ap = energy_ap->Value();
+    long end_ape = currentTimeMilliseconds();
+
+    long start_bhe = currentTimeMilliseconds();
+    double value_bh = energy_bh->Value();
+    long end_bhe = currentTimeMilliseconds();
+
+    double val_error = fabs(value_ap - value_bh) / value_ap;
+
+    std::cout << "\n=====   Energy   =====" << std::endl;
+    std::cout << "All-pairs energy value = " << value_ap << std::endl;
+    std::cout << "Barnes-Hut energy value = " << value_bh << std::endl;
+    std::cout << "Relative error = " << val_error * 100 << " percent" << std::endl;
+    std::cout << "All-pairs time = " << (end_ape - start_ape) << " ms" << std::endl;
+    std::cout << "Barnes-Hut time = " << (end_bhe - start_bhe) << " ms" << std::endl;
+
+    long start_apg = currentTimeMilliseconds();
+    energy_ap->Differential(grad_ap);
+    long end_apg = currentTimeMilliseconds();
+
+    long start_bhg = currentTimeMilliseconds();
+    energy_bh->Differential(grad_bh);
+    long end_bhg = currentTimeMilliseconds();
+
+    double grad_error = (grad_ap - grad_bh).norm() / grad_ap.norm();
+
+    std::cout << "\n=====  Gradient  =====" << std::endl;
+    std::cout << "All-pairs gradient norm = " << grad_ap.norm() << std::endl;
+    std::cout << "Barnes-Hut gradient norm = " << grad_bh.norm() << std::endl;
+    std::cout << "Relative error = " << grad_error * 100 << " percent" << std::endl;
+    std::cout << "All-pairs time = " << (end_apg - start_apg) << " ms" << std::endl;
+    std::cout << "Barnes-Hut time = " << (end_bhg - start_bhg) << " ms" << std::endl;
+
+    delete energy_ap;
+    delete energy_bh;
+    delete tpe;
+  }
+
   void MainApp::TestMVProduct()
   {
     long gradientStartTime = currentTimeMilliseconds();
@@ -345,6 +399,11 @@ void myCallback()
     rsurfaces::MainApp::instance->TestHierarchical();
   }
 
+  if (ImGui::Button("Test Barnes-Hut"))
+  {
+    rsurfaces::MainApp::instance->TestBarnesHut();
+  }
+
   if (ImGui::Button("Plot gradient"))
   {
     rsurfaces::MainApp::instance->PlotL2Gradient();
@@ -485,6 +544,7 @@ int main(int argc, char **argv)
 
   SurfaceFlow *flow = new SurfaceFlow(energy);
   MainApp::instance = new MainApp(meshShared, geomShared, flow, psMesh);
+  MainApp::instance->bh_theta = theta;
 
   // Give control to the polyscope gui
   polyscope::show();

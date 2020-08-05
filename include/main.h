@@ -21,6 +21,7 @@ class MainApp
     void TestMVProduct();
     void TestHierarchical();
     void TestPercolation();
+    void TestBarnesHut();
 
     void TakeNaiveStep(double t);
     void TakeLineSearchStep();
@@ -31,5 +32,6 @@ class MainApp
     polyscope::SurfaceMesh *psMesh;
     BVHNode6D *vertBVH;
     bool normalizeView;
+    double bh_theta;
 };
 } // namespace rsurfaces
