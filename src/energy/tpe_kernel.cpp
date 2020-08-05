@@ -21,17 +21,7 @@ double TPEKernel::tpe_Kf(Vector3 v1, Vector3 v2, Vector3 n1)
     return numer / denom;
 }
 
-double TPEKernel::tpe_Kf(GCFace f1, GCFace f2)
-{
-    if (f1 == f2)
-    {
-        return 0;
-    }
-    Vector3 n1 = geom->faceNormal(f1);
-    Vector3 v1 = faceBarycenter(geom, f1);
-    Vector3 v2 = faceBarycenter(geom, f2);
-    return tpe_Kf(v1, v2, n1);
-}
+/*
 
 double TPEKernel::tpe_pair(GCFace f1, GCFace f2)
 {
@@ -47,16 +37,6 @@ double TPEKernel::tpe_pair(GCFace f1, MassNormalPoint p2)
     Vector3 v1 = faceBarycenter(geom, f1);
     Vector3 n1 = geom->faceNormal(f1);
     return tpe_Kf(v1, p2.point, n1) * w1 * w2;
-}
-
-inline int sgn_fn(double x)
-{
-    if (x > 0)
-        return 1;
-    else if (x < 0)
-        return -1;
-    else
-        return 0;
 }
 
 Vector3 TPEKernel::tpe_gradient_Kf(GCFace f1, GCFace f2, GCVertex wrt)
@@ -157,6 +137,7 @@ Vector3 TPEKernel::tpe_gradient_Kf(MassNormalPoint f1, GCFace f2, GCVertex wrt)
     double denom = B * B;
     return numer / denom;
 }
+*/
 
 void TPEKernel::numericalTest()
 {
@@ -201,6 +182,7 @@ void TPEKernel::numericalTest()
     std::cout << "average relative diff = " << avg << " percent" << std::endl;
 }
 
+/*
 Vector3 TPEKernel::tpe_gradient_pair(GCFace f1, GCFace f2, GCVertex wrt)
 {
     double Kf = tpe_Kf(f1, f2);
@@ -246,6 +228,7 @@ Vector3 TPEKernel::tpe_gradient_pair(MassNormalPoint f1, GCFace f2, GCVertex wrt
 
     return term1 + term3;
 }
+*/
 
 Vector3 TPEKernel::tpe_gradient_pair_num(GCFace f1, GCFace f2, GCVertex wrt, double eps)
 {

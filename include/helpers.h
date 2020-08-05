@@ -56,7 +56,6 @@ namespace rsurfaces
         }
     }
 
-
     inline void MultiplyByMass(Eigen::MatrixXd &A, MeshPtr const &mesh, GeomPtr const &geom)
     {
         VertexIndices inds = mesh->getVertexIndices();
@@ -86,6 +85,36 @@ namespace rsurfaces
         return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
     }
 
+    inline int sgn_fn(double x)
+    {
+        if (x > 0)
+            return 1;
+        else if (x < 0)
+            return -1;
+        else
+            return 0;
+    }
+
+    inline Vector3 faceNormal(GeomPtr const &geom, GCFace f)
+    {
+        return geom->faceNormal(f);
+    }
+
+    inline Vector3 faceNormal(GeomPtr const &geom, MassNormalPoint f)
+    {
+        return f.normal;
+    }
+
+    inline double faceArea(GeomPtr const &geom, GCFace f)
+    {
+        return geom->faceArea(f);
+    }
+
+    inline double faceArea(GeomPtr const &geom, MassNormalPoint f)
+    {
+        return f.mass;
+    }
+
     inline Vector3 faceBarycenter(GeomPtr const &geom, GCFace f)
     {
         Vector3 sum{0, 0, 0};
@@ -96,6 +125,11 @@ namespace rsurfaces
             count++;
         }
         return sum / count;
+    }
+
+    inline Vector3 faceBarycenter(GeomPtr const &geom, MassNormalPoint f)
+    {
+        return f.point;
     }
 
     inline Vector3 vectorMin(Vector3 v1, Vector3 v2)
