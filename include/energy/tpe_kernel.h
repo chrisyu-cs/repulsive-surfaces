@@ -24,6 +24,9 @@ namespace rsurfaces
         template <typename F1, typename F2>
         double tpe_pair(F1 f1, F2 f2);
 
+        Vector3 tpe_gradient_cluster_center(GCFace f1, MassNormalPoint f2);
+        double tpe_gradient_cluster_mass(GCFace f1, MassNormalPoint f2);
+
         void numericalTest();
 
         MeshPtr mesh;

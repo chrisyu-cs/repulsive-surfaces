@@ -24,7 +24,7 @@ class MainApp
     void TestBarnesHut();
 
     void TakeNaiveStep(double t);
-    void TakeLineSearchStep();
+    void TakeFractionalSobolevStep();
 
     MeshPtr mesh;
     GeomPtr geom;

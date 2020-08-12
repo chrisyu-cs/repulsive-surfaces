@@ -95,6 +95,35 @@ namespace rsurfaces
             return 0;
     }
 
+    inline void scaleMesh(GeomPtr &geom, MeshPtr &mesh, double scale, Vector3 center)
+    {
+        for (GCVertex v : mesh->vertices())
+        {
+            Vector3 disp = geom->inputVertexPositions[v] - center;
+            geom->inputVertexPositions[v] = center + scale * disp;
+        }
+    }
+
+    inline void translateMesh(GeomPtr &geom, MeshPtr &mesh, Vector3 offset)
+    {
+        for (GCVertex v : mesh->vertices())
+        {
+            geom->inputVertexPositions[v] += offset;
+        }
+    }
+
+    inline Vector3 meshBarycenter(GeomPtr const &geom, MeshPtr const &mesh)
+    {
+        Vector3 center{0, 0, 0};
+        double sumWeight = 0;
+        for (GCVertex v : mesh->vertices())
+        {
+            center += geom->inputVertexPositions[v] * geom->vertexDualAreas[v];
+            sumWeight += geom->vertexDualAreas[v];
+        }
+        return center / sumWeight;
+    }
+
     inline Vector3 faceNormal(GeomPtr const &geom, GCFace f)
     {
         return geom->faceNormal(f);
@@ -113,6 +142,34 @@ namespace rsurfaces
     inline double faceArea(GeomPtr const &geom, MassNormalPoint f)
     {
         return f.mass;
+    }
+
+    inline double totalArea(GeomPtr const &geom, MeshPtr const &mesh)
+    {
+        double area = 0;
+        for (GCFace v : mesh->faces())
+        {
+            area += geom->faceArea(v);
+        }
+        return area;
+    }
+
+    inline double faceVolume(GeomPtr const &geom, GCFace f)
+    {
+        Vector3 v1 = geom->inputVertexPositions[f.halfedge().vertex()];
+        Vector3 v2 = geom->inputVertexPositions[f.halfedge().next().vertex()];
+        Vector3 v3 = geom->inputVertexPositions[f.halfedge().next().next().vertex()];
+        return dot(cross(v1, v2), v3);
+    }
+
+    inline double totalVolume(GeomPtr const &geom, MeshPtr const &mesh)
+    {
+        double area = 0;
+        for (GCFace f : mesh->faces())
+        {
+            area += faceVolume(geom, f);
+        }
+        return area;
     }
 
     inline Vector3 faceBarycenter(GeomPtr const &geom, GCFace f)

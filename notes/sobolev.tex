@@ -34,6 +34,8 @@ K_f(S, T) = \frac{\abs{\inner{N_f(S), X_f(S) - X_f(T)}}^{\alpha}}{\norm{X_f(S) -
 \end{equation}
 Because there is a unique normal direction, it suffices to use the inner product with the normal, instead of the cross product (as we used for curves). Here we use $X_f(S)$ and $X_f(T)$ to denote the barycenters of triangles $S$ and $T$ under the embedding $f$.
 
+The full energy is then defined as a double sum over faces $$E_M(f) = \sum_{S \in M} \sum_{T \in M} K_f(S, T) A_S A_T$$ where $A_S$ denotes the area of face $S$.
+
 \subsection{Differential}
 
 Let $A$ be the numerator of $K_f(S, T)$, and let $B$ be the denominator. Then we just need $\ddx A$ and $\ddx B$ to be able to assemble the full differential $\ddx K_f(S, T)$ using the product rule, where $x$ is a vertex position.
@@ -63,6 +65,13 @@ Next, we differentiate $B$:
 Finally, we just write down the quotient rule:
 $$\ddx K_f(S, T) = \ddx \frac{A}{B} = \frac{(\ddx A) B - (\ddx B) A}{B^2}$$
 
+This gives the derivative of the kernel. The derivative of the full energy then entails using the product rule on the kernel and the two area terms.
+
+\section{Sobolev preconditioning}
+
+On a practical level, Sobolev preconditioning means using an operator $G$ to obtain an improved search direction $x$ by solving the linear system $$G\dot{f} = \nabla_f E(f).$$
+
+$$\Delta^{-s} = (\Delta^{-1}) (\Delta^{2-s}) (\Delta^{-1})$$
 
 \end{document}
 

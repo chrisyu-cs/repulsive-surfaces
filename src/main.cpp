@@ -45,9 +45,9 @@ namespace rsurfaces
     flow->StepNaive(t);
   }
 
-  void MainApp::TakeLineSearchStep()
+  void MainApp::TakeFractionalSobolevStep()
   {
-    flow->StepLineSearch();
+    flow->StepFractionalSobolev(Preserve::Nothing);
   }
 
   void MainApp::updatePolyscopeMesh()
@@ -364,7 +364,7 @@ void myCallback()
 
   if (ImGui::Button("Take step") || run)
   {
-    rsurfaces::MainApp::instance->TakeLineSearchStep();
+    rsurfaces::MainApp::instance->TakeFractionalSobolevStep();
     // rsurfaces::MainApp::instance->TakeNaiveStep(0.01);
     rsurfaces::MainApp::instance->updatePolyscopeMesh();
     if (takeScreenshots)
