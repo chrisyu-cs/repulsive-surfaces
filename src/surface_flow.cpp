@@ -76,8 +76,8 @@ namespace rsurfaces
         Vector2 alpha_beta = energy->GetExponents();
 
         // H1::ProjectGradient(gradient, gradientProj, mesh, geom, false);
-        // Hs::ProjectGradient(gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom);
-        Hs::ProjectViaSparse(gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH());
+        Hs::ProjectGradient(gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom);
+        // Hs::ProjectViaSparse(gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH());
         // gradientProj = gradient;
         long timeProject = currentTimeMilliseconds();
         double gProjNorm = gradientProj.norm();

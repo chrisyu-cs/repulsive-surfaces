@@ -162,7 +162,8 @@ namespace rsurfaces
             M.setZero(dims, dims);
             FillMatrixHigh(M_small, get_s(alpha, beta), mesh, geom);
             // Add single row in small block for barycenter
-            Constraints::addBarycenterEntries(M_small, mesh, geom, nVerts);
+            Constraints::BarycenterConstraint bconstraint;
+            Constraints::addEntriesToSymmetric(bconstraint, M_small, mesh, geom, nVerts);
             // Reduplicate entries 3x along diagonals; barycenter row gets tripled
             MatrixUtils::TripleMatrix(M_small, M);
             // Add rows for scaling to tripled block
@@ -171,21 +172,21 @@ namespace rsurfaces
             // Flatten the gradient into a single column
             Eigen::VectorXd gradientCol;
             gradientCol.setZero(dims);
-            MatrixUtils::MatrixIntoColumn(gradient, gradientCol);
 
-            // Invert the metric, and write it into the destination
+            MatrixUtils::MatrixIntoColumn(gradient, gradientCol);
             MatrixUtils::SolveDenseSystem(M, gradientCol, gradientCol);
             MatrixUtils::ColumnIntoMatrix(gradientCol, dest);
         }
 
-        void ProjectViaSparse(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D* bvh)
+        void ProjectViaSparse(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh)
         {
             double s = Hs::get_s(alpha, beta);
 
             // Assemble the cotan Laplacian
             std::vector<Triplet> triplets, triplets3x;
             H1::getTriplets(triplets, mesh, geom);
-            Constraints::addBarycenterTriplets(triplets, mesh, geom, mesh->nVertices());
+            Constraints::BarycenterConstraint bconstraint;
+            Constraints::addTripletsToSymmetric(bconstraint, triplets, mesh, geom, mesh->nVertices());
             MatrixUtils::TripleTriplets(triplets, triplets3x);
             // Pre-factorize the cotan Laplacian
             Eigen::SparseMatrix<double> L(3 * mesh->nVertices() + 3, 3 * mesh->nVertices() + 3);
@@ -200,7 +201,8 @@ namespace rsurfaces
             MatrixUtils::MatrixIntoColumn(gradient, gradientRow);
             gradientRow = L_inv.solve(gradientRow);
 
-            if (!bvh) {
+            if (!bvh)
+            {
                 std::cout << "  * Assembling dense matrix to multiply" << std::endl;
                 // Multiply by L^{2 - s}, a fractional Laplacian; this has order 4 - 2s
                 Eigen::MatrixXd M, M3;
@@ -211,7 +213,8 @@ namespace rsurfaces
                 gradientRow = M3 * gradientRow;
             }
 
-            else {
+            else
+            {
                 std::cout << "  * Using block cluster tree to multiply" << std::endl;
                 BlockClusterTree *bct = new BlockClusterTree(mesh, geom, bvh, 0.5, 4 - 2 * s);
                 bct->MultiplyVector3(gradientRow, gradientRow);
@@ -221,6 +224,12 @@ namespace rsurfaces
             // Multiply by L^{-1} again by solving Lx = b
             gradientRow = L_inv.solve(gradientRow);
             MatrixUtils::ColumnIntoMatrix(gradientRow, dest);
+        }
+
+        void ProjectViaSchur(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh)
+        {
+            const int consRows = 5;
+
         }
     } // namespace Hs
 
