@@ -112,6 +112,17 @@ namespace rsurfaces
         }
     }
 
+    inline double MeanCurvature(GCVertex v, MeshPtr &mesh, GeomPtr &geom)
+    {
+        double sum = 0;
+        for (GCEdge e : v.adjacentEdges())
+        {
+            double dih = geom->edgeDihedralAngles[e];
+            sum += dih * geom->edgeLength(e);
+        }
+        return sum / 4;
+    }
+
     inline Vector3 meshBarycenter(GeomPtr const &geom, MeshPtr const &mesh)
     {
         Vector3 center{0, 0, 0};
@@ -142,6 +153,27 @@ namespace rsurfaces
     inline double faceArea(GeomPtr const &geom, MassNormalPoint f)
     {
         return f.mass;
+    }
+
+    inline Vector3 vectorOfHalfedge(GeomPtr const &geom, GCHalfedge he)
+    {
+        // Vector points from tail to head
+        return geom->inputVertexPositions[he.twin().vertex()] - geom->inputVertexPositions[he.vertex()];
+    }
+
+    inline Vector3 areaWeightedNormal(GeomPtr const &geom, GCVertex v)
+    {
+        Vector3 sum{0, 0, 0};
+        for (GCFace f : v.adjacentFaces())
+        {
+            // Get two vectors from the face
+            Vector3 e1 = vectorOfHalfedge(geom, f.halfedge());
+            Vector3 e2 = vectorOfHalfedge(geom, f.halfedge().next());
+            // Area-weighted normal is 1/2 cross product of the two edges
+            Vector3 AN = cross(e1, e2) / 2;
+            sum += AN;
+        }
+        return sum;
     }
 
     inline double totalArea(GeomPtr const &geom, MeshPtr const &mesh)

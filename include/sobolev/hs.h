@@ -2,9 +2,11 @@
 
 #include "rsurface_types.h"
 #include "matrix_utils.h"
+#include "constraints.h"
 
 namespace rsurfaces
 {
+    using Constraints::ConstraintBase;
 
     namespace Hs
     {
@@ -17,7 +19,9 @@ namespace rsurfaces
 
         void ProjectGradient(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom);
         void ProjectViaSparse(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D* bvh);
-        void ProjectViaSchur(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D* bvh);
+        void ProjectViaSparse(Eigen::VectorXd &gradient, Eigen::VectorXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D* bvh);
+        void ProjectViaSchur(std::vector<ConstraintBase*> constraints, Eigen::MatrixXd &gradient,
+            Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D* bvh);
 
         inline double MetricDistanceTerm(double s, Vector3 v1, Vector3 v2)
         {

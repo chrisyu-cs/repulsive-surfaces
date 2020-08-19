@@ -1,6 +1,6 @@
 #include "sobolev/h1.h"
 #include "helpers.h"
-#include "sobolev/constraints.h"
+#include "sobolev/all_constraints.h"
 
 namespace rsurfaces
 {

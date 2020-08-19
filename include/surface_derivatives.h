@@ -157,6 +157,17 @@ namespace rsurfaces
             Vector3 N = geom->faceNormal(face);
             return cross(N, u) / 2.0;
         }
+
+        inline Vector3 meanCurvatureNormal(GCVertex v, GeomPtr &geom)
+        {
+            Vector3 sum{0, 0, 0};
+            for (GCFace f : v.adjacentFaces())
+            {
+                Vector3 aGrad = triangleAreaWrtVertex(geom, f, v);
+                sum += aGrad;
+            }
+            return sum;
+        }
     }; // namespace SurfaceDerivs
 
 } // namespace rsurfaces

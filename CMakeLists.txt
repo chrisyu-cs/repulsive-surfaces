@@ -73,6 +73,8 @@ set(SRCS
   src/sobolev/h1.cpp
   src/sobolev/hs.cpp
   src/sobolev/constraints.cpp
+  src/sobolev/constraints/barycenter.cpp
+  src/sobolev/constraints/scaling.cpp
   src/spatial/bvh_6d.cpp
   src/spatial/convolution_kernel.cpp
   src/block_cluster_tree.cpp

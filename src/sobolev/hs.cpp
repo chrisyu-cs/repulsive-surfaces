@@ -1,6 +1,6 @@
 #include "sobolev/hs.h"
 #include "helpers.h"
-#include "sobolev/constraints.h"
+#include "sobolev/all_constraints.h"
 #include "spatial/convolution.h"
 #include "spatial/convolution_kernel.h"
 #include "sobolev/h1.h"
@@ -180,6 +180,19 @@ namespace rsurfaces
 
         void ProjectViaSparse(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh)
         {
+            // Reshape the gradient N x 3 matrix into a 3N-vector.
+            Eigen::VectorXd gradientCol;
+            gradientCol.setZero(3 * mesh->nVertices() + 3);
+            MatrixUtils::MatrixIntoColumn(gradient, gradientCol);
+
+            ProjectViaSparse(gradientCol, gradientCol, alpha, beta, mesh, geom, bvh);
+
+            // Reshape it back into the output N x 3 matrix.
+            MatrixUtils::ColumnIntoMatrix(gradientCol, dest);
+        }
+
+        void ProjectViaSparse(Eigen::VectorXd &gradientCol, Eigen::VectorXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh)
+        {
             double s = Hs::get_s(alpha, beta);
 
             // Assemble the cotan Laplacian
@@ -194,12 +207,8 @@ namespace rsurfaces
             Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> L_inv;
             L_inv.compute(L);
 
-            Eigen::VectorXd gradientRow;
-            gradientRow.setZero(3 * mesh->nVertices() + 3);
-
             // Multiply by L^{-1} once by solving Lx = b
-            MatrixUtils::MatrixIntoColumn(gradient, gradientRow);
-            gradientRow = L_inv.solve(gradientRow);
+            gradientCol = L_inv.solve(gradientCol);
 
             if (!bvh)
             {
@@ -210,26 +219,100 @@ namespace rsurfaces
                 M3.setZero(3 * mesh->nVertices() + 3, 3 * mesh->nVertices() + 3);
                 Hs::FillMatrixFracOnly(M, 4 - 2 * s, mesh, geom);
                 MatrixUtils::TripleMatrix(M, M3);
-                gradientRow = M3 * gradientRow;
+                gradientCol = M3 * gradientCol;
             }
 
             else
             {
                 std::cout << "  * Using block cluster tree to multiply" << std::endl;
                 BlockClusterTree *bct = new BlockClusterTree(mesh, geom, bvh, 0.5, 4 - 2 * s);
-                bct->MultiplyVector3(gradientRow, gradientRow);
+                bct->MultiplyVector3(gradientCol, gradientCol);
                 delete bct;
             }
 
             // Multiply by L^{-1} again by solving Lx = b
-            gradientRow = L_inv.solve(gradientRow);
-            MatrixUtils::ColumnIntoMatrix(gradientRow, dest);
+            dest = L_inv.solve(gradientCol);
         }
 
-        void ProjectViaSchur(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh)
+        void ProjectViaSchur(std::vector<ConstraintBase *> constraints, Eigen::MatrixXd &gradient,
+                             Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh)
         {
-            const int consRows = 5;
+            size_t nVerts = mesh->nVertices();
+            size_t nRows = 0;
+            // Figure out how many rows the constraint block is
+            for (ConstraintBase *c : constraints)
+            {
+                nRows += c->nRows();
+            }
 
+            if (nRows == 0) {
+                std::cout << "No constraints provided to Schur complement method." << std::endl;
+                throw 1;
+            }
+
+            Eigen::MatrixXd C;
+            C.setZero(nRows, 3 * nVerts + 3);
+            size_t curRow = 0;
+            // Fill in the constraint block by getting the entries for each constraint
+            // while incrementing the rows
+            for (ConstraintBase *c : constraints)
+            {
+                c->addEntries(C, mesh, geom, curRow);
+                curRow += c->nRows();
+            }
+
+            // https://en.wikipedia.org/wiki/Schur_complement
+            // We want to compute (M/A) = D - C A^{-1} B.
+            // In our case, D = 0, and B = C^T, so this is C A^{-1} C^T.
+            // Unfortunately this means we have to apply A^{-1} once for each column of C^T,
+            // which could get expensive if we have too many constraints.
+
+            // First allocate some space for a single column
+            Eigen::VectorXd curCol;
+            curCol.setZero(3 * nVerts + 3);
+            // And some space for A^{-1} C^T
+            Eigen::MatrixXd A_inv_CT;
+            A_inv_CT.setZero(3 * nVerts + 3, nRows);
+
+            // For each column, copy it into curCol, and do the solve for A^{-1}
+            for (size_t r = 0; r < nRows; r++)
+            {
+                // Copy the row of C into the column
+                for (size_t i = 0; i < 3 * nVerts; i++)
+                {
+                    curCol(i) = C(r, i);
+                }
+                ProjectViaSparse(curCol, curCol, alpha, beta, mesh, geom, bvh);
+                // Copy the column into the column of A^{-1} C^T
+                for (size_t i = 0; i < 3 * nVerts + 3; i++)
+                {
+                    A_inv_CT(i, r) = curCol(i);
+                }
+            }
+
+            // Now we've multiplied A^{-1} C^T, so just multiply this with C and negate it
+            Eigen::MatrixXd M_A = -C * A_inv_CT;
+
+            // We can do the actual inversion of the "saddle matrix" now:
+            // the block of M^{-1} we want is A^{-1} + A^{-1} B (M/A)^{-1} C A^{-1}
+
+            // Reuse curCol to store A^{-1} x
+            curCol.setZero();
+            MatrixUtils::MatrixIntoColumn(gradient, curCol);
+            ProjectViaSparse(curCol, curCol, alpha, beta, mesh, geom, bvh);
+
+            // Now we compute the correction.
+            // Again we already have A^{-1} once, so no need to recompute it
+            Eigen::VectorXd C_Ai_x = C * curCol;
+            Eigen::VectorXd MAi_C_Ai_x;
+            MAi_C_Ai_x.setZero(C_Ai_x.rows());
+            MatrixUtils::SolveDenseSystem(M_A, C_Ai_x, MAi_C_Ai_x);
+            Eigen::VectorXd B_MAi_C_Ai_x = C.transpose() * MAi_C_Ai_x;
+            // Apply A^{-1} from scratch one more time
+            ProjectViaSparse(B_MAi_C_Ai_x, B_MAi_C_Ai_x, alpha, beta, mesh, geom, bvh);
+
+            curCol = curCol + B_MAi_C_Ai_x;
+            MatrixUtils::ColumnIntoMatrix(curCol, dest);
         }
     } // namespace Hs
 
