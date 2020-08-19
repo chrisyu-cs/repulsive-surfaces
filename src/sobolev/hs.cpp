@@ -228,8 +228,14 @@ namespace rsurfaces
             else
             {
                 std::cout << "  * Using block cluster tree to multiply" << std::endl;
+                long bctConstructStart = currentTimeMilliseconds();
                 BlockClusterTree *bct = new BlockClusterTree(mesh, geom, bvh, 0.5, 4 - 2 * s);
+                long bctConstructEnd = currentTimeMilliseconds();
                 bct->MultiplyVector3(gradientCol, gradientCol);
+                long bctMultEnd = currentTimeMilliseconds();
+
+                std::cout << "    * BCT construction = " << (bctConstructEnd - bctConstructStart) << " ms" << std::endl;
+                std::cout << "    * BCT multiply = " << (bctMultEnd - bctConstructEnd) << " ms" << std::endl;
                 delete bct;
             }
 

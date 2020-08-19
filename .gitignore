@@ -1,6 +1,7 @@
 # Data
 *.mp4
 *.ttf
+notes/
 
 # Build directories
 build/

@@ -1,0 +1,95 @@
+\documentclass[11pt]{article}
+
+\usepackage{texyousei}
+\usepackage{tabularx}
+
+\lhead{}
+\chead{The Schur Complement for Fractional Sobolev Preconditioning}
+\rhead{}
+
+\usepackage{comment}
+\excludecomment{oops}
+
+\setlength{\leftmargini}{0.3in}
+
+\DeclarePairedDelimiter{\inner}{\langle}{\rangle}
+\newcommand{\ddx}{\frac{d}{dx}}
+\newcommand{\ddy}{\frac{d}{dy}}
+\newcommand{\ddn}{\frac{d}{dn}}
+\newcommand{\ddm}{\frac{d}{dm}}
+\newcommand{\sgn}[1]{\ \textrm{sgn}\left(#1\right)}
+\newcommand{\calDf}{\mathcal{D}_f}
+
+\begin{document}
+
+\maketitle{The Schur Complement for Fractional Laplacians}{}
+
+\thispagestyle{empty}
+
+\section{Fractional Laplacian inverse approximation}
+\label{sec:FractionalLaplacianInverseApproximation}
+
+Recall that we now have a relatively efficient way to invert the fractional Laplacian $\Delta^{s}$ by factoring the inverse as $(\Delta^{-1}) (\Delta^{2 - s}) (\Delta^{-1})$; the two occurrences of $\Delta^{-1}$ are then be assembled as sparse cotan Laplacians, while the middle term has a positive power $2-s$ and can therefore be multiplied using hierarchical matrices. From here on, let $A = \Delta^{s}$, let $A^{-1} = (\Delta^{-1}) (\Delta^{2 - s}) (\Delta^{-1})$, and assume that we can multiply with $A^{-1}$ as a black box.
+
+\section{The Schur complement}
+
+For a general block matrix
+$$M = 
+\left[
+\begin{array}{cc}
+A & B \\
+C & D
+\end{array}
+\right]
+$$
+the Schur complement of the block $A$ is defined by $$M / A = D - C A^{-1} B.$$ Note that if $C$ has dimensions $k \times n$, then $M / A$ has dimensions $k \times k$. Then, if $A$ is invertible, then we have the following block expression for the inverse of $M$:
+$$
+M^{-1} = \left[
+\begin{array}{cc}
+A^{-1} + A^{-1} B (M / A)^{-1} C A^{-1} & -A^{-1} B (M / A)^{-1} \\
+-(M / A)^{-1} C A^{-1} & (M / A)^{-1}
+\end{array}
+\right]
+$$
+Thus, in theory, we can invert the whole matrix $M$ by only inverting $A$ and $(M/A)$. (Analogous expressions exist for the complement $(M/D)$, but these expressions are not useful to us.)
+
+\subsection{Application to the fractional Laplacian}
+
+We would like to invert the saddle matrix
+$$G = 
+\left[
+\begin{array}{cc}
+A & C^T \\
+C & 0
+\end{array}
+\right]
+$$
+where $C$ is a $k \times 3|V|$ matrix whose rows contain the differentials of $k$ real-valued constraint functions, or alternatively, $C$ is the Jacobian of a constraint function $\Phi : \R^{3|V|} \to \R^k$.
+
+Then, the expression for the complement becomes $$G / A = -C A^{-1} C^{\top}.$$ Note that we only have the ability to multiply $A^{-1}$ with column vectors, so we will have to apply the approximation from Section \ref{sec:FractionalLaplacianInverseApproximation} once per column of $C^{\top}$, or in other words, once per constraint.
+
+As for the inverse, the only block that we need to apply is the top-left block, as this is the only block that contributes to the projected gradient; the other blocks either contribute to Lagrange multipliers that are unneeded for the flow, or are multiplied with entries that are always zero in the input. Thus, we only need the expression for the top-left block, which becomes $$A^{-1} + A^{-1} C^{\top} (M/A)^{-1} C A^{-1}.$$ We cannot assemble this block explicitly (nor would we want to for efficiency reasons), but we can multiply by this block by applying each of the operators in order, producing the expression $$G^{-1} x = A^{-1} x + A^{-1} C^{\top} (M / A)^{-1} C A^{-1} x.$$ This has the appearance of a ``correction'' being applied to the otherwise unconstrained projection $A^{-1} x$. Though $A^{-1}$ occurs 3 times in this expression, we only need to apply $A^{-1}$ twice, since the initial value of $A^{-1}x$ can be reused for both terms.
+
+We do need to invert $(M/A)$, which is a dense matrix. However, it is of size $k \times k$, matching the number of real-valued constraints, so as long as this number is a small constant, the cost is negligible. Importantly, though, this means that this method will not scale to larger numbers of constraints (e.g. one constraint per triangle).
+
+\subsection{Barycenter constraints}
+
+At first, it seems reasonable to include barycenter constraints in the rows of $C$; this matches the way in which we've traditionally organized the saddle matrix in the past. But in fact, there is no need to do this. The above expressions for the Schur complement require that $A$ is invertible, and because $A$ is a fractional Laplacian, this is only true if we augment $A$ itself with barycenter constraints to factor out the null space of translations. This is exactly what we do with the approximation of Section \ref{sec:FractionalLaplacianInverseApproximation} -- we include barycenter constraints on the two integer Laplacians to make them invertible.
+
+As such, including barycenter constraints in $C$ would not only be redundant, but would also require three additional applications of $A^{-1}$ as part of evaluating $A^{-1}C^{\top}$. Conceptually, we can instead organize the saddle matrix this way: 
+$$
+\left[
+\begin{array}{cc}
+\left[
+\begin{array}{cc}
+A & B^{\top} \\
+B & 0
+\end{array}\right] & C^{\top} \\
+C & 0
+\end{array}
+\right]
+$$
+where $B$ specifically corresponds to the rows for the barycenter constraint, and $C$ contains all the other constraints. Thus, the same saddle matrix is being inverted, but we save on applications of $A^{-1}$ by handling $B$ with the fractional Laplacian itself -- which we would need to do anyway to make it invertible.
+
+\end{document}
+

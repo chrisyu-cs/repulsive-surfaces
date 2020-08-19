@@ -75,6 +75,8 @@ set(SRCS
   src/sobolev/constraints.cpp
   src/sobolev/constraints/barycenter.cpp
   src/sobolev/constraints/scaling.cpp
+  src/sobolev/constraints/total_area.cpp
+  src/sobolev/constraints/total_volume.cpp
   src/spatial/bvh_6d.cpp
   src/spatial/convolution_kernel.cpp
   src/block_cluster_tree.cpp

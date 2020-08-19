@@ -42,24 +42,13 @@ namespace rsurfaces
         std::cout << "Energy: " << energyBefore << " -> " << energyAfter << std::endl;
     }
 
-    void SurfaceFlow::StepFractionalSobolev(Preserve p_what)
+    void SurfaceFlow::StepFractionalSobolev()
     {
-
         stepCount++;
         std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
         energy->Update();
-        double initArea = 0;
-
-        if (p_what == Preserve::Area)
-        {
-            initArea = totalArea(geom, mesh);
-            std::cout << "  * Total surface area = " << initArea << std::endl;
-        }
-        else if (p_what == Preserve::Volume)
-        {
-            initArea = totalVolume(geom, mesh);
-            std::cout << "  * Total volume = " << initArea << std::endl;
-        }
+        double initArea = totalArea(geom, mesh);
+        double initVolume = totalVolume(geom, mesh);
 
         double energyBefore = energy->Value();
         long timeStart = currentTimeMilliseconds();
@@ -77,7 +66,8 @@ namespace rsurfaces
 
         // H1::ProjectGradient(gradient, gradientProj, mesh, geom, false);
         // Hs::ProjectGradient(gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom);
-        Hs::ProjectViaSparse(gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH());
+        // Hs::ProjectViaSparse(gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH());
+        Hs::ProjectViaSchur(constraints, gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH());
         // gradientProj = gradient;
         long timeProject = currentTimeMilliseconds();
         double gProjNorm = gradientProj.norm();
@@ -106,15 +96,6 @@ namespace rsurfaces
         std::cout << "  * Line search: " << (timeLS - timeProject) << " ms" << std::endl;
 
         RecenterMesh();
-        if (p_what == Preserve::Area)
-        {
-            RescaleToPreserveArea(initArea);
-        }
-        if (p_what == Preserve::Volume)
-        {
-            RescaleToPreserveVolume(initArea);
-        }
-
         long timeEnd = currentTimeMilliseconds();
         double energyAfter = energy->Value();
 
@@ -122,6 +103,12 @@ namespace rsurfaces
 
         std::cout << "  Total time: " << (timeEnd - timeStart) << " ms" << std::endl;
         std::cout << "  Energy: " << energyBefore << " -> " << energyAfter << std::endl;
+
+        double finalArea = totalArea(geom, mesh);
+        double finalVolume = totalVolume(geom, mesh);
+
+        std::cout << "Area:   " << initArea << " -> " << finalArea << std::endl;
+        std::cout << "Volume: " << initVolume << " -> " << finalVolume << std::endl;
     }
 
     void SurfaceFlow::RecenterMesh()

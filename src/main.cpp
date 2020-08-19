@@ -16,7 +16,7 @@
 
 #include <Eigen/Sparse>
 
-#include "sobolev/constraints.h"
+#include "sobolev/all_constraints.h"
 #include "sobolev/hs.h"
 #include "sobolev/h1.h"
 #include "spatial/convolution.h"
@@ -47,7 +47,7 @@ namespace rsurfaces
 
   void MainApp::TakeFractionalSobolevStep()
   {
-    flow->StepFractionalSobolev(Preserve::Nothing);
+    flow->StepFractionalSobolev();
   }
 
   void MainApp::updatePolyscopeMesh()
@@ -543,6 +543,8 @@ int main(int argc, char **argv)
   }
 
   SurfaceFlow *flow = new SurfaceFlow(energy);
+  flow->addConstraint<Constraints::TotalVolumeConstraint>();
+  flow->addConstraint<Constraints::TotalAreaConstraint>();
   MainApp::instance = new MainApp(meshShared, geomShared, flow, psMesh);
   MainApp::instance->bh_theta = theta;
 
