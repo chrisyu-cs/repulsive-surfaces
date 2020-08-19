@@ -198,14 +198,17 @@ namespace rsurfaces
             // Assemble the cotan Laplacian
             std::vector<Triplet> triplets, triplets3x;
             H1::getTriplets(triplets, mesh, geom);
+            // Add a constraint row / col corresponding to barycenter weights
             Constraints::BarycenterConstraint bconstraint;
             Constraints::addTripletsToSymmetric(bconstraint, triplets, mesh, geom, mesh->nVertices());
+            // Expand the matrix by 3x
             MatrixUtils::TripleTriplets(triplets, triplets3x);
             // Pre-factorize the cotan Laplacian
             Eigen::SparseMatrix<double> L(3 * mesh->nVertices() + 3, 3 * mesh->nVertices() + 3);
             L.setFromTriplets(triplets3x.begin(), triplets3x.end());
             Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> L_inv;
             L_inv.compute(L);
+
 
             // Multiply by L^{-1} once by solving Lx = b
             gradientCol = L_inv.solve(gradientCol);

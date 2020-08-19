@@ -24,7 +24,7 @@ namespace rsurfaces
         void addTripletsToSymmetric(ConstraintBase &cs, std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow)
         {
             std::vector<Triplet> block;
-            cs.addTriplets(triplets, mesh, geom, 0);
+            cs.addTriplets(block, mesh, geom, 0);
 
             for (Triplet t : block)
             {
