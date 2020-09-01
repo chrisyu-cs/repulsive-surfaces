@@ -1,10 +1,16 @@
 #include "sobolev/constraints/total_area.h"
 #include "surface_derivatives.h"
+#include "helpers.h"
 
 namespace rsurfaces
 {
     namespace Constraints
     {
+        TotalAreaConstraint::TotalAreaConstraint(MeshPtr &mesh, GeomPtr &geom)
+        {
+            initValue = totalArea(geom, mesh);
+        }
+
         size_t TotalAreaConstraint::nRows()
         {
             return 1;
@@ -37,6 +43,12 @@ namespace rsurfaces
                 M(baseRow, i3 + 1) = normal_v.y;
                 M(baseRow, i3 + 2) = normal_v.z;
             }
+        }
+
+        void TotalAreaConstraint::addValue(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        {
+            double current = totalArea(geom, mesh);
+            V(baseRow) = current - initValue;
         }
 
     } // namespace Constraints

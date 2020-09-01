@@ -209,7 +209,6 @@ namespace rsurfaces
             Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> L_inv;
             L_inv.compute(L);
 
-
             // Multiply by L^{-1} once by solving Lx = b
             gradientCol = L_inv.solve(gradientCol);
 
@@ -243,30 +242,31 @@ namespace rsurfaces
             dest = L_inv.solve(gradientCol);
         }
 
-        void ProjectViaSchur(std::vector<ConstraintBase *> constraints, Eigen::MatrixXd &gradient,
-                             Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh)
+        void GetSchurComplement(std::vector<ConstraintBase *> constraints, double alpha, double beta,
+                                MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh, SchurComplement &dest)
         {
             size_t nVerts = mesh->nVertices();
             size_t nRows = 0;
+
             // Figure out how many rows the constraint block is
             for (ConstraintBase *c : constraints)
             {
                 nRows += c->nRows();
             }
-
-            if (nRows == 0) {
-                std::cout << "No constraints provided to Schur complement method." << std::endl;
+            if (nRows == 0)
+            {
+                std::cout << "No constraints provided to Schur complement." << std::endl;
                 throw 1;
             }
 
-            Eigen::MatrixXd C;
-            C.setZero(nRows, 3 * nVerts + 3);
+            dest.C.setZero(nRows, 3 * nVerts + 3);
             size_t curRow = 0;
+
             // Fill in the constraint block by getting the entries for each constraint
             // while incrementing the rows
             for (ConstraintBase *c : constraints)
             {
-                c->addEntries(C, mesh, geom, curRow);
+                c->addEntries(dest.C, mesh, geom, curRow);
                 curRow += c->nRows();
             }
 
@@ -289,7 +289,7 @@ namespace rsurfaces
                 // Copy the row of C into the column
                 for (size_t i = 0; i < 3 * nVerts; i++)
                 {
-                    curCol(i) = C(r, i);
+                    curCol(i) = dest.C(r, i);
                 }
                 ProjectViaSparse(curCol, curCol, alpha, beta, mesh, geom, bvh);
                 // Copy the column into the column of A^{-1} C^T
@@ -300,29 +300,66 @@ namespace rsurfaces
             }
 
             // Now we've multiplied A^{-1} C^T, so just multiply this with C and negate it
-            Eigen::MatrixXd M_A = -C * A_inv_CT;
+            dest.M_A = -dest.C * A_inv_CT;
+        }
 
-            // We can do the actual inversion of the "saddle matrix" now:
-            // the block of M^{-1} we want is A^{-1} + A^{-1} B (M/A)^{-1} C A^{-1}
+        void ProjectViaSchur(SchurComplement &comp, Eigen::MatrixXd &gradient,
+                             Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh)
+        {
+            size_t nVerts = mesh->nVertices();
+            // Invert the "saddle matrix" now:
+            // the block of M^{-1} we want is A^{-1} + A^{-1} C^T (M/A)^{-1} C A^{-1}
 
             // Reuse curCol to store A^{-1} x
-            curCol.setZero();
+            // First allocate some space for a single column
+            Eigen::VectorXd curCol;
+            curCol.setZero(3 * nVerts + 3);
             MatrixUtils::MatrixIntoColumn(gradient, curCol);
             ProjectViaSparse(curCol, curCol, alpha, beta, mesh, geom, bvh);
 
             // Now we compute the correction.
             // Again we already have A^{-1} once, so no need to recompute it
-            Eigen::VectorXd C_Ai_x = C * curCol;
+            Eigen::VectorXd C_Ai_x = comp.C * curCol;
             Eigen::VectorXd MAi_C_Ai_x;
             MAi_C_Ai_x.setZero(C_Ai_x.rows());
-            MatrixUtils::SolveDenseSystem(M_A, C_Ai_x, MAi_C_Ai_x);
-            Eigen::VectorXd B_MAi_C_Ai_x = C.transpose() * MAi_C_Ai_x;
+            MatrixUtils::SolveDenseSystem(comp.M_A, C_Ai_x, MAi_C_Ai_x);
+            Eigen::VectorXd B_MAi_C_Ai_x = comp.C.transpose() * MAi_C_Ai_x;
             // Apply A^{-1} from scratch one more time
             ProjectViaSparse(B_MAi_C_Ai_x, B_MAi_C_Ai_x, alpha, beta, mesh, geom, bvh);
 
             curCol = curCol + B_MAi_C_Ai_x;
             MatrixUtils::ColumnIntoMatrix(curCol, dest);
         }
-    } // namespace Hs
 
+        void BackprojectViaSchur(std::vector<ConstraintBase *> constraints, SchurComplement &comp,
+                                 double alpha, double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh)
+        {
+            size_t nRows = comp.M_A.rows();
+            Eigen::VectorXd vals(nRows);
+            int curRow = 0;
+            for (ConstraintBase *c : constraints)
+            {
+                c->addValue(vals, mesh, geom, curRow);
+                curRow += c->nRows();
+            }
+            // In this case we want the block of the inverse that multiplies the bottom block
+            // -A^{-1} B (M/A)^{-1}, where B = C^T
+            // Apply (M/A) inverse first
+            MatrixUtils::SolveDenseSystem(comp.M_A, vals, vals);
+            // Apply C^T
+            Eigen::VectorXd correction = comp.C.transpose() * vals;
+            // Apply A^{-1}
+            ProjectViaSparse(correction, correction, alpha, beta, mesh, geom, bvh);
+
+            // Apply the correction to the vertex positions
+            VertexIndices verts = mesh->getVertexIndices();
+            size_t nVerts = mesh->nVertices();
+            for (GCVertex v : mesh->vertices())
+            {
+                int base = 3 * verts[v];
+                Vector3 vertCorr{correction(base), correction(base + 1), correction(base + 2)};
+                geom->inputVertexPositions[v] += vertCorr;
+            }
+        }
+    } // namespace Hs
 } // namespace rsurfaces

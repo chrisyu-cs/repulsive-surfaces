@@ -67,8 +67,10 @@ namespace rsurfaces
         // H1::ProjectGradient(gradient, gradientProj, mesh, geom, false);
         // Hs::ProjectGradient(gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom);
         // Hs::ProjectViaSparse(gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH());
-        Hs::ProjectViaSchur(constraints, gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH());
-        // gradientProj = gradient;
+        Hs::SchurComplement comp;
+        Hs::GetSchurComplement(constraints, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH(), comp);
+        Hs::ProjectViaSchur(comp, gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH());
+        
         long timeProject = currentTimeMilliseconds();
         double gProjNorm = gradientProj.norm();
         std::cout << "  * Gradient projection: " << (timeProject - timeDiff) << " ms (norm = " << gProjNorm << ")" << std::endl;
@@ -95,6 +97,9 @@ namespace rsurfaces
         long timeLS = currentTimeMilliseconds();
         std::cout << "  * Line search: " << (timeLS - timeProject) << " ms" << std::endl;
 
+        // Project onto constraint manifold using Schur complement
+        Hs::BackprojectViaSchur(constraints, comp, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH());
+        // Fix barycenter drift
         RecenterMesh();
         long timeEnd = currentTimeMilliseconds();
         double energyAfter = energy->Value();

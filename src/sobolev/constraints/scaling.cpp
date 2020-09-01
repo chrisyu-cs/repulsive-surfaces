@@ -42,6 +42,12 @@ namespace rsurfaces
             geom->unrequireEdgeDihedralAngles();
         }
 
+        void ScalingConstraint::addValue(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        {
+            std::cerr << "Backprojecting scale not supported" << std::endl;
+            throw 1;
+        }
+
         size_t ScalingConstraint::nRows()
         {
             return 1;

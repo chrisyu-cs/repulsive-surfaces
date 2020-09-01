@@ -5,6 +5,12 @@ namespace rsurfaces
 {
     namespace Constraints
     {
+
+        TotalVolumeConstraint::TotalVolumeConstraint(MeshPtr &mesh, GeomPtr &geom)
+        {
+            initValue = totalVolume(geom, mesh);
+        }
+
         size_t TotalVolumeConstraint::nRows()
         {
             return 1;
@@ -37,6 +43,12 @@ namespace rsurfaces
                 M(baseRow, i3 + 1) = normal_v.y;
                 M(baseRow, i3 + 2) = normal_v.z;
             }
+        }
+
+        void TotalVolumeConstraint::addValue(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        {
+            double current = totalVolume(geom, mesh);
+            V(baseRow) = current - initValue;
         }
 
     } // namespace Constraints

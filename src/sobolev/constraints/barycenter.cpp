@@ -1,4 +1,5 @@
 #include "sobolev/constraints/barycenter.h"
+#include "helpers.h"
 
 namespace rsurfaces
 {
@@ -44,6 +45,17 @@ namespace rsurfaces
             return 1;
         }
 
+        void BarycenterConstraint::addValue(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        {
+            std::cerr << "Can't backproject single barycenter coordinate." << std::endl;
+            throw 1;
+        }
+
+        BarycenterConstraint3X::BarycenterConstraint3X(MeshPtr &mesh, GeomPtr &geom)
+        {
+            initValue = meshBarycenter(geom, mesh);
+        }
+
         void BarycenterConstraint3X::addTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow)
         {
             // Take the same weights from the non-3X version of this constraint,
@@ -72,6 +84,15 @@ namespace rsurfaces
                 M(baseRow + 3 * t.row() + 1, 3 * t.col() + 1) = t.value();
                 M(baseRow + 3 * t.row() + 2, 3 * t.col() + 2) = t.value();
             }
+        }
+
+        void BarycenterConstraint3X::addValue(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        {
+            Vector3 center = meshBarycenter(geom, mesh);
+            Vector3 diff = center - initValue;
+            V(baseRow) = diff.x;
+            V(baseRow + 1) = diff.y;
+            V(baseRow + 2) = diff.z;
         }
 
         size_t BarycenterConstraint3X::nRows()

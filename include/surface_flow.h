@@ -26,6 +26,12 @@ namespace rsurfaces
             constraints.push_back(new Constraint());
         }
 
+        template <typename Constraint>
+        void addConstraint(MeshPtr &mesh, GeomPtr &geom)
+        {
+            constraints.push_back(new Constraint(mesh, geom));
+        }
+
     private:
         SurfaceEnergy *energy;
         MeshPtr mesh;

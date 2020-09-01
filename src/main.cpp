@@ -543,8 +543,8 @@ int main(int argc, char **argv)
   }
 
   SurfaceFlow *flow = new SurfaceFlow(energy);
-  flow->addConstraint<Constraints::TotalVolumeConstraint>();
-  flow->addConstraint<Constraints::TotalAreaConstraint>();
+  flow->addConstraint<Constraints::TotalVolumeConstraint>(meshShared, geomShared);
+  flow->addConstraint<Constraints::TotalAreaConstraint>(meshShared, geomShared);
   MainApp::instance = new MainApp(meshShared, geomShared, flow, psMesh);
   MainApp::instance->bh_theta = theta;
 
