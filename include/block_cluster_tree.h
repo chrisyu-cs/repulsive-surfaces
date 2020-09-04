@@ -1,5 +1,6 @@
 #pragma once
 
+#include <omp.h>
 #include "rsurface_types.h"
 #include <Eigen/Core>
 #include "spatial/bvh_6d.h"
