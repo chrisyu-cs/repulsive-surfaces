@@ -123,7 +123,9 @@ namespace rsurfaces
     energy->Differential(gradient);
     Eigen::MatrixXd result = gradient;
 
-    Hs::ProjectViaSparse(gradient, result, exps.x, exps.y, mesh, geom, 0);
+    BlockClusterTree *bct = 0;
+    Hs::ProjectViaSparseMat(gradient, result, exps.x, exps.y, mesh, geom, 0, bct);
+    delete bct;
 
     std::cout << result << std::endl;
     PlotMatrix(result, psMesh, "LML approx");
@@ -142,8 +144,11 @@ namespace rsurfaces
     Eigen::MatrixXd denseRes = gradient;
     Eigen::MatrixXd hierRes = gradient;
 
-    Hs::ProjectViaSparse(gradient, denseRes, exps.x, exps.y, mesh, geom, 0);
-    Hs::ProjectViaSparse(gradient, hierRes, exps.x, exps.y, mesh, geom, energy->GetBVH());
+    BlockClusterTree *bct = 0;
+    Hs::ProjectViaSparseMat(gradient, denseRes, exps.x, exps.y, mesh, geom, 0, bct);
+    Hs::ProjectViaSparseMat(gradient, hierRes, exps.x, exps.y, mesh, geom, energy->GetBVH(), bct);
+    if (bct)
+      delete bct;
 
     PlotMatrix(denseRes, psMesh, "dense LML");
     PlotMatrix(hierRes, psMesh, "hierarchical LML");
@@ -167,7 +172,8 @@ namespace rsurfaces
     std::cout << "Normalized dot product = " << denseRow.dot(hierRow) << std::endl;
   }
 
-  void MainApp::TestBarnesHut() {
+  void MainApp::TestBarnesHut()
+  {
     TPEKernel *tpe = new rsurfaces::TPEKernel(mesh, geom, 6, 12);
     SurfaceEnergy *energy_ap;
     SurfaceEnergy *energy_bh;
@@ -232,8 +238,7 @@ namespace rsurfaces
     Eigen::VectorXd gVec(3 * mesh->nVertices());
     MatrixUtils::MatrixIntoColumn(gradient, gVec);
     Vector2 exps = energy->GetExponents();
-    double s = Hs::get_s(exps.x, exps.y);
-    s = 0.6;
+    double s = 4 - 2 * Hs::get_s(exps.x, exps.y);
 
     long gradientEndTime = currentTimeMilliseconds();
 
@@ -297,22 +302,25 @@ namespace rsurfaces
       s -= 0.2;
     }
   }
-    
-  class VectorInit {
-      public:
-      static void Init(Vector3 &data, BVHNode6D* node) {
-        data = Vector3{1, 2, 3};
-      }
+
+  class VectorInit
+  {
+  public:
+    static void Init(Vector3 &data, BVHNode6D *node)
+    {
+      data = Vector3{1, 2, 3};
+    }
   };
 
   void MainApp::TestPercolation()
   {
     SurfaceEnergy *energy = flow->BaseEnergy();
     energy->Update();
-    BVHNode6D* root = energy->GetBVH();
+    BVHNode6D *root = energy->GetBVH();
 
-    DataTree<Vector3>* dtree = root->CreateDataTree<Vector3, VectorInit>();
-    std::cout << dtree->data << std::endl;
+    DataTreeContainer<Vector3> *dtree = root->CreateDataTree<Vector3, VectorInit>();
+    std::cout << dtree->tree->data << std::endl;
+    delete dtree;
   }
 } // namespace rsurfaces
 

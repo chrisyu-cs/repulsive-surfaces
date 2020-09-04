@@ -3,7 +3,7 @@
 #include "rsurface_types.h"
 #include <Eigen/Core>
 #include "spatial/bvh_6d.h"
-#include "sobolev/hs.h"
+#include "sobolev/hs_operators.h"
 
 namespace rsurfaces
 {
@@ -13,6 +13,12 @@ namespace rsurfaces
         BVHNode6D *cluster1;
         BVHNode6D *cluster2;
         int depth;
+    };
+
+    struct PercolationData
+    {
+        double wtDot = 0;
+        double B = 0;
     };
 
     class BlockClusterTree
@@ -55,10 +61,20 @@ namespace rsurfaces
         void MultiplyInadmissible(const Eigen::VectorXd &v_hat, Eigen::VectorXd &b_hat) const;
         // Multiplies the admissible clusters for A * v, storing it in b.
         void MultiplyAdmissible(Eigen::VectorXd &v, Eigen::VectorXd &b) const;
+        // Multiplies the admissible clusters exactly
+        // (without any hierarchical approximation).
         void MultiplyAdmissibleExact(Eigen::VectorXd &v_hat, Eigen::VectorXd &b_hat) const;
+
+        // Multiplies the admissible clusters using a percolation method.
+        void MultiplyAdmissiblePercolated(Eigen::VectorXd &v, Eigen::VectorXd &b) const;
+        // Multiplies just the kernel matrix A using a percolation method.
+        void MultiplyAfPercolated(Eigen::VectorXd &v, Eigen::VectorXd &b) const;
+
+        Eigen::VectorXd Af_1;
+        void PremultiplyAf1();
+
         void fillClusterMasses(BVHNode6D *cluster, Eigen::VectorXd &w) const;
 
-        int nVerts;
         double exp_s, separationCoeff;
         double epsilon;
         MeshPtr mesh;
@@ -96,7 +112,7 @@ namespace rsurfaces
         // Multiply inadmissible blocks
         MultiplyInadmissible(v_mid, b_mid_inadm);
         // Multiply admissible blocks
-        MultiplyAdmissible(v_mid, b_mid_adm);
+        MultiplyAdmissiblePercolated(v_mid, b_mid_adm);
 
         b_mid_adm += b_mid_inadm;
 
@@ -107,6 +123,7 @@ namespace rsurfaces
     template <typename V3, typename Dest>
     void BlockClusterTree::MultiplyVector3(V3 &v, Dest &b) const
     {
+        size_t nVerts = mesh->nVertices();
         // Slice the input vector to get every x-coordinate
         Eigen::Map<const Eigen::VectorXd, 0, Eigen::InnerStride<3>> v_x(v.data(), nVerts);
         // Slice the output vector to get x-coordinates

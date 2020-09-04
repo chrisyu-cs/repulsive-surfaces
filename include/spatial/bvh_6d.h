@@ -58,20 +58,12 @@ namespace rsurfaces
             return diag.norm() / d;
         }
 
+        // Creates an auxilliary DataTree structure for this BVH.
         template <typename Data, typename Init = DefaultInit<Data>>
-        DataTree<Data> *CreateDataTree()
+        DataTreeContainer<Data> *CreateDataTree()
         {
-            DataTree<Data> *droot = new DataTree<Data>(this);
-            Init::Init(droot->data, this);
-            if (nodeType == BVHNodeType::Interior)
-            {
-                for (BVHNode6D *child : children)
-                {
-                    DataTree<Data> *childData = child->CreateDataTree<Data, Init>();
-                    droot->children.push_back(childData);
-                }
-            }
-            return droot;
+            DataTree<Data> *droot = CreateDataTreeRecursive<Data, Init>();
+            return new DataTreeContainer<Data>(droot, numNodesInBranch);
         }
 
     private:
@@ -79,6 +71,24 @@ namespace rsurfaces
         double AxisSplittingPlane(std::vector<MassNormalPoint> &points, int axis);
         void averageDataFromChildren();
         void mergeIndicesFromChildren();
+
+        template <typename Data, typename Init = DefaultInit<Data>>
+        DataTree<Data> *CreateDataTreeRecursive()
+        {
+            DataTree<Data> *droot = new DataTree<Data>(this);
+            droot->nodeID = nodeID;
+            Init::Init(droot->data, this);
+            if (nodeType == BVHNodeType::Interior)
+            {
+                for (BVHNode6D *child : children)
+                {
+                    DataTree<Data> *childData = child->CreateDataTreeRecursive<Data, Init>();
+                    droot->children.push_back(childData);
+                }
+            }
+            
+            return droot;
+        }
     };
 
     BVHNode6D *Create6DBVHFromMeshFaces(MeshPtr &mesh, GeomPtr &geom, double theta);

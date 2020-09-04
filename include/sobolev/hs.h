@@ -3,6 +3,8 @@
 #include "rsurface_types.h"
 #include "matrix_utils.h"
 #include "constraints.h"
+#include "block_cluster_tree.h"
+#include "hs_operators.h"
 
 namespace rsurfaces
 {
@@ -18,8 +20,12 @@ namespace rsurfaces
         void FillMatrixFracOnly(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom);
 
         void ProjectGradient(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom);
-        void ProjectViaSparse(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh);
-        void ProjectViaSparse(Eigen::VectorXd &gradient, Eigen::VectorXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh);
+
+        void ProjectViaSparseMat(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta,
+                                 MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh, BlockClusterTree *&bct);
+
+        void ProjectViaSparse(Eigen::VectorXd &gradient, Eigen::VectorXd &dest, double alpha, double beta,
+                              MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh, BlockClusterTree *&bct);
 
         struct SchurComplement
         {
@@ -28,62 +34,13 @@ namespace rsurfaces
         };
 
         void GetSchurComplement(std::vector<ConstraintBase *> constraints, double alpha, double beta, MeshPtr &mesh,
-                                GeomPtr &geom, BVHNode6D *bvh, SchurComplement &dest);
+                                GeomPtr &geom, BVHNode6D *bvh, SchurComplement &dest, BlockClusterTree *&bct);
 
-        void ProjectViaSchur(SchurComplement &comp, Eigen::MatrixXd &gradient,
-                             Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh);
+        void ProjectViaSchur(SchurComplement &comp, Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha,
+                             double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh, BlockClusterTree *&bct);
 
-        void BackprojectViaSchur(std::vector<ConstraintBase *> constraints, SchurComplement &comp,
-                                 double alpha, double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh);
-
-        inline double MetricDistanceTerm(double s, Vector3 v1, Vector3 v2)
-        {
-            double dist_term = 1.0 / pow(norm(v1 - v2), 2 * (s - 1) + 2);
-            return dist_term;
-        }
-
-        inline double MetricDistanceTermFrac(double s, Vector3 v1, Vector3 v2)
-        {
-            double dist_term = 1.0 / pow(norm(v1 - v2), 2 * s + 2);
-            return dist_term;
-        }
-
-        template <typename V, typename VF>
-        void ApplyMidOperator(const MeshPtr &mesh, const GeomPtr &geom, V &a, VF &out)
-        {
-            FaceIndices fInds = mesh->getFaceIndices();
-            VertexIndices vInds = mesh->getVertexIndices();
-
-            for (GCFace face : mesh->faces())
-            {
-                double total = 0;
-                // Get one-third the value on all adjacent vertices
-                for (GCVertex vert : face.adjacentVertices())
-                {
-                    total += a(vInds[vert]) / 3.0;
-                }
-                out(fInds[face]) += total;
-            }
-        }
-
-        template <typename V, typename VF>
-        void ApplyMidOperatorTranspose(const MeshPtr &mesh, const GeomPtr &geom, VF &a, V &out)
-        {
-
-            FaceIndices fInds = mesh->getFaceIndices();
-            VertexIndices vInds = mesh->getVertexIndices();
-
-            for (GCVertex vert : mesh->vertices())
-            {
-                double total = 0;
-                // Put weight = 1/3 on all adjacent faces
-                for (GCFace face : vert.adjacentFaces())
-                {
-                    total += a(fInds[face]) / 3.0;
-                }
-                out(vInds[vert]) += total;
-            }
-        }
+        void BackprojectViaSchur(std::vector<ConstraintBase *> constraints, SchurComplement &comp, double alpha,
+                                 double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh, BlockClusterTree *&bct);
 
     } // namespace Hs
 

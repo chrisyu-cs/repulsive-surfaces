@@ -67,9 +67,13 @@ namespace rsurfaces
         // H1::ProjectGradient(gradient, gradientProj, mesh, geom, false);
         // Hs::ProjectGradient(gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom);
         // Hs::ProjectViaSparse(gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH());
+
         Hs::SchurComplement comp;
-        Hs::GetSchurComplement(constraints, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH(), comp);
-        Hs::ProjectViaSchur(comp, gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH());
+        // Create an empty BCT pointer; this will be initialized in the first
+        // Schur complement function, and reused for the rest of this timestep
+        BlockClusterTree* bct = 0;
+        Hs::GetSchurComplement(constraints, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH(), comp, bct);
+        Hs::ProjectViaSchur(comp, gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH(), bct);
         
         long timeProject = currentTimeMilliseconds();
         double gProjNorm = gradientProj.norm();
@@ -98,11 +102,13 @@ namespace rsurfaces
         std::cout << "  * Line search: " << (timeLS - timeProject) << " ms" << std::endl;
 
         // Project onto constraint manifold using Schur complement
-        Hs::BackprojectViaSchur(constraints, comp, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH());
+        Hs::BackprojectViaSchur(constraints, comp, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH(), bct);
         // Fix barycenter drift
         RecenterMesh();
         long timeEnd = currentTimeMilliseconds();
         double energyAfter = energy->Value();
+        // Done with BCT, so clean it up
+        delete bct;
 
         std::cout << "  * Post-processing: " << (timeEnd - timeLS) << " ms" << std::endl;
 

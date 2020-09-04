@@ -9,7 +9,6 @@
 
 namespace rsurfaces
 {
-
     long BlockClusterTree::illSepTime = 0;
     long BlockClusterTree::wellSepTime = 0;
     long BlockClusterTree::traversalTime = 0;
@@ -28,14 +27,14 @@ namespace rsurfaces
         ClusterPair pair{tree_root, tree_root, 0};
         unresolvedPairs.push_back(pair);
 
-        nVerts = mesh->nVertices();
-
         int depth = 0;
         while (unresolvedPairs.size() > 0)
         {
             splitInadmissibleNodes(depth);
             depth++;
         }
+
+        PremultiplyAf1();
     }
 
     BlockClusterTree::~BlockClusterTree()
@@ -97,17 +96,22 @@ namespace rsurfaces
 
     bool BlockClusterTree::isPairAdmissible(ClusterPair pair, double theta)
     {
+        // A cluster is never admissible with itself
         if (pair.cluster1 == pair.cluster2)
             return false;
+        // Compute distance between centers of masses of clusters, along with cluster bounding radii
         double distance = norm(pair.cluster1->centerOfMass - pair.cluster2->centerOfMass);
         double radius1 = norm(pair.cluster1->maxCoords - pair.cluster1->minCoords) / 2;
         double radius2 = norm(pair.cluster2->maxCoords - pair.cluster2->minCoords) / 2;
+        // A cluster is never admissible with a cluster whose center is inside its bounding radius
         if (distance < radius1 || distance < radius2)
             return false;
 
+        // Compute Barnes-Hut distance ratios from boundary to boundary of bounding radii
         double ratio1 = pair.cluster1->nodeRatio(distance - radius2);
         double ratio2 = pair.cluster2->nodeRatio(distance - radius1);
 
+        // Consider admissible only if both Barnes-Hut checks pass
         bool isAdm = fmax(ratio1, ratio2) < theta;
         return isAdm;
     }
@@ -156,6 +160,87 @@ namespace rsurfaces
         {
             AfFullProduct(pair, v_hat, b_hat);
         }
+    }
+
+    void BlockClusterTree::PremultiplyAf1()
+    {
+        Af_1.setOnes(tree_root->NumElements());
+        MultiplyAfPercolated(Af_1, Af_1);
+    }
+
+    void BlockClusterTree::MultiplyAdmissiblePercolated(Eigen::VectorXd &v, Eigen::VectorXd &b) const
+    {
+        MultiplyAfPercolated(v, b);
+        b = 2 * (Af_1.asDiagonal() * v - b);
+    }
+
+    // Get the dot product W^T * J for the given node in a data tree (and all children)
+    void percolateWtDot(DataTree<PercolationData> *dataTree, Eigen::VectorXd &v, MeshPtr mesh, GeomPtr geom)
+    {
+        double rootSum = 0;
+        // If this is a leaf, just set the value directly by multiplying weight * V
+        if (dataTree->node->nodeType == BVHNodeType::Leaf)
+        {
+            rootSum = dataTree->node->totalMass * v(dataTree->node->elementID);
+        }
+        // Otherwise, go over all children and sum their values
+        else
+        {
+            for (DataTree<PercolationData> *child : dataTree->children)
+            {
+                percolateWtDot(child, v, mesh, geom);
+                rootSum += child->data.wtDot;
+            }
+        }
+        dataTree->data.wtDot = rootSum;
+    }
+
+    void percolateJ(DataTree<PercolationData> *dataTree, double parentB, Eigen::VectorXd &b)
+    {
+        dataTree->data.B += parentB;
+        // If we've already percolated down to a leaf, then the leaf already
+        // contains the value for the corresponding entry in b, so copy it in
+        if (dataTree->node->nodeType == BVHNodeType::Leaf)
+        {
+            // The result ends up being diag(w) * b for the full vector,
+            // but we can just multiply the diag(w) part here
+            b(dataTree->node->elementID) = dataTree->node->totalMass * dataTree->data.B;
+        }
+        // Otherwise we need to percolate the node's B down to all children.
+        // Assume that children already have sum of their admissible a_IJ * V_J in B
+        for (DataTree<PercolationData> *child : dataTree->children)
+        {
+            // Percolate downward through the rest
+            percolateJ(child, dataTree->data.B, b);
+        }
+    }
+
+    void BlockClusterTree::MultiplyAfPercolated(Eigen::VectorXd &v, Eigen::VectorXd &b) const
+    {
+        Eigen::VectorXd w(tree_root->NumElements());
+        fillClusterMasses(tree_root, w);
+
+        DataTreeContainer<PercolationData> *treeContainer = tree_root->CreateDataTree<PercolationData>();
+        // Percolate W^T * v upward through the tree
+        percolateWtDot(treeContainer->tree, v, mesh, geom);
+
+        // For each cluster I, we need to sum over all clusters J that are
+        // admissible with it. Since we already have a list of all admissible
+        // pairs, we can just do this for all clusters at once.
+        for (ClusterPair const &pair : admissiblePairs)
+        {
+            double a_IJ = Hs::MetricDistanceTermFrac(exp_s, pair.cluster1->centerOfMass, pair.cluster2->centerOfMass);
+            DataTree<PercolationData> *data_I = treeContainer->byIndex[pair.cluster1->nodeID];
+            DataTree<PercolationData> *data_J = treeContainer->byIndex[pair.cluster2->nodeID];
+            // Each I gets a sum of a_IJ * V_J for all admissible J
+            data_I->data.B += a_IJ * data_J->data.wtDot;
+        }
+
+        // Percolate downward from the root
+        percolateJ(treeContainer->tree, 0, b);
+
+        // Now the result is stored in b, so just clean up
+        delete treeContainer;
     }
 
     void BlockClusterTree::AfFullProduct(ClusterPair pair, const Eigen::VectorXd &v_mid, Eigen::VectorXd &result) const
