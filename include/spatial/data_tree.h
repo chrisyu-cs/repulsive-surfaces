@@ -73,6 +73,11 @@ namespace rsurfaces
             delete tree;
         }
 
+        DataTree<Data> *GetDataNode(BVHNode6D *bvhNode)
+        {
+            return byIndex[bvhNode->nodeID];
+        }
+
     private:
         void indexNodes(DataTree<Data> *root)
         {
