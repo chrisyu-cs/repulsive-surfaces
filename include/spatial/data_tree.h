@@ -64,7 +64,6 @@ namespace rsurfaces
             : byIndex(nNodes)
         {
             tree = t;
-            indexNodes(tree);
         }
 
         ~DataTreeContainer()
@@ -73,21 +72,6 @@ namespace rsurfaces
             delete tree;
         }
 
-        DataTree<Data> *GetDataNode(BVHNode6D *bvhNode)
-        {
-            return byIndex[bvhNode->nodeID];
-        }
-
-    private:
-        void indexNodes(DataTree<Data> *root)
-        {
-            // Put the root in the correct spot
-            byIndex[root->nodeID] = root;
-            // Recursively index children
-            for (DataTree<Data> *child : root->children)
-            {
-                indexNodes(child);
-            }
-        }
+        DataTree<Data> *GetDataNode(BVHNode6D *bvhNode);
     };
 } // namespace rsurfaces

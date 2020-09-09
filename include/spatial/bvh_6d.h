@@ -5,7 +5,6 @@
 
 namespace rsurfaces
 {
-
     class BVHNode6D
     {
     public:
@@ -58,12 +57,26 @@ namespace rsurfaces
             return diag.norm() / d;
         }
 
+        template<typename Data>
+        void indexNodes(DataTreeContainer<Data> *cont, DataTree<Data> *root)
+        {
+            // Put the root in the correct spot
+            cont->byIndex[root->nodeID] = root;
+            // Recursively index children
+            for (DataTree<Data> *child : root->children)
+            {
+                indexNodes(cont, child);
+            }
+        }
+
         // Creates an auxilliary DataTree structure for this BVH.
         template <typename Data, typename Init = DefaultInit<Data>>
         DataTreeContainer<Data> *CreateDataTree()
         {
             DataTree<Data> *droot = CreateDataTreeRecursive<Data, Init>();
-            return new DataTreeContainer<Data>(droot, numNodesInBranch);
+            DataTreeContainer<Data> *cont = new DataTreeContainer<Data>(droot, numNodesInBranch);
+            indexNodes(cont, droot);
+            return cont;
         }
 
     private:
@@ -93,5 +106,11 @@ namespace rsurfaces
 
     BVHNode6D *Create6DBVHFromMeshFaces(MeshPtr &mesh, GeomPtr &geom, double theta);
     BVHNode6D *Create6DBVHFromMeshVerts(MeshPtr &mesh, GeomPtr &geom, double theta);
+
+    template<typename Data>
+    DataTree<Data>* DataTreeContainer<Data>::GetDataNode(BVHNode6D *bvhNode)
+    {
+        return byIndex[bvhNode->nodeID];
+    }
 
 } // namespace rsurfaces
