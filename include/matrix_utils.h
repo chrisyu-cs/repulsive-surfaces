@@ -14,7 +14,14 @@ namespace rsurfaces
             M(row, 1) = vec.y;
             M(row, 2) = vec.z;
         }
-        
+
+        inline void addToRow(Eigen::MatrixXd &M, size_t row, Vector3 v)
+        {
+            M(row, 0) += v.x;
+            M(row, 1) += v.y;
+            M(row, 2) += v.z;
+        }
+
         inline Vector3 GetRowAsVector3(Eigen::MatrixXd &M, int row)
         {
             return Vector3{M(row, 0), M(row, 1), M(row, 2)};

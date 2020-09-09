@@ -16,6 +16,7 @@ namespace rsurfaces
     {
     public:
         BarnesHutTPEnergyXDiff(TPEKernel *kernel_, double theta_);
+        ~BarnesHutTPEnergyXDiff();
         virtual double Value();
         virtual void Differential(Eigen::MatrixXd &output);
         virtual void Update();
@@ -34,7 +35,12 @@ namespace rsurfaces
         double diffKernelWrtSumAreas(Vector3 x_T, Vector3 n_T, Vector3 sumCenters, double sumAreas);
         double diffEnergyWrtSumAreas(GCFace face, Vector3 sumCenters, double sumAreas);
 
+        void percolateDiffsDown(DataTree<BHDiffData> *dataRoot, Eigen::MatrixXd &output,
+                                surface::VertexData<size_t> &indices);
+        void accumulateOneSidedGradient(Eigen::MatrixXd &gradients, BVHNode6D *node, GCFace face1,
+                                        surface::VertexData<size_t> &indices);
         void accClusterGradients(BVHNode6D *bvhRoot, GCFace face, DataTreeContainer<BHDiffData> *data);
+        void accFaceDerivative(BVHNode6D *bvhRoot, GCFace face, DataTreeContainer<BHDiffData> *data);
     };
 
 } // namespace rsurfaces

@@ -1,6 +1,7 @@
 #include "energy/barnes_hut_tpe_6d.h"
 #include "helpers.h"
 #include "surface_derivatives.h"
+#include "matrix_utils.h"
 
 namespace rsurfaces
 {
@@ -10,6 +11,14 @@ namespace rsurfaces
         kernel = kernel_;
         theta = theta_;
         root = 0;
+    }
+
+    BarnesHutTPEnergy6D::~BarnesHutTPEnergy6D()
+    {
+        if (root)
+        {
+            delete root;
+        }
     }
 
     double BarnesHutTPEnergy6D::Value()
@@ -78,17 +87,10 @@ namespace rsurfaces
         }
     }
 
-    inline void addToRow(Eigen::MatrixXd &M, size_t row, Vector3 v)
-    {
-        M(row, 0) += v.x;
-        M(row, 1) += v.y;
-        M(row, 2) += v.z;
-    }
-
     // Add derivatives of all energy terms of the form (f1, _) or (_, f1)
     // with respect to the neighbor vertices of f1.
     void BarnesHutTPEnergy6D::accumulateTPEGradient(Eigen::MatrixXd &gradients, BVHNode6D *node, GCFace face1,
-                                                    surface::VertexData<size_t> indices)
+                                                    surface::VertexData<size_t> &indices)
     {
         if (node->nodeType == BVHNodeType::Empty)
         {
@@ -110,7 +112,7 @@ namespace rsurfaces
                 // Add the forward term (f1, f2)
                 Vector3 deriv1 = kernel->tpe_gradient_pair(face1, face2, v);
                 size_t r = indices[v];
-                addToRow(gradients, r, deriv1);
+                MatrixUtils::addToRow(gradients, r, deriv1);
 
                 // Determine if the reverse term (f2, f1) should be added.
                 // If v is also adjacent to f2, then it shouldn't be, because
@@ -125,7 +127,7 @@ namespace rsurfaces
                 if (noOverlap)
                 {
                     Vector3 deriv2 = kernel->tpe_gradient_pair(face2, face1, v);
-                    addToRow(gradients, r, deriv2);
+                    MatrixUtils::addToRow(gradients, r, deriv2);
                 }
             }
         }
@@ -142,8 +144,8 @@ namespace rsurfaces
                 for (GCVertex v : face1.adjacentVertices())
                 {
                     // Derivatives of both foward and reverse terms
-                    addToRow(gradients, indices[v], kernel->tpe_gradient_pair(face1, mnp2, v));
-                    addToRow(gradients, indices[v], kernel->tpe_gradient_pair(mnp2, face1, v));
+                    MatrixUtils::addToRow(gradients, indices[v], kernel->tpe_gradient_pair(face1, mnp2, v));
+                    MatrixUtils::addToRow(gradients, indices[v], kernel->tpe_gradient_pair(mnp2, face1, v));
                 }
             }
             else

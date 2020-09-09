@@ -1,6 +1,7 @@
 #include "energy/barnes_hut_tpe_xdiff.h"
 #include "helpers.h"
 #include "surface_derivatives.h"
+#include "matrix_utils.h"
 
 namespace rsurfaces
 {
@@ -10,6 +11,14 @@ namespace rsurfaces
         kernel = kernel_;
         theta = theta_;
         root = 0;
+    }
+
+    BarnesHutTPEnergyXDiff::~BarnesHutTPEnergyXDiff()
+    {
+        if (root)
+        {
+            delete root;
+        }
     }
 
     double BarnesHutTPEnergyXDiff::Value()
@@ -61,6 +70,32 @@ namespace rsurfaces
         }
     }
 
+    void BarnesHutTPEnergyXDiff::percolateDiffsDown(DataTree<BHDiffData> *dataRoot, Eigen::MatrixXd &output,
+                                                    surface::VertexData<size_t> &indices)
+    {
+        // If we're at a leaf node, copy into derivative matrix
+        if (dataRoot->node->nodeType == BVHNodeType::Leaf)
+        {
+            GCFace face = dataRoot->node->getSingleFace(kernel->mesh);
+            for (GCVertex v : face.adjacentVertices())
+            {
+                // Each neighboring vertex gets 1/3 of the percolated
+                // derivative value from each face
+                MatrixUtils::addToRow(output, indices[v], dataRoot->data.dCenter / 3.0);
+            }
+        }
+        // Otherwise, continue percolating values down to children
+        else
+        {
+            for (DataTree<BHDiffData> *child : dataRoot->children)
+            {
+                child->data.dArea += dataRoot->data.dArea;
+                child->data.dCenter += dataRoot->data.dCenter;
+                percolateDiffsDown(child, output, indices);
+            }
+        }
+    }
+
     void BarnesHutTPEnergyXDiff::Differential(Eigen::MatrixXd &output)
     {
         if (!root)
@@ -69,32 +104,100 @@ namespace rsurfaces
             std::exit(1);
         }
 
-        // TODO: finish this (percolate diffs downward)
+        DataTreeContainer<BHDiffData> *data = root->CreateDataTree<BHDiffData>();
+        VertexIndices indices = kernel->mesh->getVertexIndices();
+
+        // Fill in one-sided derivative contributions at each interior node
+        for (GCFace f : kernel->mesh->faces())
+        {
+            accClusterGradients(root, f, data);
+            // At the same time, add "other side" gradients directly to the result
+            accumulateOneSidedGradient(output, root, f, indices);
+        }
+        // Percolate interior values down to leaves, and add that
+        // contribution to the gradient
+        percolateDiffsDown(data->tree, output, indices);
     }
 
-    void BarnesHutTPEnergyXDiff::accClusterGradients(BVHNode6D *bvhRoot, GCFace face, DataTreeContainer<BHDiffData> *data)
+    // Add derivatives of all energy terms of the form (f1, _) or (_, f1)
+    // with respect to the neighbor vertices of f1.
+    void BarnesHutTPEnergyXDiff::accumulateOneSidedGradient(Eigen::MatrixXd &gradients, BVHNode6D *node, GCFace face1,
+                                                            surface::VertexData<size_t> &indices)
+    {
+        if (node->nodeType == BVHNodeType::Empty)
+        {
+            return;
+        }
+        else if (node->nodeType == BVHNodeType::Leaf)
+        {
+            // If this is a leaf, then it only has one face in it, so just use it
+            GCFace face2 = node->getSingleFace(kernel->mesh);
+            // Skip if the faces are the same
+            if (face1 == face2)
+                return;
+
+            // Differentiate by adjacent vertices to face1
+            std::vector<GCVertex> neighborVerts;
+
+            for (GCVertex v : face1.adjacentVertices())
+            {
+                // Add the forward term (f1, f2)
+                Vector3 deriv1 = kernel->tpe_gradient_pair(face1, face2, v);
+                MatrixUtils::addToRow(gradients, indices[v], deriv1);
+            }
+        }
+        else
+        {
+            Vector3 f1_center = faceBarycenter(kernel->geom, face1);
+            if (node->isAdmissibleFrom(f1_center))
+            {
+                // This cell is far enough away that we can treat it as a single body
+                MassNormalPoint mnp2 = node->GetMassNormalPoint();
+
+                // Differentiate both terms for all neighbors
+                for (GCVertex v : face1.adjacentVertices())
+                {
+                    // Derivatives of both forward term only
+                    MatrixUtils::addToRow(gradients, indices[v], kernel->tpe_gradient_pair(face1, mnp2, v));
+                }
+            }
+            else
+            {
+                // Otherwise we continue recursively traversing the tree
+                for (size_t i = 0; i < node->children.size(); i++)
+                {
+                    if (node->children[i])
+                    {
+                        accumulateOneSidedGradient(gradients, node->children[i], face1, indices);
+                    }
+                }
+            }
+        }
+    }
+
+    void BarnesHutTPEnergyXDiff::accClusterGradients(BVHNode6D *node, GCFace face, DataTreeContainer<BHDiffData> *data)
     {
         Vector3 bcenter = faceBarycenter(kernel->geom, face);
 
-        if (bvhRoot->nodeType == BVHNodeType::Empty)
+        if (node->nodeType == BVHNodeType::Empty)
         {
             // Empty cluster = no value
         }
         else
         {
-            if (bvhRoot->isAdmissibleFrom(bcenter))
+            if (node->isAdmissibleFrom(bcenter))
             {
-                DataTree<BHDiffData> *dataNode = data->GetDataNode(bvhRoot);
-                Vector3 Z_V = bvhRoot->centerOfMass * bvhRoot->totalMass;
-                double A_V = bvhRoot->totalMass;
-                // Fill in the data for this (face, cluster) paid
-                dataNode->data.dCenter = diffEnergyWrtSumCenters(face, Z_V, A_V);
-                dataNode->data.dArea = diffEnergyWrtSumAreas(face, Z_V, A_V);
+                DataTree<BHDiffData> *dataNode = data->GetDataNode(node);
+                Vector3 Z_V = node->centerOfMass * node->totalMass;
+                double A_V = node->totalMass;
+                // Add the data for this (face, cluster) pair
+                dataNode->data.dCenter += diffEnergyWrtSumCenters(face, Z_V, A_V);
+                dataNode->data.dArea += diffEnergyWrtSumAreas(face, Z_V, A_V);
             }
             else
             {
                 // Recursively compute it on all children
-                for (BVHNode6D *child : bvhRoot->children)
+                for (BVHNode6D *child : node->children)
                 {
                     accClusterGradients(child, face, data);
                 }
