@@ -16,6 +16,7 @@
 #include <memory>
 
 #include <Eigen/Sparse>
+#include <omp.h>
 
 #include "sobolev/all_constraints.h"
 #include "sobolev/hs.h"

@@ -110,9 +110,15 @@ namespace rsurfaces
         b_mid_adm.setZero();
 
         // Multiply admissible blocks
+        long admStart = currentTimeMilliseconds();
         MultiplyAdmissiblePercolated(v_mid, b_mid_adm);
+        long admMid = currentTimeMilliseconds();
         // Multiply inadmissible blocks
         MultiplyInadmissible(v_mid, b_mid_adm);
+        long inadmEnd = currentTimeMilliseconds();
+
+        wellSepTime += (admMid - admStart);
+        illSepTime += (inadmEnd - admMid);
 
         b.setZero();
         Hs::ApplyMidOperatorTranspose(mesh, geom, b_mid_adm, b);
@@ -121,6 +127,9 @@ namespace rsurfaces
     template <typename V3, typename Dest>
     void BlockClusterTree::MultiplyVector3(V3 &v, Dest &b) const
     {
+        wellSepTime = 0;
+        illSepTime = 0;
+
         size_t nVerts = mesh->nVertices();
         // Slice the input vector to get every x-coordinate
         Eigen::Map<const Eigen::VectorXd, 0, Eigen::InnerStride<3>> v_x(v.data(), nVerts);
@@ -138,6 +147,9 @@ namespace rsurfaces
         Eigen::Map<const Eigen::VectorXd, 0, Eigen::InnerStride<3>> v_z(v.data() + 2, nVerts);
         Eigen::Map<Eigen::VectorXd, 0, Eigen::InnerStride<3>> dest_z(b.data() + 2, nVerts);
         MultiplyVector(v_z, dest_z);
+
+        std::cout << "      * Admissible blocks time = " << wellSepTime << " ms" << std::endl;
+        std::cout << "      * Inadmissible blocks time = " << illSepTime << " ms" << std::endl;
     }
 
 } // namespace rsurfaces

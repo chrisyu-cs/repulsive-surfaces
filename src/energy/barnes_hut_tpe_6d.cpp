@@ -30,8 +30,10 @@ namespace rsurfaces
         }
 
         double sum = 0;
-        for (GCFace f : kernel->mesh->faces())
+        #pragma omp parallel for reduction(+:sum) shared(root)
+        for (size_t i = 0; i < kernel->mesh->nFaces(); i++)
         {
+            GCFace f = kernel->mesh->face(i);
             sum += computeEnergyOfFace(f, root);
         }
         return sum;
@@ -80,10 +82,21 @@ namespace rsurfaces
 
         VertexIndices indices = kernel->mesh->getVertexIndices();
         output.setZero();
+        Eigen::MatrixXd partialOutput = output;
 
-        for (GCFace f : kernel->mesh->faces())
+        #pragma omp parallel firstprivate(partialOutput) shared(root, output)
         {
-            accumulateTPEGradient(output, root, f, indices);
+            #pragma omp for
+            for (size_t i = 0; i < kernel->mesh->nFaces(); i++)
+            {
+                GCFace f = kernel->mesh->face(i);
+                accumulateTPEGradient(partialOutput, root, f, indices);
+            }
+
+            #pragma omp critical
+            {
+                output += partialOutput;
+            }
         }
     }
 
