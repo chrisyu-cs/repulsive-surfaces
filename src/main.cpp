@@ -240,7 +240,7 @@ namespace rsurfaces
       long bctStartTime = currentTimeMilliseconds();
       BVHNode6D *bvh = energy->GetBVH();
 
-      BlockClusterTree *bct = new BlockClusterTree(mesh, geom, bvh, 0.5, s);
+      BlockClusterTree *bct = new BlockClusterTree(mesh, geom, bvh, bh_theta, s);
       bct->PrintData();
       long bctAssemblyTime = currentTimeMilliseconds();
       Eigen::VectorXd bctRes = gVec;

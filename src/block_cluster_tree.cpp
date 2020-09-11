@@ -159,12 +159,19 @@ namespace rsurfaces
         Eigen::VectorXd result;
         result.setZero(b_hat.rows());
 
-        for (ClusterPair const &pair : inadmissiblePairs)
+        #pragma omp parallel firstprivate(result) shared(b_hat)
         {
-            AfFullProduct(pair, v_hat, result);
-        }
+            #pragma omp for
+            for (size_t i = 0; i < inadmissiblePairs.size(); i++)
+            {
+                AfFullProduct(inadmissiblePairs[i], v_hat, result);
+            }
 
-        b_hat += result;
+            #pragma omp critical
+            {
+                b_hat += result;
+            }
+        }
     }
 
     void BlockClusterTree::PremultiplyAf1()
