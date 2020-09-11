@@ -72,8 +72,8 @@ namespace rsurfaces
         // Create an empty BCT pointer; this will be initialized in the first
         // Schur complement function, and reused for the rest of this timestep
         BlockClusterTree* bct = 0;
-        Hs::GetSchurComplement(constraints, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH(), comp, bct);
-        Hs::ProjectViaSchur(comp, gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH(), bct);
+        Hs::GetSchurComplement(constraints, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH(), comp, bct, energy->GetTheta());
+        Hs::ProjectViaSchur(comp, gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH(), bct, energy->GetTheta());
         
         long timeProject = currentTimeMilliseconds();
         double gProjNorm = gradientProj.norm();

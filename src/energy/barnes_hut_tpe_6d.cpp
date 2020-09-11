@@ -191,4 +191,9 @@ namespace rsurfaces
         return root;
     }
 
+    double BarnesHutTPEnergy6D::GetTheta()
+    {
+        return theta;
+    }
+
 } // namespace rsurfaces

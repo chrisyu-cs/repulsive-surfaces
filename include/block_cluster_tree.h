@@ -5,6 +5,7 @@
 #include <Eigen/Core>
 #include "spatial/bvh_6d.h"
 #include "sobolev/hs_operators.h"
+#include "helpers.h"
 
 namespace rsurfaces
 {
@@ -107,15 +108,17 @@ namespace rsurfaces
         // Set up inputs and outputs for blocks
         Eigen::VectorXd b_mid_adm(nFaces);
         b_mid_adm.setZero();
-        Eigen::VectorXd b_mid_inadm(nFaces);
-        b_mid_inadm.setZero();
 
-        // Multiply inadmissible blocks
-        MultiplyInadmissible(v_mid, b_mid_inadm);
+        long timeStart = currentTimeMilliseconds();
         // Multiply admissible blocks
         MultiplyAdmissiblePercolated(v_mid, b_mid_adm);
+        long timeMid = currentTimeMilliseconds();
+        // Multiply inadmissible blocks
+        MultiplyInadmissible(v_mid, b_mid_adm);
+        long timeEnd = currentTimeMilliseconds();
 
-        b_mid_adm += b_mid_inadm;
+        std::cout << "Admissible time: " << (timeMid - timeStart) << " ms" << std::endl;
+        std::cout << "Inadmissible time: " << (timeEnd - timeMid) << " ms" << std::endl;
 
         b.setZero();
         Hs::ApplyMidOperatorTranspose(mesh, geom, b_mid_adm, b);

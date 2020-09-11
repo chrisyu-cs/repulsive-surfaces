@@ -84,4 +84,9 @@ namespace rsurfaces
         return root;
     }
 
+    double AllPairsWithBVH::GetTheta()
+    {
+        return theta;
+    }
+
 } // namespace rsurfaces

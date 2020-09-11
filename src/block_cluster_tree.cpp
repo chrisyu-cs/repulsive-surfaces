@@ -156,10 +156,15 @@ namespace rsurfaces
 
     void BlockClusterTree::MultiplyInadmissible(const Eigen::VectorXd &v_hat, Eigen::VectorXd &b_hat) const
     {
+        Eigen::VectorXd result;
+        result.setZero(b_hat.rows());
+
         for (ClusterPair const &pair : inadmissiblePairs)
         {
-            AfFullProduct(pair, v_hat, b_hat);
+            AfFullProduct(pair, v_hat, result);
         }
+
+        b_hat += result;
     }
 
     void BlockClusterTree::PremultiplyAf1()

@@ -22,10 +22,10 @@ namespace rsurfaces
         void ProjectGradient(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom);
 
         void ProjectViaSparseMat(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta,
-                                 MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh, BlockClusterTree *&bct);
+                                 MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh, BlockClusterTree *&bct, double theta);
 
         void ProjectViaSparse(Eigen::VectorXd &gradient, Eigen::VectorXd &dest, double alpha, double beta,
-                              MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh, BlockClusterTree *&bct);
+                              MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh, BlockClusterTree *&bct, double theta);
 
         struct SchurComplement
         {
@@ -34,10 +34,10 @@ namespace rsurfaces
         };
 
         void GetSchurComplement(std::vector<ConstraintBase *> constraints, double alpha, double beta, MeshPtr &mesh,
-                                GeomPtr &geom, BVHNode6D *bvh, SchurComplement &dest, BlockClusterTree *&bct);
+                                GeomPtr &geom, BVHNode6D *bvh, SchurComplement &dest, BlockClusterTree *&bct, double theta);
 
         void ProjectViaSchur(SchurComplement &comp, Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha,
-                             double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh, BlockClusterTree *&bct);
+                             double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh, BlockClusterTree *&bct, double theta);
 
         void BackprojectViaSchur(std::vector<ConstraintBase *> constraints, SchurComplement &comp, double alpha,
                                  double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh, BlockClusterTree *&bct);

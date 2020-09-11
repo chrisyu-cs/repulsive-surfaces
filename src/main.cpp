@@ -11,6 +11,7 @@
 #include "energy/tpe_kernel.h"
 #include "energy/all_pairs_tpe.h"
 #include "energy/all_pairs_with_bvh.h"
+#include "energy/barnes_hut_tpe_xdiff.h"
 #include "helpers.h"
 #include <memory>
 
@@ -124,7 +125,7 @@ namespace rsurfaces
     Eigen::MatrixXd result = gradient;
 
     BlockClusterTree *bct = 0;
-    Hs::ProjectViaSparseMat(gradient, result, exps.x, exps.y, mesh, geom, 0, bct);
+    Hs::ProjectViaSparseMat(gradient, result, exps.x, exps.y, mesh, geom, 0, bct, bh_theta);
     delete bct;
 
     std::cout << result << std::endl;
@@ -145,8 +146,8 @@ namespace rsurfaces
     Eigen::MatrixXd hierRes = gradient;
 
     BlockClusterTree *bct = 0;
-    Hs::ProjectViaSparseMat(gradient, denseRes, exps.x, exps.y, mesh, geom, 0, bct);
-    Hs::ProjectViaSparseMat(gradient, hierRes, exps.x, exps.y, mesh, geom, energy->GetBVH(), bct);
+    Hs::ProjectViaSparseMat(gradient, denseRes, exps.x, exps.y, mesh, geom, 0, bct, bh_theta);
+    Hs::ProjectViaSparseMat(gradient, hierRes, exps.x, exps.y, mesh, geom, energy->GetBVH(), bct, bh_theta);
     if (bct)
       delete bct;
 
@@ -175,18 +176,21 @@ namespace rsurfaces
   void MainApp::TestBarnesHut()
   {
     TPEKernel *tpe = new rsurfaces::TPEKernel(mesh, geom, 6, 12);
-    SurfaceEnergy *energy_ap;
-    SurfaceEnergy *energy_bh;
+    SurfaceEnergy *energy_ap, *energy_bh, *energy_xd;
     energy_ap = new AllPairsTPEnergy(tpe);
     energy_bh = new BarnesHutTPEnergy6D(tpe, bh_theta);
+    energy_xd = new BarnesHutTPEnergyXDiff(tpe, bh_theta);
 
     energy_ap->Update();
     energy_bh->Update();
+    energy_xd->Update();
 
     Eigen::MatrixXd grad_ap(mesh->nVertices(), 3);
     Eigen::MatrixXd grad_bh(mesh->nVertices(), 3);
+    Eigen::MatrixXd grad_xd(mesh->nVertices(), 3);
     grad_ap.setZero();
     grad_bh.setZero();
+    grad_xd.setZero();
 
     long start_ape = currentTimeMilliseconds();
     double value_ap = energy_ap->Value();
@@ -196,14 +200,20 @@ namespace rsurfaces
     double value_bh = energy_bh->Value();
     long end_bhe = currentTimeMilliseconds();
 
+    long start_xde = currentTimeMilliseconds();
+    double value_xd = energy_xd->Value();
+    long end_xde = currentTimeMilliseconds();
+
     double val_error = fabs(value_ap - value_bh) / value_ap;
 
     std::cout << "\n=====   Energy   =====" << std::endl;
-    std::cout << "All-pairs energy value = " << value_ap << std::endl;
+    std::cout << "All-pairs energy value  = " << value_ap << std::endl;
     std::cout << "Barnes-Hut energy value = " << value_bh << std::endl;
-    std::cout << "Relative error = " << val_error * 100 << " percent" << std::endl;
-    std::cout << "All-pairs time = " << (end_ape - start_ape) << " ms" << std::endl;
-    std::cout << "Barnes-Hut time = " << (end_bhe - start_bhe) << " ms" << std::endl;
+    std::cout << "BH exact diff value     = " << value_xd << std::endl;
+    std::cout << "Relative error     = " << val_error * 100 << " percent" << std::endl;
+    std::cout << "All-pairs time     = " << (end_ape - start_ape) << " ms" << std::endl;
+    std::cout << "Barnes-Hut time    = " << (end_bhe - start_bhe) << " ms" << std::endl;
+    std::cout << "BH exact diff time = " << (end_xde - start_xde) << " ms" << std::endl;
 
     long start_apg = currentTimeMilliseconds();
     energy_ap->Differential(grad_ap);
@@ -213,17 +223,26 @@ namespace rsurfaces
     energy_bh->Differential(grad_bh);
     long end_bhg = currentTimeMilliseconds();
 
+    long start_xdg = currentTimeMilliseconds();
+    energy_xd->Differential(grad_xd);
+    long end_xdg = currentTimeMilliseconds();
+
     double grad_error = (grad_ap - grad_bh).norm() / grad_ap.norm();
+    double xd_error = (grad_ap - grad_xd).norm() / grad_ap.norm();
 
     std::cout << "\n=====  Gradient  =====" << std::endl;
-    std::cout << "All-pairs gradient norm = " << grad_ap.norm() << std::endl;
-    std::cout << "Barnes-Hut gradient norm = " << grad_bh.norm() << std::endl;
-    std::cout << "Relative error = " << grad_error * 100 << " percent" << std::endl;
-    std::cout << "All-pairs time = " << (end_apg - start_apg) << " ms" << std::endl;
-    std::cout << "Barnes-Hut time = " << (end_bhg - start_bhg) << " ms" << std::endl;
+    std::cout << "All-pairs gradient norm      = " << grad_ap.norm() << std::endl;
+    std::cout << "Barnes-Hut gradient norm     = " << grad_bh.norm() << std::endl;
+    std::cout << "BH exact diff gradient norm  = " << grad_xd.norm() << std::endl;
+    std::cout << "Barnes-Hut relative error    = " << grad_error * 100 << " percent" << std::endl;
+    std::cout << "BH exact diff relative error = " << xd_error * 100 << " percent" << std::endl;
+    std::cout << "All-pairs time     = " << (end_apg - start_apg) << " ms" << std::endl;
+    std::cout << "Barnes-Hut time    = " << (end_bhg - start_bhg) << " ms" << std::endl;
+    std::cout << "BH exact diff time = " << (end_xdg - start_xdg) << " ms" << std::endl;
 
     delete energy_ap;
     delete energy_bh;
+    delete energy_xd;
     delete tpe;
   }
 

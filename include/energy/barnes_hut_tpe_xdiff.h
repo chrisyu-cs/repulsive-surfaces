@@ -24,6 +24,7 @@ namespace rsurfaces
         virtual GeomPtr GetGeom();
         virtual Vector2 GetExponents();
         virtual BVHNode6D *GetBVH();
+        virtual double GetTheta();
 
     private:
         TPEKernel *kernel;

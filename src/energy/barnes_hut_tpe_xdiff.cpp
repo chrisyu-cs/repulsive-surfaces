@@ -300,4 +300,10 @@ namespace rsurfaces
     {
         return root;
     }
+
+    double BarnesHutTPEnergyXDiff::GetTheta()
+    {
+        return theta;
+    }
+
 } // namespace rsurfaces

@@ -55,7 +55,8 @@ namespace rsurfaces
         }
     }
 
-    void AllPairsTPEnergy::Update() {
+    void AllPairsTPEnergy::Update()
+    {
         // There is no data structure aside from the mesh to update
     }
 
@@ -74,7 +75,13 @@ namespace rsurfaces
         return Vector2{kernel->alpha, kernel->beta};
     }
 
-    BVHNode6D* AllPairsTPEnergy::GetBVH() {
+    BVHNode6D *AllPairsTPEnergy::GetBVH()
+    {
+        return 0;
+    }
+
+    double AllPairsTPEnergy::GetTheta()
+    {
         return 0;
     }
 

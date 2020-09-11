@@ -178,21 +178,21 @@ namespace rsurfaces
         }
 
         void ProjectViaSparseMat(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta,
-                                 MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh, BlockClusterTree *&bct)
+                                 MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh, BlockClusterTree *&bct, double theta)
         {
             // Reshape the gradient N x 3 matrix into a 3N-vector.
             Eigen::VectorXd gradientCol;
             gradientCol.setZero(3 * mesh->nVertices() + 3);
             MatrixUtils::MatrixIntoColumn(gradient, gradientCol);
 
-            ProjectViaSparse(gradientCol, gradientCol, alpha, beta, mesh, geom, bvh, bct);
+            ProjectViaSparse(gradientCol, gradientCol, alpha, beta, mesh, geom, bvh, bct, theta);
 
             // Reshape it back into the output N x 3 matrix.
             MatrixUtils::ColumnIntoMatrix(gradientCol, dest);
         }
 
         void ProjectViaSparse(Eigen::VectorXd &gradientCol, Eigen::VectorXd &dest, double alpha, double beta,
-                              MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh, BlockClusterTree *&bct)
+                              MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh, BlockClusterTree *&bct, double theta)
         {
             double s = Hs::get_s(alpha, beta);
 
@@ -231,7 +231,7 @@ namespace rsurfaces
                 if (!bct)
                 {
                     long bctConstructStart = currentTimeMilliseconds();
-                    bct = new BlockClusterTree(mesh, geom, bvh, 0.5, 4 - 2 * s);
+                    bct = new BlockClusterTree(mesh, geom, bvh, theta, 4 - 2 * s);
                     long bctConstructEnd = currentTimeMilliseconds();
                     std::cout << "    * BCT construction = " << (bctConstructEnd - bctConstructStart) << " ms" << std::endl;
                 }
@@ -247,7 +247,7 @@ namespace rsurfaces
         }
 
         void GetSchurComplement(std::vector<ConstraintBase *> constraints, double alpha, double beta,
-                                MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh, SchurComplement &dest, BlockClusterTree *&bct)
+                                MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh, SchurComplement &dest, BlockClusterTree *&bct, double theta)
         {
             size_t nVerts = mesh->nVertices();
             size_t nRows = 0;
@@ -295,7 +295,7 @@ namespace rsurfaces
                 {
                     curCol(i) = dest.C(r, i);
                 }
-                ProjectViaSparse(curCol, curCol, alpha, beta, mesh, geom, bvh, bct);
+                ProjectViaSparse(curCol, curCol, alpha, beta, mesh, geom, bvh, bct, theta);
                 // Copy the column into the column of A^{-1} C^T
                 for (size_t i = 0; i < 3 * nVerts + 3; i++)
                 {
@@ -308,7 +308,7 @@ namespace rsurfaces
         }
 
         void ProjectViaSchur(SchurComplement &comp, Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha,
-                             double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh, BlockClusterTree *&bct)
+                             double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh, BlockClusterTree *&bct, double theta)
         {
             size_t nVerts = mesh->nVertices();
             // Invert the "saddle matrix" now:
@@ -319,7 +319,7 @@ namespace rsurfaces
             Eigen::VectorXd curCol;
             curCol.setZero(3 * nVerts + 3);
             MatrixUtils::MatrixIntoColumn(gradient, curCol);
-            ProjectViaSparse(curCol, curCol, alpha, beta, mesh, geom, bvh, bct);
+            ProjectViaSparse(curCol, curCol, alpha, beta, mesh, geom, bvh, bct, theta);
 
             // Now we compute the correction.
             // Again we already have A^{-1} once, so no need to recompute it
@@ -329,7 +329,7 @@ namespace rsurfaces
             MatrixUtils::SolveDenseSystem(comp.M_A, C_Ai_x, MAi_C_Ai_x);
             Eigen::VectorXd B_MAi_C_Ai_x = comp.C.transpose() * MAi_C_Ai_x;
             // Apply A^{-1} from scratch one more time
-            ProjectViaSparse(B_MAi_C_Ai_x, B_MAi_C_Ai_x, alpha, beta, mesh, geom, bvh, bct);
+            ProjectViaSparse(B_MAi_C_Ai_x, B_MAi_C_Ai_x, alpha, beta, mesh, geom, bvh, bct, theta);
 
             curCol = curCol + B_MAi_C_Ai_x;
             MatrixUtils::ColumnIntoMatrix(curCol, dest);
@@ -353,7 +353,7 @@ namespace rsurfaces
             // Apply C^T
             Eigen::VectorXd correction = comp.C.transpose() * vals;
             // Apply A^{-1}
-            ProjectViaSparse(correction, correction, alpha, beta, mesh, geom, bvh, bct);
+            ProjectViaSparse(correction, correction, alpha, beta, mesh, geom, bvh, bct, 0);
 
             // Apply the correction to the vertex positions
             VertexIndices verts = mesh->getVertexIndices();
