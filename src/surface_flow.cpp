@@ -62,18 +62,12 @@ namespace rsurfaces
         long timeDiff = currentTimeMilliseconds();
         std::cout << "  * Gradient assembly: " << (timeDiff - timeStart) << " ms (norm = " << gNorm << ")" << std::endl;
 
-        Vector2 alpha_beta = energy->GetExponents();
-
-        // H1::ProjectGradient(gradient, gradientProj, mesh, geom, false);
-        // Hs::ProjectGradient(gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom);
-        // Hs::ProjectViaSparse(gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH());
-
         Hs::SchurComplement comp;
         // Create an empty BCT pointer; this will be initialized in the first
         // Schur complement function, and reused for the rest of this timestep
         BlockClusterTree* bct = 0;
-        Hs::GetSchurComplement(constraints, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH(), comp, bct, energy->GetTheta());
-        Hs::ProjectViaSchur(comp, gradient, gradientProj, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH(), bct, energy->GetTheta());
+        Hs::GetSchurComplement(constraints, energy, comp, bct);
+        Hs::ProjectViaSchur(comp, gradient, gradientProj, energy, bct);
         
         long timeProject = currentTimeMilliseconds();
         double gProjNorm = gradientProj.norm();
@@ -102,7 +96,7 @@ namespace rsurfaces
         std::cout << "  * Line search: " << (timeLS - timeProject) << " ms" << std::endl;
 
         // Project onto constraint manifold using Schur complement
-        Hs::BackprojectViaSchur(constraints, comp, alpha_beta.x, alpha_beta.y, mesh, geom, energy->GetBVH(), bct);
+        Hs::BackprojectViaSchur(constraints, comp, energy, bct);
         // Fix barycenter drift
         RecenterMesh();
         long timeEnd = currentTimeMilliseconds();

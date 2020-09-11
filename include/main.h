@@ -19,7 +19,6 @@ class MainApp
     void PlotL2Gradient();
     void TestLML();
     void TestMVProduct();
-    void TestHierarchical();
     void TestPercolation();
     void TestBarnesHut();
 

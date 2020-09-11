@@ -117,8 +117,8 @@ namespace rsurfaces
         MultiplyInadmissible(v_mid, b_mid_adm);
         long timeEnd = currentTimeMilliseconds();
 
-        std::cout << "Admissible time: " << (timeMid - timeStart) << " ms" << std::endl;
-        std::cout << "Inadmissible time: " << (timeEnd - timeMid) << " ms" << std::endl;
+        std::cout << "* Admissible time: " << (timeMid - timeStart) << " ms" << std::endl;
+        std::cout << "* Inadmissible time: " << (timeEnd - timeMid) << " ms" << std::endl;
 
         b.setZero();
         Hs::ApplyMidOperatorTranspose(mesh, geom, b_mid_adm, b);

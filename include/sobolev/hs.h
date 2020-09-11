@@ -21,11 +21,9 @@ namespace rsurfaces
 
         void ProjectGradient(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom);
 
-        void ProjectViaSparseMat(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta,
-                                 MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh, BlockClusterTree *&bct, double theta);
+        void ProjectViaSparseMat(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, SurfaceEnergy* energy, BlockClusterTree *&bct);
 
-        void ProjectViaSparse(Eigen::VectorXd &gradient, Eigen::VectorXd &dest, double alpha, double beta,
-                              MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh, BlockClusterTree *&bct, double theta);
+        void ProjectViaSparse(Eigen::VectorXd &gradient, Eigen::VectorXd &dest, SurfaceEnergy* energy, BlockClusterTree *&bct);
 
         struct SchurComplement
         {
@@ -33,14 +31,11 @@ namespace rsurfaces
             Eigen::MatrixXd M_A;
         };
 
-        void GetSchurComplement(std::vector<ConstraintBase *> constraints, double alpha, double beta, MeshPtr &mesh,
-                                GeomPtr &geom, BVHNode6D *bvh, SchurComplement &dest, BlockClusterTree *&bct, double theta);
+        void GetSchurComplement(std::vector<ConstraintBase *> constraints, SurfaceEnergy *energy, SchurComplement &dest, BlockClusterTree *&bct);
 
-        void ProjectViaSchur(SchurComplement &comp, Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha,
-                             double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh, BlockClusterTree *&bct, double theta);
+        void ProjectViaSchur(SchurComplement &comp, Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, SurfaceEnergy* energy, BlockClusterTree *&bct);
 
-        void BackprojectViaSchur(std::vector<ConstraintBase *> constraints, SchurComplement &comp, double alpha,
-                                 double beta, MeshPtr &mesh, GeomPtr &geom, BVHNode6D *bvh, BlockClusterTree *&bct);
+        void BackprojectViaSchur(std::vector<ConstraintBase *> constraints, SchurComplement &comp, SurfaceEnergy* energy, BlockClusterTree *&bct);
 
     } // namespace Hs
 

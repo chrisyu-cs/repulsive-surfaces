@@ -125,52 +125,11 @@ namespace rsurfaces
     Eigen::MatrixXd result = gradient;
 
     BlockClusterTree *bct = 0;
-    Hs::ProjectViaSparseMat(gradient, result, exps.x, exps.y, mesh, geom, 0, bct, bh_theta);
+    Hs::ProjectViaSparseMat(gradient, result, energy, bct);
     delete bct;
 
     std::cout << result << std::endl;
     PlotMatrix(result, psMesh, "LML approx");
-  }
-
-  void MainApp::TestHierarchical()
-  {
-    // Use the differential of the energy as the test case
-    SurfaceEnergy *energy = flow->BaseEnergy();
-    energy->Update();
-    Eigen::MatrixXd gradient(mesh->nVertices(), 3);
-    energy->Differential(gradient);
-    Vector2 exps = energy->GetExponents();
-    double s = Hs::get_s(exps.x, exps.y);
-
-    Eigen::MatrixXd denseRes = gradient;
-    Eigen::MatrixXd hierRes = gradient;
-
-    BlockClusterTree *bct = 0;
-    Hs::ProjectViaSparseMat(gradient, denseRes, exps.x, exps.y, mesh, geom, 0, bct, bh_theta);
-    Hs::ProjectViaSparseMat(gradient, hierRes, exps.x, exps.y, mesh, geom, energy->GetBVH(), bct, bh_theta);
-    if (bct)
-      delete bct;
-
-    PlotMatrix(denseRes, psMesh, "dense LML");
-    PlotMatrix(hierRes, psMesh, "hierarchical LML");
-
-    Eigen::MatrixXd diff = hierRes - denseRes;
-    double err = 100 * diff.norm() / denseRes.norm();
-
-    Eigen::VectorXd denseRow(mesh->nVertices() * 3);
-    Eigen::VectorXd hierRow(mesh->nVertices() * 3);
-
-    MatrixUtils::MatrixIntoColumn(denseRes, denseRow);
-    MatrixUtils::MatrixIntoColumn(hierRes, hierRow);
-
-    denseRow /= denseRow.norm();
-    hierRow /= hierRow.norm();
-
-    std::cout << "Dense LML norm = " << denseRes.norm() << std::endl;
-    std::cout << "Hierarchical LML norm = " << hierRes.norm() << std::endl;
-    std::cout << "Hierarchical norm / dense norm = " << hierRes.norm() / denseRes.norm() << std::endl;
-    std::cout << "Relative error = " << err << " percent" << std::endl;
-    std::cout << "Normalized dot product = " << denseRow.dot(hierRow) << std::endl;
   }
 
   void MainApp::TestBarnesHut()
@@ -419,11 +378,6 @@ void myCallback()
   if (ImGui::Button("Test mat-vec product"))
   {
     rsurfaces::MainApp::instance->TestMVProduct();
-  }
-
-  if (ImGui::Button("Test hierarchical"))
-  {
-    rsurfaces::MainApp::instance->TestHierarchical();
   }
 
   if (ImGui::Button("Test Barnes-Hut"))
