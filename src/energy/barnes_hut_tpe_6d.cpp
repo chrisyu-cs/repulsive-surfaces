@@ -52,7 +52,7 @@ namespace rsurfaces
             GCFace f2 = bvhRoot->getSingleFace(kernel->mesh);
             return kernel->tpe_pair(face, f2);
         }
-        if (bvhRoot->isAdmissibleFrom(bcenter))
+        if (bvhRoot->isAdmissibleFrom(bcenter, theta))
         {
             // Use the cluster approximation
             MassNormalPoint mnp = bvhRoot->GetMassNormalPoint();
@@ -134,7 +134,7 @@ namespace rsurfaces
         else
         {
             Vector3 f1_center = faceBarycenter(kernel->geom, face1);
-            if (node->isAdmissibleFrom(f1_center))
+            if (node->isAdmissibleFrom(f1_center, theta))
             {
                 Vector3 normal = node->averageNormal;
                 // This cell is far enough away that we can treat it as a single body
@@ -168,7 +168,7 @@ namespace rsurfaces
         {
             delete root;
         }
-        root = Create6DBVHFromMeshFaces(kernel->mesh, kernel->geom, theta);
+        root = Create6DBVHFromMeshFaces(kernel->mesh, kernel->geom);
     }
 
     MeshPtr BarnesHutTPEnergy6D::GetMesh()

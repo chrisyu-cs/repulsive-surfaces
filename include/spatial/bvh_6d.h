@@ -9,7 +9,9 @@ namespace rsurfaces
     {
     public:
         // Build a BVH of the given points
-        BVHNode6D(std::vector<MassNormalPoint> &points, int axis, BVHNode6D *root, double theta);
+        BVHNode6D(std::vector<MassNormalPoint> &points, int axis, BVHNode6D *root);
+        // Copy constructor
+        BVHNode6D(const BVHNode6D& orig);
         ~BVHNode6D();
 
         // Basic spatial data
@@ -18,36 +20,28 @@ namespace rsurfaces
         Vector3 averageNormal;
         Vector3 minCoords;
         Vector3 maxCoords;
+        // Indexing and other metadata
         size_t elementID;
+        size_t nodeID;
+        BVHNodeType nodeType;
+        size_t numNodesInBranch;
+        size_t nElements;
+        // Store the list of all indices of elements in this cluster
+        std::vector<size_t> clusterIndices;
 
         // Every node knows the root of the tree
         BVHNode6D *bvhRoot;
         // Children
         std::vector<BVHNode6D *> children;
-        BVHNodeType nodeType;
-        int splitAxis;
-        double splitPoint;
-        double thresholdTheta;
-        size_t nodeID;
+        
+        // Assign unique IDs to all nodes in this tree
         size_t assignIDsRecursively(size_t startID);
-        size_t numNodesInBranch;
-
-        // Store the list of all indices of elements in this cluster
-        std::vector<size_t> clusterIndices;
-
-        void addAllFaces(MeshPtr &mesh, std::vector<GCFace> &faces);
-
         // Recursively recompute all centers of mass in this tree
         void recomputeCentersOfMass(MeshPtr &mesh, GeomPtr &geom);
-        bool isAdmissibleFrom(Vector3 vertPos);
+        bool isAdmissibleFrom(Vector3 vertPos, double thresholdTheta);
         void printSummary();
         MassNormalPoint GetMassNormalPoint();
         GCFace getSingleFace(MeshPtr &mesh);
-
-        inline size_t NumElements()
-        {
-            return nElements;
-        }
 
         inline double nodeRatio(double d)
         {
@@ -58,12 +52,12 @@ namespace rsurfaces
         }
 
         template<typename Data>
-        void indexNodes(DataTreeContainer<Data> *cont, DataTree<Data> *root)
+        void indexNodes(DataTreeContainer<Data> *cont, DataTree<Data> *droot)
         {
             // Put the root in the correct spot
-            cont->byIndex[root->nodeID] = root;
+            cont->byIndex[droot->nodeID] = droot;
             // Recursively index children
-            for (DataTree<Data> *child : root->children)
+            for (DataTree<Data> *child : droot->children)
             {
                 indexNodes(cont, child);
             }
@@ -80,7 +74,9 @@ namespace rsurfaces
         }
 
     private:
-        size_t nElements;
+        // Helper recursive copy constructor for child nodes
+        BVHNode6D(const BVHNode6D* orig, BVHNode6D *root);
+
         double AxisSplittingPlane(std::vector<MassNormalPoint> &points, int axis);
         void averageDataFromChildren();
         void mergeIndicesFromChildren();
@@ -104,8 +100,8 @@ namespace rsurfaces
         }
     };
 
-    BVHNode6D *Create6DBVHFromMeshFaces(MeshPtr &mesh, GeomPtr &geom, double theta);
-    BVHNode6D *Create6DBVHFromMeshVerts(MeshPtr &mesh, GeomPtr &geom, double theta);
+    BVHNode6D *Create6DBVHFromMeshFaces(MeshPtr &mesh, GeomPtr &geom);
+    BVHNode6D *Create6DBVHFromMeshVerts(MeshPtr &mesh, GeomPtr &geom);
 
     template<typename Data>
     DataTree<Data>* DataTreeContainer<Data>::GetDataNode(BVHNode6D *bvhNode)

@@ -62,7 +62,7 @@ namespace rsurfaces
         {
             delete root;
         }
-        root = Create6DBVHFromMeshFaces(kernel->mesh, kernel->geom, theta);
+        root = Create6DBVHFromMeshFaces(kernel->mesh, kernel->geom);
     }
 
     MeshPtr AllPairsWithBVH::GetMesh()

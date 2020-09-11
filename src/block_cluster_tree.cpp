@@ -49,12 +49,12 @@ namespace rsurfaces
         for (ClusterPair pair : unresolvedPairs)
         {
             pair.depth = depth;
-            if (pair.cluster1->NumElements() == 0 || pair.cluster2->NumElements() == 0)
+            if (pair.cluster1->nElements == 0 || pair.cluster2->nElements == 0)
             {
                 // Drop pairs where one of the sides has 0 vertices
                 continue;
             }
-            else if (pair.cluster1->NumElements() == 1 && pair.cluster2->NumElements() == 1)
+            else if (pair.cluster1->nElements == 1 && pair.cluster2->nElements == 1)
             {
                 // If this is two singleton vertices, put in the inadmissible list
                 // so they get multiplied accurately
@@ -89,8 +89,8 @@ namespace rsurfaces
 
     bool BlockClusterTree::isPairSmallEnough(ClusterPair pair)
     {
-        int s1 = pair.cluster1->NumElements();
-        int s2 = pair.cluster2->NumElements();
+        int s1 = pair.cluster1->nElements;
+        int s2 = pair.cluster2->nElements;
         return (s1 <= 1) || (s2 <= 1) || (s1 + s2 <= 8);
     }
 
@@ -176,7 +176,7 @@ namespace rsurfaces
 
     void BlockClusterTree::PremultiplyAf1()
     {
-        Af_1.setOnes(tree_root->NumElements());
+        Af_1.setOnes(tree_root->nElements);
         MultiplyAfPercolated(Af_1, Af_1);
     }
 
@@ -229,7 +229,7 @@ namespace rsurfaces
 
     void BlockClusterTree::MultiplyAfPercolated(Eigen::VectorXd &v, Eigen::VectorXd &b) const
     {
-        Eigen::VectorXd w(tree_root->NumElements());
+        Eigen::VectorXd w(tree_root->nElements);
         fillClusterMasses(tree_root, w);
 
         DataTreeContainer<PercolationData> *treeContainer = tree_root->CreateDataTree<PercolationData>();
@@ -257,17 +257,17 @@ namespace rsurfaces
 
     void BlockClusterTree::AfFullProduct(ClusterPair pair, const Eigen::VectorXd &v_mid, Eigen::VectorXd &result) const
     {
-        std::vector<double> a_times_one(pair.cluster1->NumElements());
-        std::vector<double> a_times_v(pair.cluster1->NumElements());
+        std::vector<double> a_times_one(pair.cluster1->nElements);
+        std::vector<double> a_times_v(pair.cluster1->nElements);
 
-        for (size_t i = 0; i < pair.cluster1->NumElements(); i++)
+        for (size_t i = 0; i < pair.cluster1->nElements; i++)
         {
             int f1_ind = pair.cluster1->clusterIndices[i];
             GCFace f1 = mesh->face(f1_ind);
             Vector3 mid1 = faceBarycenter(geom, f1);
             double l1 = geom->faceArea(f1);
 
-            for (size_t j = 0; j < pair.cluster2->NumElements(); j++)
+            for (size_t j = 0; j < pair.cluster2->nElements; j++)
             {
                 int f2_ind = pair.cluster2->clusterIndices[j];
                 GCFace f2 = mesh->face(f2_ind);
@@ -301,9 +301,9 @@ namespace rsurfaces
 
     void BlockClusterTree::fillClusterMasses(BVHNode6D *cluster, Eigen::VectorXd &w) const
     {
-        int nElts = cluster->NumElements();
+        int nElts = cluster->nElements;
         w.setZero(nElts);
-        for (size_t i = 0; i < cluster->NumElements(); i++)
+        for (size_t i = 0; i < cluster->nElements; i++)
         {
             w(i) = geom->faceArea(mesh->face(cluster->clusterIndices[i]));
         }

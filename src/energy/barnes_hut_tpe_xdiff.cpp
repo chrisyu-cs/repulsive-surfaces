@@ -52,7 +52,7 @@ namespace rsurfaces
             GCFace f2 = bvhRoot->getSingleFace(kernel->mesh);
             return kernel->tpe_pair(face, f2);
         }
-        if (bvhRoot->isAdmissibleFrom(bcenter))
+        if (bvhRoot->isAdmissibleFrom(bcenter, theta))
         {
             // Use the cluster approximation
             MassNormalPoint mnp = bvhRoot->GetMassNormalPoint();
@@ -149,7 +149,7 @@ namespace rsurfaces
         else
         {
             Vector3 f1_center = faceBarycenter(kernel->geom, face1);
-            if (node->isAdmissibleFrom(f1_center))
+            if (node->isAdmissibleFrom(f1_center, theta))
             {
                 // This cell is far enough away that we can treat it as a single body
                 MassNormalPoint mnp2 = node->GetMassNormalPoint();
@@ -185,7 +185,7 @@ namespace rsurfaces
         }
         else
         {
-            if (node->isAdmissibleFrom(bcenter))
+            if (node->isAdmissibleFrom(bcenter, theta))
             {
                 DataTree<BHDiffData> *dataNode = data->GetDataNode(node);
                 Vector3 Z_V = node->centerOfMass * node->totalMass;
@@ -278,7 +278,7 @@ namespace rsurfaces
         {
             delete root;
         }
-        root = Create6DBVHFromMeshFaces(kernel->mesh, kernel->geom, theta);
+        root = Create6DBVHFromMeshFaces(kernel->mesh, kernel->geom);
     }
 
     MeshPtr BarnesHutTPEnergyXDiff::GetMesh()

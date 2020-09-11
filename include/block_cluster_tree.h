@@ -109,16 +109,10 @@ namespace rsurfaces
         Eigen::VectorXd b_mid_adm(nFaces);
         b_mid_adm.setZero();
 
-        long timeStart = currentTimeMilliseconds();
         // Multiply admissible blocks
         MultiplyAdmissiblePercolated(v_mid, b_mid_adm);
-        long timeMid = currentTimeMilliseconds();
         // Multiply inadmissible blocks
         MultiplyInadmissible(v_mid, b_mid_adm);
-        long timeEnd = currentTimeMilliseconds();
-
-        std::cout << "* Admissible time: " << (timeMid - timeStart) << " ms" << std::endl;
-        std::cout << "* Inadmissible time: " << (timeEnd - timeMid) << " ms" << std::endl;
 
         b.setZero();
         Hs::ApplyMidOperatorTranspose(mesh, geom, b_mid_adm, b);

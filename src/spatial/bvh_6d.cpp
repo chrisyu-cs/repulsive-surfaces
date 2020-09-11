@@ -69,7 +69,7 @@ namespace rsurfaces
         }
     }
 
-    BVHNode6D *Create6DBVHFromMeshFaces(MeshPtr &mesh, GeomPtr &geom, double theta)
+    BVHNode6D *Create6DBVHFromMeshFaces(MeshPtr &mesh, GeomPtr &geom)
     {
         std::vector<MassNormalPoint> verts(mesh->nFaces());
         FaceIndices indices = mesh->getFaceIndices();
@@ -82,12 +82,12 @@ namespace rsurfaces
             verts[curBody.elementID] = curBody;
         }
 
-        BVHNode6D *tree = new BVHNode6D(verts, 0, 0, theta);
+        BVHNode6D *tree = new BVHNode6D(verts, 0, 0);
         tree->assignIDsRecursively(0);
         return tree;
     }
 
-    BVHNode6D *Create6DBVHFromMeshVerts(MeshPtr &mesh, GeomPtr &geom, double theta)
+    BVHNode6D *Create6DBVHFromMeshVerts(MeshPtr &mesh, GeomPtr &geom)
     {
         std::vector<MassNormalPoint> verts(mesh->nVertices());
         VertexIndices indices = mesh->getVertexIndices();
@@ -100,17 +100,14 @@ namespace rsurfaces
             verts[curBody.elementID] = curBody;
         }
 
-        BVHNode6D *tree = new BVHNode6D(verts, 0, 0, theta);
+        BVHNode6D *tree = new BVHNode6D(verts, 0, 0);
         tree->assignIDsRecursively(0);
         return tree;
     }
 
-    BVHNode6D::BVHNode6D(std::vector<MassNormalPoint> &points, int axis, BVHNode6D *root, double theta)
+    BVHNode6D::BVHNode6D(std::vector<MassNormalPoint> &points, int axis, BVHNode6D *root)
     {
         // Split the points into sets somehow
-        thresholdTheta = theta;
-        splitAxis = axis;
-
         if (!root)
             bvhRoot = this;
         else
@@ -156,7 +153,7 @@ namespace rsurfaces
             greaterPoints.reserve(nPoints / 2 + 1);
 
             // Compute the plane over which to split the points
-            splitPoint = AxisSplittingPlane(points, axis);
+            double splitPoint = AxisSplittingPlane(points, axis);
 
             // Split the points over the median
             for (int i = 0; i < nPoints; i++)
@@ -174,8 +171,8 @@ namespace rsurfaces
             // otherwise, this must be the root, so use it.
             BVHNode6D *nextRoot = (root) ? root : this;
             // Add the children
-            BVHNode6D *lesserNode = new BVHNode6D(lesserPoints, nextAxis, nextRoot, theta);
-            BVHNode6D *greaterNode = new BVHNode6D(greaterPoints, nextAxis, nextRoot, theta);
+            BVHNode6D *lesserNode = new BVHNode6D(lesserPoints, nextAxis, nextRoot);
+            BVHNode6D *greaterNode = new BVHNode6D(greaterPoints, nextAxis, nextRoot);
             children.push_back(lesserNode);
             children.push_back(greaterNode);
             numNodesInBranch = lesserNode->numNodesInBranch + greaterNode->numNodesInBranch + 1;
@@ -183,6 +180,46 @@ namespace rsurfaces
             // Get the averages from children
             averageDataFromChildren();
             mergeIndicesFromChildren();
+        }
+    }
+
+    BVHNode6D::BVHNode6D(const BVHNode6D &orig)
+        : totalMass(orig.totalMass),
+          centerOfMass(orig.centerOfMass),
+          averageNormal(orig.averageNormal),
+          minCoords(orig.minCoords),
+          maxCoords(orig.maxCoords),
+          elementID(orig.elementID),
+          nodeType(orig.nodeType),
+          numNodesInBranch(orig.numNodesInBranch),
+          nElements(orig.nElements),
+          clusterIndices(orig.clusterIndices)
+    {
+        bvhRoot = this;
+        for (const BVHNode6D *child : children)
+        {
+            BVHNode6D *childCopy = new BVHNode6D(child, this);
+            children.push_back(childCopy);
+        }
+    }
+
+    BVHNode6D::BVHNode6D(const BVHNode6D *orig, BVHNode6D *root)
+        : totalMass(orig->totalMass),
+          centerOfMass(orig->centerOfMass),
+          averageNormal(orig->averageNormal),
+          minCoords(orig->minCoords),
+          maxCoords(orig->maxCoords),
+          elementID(orig->elementID),
+          nodeType(orig->nodeType),
+          numNodesInBranch(orig->numNodesInBranch),
+          nElements(orig->nElements),
+          clusterIndices(orig->clusterIndices)
+    {
+        bvhRoot = root;
+        for (const BVHNode6D *child : children)
+        {
+            BVHNode6D *childCopy = new BVHNode6D(child, root);
+            children.push_back(childCopy);
         }
     }
 
@@ -209,25 +246,6 @@ namespace rsurfaces
             }
         }
         return nextID;
-    }
-
-    void BVHNode6D::addAllFaces(MeshPtr &mesh, std::vector<GCFace> &faces)
-    {
-        if (nodeType == BVHNodeType::Empty)
-        {
-            return;
-        }
-        else if (nodeType == BVHNodeType::Leaf)
-        {
-            faces.push_back(getSingleFace(mesh));
-        }
-        else
-        {
-            for (BVHNode6D *child : children)
-            {
-                child->addAllFaces(mesh, faces);
-            }
-        }
     }
 
     void BVHNode6D::printSummary()
@@ -337,7 +355,7 @@ namespace rsurfaces
         return splitPoint;
     }
 
-    bool BVHNode6D::isAdmissibleFrom(Vector3 atPos)
+    bool BVHNode6D::isAdmissibleFrom(Vector3 atPos, double thresholdTheta)
     {
         if (nodeType == BVHNodeType::Leaf)
         {
