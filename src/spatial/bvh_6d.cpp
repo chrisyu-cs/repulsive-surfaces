@@ -19,20 +19,36 @@ namespace rsurfaces
         }
     }
 
+    // Find the minimum coordinate of the bounding box of this face
+    inline Vector3 minCoordOfFace(const GCFace &f, GeomPtr &geom)
+    {
+        Vector3 minCoord = geom->inputVertexPositions[f.halfedge().vertex()];
+        for (GCVertex v : f.adjacentVertices())
+        {
+            minCoord = vectorMin(minCoord, geom->inputVertexPositions[v]);
+        }
+        return minCoord;
+    }
+
+    // Find the maximum coordinate of the bounding box of this face
+    inline Vector3 maxCoordOfFace(const GCFace &f, GeomPtr &geom)
+    {
+        Vector3 maxCoord = geom->inputVertexPositions[f.halfedge().vertex()];
+        for (GCVertex v : f.adjacentVertices())
+        {
+            maxCoord = vectorMax(maxCoord, geom->inputVertexPositions[v]);
+        }
+        return maxCoord;
+    }
+
     inline MassNormalPoint meshFaceToBody(const GCFace &f, GeomPtr &geom, FaceIndices &indices)
     {
         Vector3 pos = faceBarycenter(geom, f);
         double mass = geom->faceArea(f);
         Vector3 n = geom->faceNormal(f);
 
-        Vector3 minCoord = geom->inputVertexPositions[f.halfedge().vertex()];
-        Vector3 maxCoord = geom->inputVertexPositions[f.halfedge().vertex()];
-
-        for (GCVertex v : f.adjacentVertices())
-        {
-            minCoord = vectorMin(minCoord, geom->inputVertexPositions[v]);
-            maxCoord = vectorMax(maxCoord, geom->inputVertexPositions[v]);
-        }
+        Vector3 minCoord = minCoordOfFace(f, geom);
+        Vector3 maxCoord = maxCoordOfFace(f, geom);
 
         return MassNormalPoint{mass, n, pos, minCoord, maxCoord, indices[f]};
     }
@@ -386,8 +402,8 @@ namespace rsurfaces
             GCFace f = mesh->face(elementID);
             totalMass = geom->faceArea(f);
             centerOfMass = faceBarycenter(geom, f);
-            minCoords = centerOfMass;
-            maxCoords = centerOfMass;
+            minCoords = minCoordOfFace(f, geom);
+            maxCoords = maxCoordOfFace(f, geom);
         }
         else
         {

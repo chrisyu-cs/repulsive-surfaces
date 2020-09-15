@@ -54,7 +54,7 @@ namespace rsurfaces
             GCFace f2 = bvhRoot->getSingleFace(kernel->mesh);
             return kernel->tpe_pair(face, f2);
         }
-        if (bvhRoot->isAdmissibleFrom(bcenter, theta))
+        else if (bvhRoot->isAdmissibleFrom(bcenter, theta))
         {
             // Use the cluster approximation
             MassNormalPoint mnp = bvhRoot->GetMassNormalPoint();

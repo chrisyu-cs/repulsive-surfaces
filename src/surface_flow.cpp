@@ -68,10 +68,10 @@ namespace rsurfaces
         Hs::SparseFactorization factor;
         // Create an empty BCT pointer; this will be initialized in the first
         // Schur complement function, and reused for the rest of this timestep
-        BlockClusterTree* bct = 0;
+        BlockClusterTree *bct = 0;
         Hs::GetSchurComplement(constraints, energy, comp, bct, factor);
         Hs::ProjectViaSchur(comp, gradient, gradientProj, energy, bct, factor);
-        
+
         long timeProject = currentTimeMilliseconds();
         double gProjNorm = gradientProj.norm();
         std::cout << "  * Gradient projection: " << (timeProject - timeDiff) << " ms (norm = " << gProjNorm << ")" << std::endl;
@@ -173,6 +173,11 @@ namespace rsurfaces
             Vector3 pos_v = GetRow(origPositions, ind_v);
             geom->inputVertexPositions[v] = pos_v;
         }
+
+        if (energy->GetBVH())
+        {
+            energy->GetBVH()->recomputeCentersOfMass(mesh, geom);
+        }
     }
 
     void SurfaceFlow::SetGradientStep(Eigen::MatrixXd &gradient, double delta)
@@ -186,6 +191,11 @@ namespace rsurfaces
             Vector3 pos_v = GetRow(origPositions, ind_v);
             Vector3 grad_v = GetRow(gradient, ind_v);
             geom->inputVertexPositions[v] = pos_v - delta * grad_v;
+        }
+
+        if (energy->GetBVH())
+        {
+            energy->GetBVH()->recomputeCentersOfMass(mesh, geom);
         }
     }
 
