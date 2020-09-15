@@ -257,11 +257,11 @@ namespace rsurfaces
 
     void BlockClusterTree::AfFullProduct(ClusterPair pair, const Eigen::VectorXd &v_mid, Eigen::VectorXd &result) const
     {
-        std::vector<double> a_times_one(pair.cluster1->nElements);
-        std::vector<double> a_times_v(pair.cluster1->nElements);
-
         for (size_t i = 0; i < pair.cluster1->nElements; i++)
         {
+            double a_times_one_i = 0;
+            double a_times_v_i = 0;
+
             int f1_ind = pair.cluster1->clusterIndices[i];
             GCFace f1 = mesh->face(f1_ind);
             Vector3 mid1 = faceBarycenter(geom, f1);
@@ -284,17 +284,17 @@ namespace rsurfaces
 
                 // We dot this row of Af(i, j) with the all-ones vector, which means we
                 // just add up all entries of that row.
-                a_times_one[i] += af_ij;
+                a_times_one_i += af_ij;
 
                 // We also dot it with v_hat(J).
-                a_times_v[i] += af_ij * v_mid(f2_ind);
+                a_times_v_i += af_ij * v_mid(f2_ind);
             }
 
-            a_times_one[i] *= l1;
-            a_times_v[i] *= l1;
+            a_times_one_i *= l1;
+            a_times_v_i *= l1;
 
             // We've computed everything from row i now, so add to the results vector
-            double toAdd = 2 * (a_times_one[i] * v_mid(f1_ind) - a_times_v[i]);
+            double toAdd = 2 * (a_times_one_i * v_mid(f1_ind) - a_times_v_i);
             result(f1_ind) += toAdd;
         }
     }

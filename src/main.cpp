@@ -126,7 +126,8 @@ namespace rsurfaces
     Eigen::MatrixXd result = gradient;
 
     BlockClusterTree *bct = 0;
-    Hs::ProjectViaSparseMat(gradient, result, energy, bct);
+    Hs::SparseFactorization factor;
+    Hs::ProjectViaSparseMat(gradient, result, energy, bct, factor);
     delete bct;
 
     std::cout << result << std::endl;
@@ -227,6 +228,7 @@ namespace rsurfaces
       long denseStartTime = currentTimeMilliseconds();
       // Dense multiplication
       // Assemble the dense operator
+      std::cout << "Multiplying dense" << std::endl;
       Eigen::MatrixXd dense, dense_small;
       dense_small.setZero(mesh->nVertices(), mesh->nVertices());
       dense.setZero(3 * mesh->nVertices(), 3 * mesh->nVertices());
@@ -237,6 +239,7 @@ namespace rsurfaces
       Eigen::VectorXd denseRes = dense * gVec;
       long denseEndTime = currentTimeMilliseconds();
 
+      std::cout << "Multiplying BCT" << std::endl;
       // Block cluster tree multiplication
       long bctStartTime = currentTimeMilliseconds();
       BVHNode6D *bvh = energy->GetBVH();

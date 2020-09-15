@@ -62,12 +62,15 @@ namespace rsurfaces
         long timeDiff = currentTimeMilliseconds();
         std::cout << "  * Gradient assembly: " << (timeDiff - timeStart) << " ms (norm = " << gNorm << ")" << std::endl;
 
+        // Set up some data that will be reused in multiple steps:
+        // Schur complement, and sparse factorization (of Laplacian)
         Hs::SchurComplement comp;
+        Hs::SparseFactorization factor;
         // Create an empty BCT pointer; this will be initialized in the first
         // Schur complement function, and reused for the rest of this timestep
         BlockClusterTree* bct = 0;
-        Hs::GetSchurComplement(constraints, energy, comp, bct);
-        Hs::ProjectViaSchur(comp, gradient, gradientProj, energy, bct);
+        Hs::GetSchurComplement(constraints, energy, comp, bct, factor);
+        Hs::ProjectViaSchur(comp, gradient, gradientProj, energy, bct, factor);
         
         long timeProject = currentTimeMilliseconds();
         double gProjNorm = gradientProj.norm();
@@ -96,7 +99,7 @@ namespace rsurfaces
         std::cout << "  * Line search: " << (timeLS - timeProject) << " ms" << std::endl;
 
         // Project onto constraint manifold using Schur complement
-        Hs::BackprojectViaSchur(constraints, comp, energy, bct);
+        Hs::BackprojectViaSchur(constraints, comp, energy, bct, factor);
         // Fix barycenter drift
         RecenterMesh();
         long timeEnd = currentTimeMilliseconds();
