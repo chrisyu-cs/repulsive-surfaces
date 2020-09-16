@@ -98,6 +98,7 @@ namespace rsurfaces
         long timeLS = currentTimeMilliseconds();
         std::cout << "  * Line search: " << (timeLS - timeProject) << " ms" << std::endl;
 
+        double energyBeforeBackproj = energy->Value();
         // Project onto constraint manifold using Schur complement
         Hs::BackprojectViaSchur(constraints, comp, energy, bct, factor);
         // Fix barycenter drift
@@ -110,7 +111,7 @@ namespace rsurfaces
         std::cout << "  * Post-processing: " << (timeEnd - timeLS) << " ms" << std::endl;
 
         std::cout << "  Total time: " << (timeEnd - timeStart) << " ms" << std::endl;
-        std::cout << "  Energy: " << energyBefore << " -> " << energyAfter << std::endl;
+        std::cout << "  Energy: " << energyBefore << " -> " << energyBeforeBackproj << " -> " << energyAfter << std::endl;
 
         double finalArea = totalArea(geom, mesh);
         double finalVolume = totalVolume(geom, mesh);

@@ -23,6 +23,12 @@ namespace rsurfaces
         double B = 0;
     };
 
+    struct AdmissibleClusterList
+    {
+        BVHNode6D *node = 0;
+        std::vector<ClusterPair> list;
+    };
+
     class BlockClusterTree
     {
     public:
@@ -76,6 +82,7 @@ namespace rsurfaces
         void PremultiplyAf1();
 
         void fillClusterMasses(BVHNode6D *cluster, Eigen::VectorXd &w) const;
+        void OrganizePairsByFirst();
 
         double exp_s, separationCoeff;
         double epsilon;

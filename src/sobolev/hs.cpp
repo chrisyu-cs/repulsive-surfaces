@@ -235,7 +235,6 @@ namespace rsurfaces
 
             else
             {
-                std::cout << "  * Using block cluster tree to multiply" << std::endl;
                 if (!bct)
                 {
                     long bctConstructStart = currentTimeMilliseconds();

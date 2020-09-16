@@ -34,6 +34,9 @@ namespace rsurfaces
             depth++;
         }
 
+        // Need to sort the pairs before doing any multiplication
+        OrganizePairsByFirst();
+        // Now we can multiply
         PremultiplyAf1();
     }
 
@@ -161,13 +164,13 @@ namespace rsurfaces
 
         #pragma omp parallel firstprivate(result) shared(b_hat)
         {
-            #pragma omp for
+        #pragma omp for
             for (size_t i = 0; i < inadmissiblePairs.size(); i++)
             {
                 AfFullProduct(inadmissiblePairs[i], v_hat, result);
             }
 
-            #pragma omp critical
+        #pragma omp critical
             {
                 b_hat += result;
             }
@@ -178,6 +181,17 @@ namespace rsurfaces
     {
         Af_1.setOnes(tree_root->nElements);
         MultiplyAfPercolated(Af_1, Af_1);
+    }
+
+    void BlockClusterTree::OrganizePairsByFirst()
+    {
+        admissibleByCluster.clear();
+        admissibleByCluster.resize(tree_root->numNodesInBranch);
+
+        for (ClusterPair const &pair : admissiblePairs)
+        {
+            admissibleByCluster[pair.cluster1->nodeID].push_back(pair);
+        }
     }
 
     void BlockClusterTree::MultiplyAdmissiblePercolated(Eigen::VectorXd &v, Eigen::VectorXd &b) const
@@ -239,13 +253,17 @@ namespace rsurfaces
         // For each cluster I, we need to sum over all clusters J that are
         // admissible with it. Since we already have a list of all admissible
         // pairs, we can just do this for all clusters at once.
-        for (ClusterPair const &pair : admissiblePairs)
+        #pragma omp parallel for shared(admissibleByCluster, treeContainer)
+        for (size_t i = 0; i < admissibleByCluster.size(); i++)
         {
-            double a_IJ = Hs::MetricDistanceTermFrac(exp_s, pair.cluster1->centerOfMass, pair.cluster2->centerOfMass);
-            DataTree<PercolationData> *data_I = treeContainer->byIndex[pair.cluster1->nodeID];
-            DataTree<PercolationData> *data_J = treeContainer->byIndex[pair.cluster2->nodeID];
-            // Each I gets a sum of a_IJ * V_J for all admissible J
-            data_I->data.B += a_IJ * data_J->data.wtDot;
+            for (ClusterPair const &pair : admissibleByCluster[i])
+            {
+                double a_IJ = Hs::MetricDistanceTermFrac(exp_s, pair.cluster1->centerOfMass, pair.cluster2->centerOfMass);
+                DataTree<PercolationData> *data_I = treeContainer->byIndex[pair.cluster1->nodeID];
+                DataTree<PercolationData> *data_J = treeContainer->byIndex[pair.cluster2->nodeID];
+                // Each I gets a sum of a_IJ * V_J for all admissible J
+                data_I->data.B += a_IJ * data_J->data.wtDot;
+            }
         }
 
         // Percolate downward from the root
