@@ -476,10 +476,10 @@ int main(int argc, char **argv)
     return EXIT_FAILURE;
   }
 
-  double theta = 0.5;
+  double theta = 1;
   if (!thetaFlag)
   {
-    std::cout << "Barnes-Hut theta value not specified; defaulting to theta = 0.5." << std::endl;
+    std::cout << "Barnes-Hut theta value not specified; defaulting to theta = " << theta << std::endl;
   }
   else
   {
