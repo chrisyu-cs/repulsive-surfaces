@@ -50,8 +50,12 @@ namespace rsurfaces
         double initArea = totalArea(geom, mesh);
         double initVolume = totalVolume(geom, mesh);
 
+        long timeEnergy = currentTimeMilliseconds();
         double energyBefore = energy->Value();
         long timeStart = currentTimeMilliseconds();
+
+        std::cout << "  * Energy evaluation: " << (timeStart - timeEnergy) << " ms" << std::endl;
+
         Eigen::MatrixXd gradient, gradientProj;
         gradient.setZero(mesh->nVertices(), 3);
         gradientProj.setZero(mesh->nVertices(), 3);
@@ -99,16 +103,19 @@ namespace rsurfaces
         std::cout << "  * Line search: " << (timeLS - timeProject) << " ms" << std::endl;
 
         double energyBeforeBackproj = energy->Value();
+
         // Project onto constraint manifold using Schur complement
+        long timeBackproj = currentTimeMilliseconds();
         Hs::BackprojectViaSchur(constraints, comp, energy, bct, factor);
         // Fix barycenter drift
         RecenterMesh();
         long timeEnd = currentTimeMilliseconds();
+
         double energyAfter = energy->Value();
         // Done with BCT, so clean it up
         delete bct;
 
-        std::cout << "  * Post-processing: " << (timeEnd - timeLS) << " ms" << std::endl;
+        std::cout << "  * Post-processing: " << (timeEnd - timeBackproj) << " ms" << std::endl;
 
         std::cout << "  Total time: " << (timeEnd - timeStart) << " ms" << std::endl;
         std::cout << "  Energy: " << energyBefore << " -> " << energyBeforeBackproj << " -> " << energyAfter << std::endl;
