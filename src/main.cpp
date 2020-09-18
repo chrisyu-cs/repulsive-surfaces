@@ -322,7 +322,7 @@ namespace rsurfaces
 
       totalBVH += bvhTime;
       totalE += eTime;
-      totalG = gTime;
+      totalG += gTime;
 
       std::cout << i << ": BVH " << bvhTime << " ms, energy " << eTime << " ms, gradient " << gTime << " ms" << std::endl;
     }
