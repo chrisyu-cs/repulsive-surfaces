@@ -5,13 +5,31 @@
 
 namespace rsurfaces
 {
+    struct BVHData
+    {
+        // Basic spatial data
+        double totalMass;
+        Vector3 centerOfMass;
+        Vector3 averageNormal;
+        Vector3 minCoords;
+        Vector3 maxCoords;
+        // Indexing and other metadata
+        size_t elementID;
+        size_t nodeID;
+        BVHNodeType nodeType;
+        size_t numNodesInBranch;
+        size_t nElements;
+        // Indices of children
+        size_t child[2];
+    };
+
     class BVHNode6D
     {
     public:
         // Build a BVH of the given points
         BVHNode6D(std::vector<MassNormalPoint> &points, int axis, BVHNode6D *root);
         // Copy constructor
-        BVHNode6D(const BVHNode6D& orig);
+        BVHNode6D(const BVHNode6D &orig);
         ~BVHNode6D();
 
         // Basic spatial data
@@ -33,7 +51,7 @@ namespace rsurfaces
         BVHNode6D *bvhRoot;
         // Children
         std::vector<BVHNode6D *> children;
-        
+
         // Assign unique IDs to all nodes in this tree
         size_t assignIDsRecursively(size_t startID);
         // Recursively recompute all centers of mass in this tree
@@ -43,6 +61,17 @@ namespace rsurfaces
         MassNormalPoint GetMassNormalPoint();
         GCFace getSingleFace(MeshPtr &mesh);
 
+        inline BVHData GetNodeDataAsStruct()
+        {
+            BVHData data{totalMass, centerOfMass, averageNormal, minCoords, maxCoords, elementID, nodeID, nodeType, numNodesInBranch, nElements, {0, 0}};
+            if (nodeType == BVHNodeType::Interior)
+            {
+                data.child[0] = children[0]->nodeID;
+                data.child[1] = children[1]->nodeID;
+            }
+            return data;
+        }
+
         inline double nodeRatio(double d)
         {
             // Compute diagonal distance from corner to corner
@@ -51,7 +80,7 @@ namespace rsurfaces
             return diag.norm() / d;
         }
 
-        template<typename Data>
+        template <typename Data>
         void indexNodes(DataTreeContainer<Data> *cont, DataTree<Data> *droot)
         {
             // Put the root in the correct spot
@@ -75,7 +104,7 @@ namespace rsurfaces
 
     private:
         // Helper recursive copy constructor for child nodes
-        BVHNode6D(const BVHNode6D* orig, BVHNode6D *root);
+        BVHNode6D(const BVHNode6D *orig, BVHNode6D *root);
 
         double AxisSplittingPlane(std::vector<MassNormalPoint> &points, int axis);
         void averageDataFromChildren();
@@ -95,7 +124,7 @@ namespace rsurfaces
                     droot->children.push_back(childData);
                 }
             }
-            
+
             return droot;
         }
     };
@@ -103,8 +132,8 @@ namespace rsurfaces
     BVHNode6D *Create6DBVHFromMeshFaces(MeshPtr &mesh, GeomPtr &geom);
     BVHNode6D *Create6DBVHFromMeshVerts(MeshPtr &mesh, GeomPtr &geom);
 
-    template<typename Data>
-    DataTree<Data>* DataTreeContainer<Data>::GetDataNode(BVHNode6D *bvhNode)
+    template <typename Data>
+    DataTree<Data> *DataTreeContainer<Data>::GetDataNode(BVHNode6D *bvhNode)
     {
         return byIndex[bvhNode->nodeID];
     }

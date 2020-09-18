@@ -14,6 +14,7 @@
 #include "energy/barnes_hut_tpe_xdiff.h"
 #include "helpers.h"
 #include <memory>
+#include "spatial/bvh_flattened.h"
 
 #include <Eigen/Sparse>
 #include <omp.h>
@@ -300,9 +301,15 @@ namespace rsurfaces
     energy->Update();
     BVHNode6D *root = energy->GetBVH();
 
-    DataTreeContainer<Vector3> *dtree = root->CreateDataTree<Vector3, VectorInit>();
-    std::cout << dtree->tree->data << std::endl;
-    delete dtree;
+    BVHFlattened *flat = new BVHFlattened(root);
+
+    for (BVHData &data : flat->nodes)
+    {
+      std::cout << "BVH node " << data.nodeID << " has children " << flat->nodes[data.child[0]].nodeID
+                << " and " << flat->nodes[data.child[1]].nodeID << std::endl;
+    }
+
+    delete flat;
   }
 } // namespace rsurfaces
 
@@ -373,7 +380,7 @@ void myCallback()
     rsurfaces::MainApp::instance->TestLML();
   }
 
-  if (ImGui::Button("Test percolation"))
+  if (ImGui::Button("Test BVH flattening"))
   {
 
     rsurfaces::MainApp::instance->TestPercolation();

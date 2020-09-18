@@ -79,6 +79,7 @@ set(SRCS
   src/sobolev/constraints/total_area.cpp
   src/sobolev/constraints/total_volume.cpp
   src/spatial/bvh_6d.cpp
+  src/spatial/bvh_flattened.cpp
   src/spatial/convolution_kernel.cpp
   src/block_cluster_tree.cpp
   src/fractional_laplacian.cpp
