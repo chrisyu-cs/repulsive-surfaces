@@ -2,6 +2,7 @@
 
 #include "energy/tpe_kernel.h"
 #include "spatial/bvh_6d.h"
+#include "spatial/bvh_flattened.h"
 
 namespace rsurfaces
 {
@@ -24,6 +25,8 @@ namespace rsurfaces
     private:
         TPEKernel *kernel;
         BVHNode6D *root;
+        BVHFlattened* flattened;
+
         double theta;
         double computeEnergyOfFace(GCFace face, BVHNode6D *bvhRoot);
         void accumulateTPEGradient(Eigen::MatrixXd &gradients, BVHNode6D *node, GCFace face1,

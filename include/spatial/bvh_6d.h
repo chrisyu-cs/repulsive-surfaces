@@ -1,28 +1,11 @@
 #pragma once
 
 #include "bvh_types.h"
+#include "bvh_data.h"
 #include "data_tree.h"
 
 namespace rsurfaces
 {
-    struct BVHData
-    {
-        // Basic spatial data
-        double totalMass;
-        Vector3 centerOfMass;
-        Vector3 averageNormal;
-        Vector3 minCoords;
-        Vector3 maxCoords;
-        // Indexing and other metadata
-        size_t elementID;
-        size_t nodeID;
-        BVHNodeType nodeType;
-        size_t numNodesInBranch;
-        size_t nElements;
-        // Indices of children
-        size_t child[2];
-    };
-
     class BVHNode6D
     {
     public:
@@ -74,10 +57,7 @@ namespace rsurfaces
 
         inline double nodeRatio(double d)
         {
-            // Compute diagonal distance from corner to corner
-            Vector3 diag = maxCoords - minCoords;
-            double maxCoord = fmax(diag.x, fmax(diag.y, diag.z));
-            return diag.norm() / d;
+            return nodeRatioBox(minCoords, maxCoords, d);
         }
 
         template <typename Data>

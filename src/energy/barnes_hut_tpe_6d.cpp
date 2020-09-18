@@ -11,6 +11,7 @@ namespace rsurfaces
         kernel = kernel_;
         theta = theta_;
         root = 0;
+        flattened = 0;
     }
 
     BarnesHutTPEnergy6D::~BarnesHutTPEnergy6D()
@@ -181,7 +182,13 @@ namespace rsurfaces
         {
             delete root;
         }
+        if (flattened)
+        {
+            delete flattened;
+        }
+
         root = Create6DBVHFromMeshFaces(kernel->mesh, kernel->geom);
+        flattened = new BVHFlattened(root);
     }
 
     MeshPtr BarnesHutTPEnergy6D::GetMesh()

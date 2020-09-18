@@ -9,7 +9,7 @@ namespace rsurfaces
     public:
         BVHFlattened(BVHNode6D *root);
         std::vector<BVHData> nodes;
-        
+
     private:
         void FlattenNodes(BVHNode6D *root);
     };

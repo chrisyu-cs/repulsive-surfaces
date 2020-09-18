@@ -383,7 +383,7 @@ namespace rsurfaces
         if (nodeType == BVHNodeType::Interior)
         {
             double d = norm(centerOfMass - atPos);
-            return nodeRatio(d) < thresholdTheta;
+            return nodeRatioBox(minCoords, maxCoords, d) < thresholdTheta;
         }
         else
             return true;
