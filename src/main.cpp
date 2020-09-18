@@ -298,18 +298,39 @@ namespace rsurfaces
   void MainApp::TestPercolation()
   {
     SurfaceEnergy *energy = flow->BaseEnergy();
-    energy->Update();
-    BVHNode6D *root = energy->GetBVH();
+    Eigen::MatrixXd diff(mesh->nVertices(), 3);
 
-    BVHFlattened *flat = new BVHFlattened(root);
+    long totalBVH = 0, totalE = 0, totalG = 0;
 
-    for (BVHData &data : flat->nodes)
+    const int nTrials = 100;
+
+    for (int i = 0; i < nTrials; i++)
     {
-      std::cout << "BVH node " << data.nodeID << " has children " << flat->nodes[data.child[0]].nodeID
-                << " and " << flat->nodes[data.child[1]].nodeID << std::endl;
+      diff.setZero();
+
+      long bvhStart = currentTimeMilliseconds();
+      energy->Update();
+      long eStart = currentTimeMilliseconds();
+      double eVal = energy->Value();
+      long mid = currentTimeMilliseconds();
+      energy->Differential(diff);
+      long gEnd = currentTimeMilliseconds();
+
+      long bvhTime = (eStart - bvhStart);
+      long eTime = (mid - eStart);
+      long gTime = (gEnd - mid);
+
+      totalBVH += bvhTime;
+      totalE += eTime;
+      totalG = gTime;
+
+      std::cout << i << ": BVH " << bvhTime << " ms, energy " << eTime << " ms, gradient " << gTime << " ms" << std::endl;
     }
 
-    delete flat;
+    std::cout << "Average over " << nTrials << " runs:" << std::endl;
+    std::cout << "BVH construction:    " << ((double)totalBVH / nTrials) << " ms" << std::endl;
+    std::cout << "Energy evaluation:   " << ((double)totalE / nTrials) << " ms" << std::endl;
+    std::cout << "Gradient evaluation: " << ((double)totalG / nTrials) << " ms" << std::endl;
   }
 } // namespace rsurfaces
 
@@ -380,7 +401,7 @@ void myCallback()
     rsurfaces::MainApp::instance->TestLML();
   }
 
-  if (ImGui::Button("Test BVH flattening"))
+  if (ImGui::Button("Benchmark Barnes-Hut"))
   {
 
     rsurfaces::MainApp::instance->TestPercolation();
