@@ -31,7 +31,7 @@ namespace rsurfaces
         }
 
         double sum = 0;
-        #pragma omp parallel for reduction(+:sum) shared(root)
+        #pragma omp parallel for reduction(+ : sum) shared(root)
         for (size_t i = 0; i < kernel->mesh->nFaces(); i++)
         {
             GCFace f = kernel->mesh->face(i);
@@ -84,7 +84,6 @@ namespace rsurfaces
         VertexIndices indices = kernel->mesh->getVertexIndices();
         output.setZero();
         Eigen::MatrixXd partialOutput = output;
-
         #pragma omp parallel firstprivate(partialOutput) shared(root, output)
         {
             #pragma omp for
@@ -135,7 +134,10 @@ namespace rsurfaces
                 for (GCVertex v2 : face2.adjacentVertices())
                 {
                     if (v == v2)
+                    {
                         noOverlap = false;
+                        break;
+                    }
                 }
                 // If v is not adjacent to v2, then we need to add (f2, f1) wrt v now.
                 if (noOverlap)
@@ -165,12 +167,9 @@ namespace rsurfaces
             else
             {
                 // Otherwise we continue recursively traversing the tree
-                for (size_t i = 0; i < node->children.size(); i++)
+                for (size_t i = 0; i < BVH_N_CHILDREN; i++)
                 {
-                    if (node->children[i])
-                    {
-                        accumulateTPEGradient(gradients, node->children[i], face1, indices);
-                    }
+                    accumulateTPEGradient(gradients, node->children[i], face1, indices);
                 }
             }
         }

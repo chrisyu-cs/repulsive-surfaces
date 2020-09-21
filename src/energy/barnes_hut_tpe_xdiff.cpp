@@ -164,12 +164,9 @@ namespace rsurfaces
             else
             {
                 // Otherwise we continue recursively traversing the tree
-                for (size_t i = 0; i < node->children.size(); i++)
+                for (size_t i = 0; i < BVH_N_CHILDREN; i++)
                 {
-                    if (node->children[i])
-                    {
-                        accumulateOneSidedGradient(gradients, node->children[i], face1, indices);
-                    }
+                    accumulateOneSidedGradient(gradients, node->children[i], face1, indices);
                 }
             }
         }

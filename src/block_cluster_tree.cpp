@@ -24,14 +24,12 @@ namespace rsurfaces
         // std::cout << "Using " << nThreads << " threads." << std::endl;
 
         tree_root = root;
-        ClusterPair pair{tree_root, tree_root, 0};
+        ClusterPair pair{tree_root, tree_root};
         unresolvedPairs.push_back(pair);
 
-        int depth = 0;
         while (unresolvedPairs.size() > 0)
         {
-            splitInadmissibleNodes(depth);
-            depth++;
+            splitInadmissibleNodes();
         }
 
         // Need to sort the pairs before doing any multiplication
@@ -45,13 +43,12 @@ namespace rsurfaces
         //delete threadpool;
     }
 
-    void BlockClusterTree::splitInadmissibleNodes(int depth)
+    void BlockClusterTree::splitInadmissibleNodes()
     {
         std::vector<ClusterPair> nextPairs;
 
         for (ClusterPair pair : unresolvedPairs)
         {
-            pair.depth = depth;
             if (pair.cluster1->nElements == 0 || pair.cluster2->nElements == 0)
             {
                 // Drop pairs where one of the sides has 0 vertices
@@ -75,11 +72,11 @@ namespace rsurfaces
             else
             {
                 // Otherwise, subdivide it into child pairs
-                for (size_t i = 0; i < pair.cluster1->children.size(); i++)
+                for (size_t i = 0; i < BVH_N_CHILDREN; i++)
                 {
-                    for (size_t j = 0; j < pair.cluster2->children.size(); j++)
+                    for (size_t j = 0; j < BVH_N_CHILDREN; j++)
                     {
-                        ClusterPair pair_ij{pair.cluster1->children[i], pair.cluster2->children[j], depth + 1};
+                        ClusterPair pair_ij{pair.cluster1->children[i], pair.cluster2->children[j]};
                         nextPairs.push_back(pair_ij);
                     }
                 }
@@ -185,6 +182,7 @@ namespace rsurfaces
 
     void BlockClusterTree::OrganizePairsByFirst()
     {
+        // Bucket cluster pairs by which one occurs in the first position
         admissibleByCluster.clear();
         admissibleByCluster.resize(tree_root->numNodesInBranch);
 
@@ -243,9 +241,6 @@ namespace rsurfaces
 
     void BlockClusterTree::MultiplyAfPercolated(Eigen::VectorXd &v, Eigen::VectorXd &b) const
     {
-        Eigen::VectorXd w(tree_root->nElements);
-        fillClusterMasses(tree_root, w);
-
         DataTreeContainer<PercolationData> *treeContainer = tree_root->CreateDataTree<PercolationData>();
         // Percolate W^T * v upward through the tree
         percolateWtDot(treeContainer->tree, v, mesh, geom);
@@ -280,25 +275,22 @@ namespace rsurfaces
             double a_times_one_i = 0;
             double a_times_v_i = 0;
 
-            int f1_ind = pair.cluster1->clusterIndices[i];
+            size_t f1_ind = pair.cluster1->clusterIndices[i];
             GCFace f1 = mesh->face(f1_ind);
             Vector3 mid1 = faceBarycenter(geom, f1);
             double l1 = geom->faceArea(f1);
 
             for (size_t j = 0; j < pair.cluster2->nElements; j++)
             {
-                int f2_ind = pair.cluster2->clusterIndices[j];
+                size_t f2_ind = pair.cluster2->clusterIndices[j];
                 GCFace f2 = mesh->face(f2_ind);
                 bool isSame = (f1 == f2);
 
                 Vector3 mid2 = faceBarycenter(geom, f2);
                 double l2 = geom->faceArea(f2);
 
-                // Save on a few operations by only multiplying l2 now,
-                // and multiplying l1 only once, after inner loop
-                double distTerm = Hs::MetricDistanceTermFrac(exp_s, mid1, mid2);
-
-                double af_ij = (isSame) ? 0 : l2 * distTerm;
+                // Compute the main kernel, times the second mass
+                double af_ij = (isSame) ? 0 : l2 * Hs::MetricDistanceTermFrac(exp_s, mid1, mid2);
 
                 // We dot this row of Af(i, j) with the all-ones vector, which means we
                 // just add up all entries of that row.
@@ -308,6 +300,7 @@ namespace rsurfaces
                 a_times_v_i += af_ij * v_mid(f2_ind);
             }
 
+            // Multiply in the first mass here
             a_times_one_i *= l1;
             a_times_v_i *= l1;
 

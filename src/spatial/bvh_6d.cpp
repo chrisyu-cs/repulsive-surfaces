@@ -98,7 +98,7 @@ namespace rsurfaces
             verts[curBody.elementID] = curBody;
         }
 
-        BVHNode6D *tree = new BVHNode6D(verts, 0, 0);
+        BVHNode6D *tree = new BVHNode6D(verts, 0);
         tree->assignIDsRecursively(0);
         return tree;
     }
@@ -116,19 +116,13 @@ namespace rsurfaces
             verts[curBody.elementID] = curBody;
         }
 
-        BVHNode6D *tree = new BVHNode6D(verts, 0, 0);
+        BVHNode6D *tree = new BVHNode6D(verts, 0);
         tree->assignIDsRecursively(0);
         return tree;
     }
 
-    BVHNode6D::BVHNode6D(std::vector<MassNormalPoint> &points, int axis, BVHNode6D *root)
+    BVHNode6D::BVHNode6D(std::vector<MassNormalPoint> &points, int axis)
     {
-        // Split the points into sets somehow
-        if (!root)
-            bvhRoot = this;
-        else
-            bvhRoot = root;
-
         // If we have no points, then the node is empty
         if (points.size() == 0)
         {
@@ -139,6 +133,8 @@ namespace rsurfaces
             elementID = -1;
             numNodesInBranch = 1;
             nElements = 0;
+            children[0] = 0;
+            children[1] = 0;
         }
         // If we have only one point, then the node is a leaf
         else if (points.size() == 1)
@@ -155,6 +151,8 @@ namespace rsurfaces
             nElements = 1;
             clusterIndices.resize(1);
             clusterIndices[0] = elementID;
+            children[0] = 0;
+            children[1] = 0;
         }
         // Otherwise, we need to recursively split and compute averages
         else
@@ -183,14 +181,11 @@ namespace rsurfaces
             // Recursively construct children
             int nextAxis = NextAxis(axis);
 
-            // If a root node was provided when constructing this, keep it;
-            // otherwise, this must be the root, so use it.
-            BVHNode6D *nextRoot = (root) ? root : this;
             // Add the children
-            BVHNode6D *lesserNode = new BVHNode6D(lesserPoints, nextAxis, nextRoot);
-            BVHNode6D *greaterNode = new BVHNode6D(greaterPoints, nextAxis, nextRoot);
-            children.push_back(lesserNode);
-            children.push_back(greaterNode);
+            BVHNode6D *lesserNode = new BVHNode6D(lesserPoints, nextAxis);
+            BVHNode6D *greaterNode = new BVHNode6D(greaterPoints, nextAxis);
+            children[0] = lesserNode;
+            children[1] = greaterNode;
             numNodesInBranch = lesserNode->numNodesInBranch + greaterNode->numNodesInBranch + 1;
 
             // Get the averages from children
@@ -199,49 +194,9 @@ namespace rsurfaces
         }
     }
 
-    BVHNode6D::BVHNode6D(const BVHNode6D &orig)
-        : totalMass(orig.totalMass),
-          centerOfMass(orig.centerOfMass),
-          averageNormal(orig.averageNormal),
-          minCoords(orig.minCoords),
-          maxCoords(orig.maxCoords),
-          elementID(orig.elementID),
-          nodeType(orig.nodeType),
-          numNodesInBranch(orig.numNodesInBranch),
-          nElements(orig.nElements),
-          clusterIndices(orig.clusterIndices)
-    {
-        bvhRoot = this;
-        for (const BVHNode6D *child : children)
-        {
-            BVHNode6D *childCopy = new BVHNode6D(child, this);
-            children.push_back(childCopy);
-        }
-    }
-
-    BVHNode6D::BVHNode6D(const BVHNode6D *orig, BVHNode6D *root)
-        : totalMass(orig->totalMass),
-          centerOfMass(orig->centerOfMass),
-          averageNormal(orig->averageNormal),
-          minCoords(orig->minCoords),
-          maxCoords(orig->maxCoords),
-          elementID(orig->elementID),
-          nodeType(orig->nodeType),
-          numNodesInBranch(orig->numNodesInBranch),
-          nElements(orig->nElements),
-          clusterIndices(orig->clusterIndices)
-    {
-        bvhRoot = root;
-        for (const BVHNode6D *child : children)
-        {
-            BVHNode6D *childCopy = new BVHNode6D(child, root);
-            children.push_back(childCopy);
-        }
-    }
-
     BVHNode6D::~BVHNode6D()
     {
-        for (size_t i = 0; i < children.size(); i++)
+        for (size_t i = 0; i < 2; i++)
         {
             if (children[i])
             {
@@ -256,7 +211,7 @@ namespace rsurfaces
         size_t nextID = nodeID + 1;
         if (nodeType == BVHNodeType::Interior)
         {
-            for (size_t i = 0; i < children.size(); i++)
+            for (size_t i = 0; i < BVH_N_CHILDREN; i++)
             {
                 nextID = children[i]->assignIDsRecursively(nextID);
             }
@@ -277,7 +232,7 @@ namespace rsurfaces
         else
         {
             std::cout << "Interior node (mass " << totalMass << ",\n  center " << centerOfMass
-                      << ",\n  " << children.size() << " children)" << std::endl;
+                      << ",\n  " << BVH_N_CHILDREN << " children)" << std::endl;
 
             for (BVHNode6D *child : children)
             {
@@ -289,16 +244,6 @@ namespace rsurfaces
     MassNormalPoint BVHNode6D::GetMassNormalPoint()
     {
         return MassNormalPoint{totalMass, averageNormal, centerOfMass, minCoords, maxCoords, elementID};
-    }
-
-    GCFace BVHNode6D::getSingleFace(MeshPtr &mesh)
-    {
-        if (nodeType != BVHNodeType::Leaf)
-        {
-            std::cerr << "Tried to getSingleFace() from a non-leaf node" << std::endl;
-            exit(1);
-        }
-        return mesh->face(elementID);
     }
 
     void BVHNode6D::averageDataFromChildren()
@@ -408,7 +353,7 @@ namespace rsurfaces
         else
         {
             // Recursively compute bounds for all children
-            for (size_t i = 0; i < children.size(); i++)
+            for (size_t i = 0; i < BVH_N_CHILDREN; i++)
             {
                 children[i]->recomputeCentersOfMass(mesh, geom);
             }

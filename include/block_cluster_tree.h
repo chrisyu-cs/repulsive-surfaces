@@ -14,7 +14,6 @@ namespace rsurfaces
     {
         BVHNode6D *cluster1;
         BVHNode6D *cluster2;
-        int depth;
     };
 
     struct PercolationData
@@ -40,7 +39,7 @@ namespace rsurfaces
         ~BlockClusterTree();
         // Loop over all currently inadmissible cluster pairs
         // and subdivide them to their children.
-        void splitInadmissibleNodes(int depth);
+        void splitInadmissibleNodes();
         static bool isPairAdmissible(ClusterPair pair, double coeff);
         static bool isPairSmallEnough(ClusterPair pair);
 
@@ -136,6 +135,7 @@ namespace rsurfaces
     {
         wellSepTime = 0;
         illSepTime = 0;
+        traversalTime = 0;
 
         size_t nVerts = mesh->nVertices();
         // Slice the input vector to get every x-coordinate
@@ -157,6 +157,7 @@ namespace rsurfaces
 
         std::cout << "      * Admissible blocks time = " << wellSepTime << " ms" << std::endl;
         std::cout << "      * Inadmissible blocks time = " << illSepTime << " ms" << std::endl;
+        std::cout << "      * Weight copying time = " << traversalTime << " ms" << std::endl;
     }
 
 } // namespace rsurfaces

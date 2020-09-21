@@ -4,15 +4,19 @@
 #include "bvh_data.h"
 #include "data_tree.h"
 
+#define BVH_N_CHILDREN 2
+
 namespace rsurfaces
 {
+    class BVH6D
+    {
+    };
+
     class BVHNode6D
     {
     public:
         // Build a BVH of the given points
-        BVHNode6D(std::vector<MassNormalPoint> &points, int axis, BVHNode6D *root);
-        // Copy constructor
-        BVHNode6D(const BVHNode6D &orig);
+        BVHNode6D(std::vector<MassNormalPoint> &points, int axis);
         ~BVHNode6D();
 
         // Basic spatial data
@@ -27,13 +31,16 @@ namespace rsurfaces
         BVHNodeType nodeType;
         size_t numNodesInBranch;
         size_t nElements;
+        // Children
+        BVHNode6D *children[BVH_N_CHILDREN];
+
         // Store the list of all indices of elements in this cluster
         std::vector<size_t> clusterIndices;
 
-        // Every node knows the root of the tree
-        BVHNode6D *bvhRoot;
-        // Children
-        std::vector<BVHNode6D *> children;
+        inline GCFace getSingleFace(MeshPtr &mesh)
+        {
+            return mesh->face(elementID);
+        }
 
         // Assign unique IDs to all nodes in this tree
         size_t assignIDsRecursively(size_t startID);
@@ -42,7 +49,6 @@ namespace rsurfaces
         bool isAdmissibleFrom(Vector3 vertPos, double thresholdTheta);
         void printSummary();
         MassNormalPoint GetMassNormalPoint();
-        GCFace getSingleFace(MeshPtr &mesh);
 
         inline BVHData GetNodeDataAsStruct()
         {
@@ -61,14 +67,14 @@ namespace rsurfaces
         }
 
         template <typename Data>
-        void indexNodes(DataTreeContainer<Data> *cont, DataTree<Data> *droot)
+        void indexNodesForDataTree(DataTreeContainer<Data> *cont, DataTree<Data> *droot)
         {
             // Put the root in the correct spot
             cont->byIndex[droot->nodeID] = droot;
             // Recursively index children
             for (DataTree<Data> *child : droot->children)
             {
-                indexNodes(cont, child);
+                indexNodesForDataTree(cont, child);
             }
         }
 
@@ -78,14 +84,11 @@ namespace rsurfaces
         {
             DataTree<Data> *droot = CreateDataTreeRecursive<Data, Init>();
             DataTreeContainer<Data> *cont = new DataTreeContainer<Data>(droot, numNodesInBranch);
-            indexNodes(cont, droot);
+            indexNodesForDataTree(cont, droot);
             return cont;
         }
 
     private:
-        // Helper recursive copy constructor for child nodes
-        BVHNode6D(const BVHNode6D *orig, BVHNode6D *root);
-
         double AxisSplittingPlane(std::vector<MassNormalPoint> &points, int axis);
         void averageDataFromChildren();
         void mergeIndicesFromChildren();

@@ -12,7 +12,7 @@ namespace rsurfaces
         Vector3 col3;
 
         // Multiplies v^T * J.
-        Vector3 LeftMultiply(Vector3 v)
+        Vector3 LeftMultiply(Vector3 v) const
         {
             // Interpret v as a row vector multiplied on the left.
             // Then each entry is just the dot of v with the corresponding column.
@@ -23,7 +23,7 @@ namespace rsurfaces
         }
 
         // Multiplies J * v.
-        Vector3 RightMultiply(Vector3 v)
+        Vector3 RightMultiply(Vector3 v) const
         {
             // Interpret v as a column vector multiplied on the right.
             double x = col1.x * v.x + col2.x * v.y + col3.x * v.z;
@@ -39,7 +39,7 @@ namespace rsurfaces
             col3 = Vector3{M(0, 2), M(1, 2), M(2, 2)};
         }
 
-        void Print()
+        void Print() const
         {
             std::cout << std::fixed << std::setprecision(6);
             std::cout << col1.x << "\t" << col2.x << "\t" << col3.x << std::endl;
@@ -83,7 +83,7 @@ namespace rsurfaces
     namespace SurfaceDerivs
     {
         template <typename Element>
-        Jacobian barycenterWrtVertex(Element &face, GCVertex &wrt)
+        inline Jacobian barycenterWrtVertex(Element &face, GCVertex &wrt)
         {
             return Jacobian{Vector3{0, 0, 0}, Vector3{0, 0, 0}, Vector3{0, 0, 0}};
         }
@@ -110,7 +110,7 @@ namespace rsurfaces
         }
 
         template <typename Element>
-        Jacobian normalWrtVertex(const GeomPtr &geom, Element &face, GCVertex &wrt)
+        inline Jacobian normalWrtVertex(const GeomPtr &geom, Element &face, GCVertex &wrt)
         {
             return Jacobian{Vector3{0, 0, 0}, Vector3{0, 0, 0}, Vector3{0, 0, 0}};
         }
@@ -135,7 +135,7 @@ namespace rsurfaces
         }
 
         template <typename Element>
-        Vector3 triangleAreaWrtVertex(const GeomPtr &geom, Element &face, GCVertex &wrt)
+        inline Vector3 triangleAreaWrtVertex(const GeomPtr &geom, Element &face, GCVertex &wrt)
         {
             return Vector3{0, 0, 0};
         }
