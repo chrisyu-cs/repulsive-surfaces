@@ -113,7 +113,6 @@ namespace rsurfaces
     };
 
     BVHNode6D *Create6DBVHFromMeshFaces(MeshPtr &mesh, GeomPtr &geom);
-    BVHNode6D *Create6DBVHFromMeshVerts(MeshPtr &mesh, GeomPtr &geom);
 
     template <typename Data>
     DataTree<Data> *DataTreeContainer<Data>::GetDataNode(BVHNode6D *bvhNode)

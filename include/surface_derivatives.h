@@ -82,14 +82,17 @@ namespace rsurfaces
 
     namespace SurfaceDerivs
     {
+        // Even though this should technically be a 3x3 Jacobian, because
+        // its only non-zeros are just a constant along the diagonal,
+        // we can just treat it as scalar multiplication.
         template <typename Element>
-        inline Jacobian barycenterWrtVertex(Element &face, GCVertex &wrt)
+        inline double barycenterWrtVertex(Element &face, GCVertex &wrt)
         {
-            return Jacobian{Vector3{0, 0, 0}, Vector3{0, 0, 0}, Vector3{0, 0, 0}};
+            return 0;
         }
 
         template <>
-        inline Jacobian barycenterWrtVertex(GCFace &face, GCVertex &wrt)
+        inline double barycenterWrtVertex(GCFace &face, GCVertex &wrt)
         {
             GCHalfedge start = face.halfedge();
             GCHalfedge he = start;
@@ -104,9 +107,7 @@ namespace rsurfaces
                 }
                 he = he.next();
             } while (he != start);
-
-            double weight = mass / count;
-            return Jacobian{Vector3{weight, 0, 0}, Vector3{0, weight, 0}, Vector3{0, 0, weight}};
+            return mass / count;
         }
 
         template <typename Element>
@@ -118,8 +119,8 @@ namespace rsurfaces
         template <>
         inline Jacobian normalWrtVertex(const GeomPtr &geom, GCFace &face, GCVertex &wrt)
         {
-            double area = geom->faceArea(face);
-            Vector3 N = geom->faceNormal(face);
+            double area = geom->faceAreas[face];
+            Vector3 N = geom->faceNormals[face];
             // First go to the halfedge that is based at wrt
             GCHalfedge he;
             bool found = findVertexInTriangle(face, wrt, he);
@@ -154,7 +155,7 @@ namespace rsurfaces
             he = he.next();
             Vector3 u = geom->inputVertexPositions[he.twin().vertex()] - geom->inputVertexPositions[he.vertex()];
             // Get the vector pointing away from the opposite edge
-            Vector3 N = geom->faceNormal(face);
+            Vector3 N = geom->faceNormals[face];
             return cross(N, u) / 2.0;
         }
 

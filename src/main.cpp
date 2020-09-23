@@ -12,6 +12,7 @@
 #include "energy/all_pairs_tpe.h"
 #include "energy/all_pairs_with_bvh.h"
 #include "energy/barnes_hut_tpe_xdiff.h"
+#include "energy/barnes_hut_newtonian.h"
 #include "helpers.h"
 #include <memory>
 #include "spatial/bvh_flattened.h"
@@ -138,73 +139,79 @@ namespace rsurfaces
   void MainApp::TestBarnesHut()
   {
     TPEKernel *tpe = new rsurfaces::TPEKernel(mesh, geom, 6, 12);
-    SurfaceEnergy *energy_ap, *energy_bh, *energy_xd;
+    SurfaceEnergy *energy_ap, *energy_bh, *energy_newton;
     energy_ap = new AllPairsTPEnergy(tpe);
     energy_bh = new BarnesHutTPEnergy6D(tpe, bh_theta);
-    energy_xd = new BarnesHutTPEnergyXDiff(tpe, bh_theta);
+    energy_newton = new BarnesHutNewtonian(tpe, bh_theta);
 
     energy_ap->Update();
     energy_bh->Update();
-    energy_xd->Update();
+    energy_newton->Update();
+
+    bool doAllPairs = (mesh->nFaces() < 3000);
 
     Eigen::MatrixXd grad_ap(mesh->nVertices(), 3);
     Eigen::MatrixXd grad_bh(mesh->nVertices(), 3);
-    Eigen::MatrixXd grad_xd(mesh->nVertices(), 3);
+    Eigen::MatrixXd grad_newton(mesh->nVertices(), 3);
     grad_ap.setZero();
     grad_bh.setZero();
-    grad_xd.setZero();
+    grad_newton.setZero();
 
     long start_ape = currentTimeMilliseconds();
-    double value_ap = energy_ap->Value();
+    double value_ap = 0;
+    if (doAllPairs)
+      energy_ap->Value();
     long end_ape = currentTimeMilliseconds();
 
     long start_bhe = currentTimeMilliseconds();
     double value_bh = energy_bh->Value();
     long end_bhe = currentTimeMilliseconds();
 
-    long start_xde = currentTimeMilliseconds();
-    double value_xd = energy_xd->Value();
-    long end_xde = currentTimeMilliseconds();
-
     double val_error = fabs(value_ap - value_bh) / value_ap;
 
+    if (!doAllPairs)
+      std::cout << "Mesh has too many faces; not running all-pairs comparison." << std::endl;
+
     std::cout << "\n=====   Energy   =====" << std::endl;
-    std::cout << "All-pairs energy value  = " << value_ap << std::endl;
+    if (doAllPairs)
+      std::cout << "All-pairs energy value  = " << value_ap << std::endl;
     std::cout << "Barnes-Hut energy value = " << value_bh << std::endl;
-    std::cout << "BH exact diff value     = " << value_xd << std::endl;
-    std::cout << "Relative error     = " << val_error * 100 << " percent" << std::endl;
-    std::cout << "All-pairs time     = " << (end_ape - start_ape) << " ms" << std::endl;
+    if (doAllPairs)
+      std::cout << "Relative error     = " << val_error * 100 << " percent" << std::endl;
+    if (doAllPairs)
+      std::cout << "All-pairs time     = " << (end_ape - start_ape) << " ms" << std::endl;
     std::cout << "Barnes-Hut time    = " << (end_bhe - start_bhe) << " ms" << std::endl;
-    std::cout << "BH exact diff time = " << (end_xde - start_xde) << " ms" << std::endl;
 
     long start_apg = currentTimeMilliseconds();
-    energy_ap->Differential(grad_ap);
+    if (doAllPairs)
+      energy_ap->Differential(grad_ap);
     long end_apg = currentTimeMilliseconds();
 
     long start_bhg = currentTimeMilliseconds();
     energy_bh->Differential(grad_bh);
     long end_bhg = currentTimeMilliseconds();
 
-    long start_xdg = currentTimeMilliseconds();
-    energy_xd->Differential(grad_xd);
-    long end_xdg = currentTimeMilliseconds();
+    long start_newton = currentTimeMilliseconds();
+    energy_newton->Differential(grad_newton);
+    long end_newton = currentTimeMilliseconds();
 
     double grad_error = (grad_ap - grad_bh).norm() / grad_ap.norm();
-    double xd_error = (grad_ap - grad_xd).norm() / grad_ap.norm();
 
     std::cout << "\n=====  Gradient  =====" << std::endl;
-    std::cout << "All-pairs gradient norm      = " << grad_ap.norm() << std::endl;
+    if (doAllPairs)
+      std::cout << "All-pairs gradient norm      = " << grad_ap.norm() << std::endl;
     std::cout << "Barnes-Hut gradient norm     = " << grad_bh.norm() << std::endl;
-    std::cout << "BH exact diff gradient norm  = " << grad_xd.norm() << std::endl;
-    std::cout << "Barnes-Hut relative error    = " << grad_error * 100 << " percent" << std::endl;
-    std::cout << "BH exact diff relative error = " << xd_error * 100 << " percent" << std::endl;
-    std::cout << "All-pairs time     = " << (end_apg - start_apg) << " ms" << std::endl;
+    std::cout << "Newton gravity norm          = " << grad_newton.norm() << std::endl;
+    if (doAllPairs)
+      std::cout << "Barnes-Hut relative error    = " << grad_error * 100 << " percent" << std::endl;
+    if (doAllPairs)
+      std::cout << "All-pairs time     = " << (end_apg - start_apg) << " ms" << std::endl;
     std::cout << "Barnes-Hut time    = " << (end_bhg - start_bhg) << " ms" << std::endl;
-    std::cout << "BH exact diff time = " << (end_xdg - start_xdg) << " ms" << std::endl;
+    std::cout << "Newtonian time     = " << (end_newton - start_newton) << " ms" << std::endl;
 
     delete energy_ap;
     delete energy_bh;
-    delete energy_xd;
+    delete energy_newton;
     delete tpe;
   }
 
@@ -480,6 +487,8 @@ int main(int argc, char **argv)
   args::Positional<std::string> inputFilename(parser, "mesh", "A mesh file.");
   args::ValueFlag<double> thetaFlag(parser, "Theta", "Theta value for Barnes-Hut approximation; 0 means exact.", args::Matcher{'t', "theta"});
 
+  // omp_set_num_threads(1);
+
   // Parse args
   try
   {
@@ -524,8 +533,6 @@ int main(int argc, char **argv)
   std::unique_ptr<VertexPositionGeometry> u_geometry;
   // Load mesh
   std::tie(u_mesh, u_geometry) = loadMesh(args::get(inputFilename));
-  u_geometry->requireVertexPositions();
-  u_geometry->requireFaceNormals();
 
   std::string mesh_name = polyscope::guessNiceNameFromPath(args::get(inputFilename));
 
@@ -538,7 +545,8 @@ int main(int argc, char **argv)
   GeomPtr geomShared = std::move(u_geometry);
 
   geomShared->requireVertexDualAreas();
-  geomShared->requireVertexNormals();
+  geomShared->requireFaceNormals();
+  geomShared->requireFaceAreas();
 
   TPEKernel *tpe = new rsurfaces::TPEKernel(meshShared, geomShared, 6, 12);
 

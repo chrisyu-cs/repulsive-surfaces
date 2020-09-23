@@ -53,15 +53,6 @@ namespace rsurfaces
         return MassNormalPoint{mass, n, pos, minCoord, maxCoord, indices[f]};
     }
 
-    inline MassNormalPoint meshVertexToBody(const GCVertex &v, GeomPtr &geom, VertexIndices &indices)
-    {
-        Vector3 pos = geom->inputVertexPositions[v];
-        double mass = geom->vertexDualAreas[v];
-        Vector3 n = geom->vertexNormals[v];
-
-        return MassNormalPoint{mass, n, pos, pos, pos, indices[v]};
-    }
-
     inline double GetCoordFromBody(MassNormalPoint &mp, int axis)
     {
         switch (axis)
@@ -94,24 +85,6 @@ namespace rsurfaces
         for (const GCFace &f : mesh->faces())
         {
             MassNormalPoint curBody = meshFaceToBody(f, geom, indices);
-            // Put vertex body into full list
-            verts[curBody.elementID] = curBody;
-        }
-
-        BVHNode6D *tree = new BVHNode6D(verts, 0);
-        tree->assignIDsRecursively(0);
-        return tree;
-    }
-
-    BVHNode6D *Create6DBVHFromMeshVerts(MeshPtr &mesh, GeomPtr &geom)
-    {
-        std::vector<MassNormalPoint> verts(mesh->nVertices());
-        VertexIndices indices = mesh->getVertexIndices();
-
-        // Loop over all the vertices
-        for (const GCVertex &f : mesh->vertices())
-        {
-            MassNormalPoint curBody = meshVertexToBody(f, geom, indices);
             // Put vertex body into full list
             verts[curBody.elementID] = curBody;
         }

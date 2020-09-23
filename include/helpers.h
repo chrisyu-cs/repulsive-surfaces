@@ -137,7 +137,7 @@ namespace rsurfaces
 
     inline Vector3 faceNormal(GeomPtr const &geom, GCFace f)
     {
-        return geom->faceNormal(f);
+        return geom->faceNormals[f];
     }
 
     inline Vector3 faceNormal(GeomPtr const &geom, MassNormalPoint f)
@@ -147,7 +147,7 @@ namespace rsurfaces
 
     inline double faceArea(GeomPtr const &geom, GCFace f)
     {
-        return geom->faceArea(f);
+        return geom->faceAreas[f];
     }
 
     inline double faceArea(GeomPtr const &geom, MassNormalPoint f)

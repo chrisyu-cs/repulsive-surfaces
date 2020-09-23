@@ -125,28 +125,13 @@ namespace rsurfaces
 
         std::cout << "Area:   " << initArea << " -> " << finalArea << std::endl;
         std::cout << "Volume: " << initVolume << " -> " << finalVolume << std::endl;
+        geom->refreshQuantities();
     }
 
     void SurfaceFlow::RecenterMesh()
     {
         Vector3 center = meshBarycenter(geom, mesh);
         translateMesh(geom, mesh, -center);
-    }
-
-    void SurfaceFlow::RescaleToPreserveArea(double area)
-    {
-        double currentArea = totalArea(geom, mesh);
-        std::cout << "  * New area = " << currentArea << std::endl;
-        double reqScale = sqrt(area / currentArea);
-        scaleMesh(geom, mesh, reqScale, Vector3{0, 0, 0});
-    }
-
-    void SurfaceFlow::RescaleToPreserveVolume(double volume)
-    {
-        double currentVolume = totalVolume(geom, mesh);
-        std::cout << "  * New volume = " << currentVolume << std::endl;
-        double reqScale = pow(volume / currentVolume, 1. / 3.);
-        scaleMesh(geom, mesh, reqScale, Vector3{0, 0, 0});
     }
 
     SurfaceEnergy *SurfaceFlow::BaseEnergy()
@@ -184,6 +169,7 @@ namespace rsurfaces
 
         if (energy->GetBVH())
         {
+            geom->refreshQuantities();
             energy->GetBVH()->recomputeCentersOfMass(mesh, geom);
         }
     }
@@ -203,6 +189,7 @@ namespace rsurfaces
 
         if (energy->GetBVH())
         {
+            geom->refreshQuantities();
             energy->GetBVH()->recomputeCentersOfMass(mesh, geom);
         }
     }

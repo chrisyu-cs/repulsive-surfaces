@@ -27,7 +27,23 @@ namespace rsurfaces
         Vector3 tpe_gradient_cluster_center(GCFace f1, MassNormalPoint f2);
         double tpe_gradient_cluster_mass(GCFace f1, MassNormalPoint f2);
 
+        template <typename F1, typename F2>
+        Vector3 newton_pair(F1 f1, F2 f2);
+
         void numericalTest();
+        long time1, time2, time3;
+
+        inline void clearTime() {
+            time1 = 0;
+            time2 = 0;
+            time3 = 0;
+        }
+
+        inline void printTime() {
+            std::cout << "Time 1 = " << time1 << " ms" << std::endl;
+            std::cout << "Time 2 = " << time2 << " ms" << std::endl;
+            std::cout << "Time 3 = " << time3 << " ms" << std::endl;
+        }
 
         MeshPtr mesh;
         GeomPtr geom;
@@ -71,6 +87,17 @@ namespace rsurfaces
     }
 
     template <typename F1, typename F2>
+    inline Vector3 TPEKernel::newton_pair(F1 f1, F2 f2) {
+        Vector3 v1 = faceBarycenter(geom, f1);
+        Vector3 v2 = faceBarycenter(geom, f2);
+
+        Vector3 disp = v2 - v1;
+        double r2 = disp.norm2();
+
+        return disp / (sqrt(r2) * r2);
+    }
+
+    template <typename F1, typename F2>
     Vector3 TPEKernel::tpe_gradient_pair(F1 f1, F2 f2, GCVertex wrt)
     {
         Vector3 p1 = faceBarycenter(geom, f1);
@@ -79,6 +106,7 @@ namespace rsurfaces
 
         double Kf = tpe_Kf(p1, p2, n1);
         Vector3 grad_Kf = tpe_gradient_Kf(f1, f2, wrt);
+
         double area1 = faceArea(geom, f1);
         Vector3 grad_area1 = SurfaceDerivs::triangleAreaWrtVertex(geom, f1, wrt);
         double area2 = faceArea(geom, f2);
@@ -98,31 +126,32 @@ namespace rsurfaces
         Vector3 v1 = faceBarycenter(geom, f1);
         Vector3 v2 = faceBarycenter(geom, f2);
         Vector3 displacement = v1 - v2;
-
+        double normDisp2 = displacement.norm2();
         double dot_nD = dot(n1, displacement);
-        double A = pow(fabs(dot_nD), alpha);
-        double B = pow(displacement.norm(), beta);
+        double fabs_dot = fabs(dot_nD);
+
+        double A = pow(fabs_dot, alpha);
+        double B = pow(normDisp2, beta / 2);
+        double deriv_A_coeff = alpha * pow(fabs_dot, alpha - 1);
+        double deriv_B_coeff = beta * pow(normDisp2, (beta - 1) / 2);
 
         // Derivative of A
-        double deriv_A_coeff = alpha * pow(fabs(dot_nD), alpha - 1);
         double sgn_dot = sgn_fn(dot_nD);
 
         Jacobian ddx_N = SurfaceDerivs::normalWrtVertex(geom, f1, wrt);
-        Jacobian ddx_v1 = SurfaceDerivs::barycenterWrtVertex(f1, wrt);
-        Jacobian ddx_v2 = SurfaceDerivs::barycenterWrtVertex(f2, wrt);
-        Jacobian ddx_v1_v2 = ddx_v1 - ddx_v2;
+        double ddx_v1 = SurfaceDerivs::barycenterWrtVertex(f1, wrt);
+        double ddx_v2 = SurfaceDerivs::barycenterWrtVertex(f2, wrt);
+        double ddx_v1_v2 = ddx_v1 - ddx_v2;
 
         Vector3 deriv_A_prod1 = ddx_N.LeftMultiply(displacement);
-        Vector3 deriv_A_prod2 = ddx_v1_v2.LeftMultiply(n1);
+        Vector3 deriv_A_prod2 = ddx_v1_v2 * n1;
         Vector3 deriv_A = deriv_A_coeff * sgn_dot * (deriv_A_prod1 + deriv_A_prod2);
 
         // Derivative of B
-        double deriv_B_coeff = beta * pow(displacement.norm(), beta - 1);
-        Vector3 disp_normalized = displacement.normalize();
-        Vector3 deriv_B = deriv_B_coeff * ddx_v1_v2.LeftMultiply(disp_normalized);
-
+        Vector3 deriv_B = deriv_B_coeff * (ddx_v1_v2 / sqrt(normDisp2)) * displacement;
         Vector3 numer = deriv_A * B - A * deriv_B;
         double denom = B * B;
+
         return numer / denom;
     }
 

@@ -17,7 +17,7 @@ namespace rsurfaces
     {
         Vector3 displacement = v1 - v2;
         double numer = pow(fabs(dot(n1, displacement)), alpha);
-        double denom = pow(displacement.norm(), beta);
+        double denom = pow(displacement.norm2(), beta / 2);
         return numer / denom;
     }
 

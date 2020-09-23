@@ -15,8 +15,6 @@ namespace rsurfaces
         SurfaceEnergy *BaseEnergy();
         double LineSearchStep(Eigen::MatrixXd &gradient, double initGuess, double gradDot);
 
-        void RescaleToPreserveArea(double area);
-        void RescaleToPreserveVolume(double area);
         void RecenterMesh();
         const double LS_STEP_THRESHOLD = 1e-20;
 

@@ -68,6 +68,7 @@ add_subdirectory(deps/polyscope)
 set(SRCS 
   src/energy/all_pairs_tpe.cpp
   src/energy/all_pairs_with_bvh.cpp
+  src/energy/barnes_hut_newtonian.cpp
   src/energy/barnes_hut_tpe_6d.cpp
   src/energy/barnes_hut_tpe_xdiff.cpp
   src/energy/tpe_kernel.cpp
