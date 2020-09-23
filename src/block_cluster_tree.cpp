@@ -278,7 +278,7 @@ namespace rsurfaces
             size_t f1_ind = pair.cluster1->clusterIndices[i];
             GCFace f1 = mesh->face(f1_ind);
             Vector3 mid1 = faceBarycenter(geom, f1);
-            double l1 = geom->faceArea(f1);
+            double l1 = geom->faceAreas[f1];
 
             for (size_t j = 0; j < pair.cluster2->nElements; j++)
             {
@@ -287,7 +287,7 @@ namespace rsurfaces
                 bool isSame = (f1 == f2);
 
                 Vector3 mid2 = faceBarycenter(geom, f2);
-                double l2 = geom->faceArea(f2);
+                double l2 = geom->faceAreas[f2];
 
                 // Compute the main kernel, times the second mass
                 double af_ij = (isSame) ? 0 : l2 * Hs::MetricDistanceTermFrac(exp_s, mid1, mid2);
@@ -316,7 +316,7 @@ namespace rsurfaces
         w.setZero(nElts);
         for (size_t i = 0; i < cluster->nElements; i++)
         {
-            w(i) = geom->faceArea(mesh->face(cluster->clusterIndices[i]));
+            w(i) = geom->faceAreas[mesh->face(cluster->clusterIndices[i])];
         }
     }
 

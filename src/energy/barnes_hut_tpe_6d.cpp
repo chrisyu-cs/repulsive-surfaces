@@ -24,6 +24,8 @@ namespace rsurfaces
 
     double BarnesHutTPEnergy6D::Value()
     {
+        kernel->recomputeBarycenters();
+
         if (!root)
         {
             std::cerr << "BVH for BarnesHutTPEnergy6D was not initialized. Call Update() first." << std::endl;
@@ -42,7 +44,7 @@ namespace rsurfaces
 
     double BarnesHutTPEnergy6D::computeEnergyOfFace(GCFace face, BVHNode6D *bvhRoot)
     {
-        Vector3 bcenter = faceBarycenter(kernel->geom, face);
+        Vector3 bcenter = kernel->faceBarycenters[face];
 
         if (bvhRoot->nodeType == BVHNodeType::Empty)
         {
@@ -80,6 +82,8 @@ namespace rsurfaces
             std::cerr << "BVH for BarnesHutTPEnergy6D was not initialized. Call Update() first." << std::endl;
             std::exit(1);
         }
+
+        kernel->recomputeBarycenters();
 
         VertexIndices indices = kernel->mesh->getVertexIndices();
         output.setZero();
@@ -149,7 +153,7 @@ namespace rsurfaces
         }
         else
         {
-            Vector3 f1_center = faceBarycenter(kernel->geom, face1);
+            Vector3 f1_center = kernel->faceBarycenters[face1];
             if (node->isAdmissibleFrom(f1_center, theta))
             {
                 Vector3 normal = node->averageNormal;
