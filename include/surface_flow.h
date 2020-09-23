@@ -2,6 +2,7 @@
 
 #include "rsurface_types.h"
 #include "sobolev/constraints.h"
+#include "surface_energy.h"
 
 namespace rsurfaces
 {

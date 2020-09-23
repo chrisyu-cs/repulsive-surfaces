@@ -35,7 +35,7 @@ namespace rsurfaces
         static long wellSepTime;
         static long traversalTime;
 
-        BlockClusterTree(MeshPtr mesh, GeomPtr geom, BVHNode6D *root, double sepCoeff, double s_, double e = 0.0);
+        BlockClusterTree(MeshPtr &mesh, GeomPtr &geom, BVHNode6D *root, double sepCoeff, double s_, double e = 0.0);
         ~BlockClusterTree();
         // Loop over all currently inadmissible cluster pairs
         // and subdivide them to their children.
@@ -61,7 +61,7 @@ namespace rsurfaces
         // Multiplies A * v, where v holds a vector3 at each vertex in a flattened column,
         //  and stores it in b.
         template <typename V3, typename Dest>
-        void MultiplyVector3(V3 &v, Dest &b) const;
+        void MultiplyVector3(V3 &v, Dest &b);
 
     private:
         // Multiplies the inadmissible clusters for A * v, storing it in b.
@@ -82,6 +82,16 @@ namespace rsurfaces
 
         void fillClusterMasses(BVHNode6D *cluster, Eigen::VectorXd &w) const;
         void OrganizePairsByFirst();
+
+        // Cached list of face barycenters to avoid recomputation
+        geometrycentral::surface::FaceData<Vector3> faceBarycenters;
+        inline void recomputeBarycenters()
+        {
+            for (GCFace f : mesh->faces())
+            {
+                faceBarycenters[f] = faceBarycenter(geom, f);
+            }
+        }
 
         double exp_s, separationCoeff;
         double epsilon;
@@ -131,11 +141,13 @@ namespace rsurfaces
     }
 
     template <typename V3, typename Dest>
-    void BlockClusterTree::MultiplyVector3(V3 &v, Dest &b) const
+    void BlockClusterTree::MultiplyVector3(V3 &v, Dest &b)
     {
         wellSepTime = 0;
         illSepTime = 0;
         traversalTime = 0;
+
+        recomputeBarycenters();
 
         size_t nVerts = mesh->nVertices();
         // Slice the input vector to get every x-coordinate
