@@ -43,7 +43,7 @@ namespace rsurfaces
 
     private:
         template <typename F1, typename F2>
-        Vector3 tpe_gradient_Kf(F1 f1, F2 f2, GCVertex wrt);
+        Vector3 tpe_gradient_Kf(F1 f1, F2 f2, GCVertex wrt, Vector3 disp, Vector3 n1);
 
         template <typename F>
         Vector3 getBarycenterCached(GeomPtr &geom, F face);
@@ -113,7 +113,7 @@ namespace rsurfaces
         Vector3 n1 = faceNormal(geom, f1);
 
         double Kf = tpe_Kf(p1, p2, n1);
-        Vector3 grad_Kf = tpe_gradient_Kf(f1, f2, wrt);
+        Vector3 grad_Kf = tpe_gradient_Kf(f1, f2, wrt, p1 - p2, n1);
 
         double area1 = faceArea(geom, f1);
         Vector3 grad_area1 = SurfaceDerivs::triangleAreaWrtVertex(geom, f1, wrt);
@@ -128,14 +128,10 @@ namespace rsurfaces
     }
 
     template <typename F1, typename F2>
-    Vector3 TPEKernel::tpe_gradient_Kf(F1 f1, F2 f2, GCVertex wrt)
+    Vector3 TPEKernel::tpe_gradient_Kf(F1 f1, F2 f2, GCVertex wrt, Vector3 disp, Vector3 n1)
     {
-        Vector3 n1 = faceNormal(geom, f1);
-        Vector3 v1 = getBarycenterCached(geom, f1);
-        Vector3 v2 = getBarycenterCached(geom, f2);
-        Vector3 displacement = v1 - v2;
-        double normDisp2 = displacement.norm2();
-        double dot_nD = dot(n1, displacement);
+        double normDisp2 = disp.norm2();
+        double dot_nD = dot(n1, disp);
         double fabs_dot = fabs(dot_nD);
 
         double A = pow(fabs_dot, alpha);
@@ -151,12 +147,12 @@ namespace rsurfaces
         double ddx_v2 = SurfaceDerivs::barycenterWrtVertex(f2, wrt);
         double ddx_v1_v2 = ddx_v1 - ddx_v2;
 
-        Vector3 deriv_A_prod1 = ddx_N.LeftMultiply(displacement);
+        Vector3 deriv_A_prod1 = ddx_N.LeftMultiply(disp);
         Vector3 deriv_A_prod2 = ddx_v1_v2 * n1;
         Vector3 deriv_A = deriv_A_coeff * sgn_dot * (deriv_A_prod1 + deriv_A_prod2);
 
         // Derivative of B
-        Vector3 deriv_B = deriv_B_coeff * (ddx_v1_v2 / sqrt(normDisp2)) * displacement;
+        Vector3 deriv_B = deriv_B_coeff * (ddx_v1_v2 / sqrt(normDisp2)) * disp;
         Vector3 numer = deriv_A * B - A * deriv_B;
         double denom = B * B;
 

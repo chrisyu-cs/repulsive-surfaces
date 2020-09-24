@@ -487,7 +487,7 @@ int main(int argc, char **argv)
   args::Positional<std::string> inputFilename(parser, "mesh", "A mesh file.");
   args::ValueFlag<double> thetaFlag(parser, "Theta", "Theta value for Barnes-Hut approximation; 0 means exact.", args::Matcher{'t', "theta"});
 
-  // omp_set_num_threads(1);
+  // omp_set_num_threads(4);
 
   // Parse args
   try

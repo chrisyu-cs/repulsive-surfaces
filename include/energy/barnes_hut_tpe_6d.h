@@ -25,7 +25,6 @@ namespace rsurfaces
     private:
         TPEKernel *kernel;
         BVHNode6D *root;
-        BVHFlattened* flattened;
 
         double theta;
         double computeEnergyOfFace(GCFace face, BVHNode6D *bvhRoot);
