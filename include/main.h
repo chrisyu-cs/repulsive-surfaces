@@ -25,10 +25,15 @@ class MainApp
     void TakeNaiveStep(double t);
     void TakeFractionalSobolevStep();
 
+    void AddObstacle(std::string filename);
+
     MeshPtr mesh;
     GeomPtr geom;
     SurfaceFlow* flow;
+    TPEKernel* kernel;
     polyscope::SurfaceMesh *psMesh;
+    std::vector<polyscope::SurfaceMesh*> obstacles;
+
     BVHNode6D *vertBVH;
     bool normalizeView;
     double bh_theta;

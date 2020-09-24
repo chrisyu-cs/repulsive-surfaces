@@ -14,21 +14,29 @@ namespace rsurfaces
 
     SurfaceFlow::SurfaceFlow(SurfaceEnergy *energy_)
     {
-        energy = energy_;
-        mesh = energy->GetMesh();
-        geom = energy->GetGeom();
+        energies.push_back(energy_);
+
+        mesh = energy_->GetMesh();
+        geom = energy_->GetGeom();
         stepCount = 0;
 
+        origBarycenter = meshBarycenter(geom, mesh);
         RecenterMesh();
+    }
+
+    void SurfaceFlow::AddAdditionalEnergy(SurfaceEnergy *extraEnergy)
+    {
+        energies.push_back(extraEnergy);
     }
 
     void SurfaceFlow::StepNaive(double t)
     {
         stepCount++;
-        double energyBefore = energy->Value();
+        double energyBefore = GetEnergyValue();
+
         Eigen::MatrixXd gradient;
         gradient.setZero(mesh->nVertices(), 3);
-        energy->Differential(gradient);
+        AddGradientToMatrix(gradient);
         surface::VertexData<size_t> indices = mesh->getVertexIndices();
 
         for (GCVertex v : mesh->vertices())
@@ -37,21 +45,52 @@ namespace rsurfaces
             geom->inputVertexPositions[v] -= grad_v * t;
         }
 
-        double energyAfter = energy->Value();
+        double energyAfter = GetEnergyValue();
 
         std::cout << "Energy: " << energyBefore << " -> " << energyAfter << std::endl;
+    }
+
+    void SurfaceFlow::UpdateEnergies()
+    {
+        for (SurfaceEnergy *energy : energies)
+        {
+            energy->Update();
+        }
+    }
+
+    double SurfaceFlow::GetEnergyValue()
+    {
+        double sum = 0;
+        for (SurfaceEnergy *energy : energies)
+        {
+            sum += energy->Value();
+        }
+        return sum;
+    }
+
+    void SurfaceFlow::AddGradientToMatrix(Eigen::MatrixXd &gradient)
+    {
+        int i = 0;
+        for (SurfaceEnergy *energy : energies)
+        {
+            i++;
+            long before = currentTimeMilliseconds();
+            energy->Differential(gradient);
+            long after = currentTimeMilliseconds();
+            std::cout << "  * Energy " << i << " gradient = " << (after - before) << " ms" << std::endl;
+        }
     }
 
     void SurfaceFlow::StepFractionalSobolev()
     {
         stepCount++;
         std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
-        energy->Update();
+        UpdateEnergies();
         double initArea = totalArea(geom, mesh);
         double initVolume = totalVolume(geom, mesh);
 
         long timeEnergy = currentTimeMilliseconds();
-        double energyBefore = energy->Value();
+        double energyBefore = GetEnergyValue();
         long timeStart = currentTimeMilliseconds();
 
         std::cout << "  * Energy evaluation: " << (timeStart - timeEnergy) << " ms" << std::endl;
@@ -60,7 +99,7 @@ namespace rsurfaces
         gradient.setZero(mesh->nVertices(), 3);
         gradientProj.setZero(mesh->nVertices(), 3);
 
-        energy->Differential(gradient);
+        AddGradientToMatrix(gradient);
         double gNorm = gradient.norm();
 
         long timeDiff = currentTimeMilliseconds();
@@ -73,14 +112,13 @@ namespace rsurfaces
         // Create an empty BCT pointer; this will be initialized in the first
         // Schur complement function, and reused for the rest of this timestep
         BlockClusterTree *bct = 0;
-        Hs::GetSchurComplement(constraints, energy, comp, bct, factor);
-        Hs::ProjectViaSchur(comp, gradient, gradientProj, energy, bct, factor);
+        Hs::GetSchurComplement(constraints, energies[0], comp, bct, factor);
+        Hs::ProjectViaSchur(comp, gradient, gradientProj, energies[0], bct, factor);
 
         long timeProject = currentTimeMilliseconds();
         double gProjNorm = gradientProj.norm();
         std::cout << "  * Gradient projection: " << (timeProject - timeDiff) << " ms (norm = " << gProjNorm << ")" << std::endl;
         double gradDot = (gradient.transpose() * gradientProj).trace() / (gNorm * gProjNorm);
-        std::cout << "  * Dot product of search directions = " << gradDot << std::endl;
 
         if (gradDot < 0)
         {
@@ -102,41 +140,35 @@ namespace rsurfaces
         long timeLS = currentTimeMilliseconds();
         std::cout << "  * Line search: " << (timeLS - timeProject) << " ms" << std::endl;
 
-        double energyBeforeBackproj = energy->Value();
+        double energyBeforeBackproj = GetEnergyValue();
 
         // Project onto constraint manifold using Schur complement
         long timeBackproj = currentTimeMilliseconds();
-        Hs::BackprojectViaSchur(constraints, comp, energy, bct, factor);
+        Hs::BackprojectViaSchur(constraints, comp, energies[0], bct, factor);
         // Fix barycenter drift
         RecenterMesh();
         long timeEnd = currentTimeMilliseconds();
 
-        double energyAfter = energy->Value();
         // Done with BCT, so clean it up
         delete bct;
 
         std::cout << "  * Post-processing: " << (timeEnd - timeBackproj) << " ms" << std::endl;
 
         std::cout << "  Total time: " << (timeEnd - timeStart) << " ms" << std::endl;
-        std::cout << "  Energy: " << energyBefore << " -> " << energyBeforeBackproj << " -> " << energyAfter << std::endl;
+        std::cout << "  Energy: " << energyBefore << " -> " << energyBeforeBackproj << std::endl;
 
-        double finalArea = totalArea(geom, mesh);
-        double finalVolume = totalVolume(geom, mesh);
-
-        std::cout << "Area:   " << initArea << " -> " << finalArea << std::endl;
-        std::cout << "Volume: " << initVolume << " -> " << finalVolume << std::endl;
         geom->refreshQuantities();
     }
 
     void SurfaceFlow::RecenterMesh()
     {
         Vector3 center = meshBarycenter(geom, mesh);
-        translateMesh(geom, mesh, -center);
+        translateMesh(geom, mesh, origBarycenter - center);
     }
 
     SurfaceEnergy *SurfaceFlow::BaseEnergy()
     {
-        return energy;
+        return energies[0];
     }
 
     void SurfaceFlow::SaveCurrentPositions()
@@ -167,10 +199,10 @@ namespace rsurfaces
             geom->inputVertexPositions[v] = pos_v;
         }
 
-        if (energy->GetBVH())
+        if (energies[0]->GetBVH())
         {
             geom->refreshQuantities();
-            energy->GetBVH()->recomputeCentersOfMass(mesh, geom);
+            energies[0]->GetBVH()->recomputeCentersOfMass(mesh, geom);
         }
     }
 
@@ -187,10 +219,10 @@ namespace rsurfaces
             geom->inputVertexPositions[v] = pos_v - delta * grad_v;
         }
 
-        if (energy->GetBVH())
+        if (energies[0]->GetBVH())
         {
             geom->refreshQuantities();
-            energy->GetBVH()->recomputeCentersOfMass(mesh, geom);
+            energies[0]->GetBVH()->recomputeCentersOfMass(mesh, geom);
         }
     }
 
@@ -200,7 +232,7 @@ namespace rsurfaces
         SaveCurrentPositions();
 
         // Gather some initial data
-        double initialEnergy = energy->Value();
+        double initialEnergy = GetEnergyValue();
         double gradNorm = gradient.norm();
         int numBacktracks = 0;
         double sigma = 0.01;
@@ -216,7 +248,7 @@ namespace rsurfaces
         {
             // Take the gradient step
             SetGradientStep(gradient, delta);
-            nextEnergy = energy->Value();
+            nextEnergy = GetEnergyValue();
             double decrease = initialEnergy - nextEnergy;
             double targetDecrease = sigma * delta * gradNorm * gradDot;
 

@@ -3,14 +3,33 @@
 #include "bvh_types.h"
 #include "bvh_data.h"
 #include "data_tree.h"
+#include "helpers.h"
 
 #define BVH_N_CHILDREN 2
 
 namespace rsurfaces
 {
-    class BVH6D
+    // Find the minimum coordinate of the bounding box of this face
+    inline Vector3 minCoordOfFace(const GCFace &f, GeomPtr const &geom)
     {
-    };
+        Vector3 minCoord = geom->inputVertexPositions[f.halfedge().vertex()];
+        for (GCVertex v : f.adjacentVertices())
+        {
+            minCoord = vectorMin(minCoord, geom->inputVertexPositions[v]);
+        }
+        return minCoord;
+    }
+
+    // Find the maximum coordinate of the bounding box of this face
+    inline Vector3 maxCoordOfFace(const GCFace &f, GeomPtr const &geom)
+    {
+        Vector3 maxCoord = geom->inputVertexPositions[f.halfedge().vertex()];
+        for (GCVertex v : f.adjacentVertices())
+        {
+            maxCoord = vectorMax(maxCoord, geom->inputVertexPositions[v]);
+        }
+        return maxCoord;
+    }
 
     class BVHNode6D
     {
@@ -45,7 +64,7 @@ namespace rsurfaces
         // Assign unique IDs to all nodes in this tree
         size_t assignIDsRecursively(size_t startID);
         // Recursively recompute all centers of mass in this tree
-        void recomputeCentersOfMass(MeshPtr &mesh, GeomPtr &geom);
+        void recomputeCentersOfMass(MeshPtr const &mesh, GeomPtr const &geom);
         bool isAdmissibleFrom(Vector3 vertPos, double thresholdTheta);
         void printSummary();
         MassNormalPoint GetMassNormalPoint();
@@ -112,7 +131,67 @@ namespace rsurfaces
         }
     };
 
-    BVHNode6D *Create6DBVHFromMeshFaces(MeshPtr &mesh, GeomPtr &geom);
+    inline MassNormalPoint meshFaceToBody(const GCFace &f, GeomPtr const &geom, FaceIndices &indices)
+    {
+        Vector3 pos = faceBarycenter(geom, f);
+        double mass = geom->faceArea(f);
+        Vector3 n = geom->faceNormal(f);
+
+        Vector3 minCoord = minCoordOfFace(f, geom);
+        Vector3 maxCoord = maxCoordOfFace(f, geom);
+
+        return MassNormalPoint{mass, n, pos, minCoord, maxCoord, indices[f]};
+    }
+
+    template<typename MPtr, typename GPtr>
+    BVHNode6D *Create6DBVHFromMeshFaces(MPtr const &mesh, GPtr const &geom)
+    {
+        std::vector<MassNormalPoint> verts(mesh->nFaces());
+        FaceIndices indices = mesh->getFaceIndices();
+
+        // Loop over all the vertices
+        for (const GCFace &f : mesh->faces())
+        {
+            MassNormalPoint curBody = meshFaceToBody(f, geom, indices);
+            // Put vertex body into full list
+            verts[curBody.elementID] = curBody;
+        }
+
+        BVHNode6D *tree = new BVHNode6D(verts, 0);
+        tree->assignIDsRecursively(0);
+        return tree;
+    }
+
+    inline MassNormalPoint meshVertToBody(const GCVertex &v, GeomUPtr const &geom, VertexIndices &indices)
+    {
+        Vector3 pos = geom->inputVertexPositions[v];
+        double mass = geom->vertexDualAreas[v];
+        Vector3 n = geom->vertexNormals[v];
+
+        Vector3 minCoord = pos;
+        Vector3 maxCoord = pos;
+
+        return MassNormalPoint{mass, n, pos, minCoord, maxCoord, indices[v]};
+    }
+
+    template<typename MPtr, typename GPtr>
+    BVHNode6D *Create6DBVHFromMeshVerts(MPtr const &mesh, GPtr const &geom)
+    {
+        std::vector<MassNormalPoint> verts(mesh->nVertices());
+        VertexIndices indices = mesh->getVertexIndices();
+
+        // Loop over all the vertices
+        for (const GCVertex &v : mesh->vertices())
+        {
+            MassNormalPoint curBody = meshVertToBody(v, geom, indices);
+            // Put vertex body into full list
+            verts[curBody.elementID] = curBody;
+        }
+
+        BVHNode6D *tree = new BVHNode6D(verts, 0);
+        tree->assignIDsRecursively(0);
+        return tree;
+    }
 
     template <typename Data>
     DataTree<Data> *DataTreeContainer<Data>::GetDataNode(BVHNode6D *bvhNode)

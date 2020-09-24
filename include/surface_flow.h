@@ -11,6 +11,8 @@ namespace rsurfaces
     {
     public:
         SurfaceFlow(SurfaceEnergy *energy_);
+        void AddAdditionalEnergy(SurfaceEnergy *extraEnergy);
+
         void StepNaive(double t);
         void StepFractionalSobolev();
         SurfaceEnergy *BaseEnergy();
@@ -32,12 +34,17 @@ namespace rsurfaces
         }
 
     private:
-        SurfaceEnergy *energy;
+        void UpdateEnergies();
+        double GetEnergyValue();
+        void AddGradientToMatrix(Eigen::MatrixXd &gradient);
+
+        std::vector<SurfaceEnergy*> energies;
         MeshPtr mesh;
         GeomPtr geom;
         Eigen::MatrixXd origPositions;
         unsigned int stepCount;
         std::vector<Constraints::ConstraintBase *> constraints;
+        Vector3 origBarycenter;
 
         double prevStep;
         void SaveCurrentPositions();

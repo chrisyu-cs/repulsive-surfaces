@@ -1,5 +1,4 @@
 #include "spatial/bvh_6d.h"
-#include "helpers.h"
 
 namespace rsurfaces
 {
@@ -17,40 +16,6 @@ namespace rsurfaces
         default:
             return 0;
         }
-    }
-
-    // Find the minimum coordinate of the bounding box of this face
-    inline Vector3 minCoordOfFace(const GCFace &f, GeomPtr &geom)
-    {
-        Vector3 minCoord = geom->inputVertexPositions[f.halfedge().vertex()];
-        for (GCVertex v : f.adjacentVertices())
-        {
-            minCoord = vectorMin(minCoord, geom->inputVertexPositions[v]);
-        }
-        return minCoord;
-    }
-
-    // Find the maximum coordinate of the bounding box of this face
-    inline Vector3 maxCoordOfFace(const GCFace &f, GeomPtr &geom)
-    {
-        Vector3 maxCoord = geom->inputVertexPositions[f.halfedge().vertex()];
-        for (GCVertex v : f.adjacentVertices())
-        {
-            maxCoord = vectorMax(maxCoord, geom->inputVertexPositions[v]);
-        }
-        return maxCoord;
-    }
-
-    inline MassNormalPoint meshFaceToBody(const GCFace &f, GeomPtr &geom, FaceIndices &indices)
-    {
-        Vector3 pos = faceBarycenter(geom, f);
-        double mass = geom->faceArea(f);
-        Vector3 n = geom->faceNormal(f);
-
-        Vector3 minCoord = minCoordOfFace(f, geom);
-        Vector3 maxCoord = maxCoordOfFace(f, geom);
-
-        return MassNormalPoint{mass, n, pos, minCoord, maxCoord, indices[f]};
     }
 
     inline double GetCoordFromBody(MassNormalPoint &mp, int axis)
@@ -74,24 +39,6 @@ namespace rsurfaces
             exit(1);
             return 0;
         }
-    }
-
-    BVHNode6D *Create6DBVHFromMeshFaces(MeshPtr &mesh, GeomPtr &geom)
-    {
-        std::vector<MassNormalPoint> verts(mesh->nFaces());
-        FaceIndices indices = mesh->getFaceIndices();
-
-        // Loop over all the vertices
-        for (const GCFace &f : mesh->faces())
-        {
-            MassNormalPoint curBody = meshFaceToBody(f, geom, indices);
-            // Put vertex body into full list
-            verts[curBody.elementID] = curBody;
-        }
-
-        BVHNode6D *tree = new BVHNode6D(verts, 0);
-        tree->assignIDsRecursively(0);
-        return tree;
     }
 
     BVHNode6D::BVHNode6D(std::vector<MassNormalPoint> &points, int axis)
@@ -141,6 +88,19 @@ namespace rsurfaces
 
             // Compute the plane over which to split the points
             double splitPoint = AxisSplittingPlane(points, axis);
+            int firstAxis = axis;
+            // If we failed to find a split point because all of the points are aligned on this axis,
+            // then try again with the next one
+            while (isinff(splitPoint))
+            {
+                axis = NextAxis(axis);
+                if (axis == firstAxis)
+                {
+                    std::cerr << "ERROR: Mesh includes multiple vertices with identical positions." << std::endl;
+                    std::exit(1);
+                }
+                splitPoint = AxisSplittingPlane(points, axis);
+            }
 
             // Split the points over the median
             for (int i = 0; i < nPoints; i++)
@@ -269,9 +229,18 @@ namespace rsurfaces
 
         std::sort(coords.begin(), coords.end());
 
+        // Check to see if there is actually spread between the points on this axis.
+        // If there isn't, then this axis can't be split along
+        double spread = coords[coords.size() - 1] - coords[0];
+        if (spread <= 1e-10)
+        {
+            return INFINITY;
+        }
+
         size_t splitIndex = -1;
         double minWidths = INFINITY;
 
+        // Find the partition that will result in the smallest sum of squared widths along this axis
         for (size_t i = 0; i < nPoints; i++)
         {
             double width1 = coords[i] - coords[0];
@@ -307,7 +276,7 @@ namespace rsurfaces
             return true;
     }
 
-    void BVHNode6D::recomputeCentersOfMass(MeshPtr &mesh, GeomPtr &geom)
+    void BVHNode6D::recomputeCentersOfMass(MeshPtr const &mesh, GeomPtr const &geom)
     {
         if (nodeType == BVHNodeType::Empty)
         {

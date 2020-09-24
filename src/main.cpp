@@ -13,6 +13,7 @@
 #include "energy/all_pairs_with_bvh.h"
 #include "energy/barnes_hut_tpe_xdiff.h"
 #include "energy/barnes_hut_newtonian.h"
+#include "energy/static_obstacle.h"
 #include "helpers.h"
 #include <memory>
 #include "spatial/bvh_flattened.h"
@@ -339,6 +340,26 @@ namespace rsurfaces
     std::cout << "Energy evaluation:   " << ((double)totalE / nTrials) << " ms" << std::endl;
     std::cout << "Gradient evaluation: " << ((double)totalG / nTrials) << " ms" << std::endl;
   }
+
+  void MainApp::AddObstacle(std::string filename)
+  {
+    std::unique_ptr<HalfedgeMesh> obstacleMesh;
+    std::unique_ptr<VertexPositionGeometry> obstacleGeometry;
+    // Load mesh
+    std::tie(obstacleMesh, obstacleGeometry) = loadMesh(filename);
+
+    obstacleGeometry->requireVertexDualAreas();
+    obstacleGeometry->requireVertexNormals();
+
+    std::string mesh_name = polyscope::guessNiceNameFromPath(filename);
+    polyscope::SurfaceMesh *psMesh = polyscope::registerSurfaceMesh(mesh_name, obstacleGeometry->inputVertexPositions,
+                                                                    obstacleMesh->getFaceVertexList(), polyscopePermutations(*obstacleMesh));
+
+    double exp = kernel->beta - kernel->alpha;
+    StaticObstacle* obstacle = new StaticObstacle(mesh, geom, std::move(obstacleMesh), std::move(obstacleGeometry), exp, bh_theta, 1);
+    flow->AddAdditionalEnergy(obstacle);
+    std::cout << "Added " << filename << " as obstacle" << std::endl;
+  }
 } // namespace rsurfaces
 
 // UI parameters
@@ -486,6 +507,7 @@ int main(int argc, char **argv)
   args::ArgumentParser parser("geometry-central & Polyscope example project");
   args::Positional<std::string> inputFilename(parser, "mesh", "A mesh file.");
   args::ValueFlag<double> thetaFlag(parser, "Theta", "Theta value for Barnes-Hut approximation; 0 means exact.", args::Matcher{'t', "theta"});
+  args::ValueFlagList<std::string> obstacleFiles(parser, "obstacles", "Obstacles to add", {'o'});
 
   // omp_set_num_threads(4);
 
@@ -568,6 +590,12 @@ int main(int argc, char **argv)
   flow->addConstraint<Constraints::TotalAreaConstraint>(meshShared, geomShared);
   MainApp::instance = new MainApp(meshShared, geomShared, flow, psMesh);
   MainApp::instance->bh_theta = theta;
+  MainApp::instance->kernel = tpe;
+
+  for (std::string obstacleName : obstacleFiles)
+  {
+    MainApp::instance->AddObstacle(obstacleName);
+  }
 
   // Give control to the polyscope gui
   polyscope::show();
