@@ -86,10 +86,11 @@ set(SRCS
   src/spatial/convolution_kernel.cpp
   src/block_cluster_tree.cpp
   src/fractional_laplacian.cpp
-  src/surface_derivatives.cpp
-  src/surface_flow.cpp
   src/main.cpp
   src/matrix_utils.cpp
+  src/scene_file.cpp
+  src/surface_derivatives.cpp
+  src/surface_flow.cpp
 	# add any other source files here
 )
 

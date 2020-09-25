@@ -253,7 +253,7 @@ namespace rsurfaces
             dest = factor.Solve(gradientCol);
         }
 
-        void GetSchurComplement(std::vector<ConstraintBase *> constraints, SurfaceEnergy *energy,
+        void GetSchurComplement(std::vector<ConstraintPack> constraints, SurfaceEnergy *energy,
                                 SchurComplement &dest, BlockClusterTree *&bct, SparseFactorization &factor)
         {
             MeshPtr mesh = energy->GetMesh();
@@ -263,9 +263,9 @@ namespace rsurfaces
             size_t nRows = 0;
 
             // Figure out how many rows the constraint block is
-            for (ConstraintBase *c : constraints)
+            for (ConstraintPack &c : constraints)
             {
-                nRows += c->nRows();
+                nRows += c.constraint->nRows();
             }
             if (nRows == 0)
             {
@@ -278,10 +278,10 @@ namespace rsurfaces
 
             // Fill in the constraint block by getting the entries for each constraint
             // while incrementing the rows
-            for (ConstraintBase *c : constraints)
+            for (ConstraintPack &c : constraints)
             {
-                c->addEntries(dest.C, mesh, geom, curRow);
-                curRow += c->nRows();
+                c.constraint->addEntries(dest.C, mesh, geom, curRow);
+                curRow += c.constraint->nRows();
             }
 
             // https://en.wikipedia.org/wiki/Schur_complement
@@ -348,7 +348,7 @@ namespace rsurfaces
             MatrixUtils::ColumnIntoMatrix(curCol, dest);
         }
 
-        void BackprojectViaSchur(std::vector<ConstraintBase *> constraints, SchurComplement &comp,
+        void BackprojectViaSchur(std::vector<ConstraintPack> &constraints, SchurComplement &comp,
                                  SurfaceEnergy *energy, BlockClusterTree *&bct, SparseFactorization &factor)
         {
             MeshPtr mesh = energy->GetMesh();
@@ -357,10 +357,10 @@ namespace rsurfaces
             size_t nRows = comp.M_A.rows();
             Eigen::VectorXd vals(nRows);
             int curRow = 0;
-            for (ConstraintBase *c : constraints)
+            for (ConstraintPack &c : constraints)
             {
-                c->addValue(vals, mesh, geom, curRow);
-                curRow += c->nRows();
+                c.constraint->addValue(vals, mesh, geom, curRow);
+                curRow += c.constraint->nRows();
             }
             // In this case we want the block of the inverse that multiplies the bottom block
             // -A^{-1} B (M/A)^{-1}, where B = C^T

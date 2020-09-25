@@ -27,6 +27,7 @@
 #include "spatial/convolution.h"
 #include "spatial/convolution_kernel.h"
 #include "block_cluster_tree.h"
+#include "scene_file.h"
 
 using namespace geometrycentral;
 using namespace geometrycentral::surface;
@@ -38,8 +39,8 @@ namespace rsurfaces
 
   MainApp::MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow *flow_, polyscope::SurfaceMesh *psMesh_)
   {
-    mesh = mesh_;
-    geom = geom_;
+    mesh = std::move(mesh_);
+    geom = std::move(geom_);
     flow = flow_;
     psMesh = psMesh_;
     vertBVH = 0;
@@ -341,7 +342,7 @@ namespace rsurfaces
     std::cout << "Gradient evaluation: " << ((double)totalG / nTrials) << " ms" << std::endl;
   }
 
-  void MainApp::AddObstacle(std::string filename)
+  void MainApp::AddObstacle(std::string filename, double weight)
   {
     std::unique_ptr<HalfedgeMesh> obstacleMesh;
     std::unique_ptr<VertexPositionGeometry> obstacleGeometry;
@@ -356,9 +357,9 @@ namespace rsurfaces
                                                                     obstacleMesh->getFaceVertexList(), polyscopePermutations(*obstacleMesh));
 
     double exp = kernel->beta - kernel->alpha;
-    StaticObstacle* obstacle = new StaticObstacle(mesh, geom, std::move(obstacleMesh), std::move(obstacleGeometry), exp, bh_theta, 1);
+    StaticObstacle *obstacle = new StaticObstacle(mesh, geom, std::move(obstacleMesh), std::move(obstacleGeometry), exp, bh_theta, weight);
     flow->AddAdditionalEnergy(obstacle);
-    std::cout << "Added " << filename << " as obstacle" << std::endl;
+    std::cout << "Added " << filename << " as obstacle with weight " << weight << std::endl;
   }
 } // namespace rsurfaces
 
@@ -499,6 +500,92 @@ void testBarnesHut(rsurfaces::TPEKernel *tpe, rsurfaces::MeshPtr mesh, rsurfaces
   std::cout << "Dot product of directions = " << dir_dot << std::endl;
 }
 
+struct MeshAndEnergy
+{
+  rsurfaces::TPEKernel *kernel;
+  polyscope::SurfaceMesh *psMesh;
+  rsurfaces::MeshPtr mesh;
+  rsurfaces::GeomPtr geom;
+};
+
+MeshAndEnergy initTPEOnMesh(std::string meshFile, double alpha, double beta)
+{
+  using namespace rsurfaces;
+
+  std::unique_ptr<HalfedgeMesh> u_mesh;
+  std::unique_ptr<VertexPositionGeometry> u_geometry;
+  // Load mesh
+  std::tie(u_mesh, u_geometry) = loadMesh(meshFile);
+  std::string mesh_name = polyscope::guessNiceNameFromPath(meshFile);
+
+  // Register the mesh with polyscope
+  polyscope::SurfaceMesh *psMesh = polyscope::registerSurfaceMesh(mesh_name,
+                                                                  u_geometry->inputVertexPositions, u_mesh->getFaceVertexList(),
+                                                                  polyscopePermutations(*u_mesh));
+
+  MeshPtr meshShared = std::move(u_mesh);
+  GeomPtr geomShared = std::move(u_geometry);
+
+  geomShared->requireVertexDualAreas();
+  geomShared->requireFaceNormals();
+  geomShared->requireFaceAreas();
+
+  TPEKernel *tpe = new rsurfaces::TPEKernel(meshShared, geomShared, alpha, beta);
+
+  return MeshAndEnergy{tpe, psMesh, meshShared, geomShared};
+}
+
+rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, std::vector<rsurfaces::scene::ConstraintData> &constraints)
+{
+  using namespace rsurfaces;
+
+  SurfaceEnergy *energy;
+
+  if (theta <= 0)
+  {
+    std::cout << "Theta was zero (or negative); using exact all-pairs energy." << std::endl;
+    energy = new AllPairsTPEnergy(m.kernel);
+  }
+  else
+  {
+    std::cout << "Using Barnes-Hut energy with theta = " << theta << "." << std::endl;
+    energy = new BarnesHutTPEnergy6D(m.kernel, theta);
+  }
+
+  SurfaceFlow *flow = new SurfaceFlow(energy);
+
+  for (scene::ConstraintData &data : constraints)
+  {
+    switch (data.type)
+    {
+    case scene::ConstraintType::TotalArea:
+      flow->addConstraint<Constraints::TotalAreaConstraint>(m.mesh, m.geom, data.targetMultiplier, data.numIterations);
+      break;
+    case scene::ConstraintType::TotalVolume:
+      flow->addConstraint<Constraints::TotalVolumeConstraint>(m.mesh, m.geom, data.targetMultiplier, data.numIterations);
+      break;
+    default:
+      std::cout << "Skipping unrecognized constraint type" << std::endl;
+      break;
+    }
+  }
+
+  return flow;
+}
+
+rsurfaces::scene::SceneData defaultScene(std::string meshName)
+{
+  using namespace rsurfaces;
+  using namespace rsurfaces::scene;
+  SceneData data;
+  data.meshName = meshName;
+  data.alpha = 6;
+  data.beta = 12;
+  data.constraints = std::vector<ConstraintData>({ConstraintData{scene::ConstraintType::TotalArea, 1, 0},
+                                                  ConstraintData{scene::ConstraintType::TotalVolume, 1, 0}});
+  return data;
+}
+
 int main(int argc, char **argv)
 {
   using namespace rsurfaces;
@@ -509,7 +596,9 @@ int main(int argc, char **argv)
   args::ValueFlag<double> thetaFlag(parser, "Theta", "Theta value for Barnes-Hut approximation; 0 means exact.", args::Matcher{'t', "theta"});
   args::ValueFlagList<std::string> obstacleFiles(parser, "obstacles", "Obstacles to add", {'o'});
 
-  // omp_set_num_threads(4);
+  int default_threads = omp_get_max_threads();
+  std::cout << "OMP autodetected " << default_threads << " threads." << std::endl;
+  omp_set_num_threads(default_threads - 2);
 
   // Parse args
   try
@@ -547,54 +636,35 @@ int main(int argc, char **argv)
 
   // Initialize polyscope
   polyscope::init();
-
   // Set the callback function
   polyscope::state::userCallback = myCallback;
 
-  std::unique_ptr<HalfedgeMesh> u_mesh;
-  std::unique_ptr<VertexPositionGeometry> u_geometry;
-  // Load mesh
-  std::tie(u_mesh, u_geometry) = loadMesh(args::get(inputFilename));
+  // Parse the input file, either as a scene file or as a mesh
+  std::string inFile = args::get(inputFilename);
+  scene::SceneData data;
 
-  std::string mesh_name = polyscope::guessNiceNameFromPath(args::get(inputFilename));
-
-  // Register the mesh with polyscope
-  polyscope::SurfaceMesh *psMesh = polyscope::registerSurfaceMesh(mesh_name,
-                                                                  u_geometry->inputVertexPositions, u_mesh->getFaceVertexList(),
-                                                                  polyscopePermutations(*u_mesh));
-
-  MeshPtr meshShared = std::move(u_mesh);
-  GeomPtr geomShared = std::move(u_geometry);
-
-  geomShared->requireVertexDualAreas();
-  geomShared->requireFaceNormals();
-  geomShared->requireFaceAreas();
-
-  TPEKernel *tpe = new rsurfaces::TPEKernel(meshShared, geomShared, 6, 12);
-
-  SurfaceEnergy *energy;
-
-  if (theta <= 0)
+  if (endsWith(inFile, ".txt"))
   {
-    std::cout << "Theta was zero (or negative); using exact all-pairs energy." << std::endl;
-    energy = new AllPairsTPEnergy(tpe);
-  }
-  else
-  {
-    std::cout << "Using Barnes-Hut energy with theta = " << theta << "." << std::endl;
-    energy = new BarnesHutTPEnergy6D(tpe, theta);
+    std::cout << "Parsing " << inFile << " as scene file." << std::endl;
+    data = scene::parseScene(inFile);
   }
 
-  SurfaceFlow *flow = new SurfaceFlow(energy);
-  flow->addConstraint<Constraints::TotalVolumeConstraint>(meshShared, geomShared);
-  flow->addConstraint<Constraints::TotalAreaConstraint>(meshShared, geomShared);
-  MainApp::instance = new MainApp(meshShared, geomShared, flow, psMesh);
+  else if (endsWith(inFile, ".obj"))
+  {
+    std::cout << "Parsing " << inFile << " as OBJ mesh file." << std::endl;
+    data = defaultScene(inFile);
+  }
+
+  MeshAndEnergy m = initTPEOnMesh(data.meshName, 6, 12);
+  SurfaceFlow *flow = setUpFlow(m, theta, data.constraints);
+
+  MainApp::instance = new MainApp(m.mesh, m.geom, flow, m.psMesh);
   MainApp::instance->bh_theta = theta;
-  MainApp::instance->kernel = tpe;
+  MainApp::instance->kernel = m.kernel;
 
-  for (std::string obstacleName : obstacleFiles)
+  for (scene::ObstacleData &obs : data.obstacles)
   {
-    MainApp::instance->AddObstacle(obstacleName);
+    MainApp::instance->AddObstacle(obs.obstacleName, obs.weight);
   }
 
   // Give control to the polyscope gui

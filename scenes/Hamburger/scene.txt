@@ -1,0 +1,5 @@
+repel_mesh hamburger.obj
+constrain area 2 100
+constrain volume
+obstacle cube1.5.obj 0.1
+

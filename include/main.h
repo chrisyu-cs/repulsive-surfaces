@@ -25,7 +25,7 @@ class MainApp
     void TakeNaiveStep(double t);
     void TakeFractionalSobolevStep();
 
-    void AddObstacle(std::string filename);
+    void AddObstacle(std::string filename, double weight);
 
     MeshPtr mesh;
     GeomPtr geom;

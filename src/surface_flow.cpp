@@ -157,6 +157,18 @@ namespace rsurfaces
         std::cout << "  Total time: " << (timeEnd - timeStart) << " ms" << std::endl;
         std::cout << "  Energy: " << energyBefore << " -> " << energyBeforeBackproj << std::endl;
 
+        for (ConstraintPack &c : constraints)
+        {
+            if (c.iterationsLeft > 0)
+            {
+                c.iterationsLeft--;
+                c.constraint->incrementTargetValue(c.stepSize);
+            }
+        }
+
+        std::cout << "  Mesh total volume = " << totalVolume(geom, mesh) << std::endl;
+        std::cout << "  Mesh total area = " << totalArea(geom, mesh) << std::endl;
+
         geom->refreshQuantities();
     }
 

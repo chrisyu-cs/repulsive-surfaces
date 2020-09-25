@@ -6,7 +6,6 @@
 
 namespace rsurfaces
 {
-
     class SurfaceFlow
     {
     public:
@@ -22,15 +21,17 @@ namespace rsurfaces
         const double LS_STEP_THRESHOLD = 1e-20;
 
         template <typename Constraint>
-        void addConstraint()
+        void addConstraint(MeshPtr &mesh, GeomPtr &geom, double multiplier, long iterations)
         {
-            constraints.push_back(new Constraint());
-        }
-
-        template <typename Constraint>
-        void addConstraint(MeshPtr &mesh, GeomPtr &geom)
-        {
-            constraints.push_back(new Constraint(mesh, geom));
+            Constraints::ConstraintBase *c = new Constraint(mesh, geom);
+            double stepSize = 0;
+            if (iterations > 0)
+            {
+                double initVal = c->getTargetValue();
+                double change = multiplier * initVal - initVal;
+                stepSize = change / iterations;
+            }
+            constraints.push_back(ConstraintPack{c, stepSize, iterations});
         }
 
     private:
@@ -38,12 +39,12 @@ namespace rsurfaces
         double GetEnergyValue();
         void AddGradientToMatrix(Eigen::MatrixXd &gradient);
 
-        std::vector<SurfaceEnergy*> energies;
+        std::vector<SurfaceEnergy *> energies;
         MeshPtr mesh;
         GeomPtr geom;
         Eigen::MatrixXd origPositions;
         unsigned int stepCount;
-        std::vector<Constraints::ConstraintBase *> constraints;
+        std::vector<ConstraintPack> constraints;
         Vector3 origBarycenter;
 
         double prevStep;

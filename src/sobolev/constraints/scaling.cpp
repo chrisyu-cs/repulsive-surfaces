@@ -52,5 +52,16 @@ namespace rsurfaces
         {
             return 1;
         }
+
+        double ScalingConstraint::getTargetValue()
+        {
+            return 0;
+        }
+
+        void ScalingConstraint::incrementTargetValue(double incr)
+        {
+            std::cerr << "Can't increment scaling constraint" << std::endl;
+            throw 1;
+        }
     } // namespace Constraints
 } // namespace rsurfaces

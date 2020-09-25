@@ -51,6 +51,17 @@ namespace rsurfaces
             throw 1;
         }
 
+        double BarycenterConstraint::getTargetValue()
+        {
+            return 0;
+        }
+
+        void BarycenterConstraint::incrementTargetValue(double incr)
+        {
+            std::cerr << "Can't increment barycenter constraint." << std::endl;
+            throw 1;
+        }
+
         BarycenterConstraint3X::BarycenterConstraint3X(MeshPtr &mesh, GeomPtr &geom)
         {
             initValue = meshBarycenter(geom, mesh);
@@ -93,6 +104,17 @@ namespace rsurfaces
             V(baseRow) = diff.x;
             V(baseRow + 1) = diff.y;
             V(baseRow + 2) = diff.z;
+        }
+
+        double BarycenterConstraint3X::getTargetValue()
+        {
+            return 0;
+        }
+
+        void BarycenterConstraint3X::incrementTargetValue(double incr)
+        {
+            std::cerr << "Can't increment barycenter constraint." << std::endl;
+            throw 1;
         }
 
         size_t BarycenterConstraint3X::nRows()

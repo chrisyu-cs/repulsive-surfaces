@@ -1,0 +1,4 @@
+repel_mesh bunny.obj 6 12
+constrain area 2 100
+constrain volume
+

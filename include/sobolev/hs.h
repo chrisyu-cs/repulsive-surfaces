@@ -56,13 +56,13 @@ namespace rsurfaces
         // Same as above but with the input/output being matrices
         void ProjectViaSparseMat(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, SurfaceEnergy *energy, BlockClusterTree *&bct, SparseFactorization &factor);
 
-        void GetSchurComplement(std::vector<ConstraintBase *> constraints, SurfaceEnergy *energy, SchurComplement &dest,
+        void GetSchurComplement(std::vector<ConstraintPack> constraints, SurfaceEnergy *energy, SchurComplement &dest,
                                 BlockClusterTree *&bct, SparseFactorization &factor);
 
         void ProjectViaSchur(SchurComplement &comp, Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, SurfaceEnergy *energy,
                              BlockClusterTree *&bct, SparseFactorization &factor);
 
-        void BackprojectViaSchur(std::vector<ConstraintBase *> constraints, SchurComplement &comp, SurfaceEnergy *energy,
+        void BackprojectViaSchur(std::vector<ConstraintPack> &constraints, SchurComplement &comp, SurfaceEnergy *energy,
                                  BlockClusterTree *&bct, SparseFactorization &factor);
 
     } // namespace Hs

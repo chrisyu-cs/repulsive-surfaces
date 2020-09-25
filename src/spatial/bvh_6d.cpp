@@ -89,8 +89,8 @@ namespace rsurfaces
             // Compute the plane over which to split the points
             double splitPoint = AxisSplittingPlane(points, axis);
             int firstAxis = axis;
-            // If we failed to find a split point because all of the points are aligned on this axis,
-            // then try again with the next one
+            // If we failed to find a split point because all of the points
+            // are aligned on this axis, then try again with the next one
             while (isinff(splitPoint))
             {
                 axis = NextAxis(axis);

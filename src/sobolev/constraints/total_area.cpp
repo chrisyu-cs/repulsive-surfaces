@@ -51,5 +51,15 @@ namespace rsurfaces
             V(baseRow) = current - initValue;
         }
 
+        double TotalAreaConstraint::getTargetValue()
+        {
+            return initValue;
+        }
+
+        void TotalAreaConstraint::incrementTargetValue(double incr)
+        {
+            initValue += incr;
+        }
+
     } // namespace Constraints
 } // namespace rsurfaces
