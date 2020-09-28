@@ -12,6 +12,16 @@ namespace rsurfaces
             return v - norm * dot(norm, v);
         }
 
+        bool shouldFlip(GeomPtr const &geometry, Edge e) {
+            // Check if, by flipping this edge, you would make the 
+            // degrees of all the vertices on this diamond closer to 6
+
+            // Vertices v1, v2, v3, v4 with degrees d1, d2, d3, d4
+            // f(d1, d2, d3, d4) = |d1 - 6| + |d2 - 6| + |d3 - 6| + |d4 - 6|
+
+            // Do the flip if it would reduce the value of f on this diamond after flipping
+        }
+
         bool isDelaunay(GeomPtr const &geometry, Edge e)
         {
             float angle1 = geometry->cornerAngle(e.halfedge().next().next().corner());
@@ -153,6 +163,5 @@ namespace rsurfaces
                 geometry->inputVertexPositions[v] = newVertexPosition[v];
             }
         }
-
     } // namespace remeshing
 } // namespace rsurfaces
