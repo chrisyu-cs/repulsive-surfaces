@@ -15,7 +15,6 @@ namespace rsurfaces
         static MainApp *instance;
         MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow *flow_, polyscope::SurfaceMesh *psMesh_, std::string meshName_);
 
-        void updatePolyscopeMesh();
         void PlotL2Gradient();
         void TestLML();
         void TestMVProduct();
@@ -38,6 +37,8 @@ namespace rsurfaces
         {
             psMesh = polyscope::registerSurfaceMesh(meshName, geom->inputVertexPositions, mesh->getFaceVertexList());
         }
+        
+        void updateMeshPositions();
 
         BVHNode6D *vertBVH;
         bool normalizeView;

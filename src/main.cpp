@@ -59,7 +59,7 @@ namespace rsurfaces
     flow->StepFractionalSobolev();
   }
 
-  void MainApp::updatePolyscopeMesh()
+  void MainApp::updateMeshPositions()
   {
     if (normalizeView)
     {
@@ -400,14 +400,14 @@ void customCallback()
   ImGui::Checkbox("Run flow", &run);
   ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
   ImGui::Checkbox("Normalize view", &uiNormalizeView);
-  
+
   ImGui::Checkbox("Take screenshots", &takeScreenshots);
   ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
   if ((takeScreenshots && screenshotNum == 0) || ImGui::Button("Take screenshot", ImVec2{ITEM_WIDTH, 0}))
   {
     saveScreenshot(screenshotNum++);
   }
-  
+
   ImGui::Text("Iteration limit");
   ImGui::InputInt("", &stepLimit);
 
@@ -460,38 +460,51 @@ void customCallback()
   }
   ImGui::EndGroup();
 
-  ImGui::Text("Remeshing");
+  ImGui::Text("Remeshing tests");
 
   ImGui::BeginGroup();
   ImGui::Indent(INDENT);
-  if(ImGui::Button("Fix Delaunay")){
+
+  // Section for remeshing tests
+  
+  if (ImGui::Button("Fix Delaunay"))
+  {
     remeshing::fixDelaunay(MainApp::instance->mesh, MainApp::instance->geom);
     MainApp::instance->reregisterMesh();
   }
-  if(ImGui::Button("Laplacian smooth")){
+  
+  if (ImGui::Button("Laplacian smooth"))
+  {
     remeshing::smoothByLaplacian(MainApp::instance->mesh, MainApp::instance->geom);
     MainApp::instance->reregisterMesh();
   }
-  if(ImGui::Button("Circumcenter smooth")){
+  
+  if (ImGui::Button("Circumcenter smooth"))
+  {
     remeshing::smoothByCircumcenter(MainApp::instance->mesh, MainApp::instance->geom);
     MainApp::instance->reregisterMesh();
   }
-  if(ImGui::Button("Laplacian optimize")){
-    for(int i = 0; i < 1000; i++){
+  
+  if (ImGui::Button("Laplacian optimize"))
+  {
+    for (int i = 0; i < 1000; i++)
+    {
       remeshing::smoothByLaplacian(MainApp::instance->mesh, MainApp::instance->geom);
       remeshing::fixDelaunay(MainApp::instance->mesh, MainApp::instance->geom);
     }
     MainApp::instance->reregisterMesh();
   }
-  if(ImGui::Button("Circumcenter optimize")){
-    for(int i = 0; i < 1000; i++){
+  
+  if (ImGui::Button("Circumcenter optimize"))
+  {
+    for (int i = 0; i < 1000; i++)
+    {
       remeshing::smoothByCircumcenter(MainApp::instance->mesh, MainApp::instance->geom);
       remeshing::fixDelaunay(MainApp::instance->mesh, MainApp::instance->geom);
     }
     MainApp::instance->reregisterMesh();
   }
   ImGui::EndGroup();
-  
 }
 
 struct MeshAndEnergy
