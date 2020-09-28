@@ -73,6 +73,7 @@ set(SRCS
   src/energy/barnes_hut_tpe_xdiff.cpp
   src/energy/tpe_kernel.cpp
   src/energy/static_obstacle.cpp
+  src/remeshing/remeshing.cpp
   src/sobolev/h1.cpp
   src/sobolev/hs.cpp
   src/sobolev/constraints.cpp

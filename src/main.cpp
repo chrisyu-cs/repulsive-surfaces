@@ -29,6 +29,8 @@
 #include "block_cluster_tree.h"
 #include "scene_file.h"
 
+#include "remeshing/remeshing.h"
+
 using namespace geometrycentral;
 using namespace geometrycentral::surface;
 
@@ -37,12 +39,13 @@ namespace rsurfaces
 
   MainApp *MainApp::instance = 0;
 
-  MainApp::MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow *flow_, polyscope::SurfaceMesh *psMesh_)
+  MainApp::MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow *flow_, polyscope::SurfaceMesh *psMesh_, std::string meshName_)
   {
     mesh = std::move(mesh_);
     geom = std::move(geom_);
     flow = flow_;
     psMesh = psMesh_;
+    meshName = meshName_;
     vertBVH = 0;
   }
 
@@ -304,7 +307,7 @@ namespace rsurfaces
     }
   };
 
-  void MainApp::TestPercolation()
+  void MainApp::BenchmarkBH()
   {
     SurfaceEnergy *energy = flow->BaseEnergy();
     Eigen::MatrixXd diff(mesh->nVertices(), 3);
@@ -383,37 +386,43 @@ void saveScreenshot(uint i)
 // A user-defined callback, for creating control panels (etc)
 // Use ImGUI commands to build whatever you want here, see
 // https://github.com/ocornut/imgui/blob/master/imgui.h
-void myCallback()
+void customCallback()
 {
+  using namespace rsurfaces;
+
+  const int INDENT = 10;
+  const int ITEM_WIDTH = 160;
+
+  ImGui::Text("Flow control");
+  ImGui::BeginGroup();
+  ImGui::Indent(INDENT);
+  ImGui::PushItemWidth(ITEM_WIDTH);
   ImGui::Checkbox("Run flow", &run);
-
-  ImGui::Checkbox("Take screenshots", &takeScreenshots);
-
+  ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
   ImGui::Checkbox("Normalize view", &uiNormalizeView);
+  
+  ImGui::Checkbox("Take screenshots", &takeScreenshots);
+  ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
+  if ((takeScreenshots && screenshotNum == 0) || ImGui::Button("Take screenshot", ImVec2{ITEM_WIDTH, 0}))
+  {
+    saveScreenshot(screenshotNum++);
+  }
+  
+  ImGui::Text("Iteration limit");
+  ImGui::InputInt("", &stepLimit);
 
-  ImGui::InputInt("Step limit", &stepLimit);
-
-  if (uiNormalizeView != rsurfaces::MainApp::instance->normalizeView)
+  if (uiNormalizeView != MainApp::instance->normalizeView)
   {
     rsurfaces::MainApp::instance->normalizeView = uiNormalizeView;
     rsurfaces::MainApp::instance->updatePolyscopeMesh();
   }
-
-  if (takeScreenshots && screenshotNum == 0)
+  ImGui::PopItemWidth();
+  ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
+  if (ImGui::Button("Take 1 step", ImVec2{ITEM_WIDTH, 0}) || run)
   {
-    saveScreenshot(screenshotNum++);
-  }
-
-  if (ImGui::Button("Take screenshot"))
-  {
-    saveScreenshot(screenshotNum++);
-  }
-
-  if (ImGui::Button("Take step") || run)
-  {
-    rsurfaces::MainApp::instance->TakeFractionalSobolevStep();
+    MainApp::instance->TakeFractionalSobolevStep();
     // rsurfaces::MainApp::instance->TakeNaiveStep(0.01);
-    rsurfaces::MainApp::instance->updatePolyscopeMesh();
+    MainApp::instance->updatePolyscopeMesh();
     if (takeScreenshots)
     {
       saveScreenshot(screenshotNum++);
@@ -424,80 +433,65 @@ void myCallback()
       run = false;
     }
   }
+  ImGui::EndGroup();
 
-  if (ImGui::Button("Test LML inverse"))
+  ImGui::Text("Accuracy tests");
+
+  ImGui::BeginGroup();
+  ImGui::Indent(INDENT);
+  if (ImGui::Button("Test LML inv", ImVec2{ITEM_WIDTH, 0}))
   {
-    rsurfaces::MainApp::instance->TestLML();
+    MainApp::instance->TestLML();
+  }
+  ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
+  if (ImGui::Button("Test MV product", ImVec2{ITEM_WIDTH, 0}))
+  {
+    MainApp::instance->TestMVProduct();
   }
 
-  if (ImGui::Button("Benchmark Barnes-Hut"))
+  if (ImGui::Button("Test B-H", ImVec2{ITEM_WIDTH, 0}))
   {
-
-    rsurfaces::MainApp::instance->TestPercolation();
+    MainApp::instance->TestBarnesHut();
   }
-
-  if (ImGui::Button("Test mat-vec product"))
+  ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
+  if (ImGui::Button("Benchmark B-H", ImVec2{ITEM_WIDTH, 0}))
   {
-    rsurfaces::MainApp::instance->TestMVProduct();
+    MainApp::instance->BenchmarkBH();
   }
+  ImGui::EndGroup();
 
-  if (ImGui::Button("Test Barnes-Hut"))
-  {
-    rsurfaces::MainApp::instance->TestBarnesHut();
+  ImGui::Text("Remeshing");
+
+  ImGui::BeginGroup();
+  ImGui::Indent(INDENT);
+  if(ImGui::Button("Fix Delaunay")){
+    remeshing::fixDelaunay(MainApp::instance->mesh, MainApp::instance->geom);
+    MainApp::instance->reregisterMesh();
   }
-
-  if (ImGui::Button("Plot gradient"))
-  {
-    rsurfaces::MainApp::instance->PlotL2Gradient();
+  if(ImGui::Button("Laplacian smooth")){
+    remeshing::smoothByLaplacian(MainApp::instance->mesh, MainApp::instance->geom);
+    MainApp::instance->reregisterMesh();
   }
-}
-
-void testBarnesHut(rsurfaces::TPEKernel *tpe, rsurfaces::MeshPtr mesh, rsurfaces::GeomPtr geom, rsurfaces::BVHNode6D *bvh)
-{
-  using namespace rsurfaces;
-
-  std::unique_ptr<AllPairsTPEnergy> exact_energy = std::unique_ptr<AllPairsTPEnergy>(new AllPairsTPEnergy(tpe));
-  std::unique_ptr<BarnesHutTPEnergy6D> bh_energy = std::unique_ptr<BarnesHutTPEnergy6D>(new BarnesHutTPEnergy6D(tpe, 0.25));
-  Eigen::MatrixXd bh_deriv, exact_deriv;
-
-  bh_deriv.setZero(mesh->nVertices(), 3);
-  exact_deriv.setZero(mesh->nVertices(), 3);
-
-  bh_energy->Differential(bh_deriv);
-  exact_energy->Differential(exact_deriv);
-
-  std::cout << "BH derivative norm    = " << bh_deriv.norm() << std::endl;
-  std::cout << "Exact derivative norm = " << exact_deriv.norm() << std::endl;
-
-  std::cout << "BH first three rows:\n"
-            << bh_deriv.block(0, 0, 9, 3) << std::endl;
-  std::cout << "Exact first three rows:\n"
-            << exact_deriv.block(0, 0, 9, 3) << std::endl;
-
-  double bh_value = bh_energy->Value();
-  double exact_value = exact_energy->Value();
-
-  std::cout << "BH energy    = " << bh_value << std::endl;
-  std::cout << "Exact energy = " << exact_value << std::endl;
-
-  Eigen::VectorXd bh_vec(3 * mesh->nVertices());
-  Eigen::VectorXd exact_vec(3 * mesh->nVertices());
-
-  for (size_t i = 0; i < mesh->nVertices(); i++)
-  {
-    bh_vec(3 * i + 0) = bh_deriv(i, 0);
-    bh_vec(3 * i + 1) = bh_deriv(i, 1);
-    bh_vec(3 * i + 2) = bh_deriv(i, 2);
-
-    exact_vec(3 * i + 0) = exact_deriv(i, 0);
-    exact_vec(3 * i + 1) = exact_deriv(i, 1);
-    exact_vec(3 * i + 2) = exact_deriv(i, 2);
+  if(ImGui::Button("Circumcenter smooth")){
+    remeshing::smoothByCircumcenter(MainApp::instance->mesh, MainApp::instance->geom);
+    MainApp::instance->reregisterMesh();
   }
-
-  bh_vec = bh_vec / bh_vec.norm();
-  exact_vec = exact_vec / exact_vec.norm();
-  double dir_dot = bh_vec.dot(exact_vec);
-  std::cout << "Dot product of directions = " << dir_dot << std::endl;
+  if(ImGui::Button("Laplacian optimize")){
+    for(int i = 0; i < 1000; i++){
+      remeshing::smoothByLaplacian(MainApp::instance->mesh, MainApp::instance->geom);
+      remeshing::fixDelaunay(MainApp::instance->mesh, MainApp::instance->geom);
+    }
+    MainApp::instance->reregisterMesh();
+  }
+  if(ImGui::Button("Circumcenter optimize")){
+    for(int i = 0; i < 1000; i++){
+      remeshing::smoothByCircumcenter(MainApp::instance->mesh, MainApp::instance->geom);
+      remeshing::fixDelaunay(MainApp::instance->mesh, MainApp::instance->geom);
+    }
+    MainApp::instance->reregisterMesh();
+  }
+  ImGui::EndGroup();
+  
 }
 
 struct MeshAndEnergy
@@ -506,6 +500,7 @@ struct MeshAndEnergy
   polyscope::SurfaceMesh *psMesh;
   rsurfaces::MeshPtr mesh;
   rsurfaces::GeomPtr geom;
+  std::string meshName;
 };
 
 MeshAndEnergy initTPEOnMesh(std::string meshFile, double alpha, double beta)
@@ -526,13 +521,14 @@ MeshAndEnergy initTPEOnMesh(std::string meshFile, double alpha, double beta)
   MeshPtr meshShared = std::move(u_mesh);
   GeomPtr geomShared = std::move(u_geometry);
 
-  geomShared->requireVertexDualAreas();
   geomShared->requireFaceNormals();
   geomShared->requireFaceAreas();
+  geomShared->requireVertexNormals();
+  geomShared->requireVertexDualAreas();
 
   TPEKernel *tpe = new rsurfaces::TPEKernel(meshShared, geomShared, alpha, beta);
 
-  return MeshAndEnergy{tpe, psMesh, meshShared, geomShared};
+  return MeshAndEnergy{tpe, psMesh, meshShared, geomShared, mesh_name};
 }
 
 rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, std::vector<rsurfaces::scene::ConstraintData> &constraints)
@@ -637,7 +633,7 @@ int main(int argc, char **argv)
   // Initialize polyscope
   polyscope::init();
   // Set the callback function
-  polyscope::state::userCallback = myCallback;
+  polyscope::state::userCallback = customCallback;
 
   // Parse the input file, either as a scene file or as a mesh
   std::string inFile = args::get(inputFilename);
@@ -658,7 +654,7 @@ int main(int argc, char **argv)
   MeshAndEnergy m = initTPEOnMesh(data.meshName, 6, 12);
   SurfaceFlow *flow = setUpFlow(m, theta, data.constraints);
 
-  MainApp::instance = new MainApp(m.mesh, m.geom, flow, m.psMesh);
+  MainApp::instance = new MainApp(m.mesh, m.geom, flow, m.psMesh, m.meshName);
   MainApp::instance->bh_theta = theta;
   MainApp::instance->kernel = m.kernel;
 

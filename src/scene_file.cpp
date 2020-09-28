@@ -134,7 +134,7 @@ namespace rsurfaces
             std::vector<std::string> parts;
             for (string line; getline(file, line);)
             {
-                if (line == "" || line == "\n")
+                if (line == "" || line == "\n" || line[0] == '#')
                     continue;
                 parts.clear();
                 splitString(line, parts, ' ');
