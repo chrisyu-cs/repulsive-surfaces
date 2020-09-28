@@ -15,6 +15,10 @@ namespace rsurfaces
         weight = weight_;
 
         obstacleBvh = 0;
+
+        // We don't expect the obstacle to ever change shape,
+        // so just initialize the BVH here
+        Update();
     }
 
     inline double repulsivePotential(Vector3 x, Vector3 y, double p)
@@ -33,12 +37,6 @@ namespace rsurfaces
     // Returns the current value of the energy.
     double StaticObstacle::Value()
     {
-        if (!obstacleBvh)
-        {
-            std::cerr << "BVH for BarnesHutTPEnergy6D was not initialized. Call Update() first." << std::endl;
-            std::exit(1);
-        }
-
         double sum = 0;
 
         #pragma omp parallel for reduction(+ : sum) shared(obstacleBvh)

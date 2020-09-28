@@ -414,7 +414,7 @@ void customCallback()
   if (uiNormalizeView != MainApp::instance->normalizeView)
   {
     rsurfaces::MainApp::instance->normalizeView = uiNormalizeView;
-    rsurfaces::MainApp::instance->updatePolyscopeMesh();
+    rsurfaces::MainApp::instance->updateMeshPositions();
   }
   ImGui::PopItemWidth();
   ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
@@ -422,7 +422,7 @@ void customCallback()
   {
     MainApp::instance->TakeFractionalSobolevStep();
     // rsurfaces::MainApp::instance->TakeNaiveStep(0.01);
-    MainApp::instance->updatePolyscopeMesh();
+    MainApp::instance->updateMeshPositions();
     if (takeScreenshots)
     {
       saveScreenshot(screenshotNum++);
