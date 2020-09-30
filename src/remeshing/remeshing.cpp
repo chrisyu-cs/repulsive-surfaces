@@ -11,15 +11,38 @@ namespace rsurfaces
         {
             return v - norm * dot(norm, v);
         }
+        
+        inline int degreeDifference(int d1, int d2, int d3, int d4)
+        {
+            return abs(d1 - 6) + abs(d2 - 6) + abs(d3 - 6) + abs(d4 - 6);
+        }
 
-        bool shouldFlip(GeomPtr const &geometry, Edge e) {
-            // Check if, by flipping this edge, you would make the 
-            // degrees of all the vertices on this diamond closer to 6
-
-            // Vertices v1, v2, v3, v4 with degrees d1, d2, d3, d4
-            // f(d1, d2, d3, d4) = |d1 - 6| + |d2 - 6| + |d3 - 6| + |d4 - 6|
-
-            // Do the flip if it would reduce the value of f on this diamond after flipping
+        bool shouldFlip(Edge e)
+        {
+            // check how close the diamond vertices are to degree 6
+            Halfedge he = e.halfedge();
+            Vertex v1 = he.next().vertex();
+            Vertex v2 = he.next().next().vertex();
+            Vertex v3 = he.twin().next().vertex();
+            Vertex v4 = he.twin().next().next().vertex();
+            
+            int d1 = v1.degree();
+            int d2 = v2.degree();
+            int d3 = v3.degree();
+            int d4 = v4.degree();
+            
+            return degreeDifference(d1, d2, d3, d4) > degreeDifference(d1 - 1, d2 + 1, d3 - 1, d4 + 1);
+        }
+        
+        void adjustVertexDegrees(MeshPtr const &mesh)
+        {
+            for(Edge e : mesh->edges())
+            {
+                if(shouldFlip(e))
+                {
+                    mesh->flip(e);
+                }
+            }
         }
 
         bool isDelaunay(GeomPtr const &geometry, Edge e)

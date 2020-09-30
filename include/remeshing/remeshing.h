@@ -15,6 +15,10 @@ namespace rsurfaces
     {
         using namespace geometrycentral;
         using namespace geometrycentral::surface;
+        
+        bool shouldFlip(Edge e);
+        
+        void adjustVertexDegrees(MeshPtr const &mesh);
 
         bool isDelaunay(GeomPtr const &geometry, Edge e);
 
