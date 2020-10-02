@@ -112,7 +112,7 @@ namespace rsurfaces
         // Create an empty BCT pointer; this will be initialized in the first
         // Schur complement function, and reused for the rest of this timestep
         BlockClusterTree *bct = 0;
-        Hs::GetSchurComplement(constraints, energies[0], comp, bct, factor);
+        Hs::GetSchurComplement(schurConstraints, energies[0], comp, bct, factor);
         Hs::ProjectViaSchur(comp, gradient, gradientProj, energies[0], bct, factor);
 
         long timeProject = currentTimeMilliseconds();
@@ -144,7 +144,7 @@ namespace rsurfaces
 
         // Project onto constraint manifold using Schur complement
         long timeBackproj = currentTimeMilliseconds();
-        Hs::BackprojectViaSchur(constraints, comp, energies[0], bct, factor);
+        Hs::BackprojectViaSchur(schurConstraints, comp, energies[0], bct, factor);
         // Fix barycenter drift
         RecenterMesh();
         long timeEnd = currentTimeMilliseconds();
@@ -157,7 +157,7 @@ namespace rsurfaces
         std::cout << "  Total time: " << (timeEnd - timeStart) << " ms" << std::endl;
         std::cout << "  Energy: " << energyBefore << " -> " << energyBeforeBackproj << std::endl;
 
-        for (ConstraintPack &c : constraints)
+        for (ConstraintPack &c : schurConstraints)
         {
             if (c.iterationsLeft > 0)
             {

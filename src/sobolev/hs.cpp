@@ -200,6 +200,8 @@ namespace rsurfaces
             MeshPtr mesh = energy->GetMesh();
             GeomPtr geom = energy->GetGeom();
 
+            long nRows = 3 * mesh->nVertices() + 3;
+
             if (!factor.initialized)
             {
                 // Assemble the cotan Laplacian
@@ -211,7 +213,7 @@ namespace rsurfaces
                 // Expand the matrix by 3x
                 MatrixUtils::TripleTriplets(triplets, triplets3x);
                 // Pre-factorize the cotan Laplacian
-                Eigen::SparseMatrix<double> L(3 * mesh->nVertices() + 3, 3 * mesh->nVertices() + 3);
+                Eigen::SparseMatrix<double> L(nRows, nRows);
                 L.setFromTriplets(triplets3x.begin(), triplets3x.end());
                 factor.Compute(L);
             }
@@ -227,7 +229,7 @@ namespace rsurfaces
                 // Multiply by L^{2 - s}, a fractional Laplacian; this has order 4 - 2s
                 Eigen::MatrixXd M, M3;
                 M.setZero(mesh->nVertices(), mesh->nVertices());
-                M3.setZero(3 * mesh->nVertices() + 3, 3 * mesh->nVertices() + 3);
+                M3.setZero(nRows, nRows);
                 Hs::FillMatrixFracOnly(M, 4 - 2 * s, mesh, geom);
                 MatrixUtils::TripleMatrix(M, M3);
                 gradientCol = M3 * gradientCol;
@@ -260,20 +262,21 @@ namespace rsurfaces
             GeomPtr geom = energy->GetGeom();
 
             size_t nVerts = mesh->nVertices();
-            size_t nRows = 0;
+            size_t compNRows = 0;
+            size_t bigNRows = 3 * nVerts + 3;
 
             // Figure out how many rows the constraint block is
             for (ConstraintPack &c : constraints)
             {
-                nRows += c.constraint->nRows();
+                compNRows += c.constraint->nRows();
             }
-            if (nRows == 0)
+            if (compNRows == 0)
             {
                 std::cout << "No constraints provided to Schur complement." << std::endl;
                 throw 1;
             }
 
-            dest.C.setZero(nRows, 3 * nVerts + 3);
+            dest.C.setZero(compNRows, bigNRows);
             size_t curRow = 0;
 
             // Fill in the constraint block by getting the entries for each constraint
@@ -292,13 +295,13 @@ namespace rsurfaces
 
             // First allocate some space for a single column
             Eigen::VectorXd curCol;
-            curCol.setZero(3 * nVerts + 3);
+            curCol.setZero(bigNRows);
             // And some space for A^{-1} C^T
             Eigen::MatrixXd A_inv_CT;
-            A_inv_CT.setZero(3 * nVerts + 3, nRows);
+            A_inv_CT.setZero(bigNRows, compNRows);
 
             // For each column, copy it into curCol, and do the solve for A^{-1}
-            for (size_t r = 0; r < nRows; r++)
+            for (size_t r = 0; r < compNRows; r++)
             {
                 // Copy the row of C into the column
                 for (size_t i = 0; i < 3 * nVerts; i++)
@@ -330,7 +333,7 @@ namespace rsurfaces
             // Reuse curCol to store A^{-1} x
             // First allocate some space for a single column
             Eigen::VectorXd curCol;
-            curCol.setZero(3 * nVerts + 3);
+            curCol.setZero(comp.C.cols());
             MatrixUtils::MatrixIntoColumn(gradient, curCol);
             ProjectViaSparse(curCol, curCol, energy, bct, factor);
 

@@ -31,7 +31,7 @@ namespace rsurfaces
                 double change = multiplier * initVal - initVal;
                 stepSize = change / iterations;
             }
-            constraints.push_back(ConstraintPack{c, stepSize, iterations});
+            schurConstraints.push_back(ConstraintPack{c, stepSize, iterations});
         }
 
     private:
@@ -44,7 +44,7 @@ namespace rsurfaces
         GeomPtr geom;
         Eigen::MatrixXd origPositions;
         unsigned int stepCount;
-        std::vector<ConstraintPack> constraints;
+        std::vector<ConstraintPack> schurConstraints;
         Vector3 origBarycenter;
 
         double prevStep;
