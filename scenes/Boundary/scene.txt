@@ -1,0 +1,4 @@
+repel_mesh chimney.obj
+constrain boundary_vertices
+constrain area
+
