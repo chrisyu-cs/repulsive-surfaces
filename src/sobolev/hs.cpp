@@ -124,13 +124,41 @@ namespace rsurfaces
         HsMetric::HsMetric(SurfaceEnergy *energy_)
         {
             initFromEnergy(energy_);
-            addDefaultConstraint();
+            // If no constraints are supplied, then we add our own barycenter
+            // constraint as a default
+            simpleConstraints.push_back(new Constraints::BarycenterConstraint3X(mesh, geom));
+            // Remember to delete our constraint if we made our own
             usedDefaultConstraint = true;
         }
 
-        void HsMetric::addDefaultConstraint()
+        HsMetric::HsMetric(SurfaceEnergy *energy_, std::vector<SimpleProjectorConstraint *> &spcs)
         {
-            simpleConstraints.push_back(new Constraints::BarycenterConstraint3X(mesh, geom));
+            initFromEnergy(energy_);
+            usedDefaultConstraint = false;
+
+            if (spcs.size() == 0)
+            {
+                std::cerr << "ERROR: Need at least one constraint to initialize HsMetric." << std::endl;
+                std::exit(1);
+            }
+
+            for (SimpleProjectorConstraint *spc : spcs)
+            {
+                // Push pointers to the existing constraints, which should
+                // exist in SurfaceFlow (and not be allocated here)
+                simpleConstraints.push_back(spc);
+            }
+        }
+
+        void HsMetric::initFromEnergy(SurfaceEnergy *energy_)
+        {
+            Vector2 ab = energy_->GetExponents();
+            mesh = energy_->GetMesh();
+            geom = energy_->GetGeom();
+            order_s = get_s(ab.x, ab.y);
+            bvh = energy_->GetBVH();
+            bh_theta = energy_->GetTheta();
+            bct = 0;
         }
 
         HsMetric::~HsMetric()
@@ -146,17 +174,6 @@ namespace rsurfaces
                     delete simpleConstraints[i];
                 }
             }
-        }
-
-        void HsMetric::initFromEnergy(SurfaceEnergy *energy_)
-        {
-            Vector2 ab = energy_->GetExponents();
-            mesh = energy_->GetMesh();
-            geom = energy_->GetGeom();
-            order_s = get_s(ab.x, ab.y);
-            bvh = energy_->GetBVH();
-            bh_theta = energy_->GetTheta();
-            bct = 0;
         }
 
         void HsMetric::FillMatrixHigh(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom)
@@ -245,7 +262,7 @@ namespace rsurfaces
         void HsMetric::ProjectViaSparseMat(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest)
         {
             // Reshape the gradient N x 3 matrix into a 3N-vector.
-            Eigen::VectorXd gradientCol;
+            Eigen::VectorXd gradientCol, gradientColProj;
             gradientCol.setZero(topLeftNumRows());
             MatrixUtils::MatrixIntoColumn(gradient, gradientCol);
 
@@ -257,8 +274,7 @@ namespace rsurfaces
 
         void HsMetric::ProjectViaSparse(Eigen::VectorXd &gradientCol, Eigen::VectorXd &dest)
         {
-            long nRows = topLeftNumRows();
-            long curRow = 3 * mesh->nVertices();
+            size_t nRows = topLeftNumRows();
 
             if (!factorizedLaplacian.initialized)
             {
@@ -268,9 +284,8 @@ namespace rsurfaces
                 // Expand the matrix by 3x
                 MatrixUtils::TripleTriplets(triplets, triplets3x);
 
-                // Add a constraint row / col corresponding to barycenter weights
-                Constraints::BarycenterConstraint3X bconstraint(mesh, geom);
-                Constraints::addTripletsToSymmetric(bconstraint, triplets3x, mesh, geom, curRow);
+                // Add constraint rows / cols for "simple" constraints included in Laplacian
+                addSimpleConstraintTriplets(triplets3x);
                 // Pre-factorize the cotan Laplacian
                 Eigen::SparseMatrix<double> L(nRows, nRows);
                 L.setFromTriplets(triplets3x.begin(), triplets3x.end());
@@ -306,6 +321,13 @@ namespace rsurfaces
                 long bctMultEnd = currentTimeMilliseconds();
 
                 std::cout << "    * BCT multiply = " << (bctMultEnd - bctMultStart) << " ms" << std::endl;
+            }
+
+            // Re-zero out Lagrange multipliers, since the first solve
+            // will have left some junk in them
+            for (size_t i = 3 * mesh->nVertices(); i < nRows; i++)
+            {
+                gradientCol(i) = 0;
             }
 
             // Multiply by L^{-1} again by solving Lx = b
@@ -400,7 +422,7 @@ namespace rsurfaces
             MatrixUtils::ColumnIntoMatrix(curCol, dest);
         }
 
-        void HsMetric::BackprojectViaSchur(std::vector<ConstraintPack> &constraints, SchurComplement &comp)
+        void HsMetric::ProjectSchurConstraints(std::vector<ConstraintPack> &constraints, SchurComplement &comp)
         {
             size_t nRows = comp.M_A.rows();
             Eigen::VectorXd vals(nRows);
@@ -427,6 +449,14 @@ namespace rsurfaces
                 int base = 3 * verts[v];
                 Vector3 vertCorr{correction(base), correction(base + 1), correction(base + 2)};
                 geom->inputVertexPositions[v] += vertCorr;
+            }
+        }
+
+        void HsMetric::ProjectSimpleConstraints()
+        {
+            for (SimpleProjectorConstraint *spc : simpleConstraints)
+            {
+                spc->ProjectConstraint(mesh, geom);
             }
         }
     } // namespace Hs

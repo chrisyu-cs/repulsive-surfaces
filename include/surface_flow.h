@@ -21,9 +21,9 @@ namespace rsurfaces
         const double LS_STEP_THRESHOLD = 1e-20;
 
         template <typename Constraint>
-        void addConstraint(MeshPtr &mesh, GeomPtr &geom, double multiplier, long iterations)
+        Constraint* addSchurConstraint(MeshPtr &mesh, GeomPtr &geom, double multiplier, long iterations)
         {
-            Constraints::ConstraintBase *c = new Constraint(mesh, geom);
+            Constraint *c = new Constraint(mesh, geom);
             double stepSize = 0;
             if (iterations > 0)
             {
@@ -32,6 +32,15 @@ namespace rsurfaces
                 stepSize = change / iterations;
             }
             schurConstraints.push_back(ConstraintPack{c, stepSize, iterations});
+            return c;
+        }
+
+        template <typename Constraint>
+        Constraint* addSimpleConstraint(MeshPtr &mesh, GeomPtr &geom)
+        {
+            Constraint *c = new Constraint(mesh, geom);
+            simpleConstraints.push_back(c);
+            return c;
         }
 
     private:
@@ -45,7 +54,7 @@ namespace rsurfaces
         Eigen::MatrixXd origPositions;
         unsigned int stepCount;
         std::vector<ConstraintPack> schurConstraints;
-        std::vector<Constraints::SimpleProjectorConstraint> simpleConstraints;
+        std::vector<Constraints::SimpleProjectorConstraint*> simpleConstraints;
         Vector3 origBarycenter;
 
         double prevStep;

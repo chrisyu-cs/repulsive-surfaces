@@ -164,6 +164,10 @@ namespace rsurfaces
             Vector3 sum{0, 0, 0};
             for (GCFace f : v.adjacentFaces())
             {
+                if (f.isBoundaryLoop())
+                {
+                    continue;
+                }
                 Vector3 aGrad = triangleAreaWrtVertex(geom, f, v);
                 sum += aGrad;
             }

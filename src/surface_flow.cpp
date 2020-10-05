@@ -106,12 +106,21 @@ namespace rsurfaces
         long timeDiff = currentTimeMilliseconds();
         std::cout << "  * Gradient assembly: " << (timeDiff - timeStart) << " ms (norm = " << gNorm << ")" << std::endl;
 
-        Hs::HsMetric hs(energies[0]);
+        Hs::HsMetric hs(energies[0], simpleConstraints);
 
         // Schur complement will be reused in multiple steps
         Hs::SchurComplement comp;
-        hs.GetSchurComplement(schurConstraints, comp);
-        hs.ProjectViaSchur(gradient, gradientProj, comp);
+        if (schurConstraints.size() > 0)
+        {
+            hs.GetSchurComplement(schurConstraints, comp);
+            hs.ProjectViaSchur(gradient, gradientProj, comp);
+        }
+        else
+        {
+            hs.ProjectViaSparseMat(gradient, gradientProj);
+        }
+
+        VertexIndices inds = mesh->getVertexIndices();
 
         long timeProject = currentTimeMilliseconds();
         double gProjNorm = gradientProj.norm();
@@ -134,11 +143,15 @@ namespace rsurfaces
 
         double energyBeforeBackproj = GetEnergyValue();
 
-        // Project onto constraint manifold using Schur complement
         long timeBackproj = currentTimeMilliseconds();
-        hs.BackprojectViaSchur(schurConstraints, comp);
-        // Fix barycenter drift
-        RecenterMesh();
+        if (schurConstraints.size() > 0)
+        {
+            // Project onto constraint manifold using Schur complement
+            hs.ProjectSchurConstraints(schurConstraints, comp);
+        }
+        // Fix simple things like barycenter drift
+        hs.ProjectSimpleConstraints();
+
         long timeEnd = currentTimeMilliseconds();
 
         std::cout << "  * Post-processing: " << (timeEnd - timeBackproj) << " ms" << std::endl;

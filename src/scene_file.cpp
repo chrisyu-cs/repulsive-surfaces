@@ -46,6 +46,10 @@ namespace rsurfaces
                 return "area";
             case ConstraintType::TotalVolume:
                 return "volume";
+            case ConstraintType::Barycenter:
+                return "barycenter";
+            case ConstraintType::BoundaryPins:
+                return "boundary pins";
             default:
                 return "unknown";
             }
@@ -61,6 +65,14 @@ namespace rsurfaces
             else if (consType == "volume")
             {
                 return ConstraintType::TotalVolume;
+            }
+            else if (consType == "barycenter")
+            {
+                return ConstraintType::Barycenter;
+            }
+            else if (consType == "boundary_vertices")
+            {
+                return ConstraintType::BoundaryPins;
             }
             else
             {

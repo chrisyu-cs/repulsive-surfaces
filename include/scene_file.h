@@ -12,8 +12,10 @@ namespace rsurfaces
     {
         enum class ConstraintType
         {
+            Barycenter,
             TotalArea,
-            TotalVolume
+            TotalVolume,
+            BoundaryPins
         };
 
         struct ConstraintData

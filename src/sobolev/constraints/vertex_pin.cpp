@@ -4,12 +4,14 @@ namespace rsurfaces
 {
     namespace Constraints
     {
-        VertexPinConstraint::VertexPinConstraint(MeshPtr &mesh, GeomPtr &geom, std::vector<size_t> indices_)
+        VertexPinConstraint::VertexPinConstraint(MeshPtr &mesh, GeomPtr &geom) {}
+
+        void VertexPinConstraint::pinVertices(MeshPtr &mesh, GeomPtr &geom, std::vector<size_t> &indices_)
         {
-            for (size_t i : indices_)
+            for (size_t i = 0; i < indices_.size(); i++)
             {
-                indices.push_back(i);
-                initPositions.push_back(geom->inputVertexPositions[mesh->vertex(i)]);
+                indices.push_back(indices_[i]);
+                initPositions.push_back(geom->inputVertexPositions[mesh->vertex(indices_[i])]);
             }
         }
 
@@ -35,26 +37,10 @@ namespace rsurfaces
             }
         }
 
-        void VertexPinConstraint::addValue(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow)
-        {
-            std::cerr << "Can't backproject vertex pins." << std::endl;
-            throw 1;
-        }
-
-        double VertexPinConstraint::getTargetValue()
-        {
-            return 0;
-        }
-
-        void VertexPinConstraint::incrementTargetValue(double incr)
-        {
-            std::cerr << "Can't increment vertex pins." << std::endl;
-            throw 1;
-        }
-
         size_t VertexPinConstraint::nRows()
         {
-            return indices.size();
+            // Every vertex gets 3 rows, one to freeze each of its coordinates
+            return indices.size() * 3;
         }
 
         void VertexPinConstraint::ProjectConstraint(MeshPtr &mesh, GeomPtr &geom)

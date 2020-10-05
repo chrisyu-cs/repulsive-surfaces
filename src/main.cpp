@@ -447,25 +447,25 @@ void customCallback()
   ImGui::Indent(INDENT);
 
   // Section for remeshing tests
-  
+
   if (ImGui::Button("Fix Delaunay"))
   {
     remeshing::fixDelaunay(MainApp::instance->mesh, MainApp::instance->geom);
     MainApp::instance->reregisterMesh();
   }
-  
+
   if (ImGui::Button("Laplacian smooth"))
   {
     remeshing::smoothByLaplacian(MainApp::instance->mesh, MainApp::instance->geom);
     MainApp::instance->reregisterMesh();
   }
-  
+
   if (ImGui::Button("Circumcenter smooth"))
   {
     remeshing::smoothByCircumcenter(MainApp::instance->mesh, MainApp::instance->geom);
     MainApp::instance->reregisterMesh();
   }
-  
+
   if (ImGui::Button("Laplacian optimize"))
   {
     for (int i = 0; i < 1000; i++)
@@ -475,7 +475,7 @@ void customCallback()
     }
     MainApp::instance->reregisterMesh();
   }
-  
+
   if (ImGui::Button("Circumcenter optimize"))
   {
     for (int i = 0; i < 1000; i++)
@@ -543,21 +543,48 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, std::vector<rs
   }
 
   SurfaceFlow *flow = new SurfaceFlow(energy);
+  bool kernelRemoved = false;
 
   for (scene::ConstraintData &data : constraints)
   {
     switch (data.type)
     {
+    case scene::ConstraintType::Barycenter:
+      kernelRemoved = true;
+      flow->addSimpleConstraint<Constraints::BarycenterConstraint3X>(m.mesh, m.geom);
+      break;
     case scene::ConstraintType::TotalArea:
-      flow->addConstraint<Constraints::TotalAreaConstraint>(m.mesh, m.geom, data.targetMultiplier, data.numIterations);
+      flow->addSchurConstraint<Constraints::TotalAreaConstraint>(m.mesh, m.geom, data.targetMultiplier, data.numIterations);
       break;
     case scene::ConstraintType::TotalVolume:
-      flow->addConstraint<Constraints::TotalVolumeConstraint>(m.mesh, m.geom, data.targetMultiplier, data.numIterations);
+      flow->addSchurConstraint<Constraints::TotalVolumeConstraint>(m.mesh, m.geom, data.targetMultiplier, data.numIterations);
       break;
+    case scene::ConstraintType::BoundaryPins:
+    {
+      Constraints::VertexPinConstraint *c = flow->addSimpleConstraint<Constraints::VertexPinConstraint>(m.mesh, m.geom);
+      // Manually add all of the boundary vertex indices as pins
+      std::vector<size_t> boundaryInds;
+      VertexIndices inds = m.mesh->getVertexIndices();
+      for (GCVertex v : m.mesh->vertices())
+      {
+        if (v.isBoundary()) {
+          boundaryInds.push_back(inds[v]);
+        }
+      }
+      c->pinVertices(m.mesh, m.geom, boundaryInds);
+      kernelRemoved = true;
+    }
+    break;
     default:
       std::cout << "Skipping unrecognized constraint type" << std::endl;
       break;
     }
+  }
+
+  if (!kernelRemoved)
+  {
+    std::cout << "Auto-adding barycenter constraint to eliminate constant kernel of Laplacian" << std::endl;
+    flow->addSimpleConstraint<Constraints::BarycenterConstraint3X>(m.mesh, m.geom);
   }
 
   return flow;

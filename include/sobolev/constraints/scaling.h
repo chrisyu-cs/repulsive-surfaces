@@ -6,7 +6,7 @@ namespace rsurfaces
 {
     namespace Constraints
     {
-        class ScalingConstraint : public ConstraintBase
+        class ScalingConstraint : public SaddleMatrixConstraint
         {
         public:
             virtual void addTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow);

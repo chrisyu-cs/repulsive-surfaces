@@ -6,7 +6,7 @@ namespace rsurfaces
 {
     namespace Constraints
     {
-        class TotalAreaConstraint : public ConstraintBase
+        class TotalAreaConstraint : public SaddleMatrixConstraint
         {
         public:
             TotalAreaConstraint(MeshPtr &mesh, GeomPtr &geom);

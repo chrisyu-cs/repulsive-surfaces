@@ -27,6 +27,10 @@ namespace rsurfaces
 
             for (GCFace face : mesh->faces())
             {
+                if (face.isBoundaryLoop())
+                {
+                    continue;
+                }
                 double total = 0;
                 // Get one-third the value on all adjacent vertices
                 for (GCVertex vert : face.adjacentVertices())
@@ -50,6 +54,10 @@ namespace rsurfaces
                 // Put weight = 1/3 on all adjacent faces
                 for (GCFace face : vert.adjacentFaces())
                 {
+                    if (face.isBoundaryLoop())
+                    {
+                        continue;
+                    }
                     total += a(fInds[face]) / 3.0;
                 }
                 out(vInds[vert]) += total;

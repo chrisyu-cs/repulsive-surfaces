@@ -49,6 +49,7 @@ namespace rsurfaces
         {
         public:
             HsMetric(SurfaceEnergy *energy_);
+            HsMetric(SurfaceEnergy *energy_, std::vector<Constraints::SimpleProjectorConstraint*> &spcs);
             ~HsMetric();
 
             // Build the "high order" fractional Laplacian of order 2s.
@@ -67,14 +68,15 @@ namespace rsurfaces
 
             void ProjectViaSchur(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, SchurComplement &comp);
 
-            void BackprojectViaSchur(std::vector<ConstraintPack> &constraints, SchurComplement &comp);
+            void ProjectSchurConstraints(std::vector<ConstraintPack> &constraints, SchurComplement &comp);
+
+            void ProjectSimpleConstraints();
 
         private:
             size_t topLeftNumRows();
             void addSimpleConstraintEntries(Eigen::MatrixXd &M);
             void addSimpleConstraintTriplets(std::vector<Triplet> &triplets);
             void initFromEnergy(SurfaceEnergy *energy_);
-            void addDefaultConstraint();
 
             MeshPtr mesh;
             GeomPtr geom;
