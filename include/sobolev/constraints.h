@@ -20,6 +20,13 @@ namespace rsurfaces
 
         void addEntriesToSymmetric(ConstraintBase &cs, Eigen::MatrixXd &M, MeshPtr &mesh, GeomPtr &geom, int baseRow);
         void addTripletsToSymmetric(ConstraintBase &cs, std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow);
+
+        class SimpleProjectorConstraint : public ConstraintBase
+        {
+        public:
+            virtual void ProjectConstraint(MeshPtr &mesh, GeomPtr &geom) = 0;
+        };
+        
     } // namespace Constraints
 
     struct ConstraintPack

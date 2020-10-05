@@ -45,6 +45,7 @@ namespace rsurfaces
         Eigen::MatrixXd origPositions;
         unsigned int stepCount;
         std::vector<ConstraintPack> schurConstraints;
+        std::vector<Constraints::SimpleProjectorConstraint> simpleConstraints;
         Vector3 origBarycenter;
 
         double prevStep;

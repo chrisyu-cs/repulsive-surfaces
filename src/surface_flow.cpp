@@ -86,19 +86,20 @@ namespace rsurfaces
         stepCount++;
         std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
         UpdateEnergies();
-        double initArea = totalArea(geom, mesh);
-        double initVolume = totalVolume(geom, mesh);
 
+        // Measure the energy at the start of the timestep -- just for
+        // diagnostic purposes
         long timeEnergy = currentTimeMilliseconds();
         double energyBefore = GetEnergyValue();
         long timeStart = currentTimeMilliseconds();
 
         std::cout << "  * Energy evaluation: " << (timeStart - timeEnergy) << " ms" << std::endl;
 
+        // Assemble sum of gradients of all energies involved
+        // (including tangent-point energy)
         Eigen::MatrixXd gradient, gradientProj;
         gradient.setZero(mesh->nVertices(), 3);
         gradientProj.setZero(mesh->nVertices(), 3);
-
         AddGradientToMatrix(gradient);
         double gNorm = gradient.norm();
 
@@ -118,14 +119,8 @@ namespace rsurfaces
         long timeProject = currentTimeMilliseconds();
         double gProjNorm = gradientProj.norm();
         std::cout << "  * Gradient projection: " << (timeProject - timeDiff) << " ms (norm = " << gProjNorm << ")" << std::endl;
+        // Measure dot product of search direction with original gradient direction
         double gradDot = (gradient.transpose() * gradientProj).trace() / (gNorm * gProjNorm);
-
-        if (gradDot < 0)
-        {
-            gradientProj = -gradientProj;
-            gradDot = -gradDot;
-            std::cout << "  * Dot product negative; negating search direction" << std::endl;
-        }
 
         // Guess a step size
         double initGuess = prevStep * 1.25;
@@ -135,7 +130,7 @@ namespace rsurfaces
         }
         std::cout << "  * Initial step size guess = " << initGuess << std::endl;
 
-        // Take the step
+        // Take the step using line search
         LineSearchStep(gradientProj, initGuess, gradDot);
         long timeLS = currentTimeMilliseconds();
         std::cout << "  * Line search: " << (timeLS - timeProject) << " ms" << std::endl;

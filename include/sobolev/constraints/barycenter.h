@@ -6,18 +6,7 @@ namespace rsurfaces
 {
     namespace Constraints
     {
-        class BarycenterConstraint : public ConstraintBase
-        {
-        public:
-            virtual void addTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow);
-            virtual void addEntries(Eigen::MatrixXd &M, MeshPtr &mesh, GeomPtr &geom, int baseRow);
-            virtual void addValue(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow);
-            virtual double getTargetValue();
-            virtual void incrementTargetValue(double incr);
-            virtual size_t nRows();
-        };
-
-        class BarycenterConstraint3X : public ConstraintBase
+        class BarycenterConstraint3X : public SimpleProjectorConstraint
         {
         public:
             BarycenterConstraint3X(MeshPtr &mesh, GeomPtr &geom);
@@ -27,6 +16,7 @@ namespace rsurfaces
             virtual double getTargetValue();
             virtual void incrementTargetValue(double incr);
             virtual size_t nRows();
+            virtual void ProjectConstraint(MeshPtr &mesh, GeomPtr &geom);
 
         private:
             Vector3 initValue;

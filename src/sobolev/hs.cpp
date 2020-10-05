@@ -158,11 +158,11 @@ namespace rsurfaces
             int dims = 3 * nVerts + 3;
             M.setZero(dims, dims);
             FillMatrixHigh(M_small, get_s(alpha, beta), mesh, geom);
-            // Add single row in small block for barycenter
-            Constraints::BarycenterConstraint bconstraint;
-            Constraints::addEntriesToSymmetric(bconstraint, M_small, mesh, geom, nVerts);
             // Reduplicate entries 3x along diagonals; barycenter row gets tripled
             MatrixUtils::TripleMatrix(M_small, M);
+            // Add 3 rows in tripled block for barycenter
+            Constraints::BarycenterConstraint3X bconstraint(mesh, geom);
+            Constraints::addEntriesToSymmetric(bconstraint, M, mesh, geom, 3 * nVerts);
             // Add rows for scaling to tripled block
             // Constraints::addScalingEntries(M, mesh, geom, 3 * nVerts + 3);
 
@@ -201,17 +201,19 @@ namespace rsurfaces
             GeomPtr geom = energy->GetGeom();
 
             long nRows = 3 * mesh->nVertices() + 3;
+            long curRow = 3 * mesh->nVertices();
 
             if (!factor.initialized)
             {
                 // Assemble the cotan Laplacian
                 std::vector<Triplet> triplets, triplets3x;
                 H1::getTriplets(triplets, mesh, geom);
-                // Add a constraint row / col corresponding to barycenter weights
-                Constraints::BarycenterConstraint bconstraint;
-                Constraints::addTripletsToSymmetric(bconstraint, triplets, mesh, geom, mesh->nVertices());
                 // Expand the matrix by 3x
                 MatrixUtils::TripleTriplets(triplets, triplets3x);
+
+                // Add a constraint row / col corresponding to barycenter weights
+                Constraints::BarycenterConstraint3X bconstraint(mesh, geom);
+                Constraints::addTripletsToSymmetric(bconstraint, triplets3x, mesh, geom, curRow);
                 // Pre-factorize the cotan Laplacian
                 Eigen::SparseMatrix<double> L(nRows, nRows);
                 L.setFromTriplets(triplets3x.begin(), triplets3x.end());

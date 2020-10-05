@@ -18,7 +18,9 @@ namespace rsurfaces
             // All we do is put a 1 in the index for all pinned vertices
             for (size_t i = 0; i < indices.size(); i++)
             {
-                triplets.push_back(Triplet(baseRow + i, indices[i], 1));
+                triplets.push_back(Triplet(baseRow + 3 * i, 3 * indices[i], 1));
+                triplets.push_back(Triplet(baseRow + 3 * i + 1, 3 * indices[i] + 1, 1));
+                triplets.push_back(Triplet(baseRow + 3 * i + 2, 3 * indices[i] + 2, 1));
             }
         }
 
@@ -27,7 +29,9 @@ namespace rsurfaces
             // All we do is put a 1 in the index for all pinned vertices
             for (size_t i = 0; i < indices.size(); i++)
             {
-                M(baseRow + i, indices[i]) = 1;
+                M(baseRow + 3 * i, 3 * indices[i]) = 1;
+                M(baseRow + 3 * i + 1, 3 * indices[i] + 1) = 1;
+                M(baseRow + 3 * i + 2, 3 * indices[i] + 2) = 1;
             }
         }
 
@@ -52,5 +56,15 @@ namespace rsurfaces
         {
             return indices.size();
         }
+
+        void VertexPinConstraint::ProjectConstraint(MeshPtr &mesh, GeomPtr &geom)
+        {
+            for (size_t i = 0; i < indices.size(); i++)
+            {
+                GCVertex v_i = mesh->vertex(indices[i]);
+                geom->inputVertexPositions[v_i] = initPositions[i];
+            }
+        }
+
     } // namespace Constraints
 } // namespace rsurfaces

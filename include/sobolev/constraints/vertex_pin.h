@@ -6,7 +6,7 @@ namespace rsurfaces
 {
     namespace Constraints
     {
-        class VertexPinConstraint : public ConstraintBase
+        class VertexPinConstraint : public SimpleProjectorConstraint
         {
         public:
             VertexPinConstraint(MeshPtr &mesh, GeomPtr &geom, std::vector<size_t> indices_);
@@ -16,6 +16,8 @@ namespace rsurfaces
             virtual double getTargetValue();
             virtual void incrementTargetValue(double incr);
             virtual size_t nRows();
+            virtual void ProjectConstraint(MeshPtr &mesh, GeomPtr &geom);
+        
         private:
             std::vector<size_t> indices;
             std::vector<Vector3> initPositions;
