@@ -65,17 +65,25 @@ namespace rsurfaces
 
             void GetSchurComplement(std::vector<ConstraintPack> constraints, SchurComplement &dest);
 
-            void ProjectViaSchur(SchurComplement &comp, Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest);
+            void ProjectViaSchur(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, SchurComplement &comp);
 
             void BackprojectViaSchur(std::vector<ConstraintPack> &constraints, SchurComplement &comp);
 
         private:
+            size_t topLeftNumRows();
+            void addSimpleConstraintEntries(Eigen::MatrixXd &M);
+            void addSimpleConstraintTriplets(std::vector<Triplet> &triplets);
+            void initFromEnergy(SurfaceEnergy *energy_);
+            void addDefaultConstraint();
+
             MeshPtr mesh;
             GeomPtr geom;
             BVHNode6D *bvh;
             double order_s;
             double bh_theta;
 
+            std::vector<Constraints::SimpleProjectorConstraint*> simpleConstraints;
+            bool usedDefaultConstraint;
             SparseFactorization factorizedLaplacian;
             BlockClusterTree *bct;
         };

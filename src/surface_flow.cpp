@@ -108,11 +108,10 @@ namespace rsurfaces
 
         Hs::HsMetric hs(energies[0]);
 
-        // Set up some data that will be reused in multiple steps:
-        // Schur complement, and sparse factorization (of Laplacian)
+        // Schur complement will be reused in multiple steps
         Hs::SchurComplement comp;
         hs.GetSchurComplement(schurConstraints, comp);
-        hs.ProjectViaSchur(comp, gradient, gradientProj);
+        hs.ProjectViaSchur(gradient, gradientProj, comp);
 
         long timeProject = currentTimeMilliseconds();
         double gProjNorm = gradientProj.norm();

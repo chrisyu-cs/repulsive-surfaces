@@ -7,9 +7,10 @@
 
 namespace rsurfaces
 {
-
     namespace Hs
     {
+        using Constraints::SimpleProjectorConstraint;
+
         inline Vector3 HatGradientOnTriangle(GCFace face, GCVertex vert, GeomPtr &geom)
         {
             // Find the half-edge starting at vert in face
@@ -122,13 +123,14 @@ namespace rsurfaces
 
         HsMetric::HsMetric(SurfaceEnergy *energy_)
         {
-            Vector2 ab = energy_->GetExponents();
-            mesh = energy_->GetMesh();
-            geom = energy_->GetGeom();
-            order_s = get_s(ab.x, ab.y);
-            bvh = energy_->GetBVH();
-            bh_theta = energy_->GetTheta();
-            bct = 0;
+            initFromEnergy(energy_);
+            addDefaultConstraint();
+            usedDefaultConstraint = true;
+        }
+
+        void HsMetric::addDefaultConstraint()
+        {
+            simpleConstraints.push_back(new Constraints::BarycenterConstraint3X(mesh, geom));
         }
 
         HsMetric::~HsMetric()
@@ -137,6 +139,24 @@ namespace rsurfaces
             {
                 delete bct;
             }
+            if (usedDefaultConstraint)
+            {
+                for (size_t i = 0; i < simpleConstraints.size(); i++)
+                {
+                    delete simpleConstraints[i];
+                }
+            }
+        }
+
+        void HsMetric::initFromEnergy(SurfaceEnergy *energy_)
+        {
+            Vector2 ab = energy_->GetExponents();
+            mesh = energy_->GetMesh();
+            geom = energy_->GetGeom();
+            order_s = get_s(ab.x, ab.y);
+            bvh = energy_->GetBVH();
+            bh_theta = energy_->GetTheta();
+            bct = 0;
         }
 
         void HsMetric::FillMatrixHigh(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom)
@@ -168,22 +188,50 @@ namespace rsurfaces
             }
         }
 
+        size_t HsMetric::topLeftNumRows()
+        {
+            size_t nConstraints = 0;
+            for (SimpleProjectorConstraint *spc : simpleConstraints)
+            {
+                nConstraints += spc->nRows();
+            }
+            return 3 * mesh->nVertices() + nConstraints;
+        }
+
+        void HsMetric::addSimpleConstraintEntries(Eigen::MatrixXd &M)
+        {
+            size_t curRow = 3 * mesh->nVertices();
+            for (SimpleProjectorConstraint *spc : simpleConstraints)
+            {
+                Constraints::addEntriesToSymmetric(*spc, M, mesh, geom, curRow);
+                curRow += spc->nRows();
+            }
+        }
+
+        void HsMetric::addSimpleConstraintTriplets(std::vector<Triplet> &triplets)
+        {
+            size_t curRow = 3 * mesh->nVertices();
+            for (SimpleProjectorConstraint *spc : simpleConstraints)
+            {
+                Constraints::addTripletsToSymmetric(*spc, triplets, mesh, geom, curRow);
+                curRow += spc->nRows();
+            }
+        }
+
         void HsMetric::ProjectGradient(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest)
         {
             // Assemble the metric matrix
             Eigen::MatrixXd M_small, M;
             int nVerts = mesh->nVertices();
             M_small.setZero(nVerts + 1, nVerts + 1);
-            int dims = 3 * nVerts + 3;
+            int dims = topLeftNumRows();
+
             M.setZero(dims, dims);
             FillMatrixHigh(M_small, order_s, mesh, geom);
             // Reduplicate entries 3x along diagonals; barycenter row gets tripled
             MatrixUtils::TripleMatrix(M_small, M);
-            // Add 3 rows in tripled block for barycenter
-            Constraints::BarycenterConstraint3X bconstraint(mesh, geom);
-            Constraints::addEntriesToSymmetric(bconstraint, M, mesh, geom, 3 * nVerts);
-            // Add rows for scaling to tripled block
-            // Constraints::addScalingEntries(M, mesh, geom, 3 * nVerts + 3);
+            // Add rows in tripled block for barycenter constraint (and potentially others)
+            addSimpleConstraintEntries(M);
 
             // Flatten the gradient into a single column
             Eigen::VectorXd gradientCol;
@@ -198,7 +246,7 @@ namespace rsurfaces
         {
             // Reshape the gradient N x 3 matrix into a 3N-vector.
             Eigen::VectorXd gradientCol;
-            gradientCol.setZero(3 * mesh->nVertices() + 3);
+            gradientCol.setZero(topLeftNumRows());
             MatrixUtils::MatrixIntoColumn(gradient, gradientCol);
 
             ProjectViaSparse(gradientCol, gradientCol);
@@ -209,7 +257,7 @@ namespace rsurfaces
 
         void HsMetric::ProjectViaSparse(Eigen::VectorXd &gradientCol, Eigen::VectorXd &dest)
         {
-            long nRows = 3 * mesh->nVertices() + 3;
+            long nRows = topLeftNumRows();
             long curRow = 3 * mesh->nVertices();
 
             if (!factorizedLaplacian.initialized)
@@ -268,7 +316,7 @@ namespace rsurfaces
         {
             size_t nVerts = mesh->nVertices();
             size_t compNRows = 0;
-            size_t bigNRows = 3 * nVerts + 3;
+            size_t bigNRows = topLeftNumRows();
 
             // Figure out how many rows the constraint block is
             for (ConstraintPack &c : constraints)
@@ -315,7 +363,7 @@ namespace rsurfaces
                 }
                 ProjectViaSparse(curCol, curCol);
                 // Copy the column into the column of A^{-1} C^T
-                for (size_t i = 0; i < 3 * nVerts + 3; i++)
+                for (size_t i = 0; i < bigNRows; i++)
                 {
                     A_inv_CT(i, r) = curCol(i);
                 }
@@ -325,7 +373,7 @@ namespace rsurfaces
             dest.M_A = -dest.C * A_inv_CT;
         }
 
-        void HsMetric::ProjectViaSchur(SchurComplement &comp, Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest)
+        void HsMetric::ProjectViaSchur(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, SchurComplement &comp)
         {
             size_t nVerts = mesh->nVertices();
             // Invert the "saddle matrix" now:
