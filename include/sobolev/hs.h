@@ -48,7 +48,7 @@ namespace rsurfaces
         class HsMetric
         {
         public:
-            HsMetric(SurfaceEnergy* energy_);
+            HsMetric(SurfaceEnergy *energy_);
             ~HsMetric();
 
             // Build the "high order" fractional Laplacian of order 2s.
@@ -56,28 +56,28 @@ namespace rsurfaces
             // Build the base fractional Laplacian of order s.
             void FillMatrixFracOnly(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom);
 
-            void ProjectGradient(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom);
+            void ProjectGradient(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest);
 
             // Project the gradient into Hs by using the L^{-1} M L^{-1} factorization
-            void ProjectViaSparse(Eigen::VectorXd &gradient, Eigen::VectorXd &dest, BlockClusterTree *&bct, SparseFactorization &factor);
+            void ProjectViaSparse(Eigen::VectorXd &gradient, Eigen::VectorXd &dest);
             // Same as above but with the input/output being matrices
-            void ProjectViaSparseMat(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, BlockClusterTree *&bct, SparseFactorization &factor);
+            void ProjectViaSparseMat(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest);
 
-            void GetSchurComplement(std::vector<ConstraintPack> constraints, SchurComplement &dest,
-                                    BlockClusterTree *&bct, SparseFactorization &factor);
+            void GetSchurComplement(std::vector<ConstraintPack> constraints, SchurComplement &dest);
 
-            void ProjectViaSchur(SchurComplement &comp, Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest,
-                                 BlockClusterTree *&bct, SparseFactorization &factor);
+            void ProjectViaSchur(SchurComplement &comp, Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest);
 
-            void BackprojectViaSchur(std::vector<ConstraintPack> &constraints, SchurComplement &comp,
-                                     BlockClusterTree *&bct, SparseFactorization &factor);
+            void BackprojectViaSchur(std::vector<ConstraintPack> &constraints, SchurComplement &comp);
 
         private:
             MeshPtr mesh;
             GeomPtr geom;
-            BVHNode6D* bvh;
+            BVHNode6D *bvh;
             double order_s;
             double bh_theta;
+
+            SparseFactorization factorizedLaplacian;
+            BlockClusterTree *bct;
         };
 
     } // namespace Hs

@@ -114,10 +114,7 @@ namespace rsurfaces
 
     Hs::HsMetric hs(energy);
 
-    BlockClusterTree *bct = 0;
-    Hs::SparseFactorization factor;
-    hs.ProjectViaSparseMat(gradient, result, bct, factor);
-    delete bct;
+    hs.ProjectViaSparseMat(gradient, result);
 
     std::cout << result << std::endl;
     PlotMatrix(result, psMesh, "LML approx");

@@ -111,12 +111,8 @@ namespace rsurfaces
         // Set up some data that will be reused in multiple steps:
         // Schur complement, and sparse factorization (of Laplacian)
         Hs::SchurComplement comp;
-        Hs::SparseFactorization factor;
-        // Create an empty BCT pointer; this will be initialized in the first
-        // Schur complement function, and reused for the rest of this timestep
-        BlockClusterTree *bct = 0;
-        hs.GetSchurComplement(schurConstraints, comp, bct, factor);
-        hs.ProjectViaSchur(comp, gradient, gradientProj, bct, factor);
+        hs.GetSchurComplement(schurConstraints, comp);
+        hs.ProjectViaSchur(comp, gradient, gradientProj);
 
         long timeProject = currentTimeMilliseconds();
         double gProjNorm = gradientProj.norm();
@@ -141,16 +137,12 @@ namespace rsurfaces
 
         // Project onto constraint manifold using Schur complement
         long timeBackproj = currentTimeMilliseconds();
-        hs.BackprojectViaSchur(schurConstraints, comp, bct, factor);
+        hs.BackprojectViaSchur(schurConstraints, comp);
         // Fix barycenter drift
         RecenterMesh();
         long timeEnd = currentTimeMilliseconds();
 
-        // Done with BCT, so clean it up
-        delete bct;
-
         std::cout << "  * Post-processing: " << (timeEnd - timeBackproj) << " ms" << std::endl;
-
         std::cout << "  Total time: " << (timeEnd - timeStart) << " ms" << std::endl;
         std::cout << "  Energy: " << energyBefore << " -> " << energyBeforeBackproj << std::endl;
 
