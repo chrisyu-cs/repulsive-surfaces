@@ -102,26 +102,6 @@ namespace rsurfaces
     PlotMatrix(M, psMesh, name);
   }
 
-  void MainApp::PlotL2Gradient()
-  {
-    long start = currentTimeMilliseconds();
-    flow->BaseEnergy()->Update();
-
-    Eigen::MatrixXd d;
-    d.setZero(mesh->nVertices(), 3);
-    Eigen::MatrixXd h1 = d;
-    Eigen::MatrixXd hs = d;
-    flow->BaseEnergy()->Differential(d);
-
-    PlotMatrix(d, psMesh, "L2 gradient");
-
-    Vector2 ab = flow->BaseEnergy()->GetExponents();
-    H1::ProjectGradient(d, h1, mesh, geom);
-    Hs::ProjectGradient(d, hs, ab.x, ab.y, mesh, geom);
-    PlotMatrix(h1, psMesh, "H1 gradient");
-    PlotMatrix(hs, psMesh, "Hs gradient");
-  }
-
   void MainApp::TestLML()
   {
     SurfaceEnergy *energy = flow->BaseEnergy();
@@ -132,9 +112,11 @@ namespace rsurfaces
     energy->Differential(gradient);
     Eigen::MatrixXd result = gradient;
 
+    Hs::HsMetric hs(energy);
+
     BlockClusterTree *bct = 0;
     Hs::SparseFactorization factor;
-    Hs::ProjectViaSparseMat(gradient, result, energy, bct, factor);
+    hs.ProjectViaSparseMat(gradient, result, bct, factor);
     delete bct;
 
     std::cout << result << std::endl;
@@ -235,6 +217,8 @@ namespace rsurfaces
 
     long gradientEndTime = currentTimeMilliseconds();
 
+    Hs::HsMetric hs(energy);
+
     for (int i = 0; i < 1; i++)
     {
       std::cout << "\nTesting for s = " << s << std::endl;
@@ -245,7 +229,7 @@ namespace rsurfaces
       Eigen::MatrixXd dense, dense_small;
       dense_small.setZero(mesh->nVertices(), mesh->nVertices());
       dense.setZero(3 * mesh->nVertices(), 3 * mesh->nVertices());
-      Hs::FillMatrixFracOnly(dense_small, s, mesh, geom);
+      hs.FillMatrixFracOnly(dense_small, s, mesh, geom);
       MatrixUtils::TripleMatrix(dense_small, dense);
       long denseAssemblyTime = currentTimeMilliseconds();
       // Multiply dense
