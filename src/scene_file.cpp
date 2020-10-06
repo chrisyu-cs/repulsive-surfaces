@@ -50,6 +50,8 @@ namespace rsurfaces
                 return "barycenter";
             case ConstraintType::BoundaryPins:
                 return "boundary pins";
+            case ConstraintType::VertexPins:
+                return "vertex pins";
             default:
                 return "unknown";
             }
@@ -73,6 +75,10 @@ namespace rsurfaces
             else if (consType == "boundary_vertices")
             {
                 return ConstraintType::BoundaryPins;
+            }
+            else if (consType == "vertices" || consType == "vertex")
+            {
+                return ConstraintType::VertexPins;
             }
             else
             {
@@ -99,7 +105,16 @@ namespace rsurfaces
             {
                 ConstraintData consData{getConstraintType(parts[1]), 1, 0};
 
-                if (parts.size() == 4)
+                if (consData.type == ConstraintType::VertexPins)
+                {
+                    for (size_t i = 2; i < parts.size(); i++)
+                    {
+                        size_t pin = stoul(parts[i]);
+                        data.vertexPins.push_back(pin);
+                    }
+                }
+
+                else if (parts.size() == 4)
                 {
                     consData.targetMultiplier = stod(parts[2]);
                     consData.numIterations = stoi(parts[3]);

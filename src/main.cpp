@@ -525,7 +525,7 @@ MeshAndEnergy initTPEOnMesh(std::string meshFile, double alpha, double beta)
   return MeshAndEnergy{tpe, psMesh, meshShared, geomShared, mesh_name};
 }
 
-rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, std::vector<rsurfaces::scene::ConstraintData> &constraints)
+rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::scene::SceneData &scene)
 {
   using namespace rsurfaces;
 
@@ -544,8 +544,10 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, std::vector<rs
 
   SurfaceFlow *flow = new SurfaceFlow(energy);
   bool kernelRemoved = false;
+  // Set this up here, so that we can aggregate all vertex pins into the same constraint
+  Constraints::VertexPinConstraint *c = 0;
 
-  for (scene::ConstraintData &data : constraints)
+  for (scene::ConstraintData &data : scene.constraints)
   {
     switch (data.type)
     {
@@ -561,22 +563,38 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, std::vector<rs
       break;
     case scene::ConstraintType::BoundaryPins:
     {
-      Constraints::VertexPinConstraint *c = flow->addSimpleConstraint<Constraints::VertexPinConstraint>(m.mesh, m.geom);
+      if (!c)
+      {
+        c = flow->addSimpleConstraint<Constraints::VertexPinConstraint>(m.mesh, m.geom);
+      }
       // Manually add all of the boundary vertex indices as pins
       std::vector<size_t> boundaryInds;
       VertexIndices inds = m.mesh->getVertexIndices();
       for (GCVertex v : m.mesh->vertices())
       {
-        if (v.isBoundary()) {
+        if (v.isBoundary())
+        {
           boundaryInds.push_back(inds[v]);
         }
       }
       c->pinVertices(m.mesh, m.geom, boundaryInds);
       kernelRemoved = true;
     }
+    case scene::ConstraintType::VertexPins:
+    {
+      if (!c)
+      {
+        c = flow->addSimpleConstraint<Constraints::VertexPinConstraint>(m.mesh, m.geom);
+      }
+      // Add the specified vertices as pins
+      c->pinVertices(m.mesh, m.geom, scene.vertexPins);
+      // Clear the data vector so that we don't add anything twice
+      scene.vertexPins.clear();
+      kernelRemoved = true;
+    }
     break;
     default:
-      std::cout << "Skipping unrecognized constraint type" << std::endl;
+      std::cout << "  * Skipping unrecognized constraint type" << std::endl;
       break;
     }
   }
@@ -673,7 +691,7 @@ int main(int argc, char **argv)
   }
 
   MeshAndEnergy m = initTPEOnMesh(data.meshName, 6, 12);
-  SurfaceFlow *flow = setUpFlow(m, theta, data.constraints);
+  SurfaceFlow *flow = setUpFlow(m, theta, data);
 
   MainApp::instance = new MainApp(m.mesh, m.geom, flow, m.psMesh, m.meshName);
   MainApp::instance->bh_theta = theta;

@@ -15,7 +15,8 @@ namespace rsurfaces
             Barycenter,
             TotalArea,
             TotalVolume,
-            BoundaryPins
+            BoundaryPins,
+            VertexPins
         };
 
         struct ConstraintData
@@ -38,6 +39,7 @@ namespace rsurfaces
             double beta;
             std::vector<ObstacleData> obstacles;
             std::vector<ConstraintData> constraints;
+            std::vector<size_t> vertexPins;
         };
 
         template <class Container>
