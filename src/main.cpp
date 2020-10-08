@@ -207,11 +207,27 @@ namespace rsurfaces
     energy_bh->Update();
     double total = energy_bh->Value();
 
+    for (GCFace f : mesh->faces())
+    {
+      double e = energy_bh->energyPerFace[f];
+      // This looks like it scales the right way:
+      // doubling the mesh also doubles the resulting lengths
+      energy_bh->energyPerFace[f] = pow(e, 1.0 / (2 - tpe->alpha));
+    }
+
     psMesh->addFaceScalarQuantity("energy per face", energy_bh->energyPerFace);
     std::cout << "Total energy = " << total << std::endl;
 
     delete energy_bh;
     delete tpe;
+  }
+
+  void MainApp::Scale2x()
+  {
+    for (GCVertex v : mesh->vertices())
+    {
+      geom->inputVertexPositions[v] = 2 * geom->inputVertexPositions[v];
+    }
   }
 
   void MainApp::TestMVProduct()
@@ -458,6 +474,11 @@ void customCallback()
   if (ImGui::Button("Plot face energies", ImVec2{ITEM_WIDTH, 0}))
   {
     MainApp::instance->PlotEnergyPerFace();
+  }
+  ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
+  if (ImGui::Button("Scale mesh 2x", ImVec2{ITEM_WIDTH, 0}))
+  {
+    MainApp::instance->Scale2x();
   }
   ImGui::EndGroup();
 

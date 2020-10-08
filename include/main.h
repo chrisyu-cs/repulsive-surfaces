@@ -20,6 +20,7 @@ namespace rsurfaces
         void BenchmarkBH();
         void TestBarnesHut();
         void PlotEnergyPerFace();
+        void Scale2x();
 
         void TakeNaiveStep(double t);
         void TakeFractionalSobolevStep();
