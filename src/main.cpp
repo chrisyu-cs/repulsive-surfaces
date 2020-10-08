@@ -199,6 +199,21 @@ namespace rsurfaces
     delete tpe;
   }
 
+  void MainApp::PlotEnergyPerFace()
+  {
+    TPEKernel *tpe = new rsurfaces::TPEKernel(mesh, geom, 6, 12);
+    BarnesHutTPEnergy6D *energy_bh = new BarnesHutTPEnergy6D(tpe, bh_theta);
+
+    energy_bh->Update();
+    double total = energy_bh->Value();
+
+    psMesh->addFaceScalarQuantity("energy per face", energy_bh->energyPerFace);
+    std::cout << "Total energy = " << total << std::endl;
+
+    delete energy_bh;
+    delete tpe;
+  }
+
   void MainApp::TestMVProduct()
   {
     long gradientStartTime = currentTimeMilliseconds();
@@ -438,6 +453,11 @@ void customCallback()
   if (ImGui::Button("Benchmark B-H", ImVec2{ITEM_WIDTH, 0}))
   {
     MainApp::instance->BenchmarkBH();
+  }
+
+  if (ImGui::Button("Plot face energies", ImVec2{ITEM_WIDTH, 0}))
+  {
+    MainApp::instance->PlotEnergyPerFace();
   }
   ImGui::EndGroup();
 

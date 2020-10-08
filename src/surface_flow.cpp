@@ -6,6 +6,7 @@
 #include "sobolev/hs.h"
 #include "sobolev/constraints.h"
 #include "spatial/convolution.h"
+#include "energy/barnes_hut_tpe_6d.h"
 
 #include <Eigen/SparseCholesky>
 
@@ -87,6 +88,9 @@ namespace rsurfaces
         std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
         UpdateEnergies();
 
+        // Grab the tangent-point energy specifically
+        BarnesHutTPEnergy6D* bhEnergy = dynamic_cast<BarnesHutTPEnergy6D*>(energies[0]);
+
         // Measure the energy at the start of the timestep -- just for
         // diagnostic purposes
         long timeEnergy = currentTimeMilliseconds();
@@ -106,7 +110,7 @@ namespace rsurfaces
         long timeDiff = currentTimeMilliseconds();
         std::cout << "  * Gradient assembly: " << (timeDiff - timeStart) << " ms (norm = " << gNorm << ")" << std::endl;
 
-        Hs::HsMetric hs(energies[0], simpleConstraints);
+        Hs::HsMetric hs(bhEnergy, simpleConstraints);
 
         // Schur complement will be reused in multiple steps
         Hs::SchurComplement comp;
