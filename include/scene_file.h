@@ -12,8 +12,11 @@ namespace rsurfaces
     {
         enum class ConstraintType
         {
+            Barycenter,
             TotalArea,
-            TotalVolume
+            TotalVolume,
+            BoundaryPins,
+            VertexPins
         };
 
         struct ConstraintData
@@ -36,6 +39,7 @@ namespace rsurfaces
             double beta;
             std::vector<ObstacleData> obstacles;
             std::vector<ConstraintData> constraints;
+            std::vector<size_t> vertexPins;
         };
 
         template <class Container>

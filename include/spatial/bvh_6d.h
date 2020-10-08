@@ -143,7 +143,7 @@ namespace rsurfaces
         return MassNormalPoint{mass, n, pos, minCoord, maxCoord, indices[f]};
     }
 
-    template<typename MPtr, typename GPtr>
+    template <typename MPtr, typename GPtr>
     BVHNode6D *Create6DBVHFromMeshFaces(MPtr const &mesh, GPtr const &geom)
     {
         std::vector<MassNormalPoint> verts(mesh->nFaces());
@@ -152,6 +152,10 @@ namespace rsurfaces
         // Loop over all the vertices
         for (const GCFace &f : mesh->faces())
         {
+            if (f.isBoundaryLoop())
+            {
+                continue;
+            }
             MassNormalPoint curBody = meshFaceToBody(f, geom, indices);
             // Put vertex body into full list
             verts[curBody.elementID] = curBody;
@@ -174,7 +178,7 @@ namespace rsurfaces
         return MassNormalPoint{mass, n, pos, minCoord, maxCoord, indices[v]};
     }
 
-    template<typename MPtr, typename GPtr>
+    template <typename MPtr, typename GPtr>
     BVHNode6D *Create6DBVHFromMeshVerts(MPtr const &mesh, GPtr const &geom)
     {
         std::vector<MassNormalPoint> verts(mesh->nVertices());

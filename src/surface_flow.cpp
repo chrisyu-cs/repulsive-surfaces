@@ -6,6 +6,7 @@
 #include "sobolev/hs.h"
 #include "sobolev/constraints.h"
 #include "spatial/convolution.h"
+#include "energy/barnes_hut_tpe_6d.h"
 
 #include <Eigen/SparseCholesky>
 
@@ -86,46 +87,50 @@ namespace rsurfaces
         stepCount++;
         std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
         UpdateEnergies();
-        double initArea = totalArea(geom, mesh);
-        double initVolume = totalVolume(geom, mesh);
 
+        // Grab the tangent-point energy specifically
+        BarnesHutTPEnergy6D* bhEnergy = dynamic_cast<BarnesHutTPEnergy6D*>(energies[0]);
+
+        // Measure the energy at the start of the timestep -- just for
+        // diagnostic purposes
         long timeEnergy = currentTimeMilliseconds();
         double energyBefore = GetEnergyValue();
         long timeStart = currentTimeMilliseconds();
 
         std::cout << "  * Energy evaluation: " << (timeStart - timeEnergy) << " ms" << std::endl;
 
+        // Assemble sum of gradients of all energies involved
+        // (including tangent-point energy)
         Eigen::MatrixXd gradient, gradientProj;
         gradient.setZero(mesh->nVertices(), 3);
         gradientProj.setZero(mesh->nVertices(), 3);
-
         AddGradientToMatrix(gradient);
         double gNorm = gradient.norm();
 
         long timeDiff = currentTimeMilliseconds();
         std::cout << "  * Gradient assembly: " << (timeDiff - timeStart) << " ms (norm = " << gNorm << ")" << std::endl;
 
-        // Set up some data that will be reused in multiple steps:
-        // Schur complement, and sparse factorization (of Laplacian)
+        Hs::HsMetric hs(bhEnergy, simpleConstraints);
+
+        // Schur complement will be reused in multiple steps
         Hs::SchurComplement comp;
-        Hs::SparseFactorization factor;
-        // Create an empty BCT pointer; this will be initialized in the first
-        // Schur complement function, and reused for the rest of this timestep
-        BlockClusterTree *bct = 0;
-        Hs::GetSchurComplement(constraints, energies[0], comp, bct, factor);
-        Hs::ProjectViaSchur(comp, gradient, gradientProj, energies[0], bct, factor);
+        if (schurConstraints.size() > 0)
+        {
+            hs.GetSchurComplement(schurConstraints, comp);
+            hs.ProjectViaSchur(gradient, gradientProj, comp);
+        }
+        else
+        {
+            hs.ProjectViaSparseMat(gradient, gradientProj);
+        }
+
+        VertexIndices inds = mesh->getVertexIndices();
 
         long timeProject = currentTimeMilliseconds();
         double gProjNorm = gradientProj.norm();
         std::cout << "  * Gradient projection: " << (timeProject - timeDiff) << " ms (norm = " << gProjNorm << ")" << std::endl;
+        // Measure dot product of search direction with original gradient direction
         double gradDot = (gradient.transpose() * gradientProj).trace() / (gNorm * gProjNorm);
-
-        if (gradDot < 0)
-        {
-            gradientProj = -gradientProj;
-            gradDot = -gradDot;
-            std::cout << "  * Dot product negative; negating search direction" << std::endl;
-        }
 
         // Guess a step size
         double initGuess = prevStep * 1.25;
@@ -135,29 +140,29 @@ namespace rsurfaces
         }
         std::cout << "  * Initial step size guess = " << initGuess << std::endl;
 
-        // Take the step
+        // Take the step using line search
         LineSearchStep(gradientProj, initGuess, gradDot);
         long timeLS = currentTimeMilliseconds();
         std::cout << "  * Line search: " << (timeLS - timeProject) << " ms" << std::endl;
 
         double energyBeforeBackproj = GetEnergyValue();
 
-        // Project onto constraint manifold using Schur complement
         long timeBackproj = currentTimeMilliseconds();
-        Hs::BackprojectViaSchur(constraints, comp, energies[0], bct, factor);
-        // Fix barycenter drift
-        RecenterMesh();
+        if (schurConstraints.size() > 0)
+        {
+            // Project onto constraint manifold using Schur complement
+            hs.ProjectSchurConstraints(schurConstraints, comp);
+        }
+        // Fix simple things like barycenter drift
+        hs.ProjectSimpleConstraints();
+
         long timeEnd = currentTimeMilliseconds();
 
-        // Done with BCT, so clean it up
-        delete bct;
-
         std::cout << "  * Post-processing: " << (timeEnd - timeBackproj) << " ms" << std::endl;
-
         std::cout << "  Total time: " << (timeEnd - timeStart) << " ms" << std::endl;
         std::cout << "  Energy: " << energyBefore << " -> " << energyBeforeBackproj << std::endl;
 
-        for (ConstraintPack &c : constraints)
+        for (ConstraintPack &c : schurConstraints)
         {
             if (c.iterationsLeft > 0)
             {

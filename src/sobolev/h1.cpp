@@ -33,10 +33,10 @@ namespace rsurfaces
             // Assemble the metric matrix
             std::vector<Triplet> triplets, triplets3x;
             H1::getTriplets(triplets, mesh, geom, false);
-            Constraints::BarycenterConstraint bconstraint;
-            Constraints::addTripletsToSymmetric(bconstraint, triplets, mesh, geom, mesh->nVertices());
             // Reduplicate the entries 3x along diagonals
             MatrixUtils::TripleTriplets(triplets, triplets3x);
+            Constraints::BarycenterConstraint3X bconstraint(mesh, geom);
+            Constraints::addTripletsToSymmetric(bconstraint, triplets3x, mesh, geom, 3 * mesh->nVertices());
             Eigen::SparseMatrix<double> metric(3 * mesh->nVertices() + 3, 3 * mesh->nVertices() + 3);
             metric.setFromTriplets(triplets3x.begin(), triplets3x.end());
 

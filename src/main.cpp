@@ -102,26 +102,6 @@ namespace rsurfaces
     PlotMatrix(M, psMesh, name);
   }
 
-  void MainApp::PlotL2Gradient()
-  {
-    long start = currentTimeMilliseconds();
-    flow->BaseEnergy()->Update();
-
-    Eigen::MatrixXd d;
-    d.setZero(mesh->nVertices(), 3);
-    Eigen::MatrixXd h1 = d;
-    Eigen::MatrixXd hs = d;
-    flow->BaseEnergy()->Differential(d);
-
-    PlotMatrix(d, psMesh, "L2 gradient");
-
-    Vector2 ab = flow->BaseEnergy()->GetExponents();
-    H1::ProjectGradient(d, h1, mesh, geom);
-    Hs::ProjectGradient(d, hs, ab.x, ab.y, mesh, geom);
-    PlotMatrix(h1, psMesh, "H1 gradient");
-    PlotMatrix(hs, psMesh, "Hs gradient");
-  }
-
   void MainApp::TestLML()
   {
     SurfaceEnergy *energy = flow->BaseEnergy();
@@ -132,10 +112,9 @@ namespace rsurfaces
     energy->Differential(gradient);
     Eigen::MatrixXd result = gradient;
 
-    BlockClusterTree *bct = 0;
-    Hs::SparseFactorization factor;
-    Hs::ProjectViaSparseMat(gradient, result, energy, bct, factor);
-    delete bct;
+    Hs::HsMetric hs(energy);
+
+    hs.ProjectViaSparseMat(gradient, result);
 
     std::cout << result << std::endl;
     PlotMatrix(result, psMesh, "LML approx");
@@ -220,6 +199,37 @@ namespace rsurfaces
     delete tpe;
   }
 
+  void MainApp::PlotEnergyPerFace()
+  {
+    TPEKernel *tpe = new rsurfaces::TPEKernel(mesh, geom, 6, 12);
+    BarnesHutTPEnergy6D *energy_bh = new BarnesHutTPEnergy6D(tpe, bh_theta);
+
+    energy_bh->Update();
+    double total = energy_bh->Value();
+
+    for (GCFace f : mesh->faces())
+    {
+      double e = energy_bh->energyPerFace[f];
+      // This looks like it scales the right way:
+      // doubling the mesh also doubles the resulting lengths
+      energy_bh->energyPerFace[f] = pow(e, 1.0 / (2 - tpe->alpha));
+    }
+
+    psMesh->addFaceScalarQuantity("energy per face", energy_bh->energyPerFace);
+    std::cout << "Total energy = " << total << std::endl;
+
+    delete energy_bh;
+    delete tpe;
+  }
+
+  void MainApp::Scale2x()
+  {
+    for (GCVertex v : mesh->vertices())
+    {
+      geom->inputVertexPositions[v] = 2 * geom->inputVertexPositions[v];
+    }
+  }
+
   void MainApp::TestMVProduct()
   {
     long gradientStartTime = currentTimeMilliseconds();
@@ -235,6 +245,8 @@ namespace rsurfaces
 
     long gradientEndTime = currentTimeMilliseconds();
 
+    Hs::HsMetric hs(energy);
+
     for (int i = 0; i < 1; i++)
     {
       std::cout << "\nTesting for s = " << s << std::endl;
@@ -245,7 +257,7 @@ namespace rsurfaces
       Eigen::MatrixXd dense, dense_small;
       dense_small.setZero(mesh->nVertices(), mesh->nVertices());
       dense.setZero(3 * mesh->nVertices(), 3 * mesh->nVertices());
-      Hs::FillMatrixFracOnly(dense_small, s, mesh, geom);
+      hs.FillMatrixFracOnly(dense_small, s, mesh, geom);
       MatrixUtils::TripleMatrix(dense_small, dense);
       long denseAssemblyTime = currentTimeMilliseconds();
       // Multiply dense
@@ -458,6 +470,16 @@ void customCallback()
   {
     MainApp::instance->BenchmarkBH();
   }
+
+  if (ImGui::Button("Plot face energies", ImVec2{ITEM_WIDTH, 0}))
+  {
+    MainApp::instance->PlotEnergyPerFace();
+  }
+  ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
+  if (ImGui::Button("Scale mesh 2x", ImVec2{ITEM_WIDTH, 0}))
+  {
+    MainApp::instance->Scale2x();
+  }
   ImGui::EndGroup();
 
   ImGui::Text("Remeshing tests");
@@ -466,25 +488,25 @@ void customCallback()
   ImGui::Indent(INDENT);
 
   // Section for remeshing tests
-  
+
   if (ImGui::Button("Fix Delaunay"))
   {
     remeshing::fixDelaunay(MainApp::instance->mesh, MainApp::instance->geom);
     MainApp::instance->reregisterMesh();
   }
-  
+
   if (ImGui::Button("Laplacian smooth"))
   {
     remeshing::smoothByLaplacian(MainApp::instance->mesh, MainApp::instance->geom);
     MainApp::instance->reregisterMesh();
   }
-  
+
   if (ImGui::Button("Circumcenter smooth"))
   {
     remeshing::smoothByCircumcenter(MainApp::instance->mesh, MainApp::instance->geom);
     MainApp::instance->reregisterMesh();
   }
-  
+
   if (ImGui::Button("Laplacian optimize"))
   {
     for (int i = 0; i < 1000; i++)
@@ -494,7 +516,7 @@ void customCallback()
     }
     MainApp::instance->reregisterMesh();
   }
-  
+
   if (ImGui::Button("Circumcenter optimize"))
   {
     for (int i = 0; i < 1000; i++)
@@ -544,7 +566,7 @@ MeshAndEnergy initTPEOnMesh(std::string meshFile, double alpha, double beta)
   return MeshAndEnergy{tpe, psMesh, meshShared, geomShared, mesh_name};
 }
 
-rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, std::vector<rsurfaces::scene::ConstraintData> &constraints)
+rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::scene::SceneData &scene)
 {
   using namespace rsurfaces;
 
@@ -562,21 +584,66 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, std::vector<rs
   }
 
   SurfaceFlow *flow = new SurfaceFlow(energy);
+  bool kernelRemoved = false;
+  // Set this up here, so that we can aggregate all vertex pins into the same constraint
+  Constraints::VertexPinConstraint *c = 0;
 
-  for (scene::ConstraintData &data : constraints)
+  for (scene::ConstraintData &data : scene.constraints)
   {
     switch (data.type)
     {
+    case scene::ConstraintType::Barycenter:
+      kernelRemoved = true;
+      flow->addSimpleConstraint<Constraints::BarycenterConstraint3X>(m.mesh, m.geom);
+      break;
     case scene::ConstraintType::TotalArea:
-      flow->addConstraint<Constraints::TotalAreaConstraint>(m.mesh, m.geom, data.targetMultiplier, data.numIterations);
+      flow->addSchurConstraint<Constraints::TotalAreaConstraint>(m.mesh, m.geom, data.targetMultiplier, data.numIterations);
       break;
     case scene::ConstraintType::TotalVolume:
-      flow->addConstraint<Constraints::TotalVolumeConstraint>(m.mesh, m.geom, data.targetMultiplier, data.numIterations);
+      flow->addSchurConstraint<Constraints::TotalVolumeConstraint>(m.mesh, m.geom, data.targetMultiplier, data.numIterations);
       break;
+    case scene::ConstraintType::BoundaryPins:
+    {
+      if (!c)
+      {
+        c = flow->addSimpleConstraint<Constraints::VertexPinConstraint>(m.mesh, m.geom);
+      }
+      // Manually add all of the boundary vertex indices as pins
+      std::vector<size_t> boundaryInds;
+      VertexIndices inds = m.mesh->getVertexIndices();
+      for (GCVertex v : m.mesh->vertices())
+      {
+        if (v.isBoundary())
+        {
+          boundaryInds.push_back(inds[v]);
+        }
+      }
+      c->pinVertices(m.mesh, m.geom, boundaryInds);
+      kernelRemoved = true;
+    }
+    case scene::ConstraintType::VertexPins:
+    {
+      if (!c)
+      {
+        c = flow->addSimpleConstraint<Constraints::VertexPinConstraint>(m.mesh, m.geom);
+      }
+      // Add the specified vertices as pins
+      c->pinVertices(m.mesh, m.geom, scene.vertexPins);
+      // Clear the data vector so that we don't add anything twice
+      scene.vertexPins.clear();
+      kernelRemoved = true;
+    }
+    break;
     default:
-      std::cout << "Skipping unrecognized constraint type" << std::endl;
+      std::cout << "  * Skipping unrecognized constraint type" << std::endl;
       break;
     }
+  }
+
+  if (!kernelRemoved)
+  {
+    std::cout << "Auto-adding barycenter constraint to eliminate constant kernel of Laplacian" << std::endl;
+    flow->addSimpleConstraint<Constraints::BarycenterConstraint3X>(m.mesh, m.geom);
   }
 
   return flow;
@@ -665,7 +732,7 @@ int main(int argc, char **argv)
   }
 
   MeshAndEnergy m = initTPEOnMesh(data.meshName, 6, 12);
-  SurfaceFlow *flow = setUpFlow(m, theta, data.constraints);
+  SurfaceFlow *flow = setUpFlow(m, theta, data);
 
   MainApp::instance = new MainApp(m.mesh, m.geom, flow, m.psMesh, m.meshName);
   MainApp::instance->bh_theta = theta;

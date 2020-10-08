@@ -21,6 +21,7 @@ namespace rsurfaces
         virtual Vector2 GetExponents();
         virtual BVHNode6D *GetBVH();
         virtual double GetTheta();
+        geometrycentral::surface::FaceData<double> energyPerFace;
 
     private:
         TPEKernel *kernel;

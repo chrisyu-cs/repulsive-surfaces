@@ -5,7 +5,7 @@ namespace rsurfaces
 {
     namespace Constraints
     {
-        void BarycenterConstraint::addTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        void addSingleTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow)
         {
             // Just want to place normalized dual weights in the entry for each vertex
             geom->requireVertexDualAreas();
@@ -23,45 +23,6 @@ namespace rsurfaces
             }
         }
 
-        void BarycenterConstraint::addEntries(Eigen::MatrixXd &M, MeshPtr &mesh, GeomPtr &geom, int baseRow)
-        {
-            geom->requireVertexDualAreas();
-            VertexIndices indices = mesh->getVertexIndices();
-            double sumArea = 0;
-            for (GCVertex v : mesh->vertices())
-            {
-                sumArea += geom->vertexDualAreas[v];
-            }
-
-            for (GCVertex v : mesh->vertices())
-            {
-                double wt = geom->vertexDualAreas[v] / sumArea;
-                M(baseRow, indices[v]) = wt;
-            }
-        }
-
-        size_t BarycenterConstraint::nRows()
-        {
-            return 1;
-        }
-
-        void BarycenterConstraint::addValue(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow)
-        {
-            std::cerr << "Can't backproject single barycenter coordinate." << std::endl;
-            throw 1;
-        }
-
-        double BarycenterConstraint::getTargetValue()
-        {
-            return 0;
-        }
-
-        void BarycenterConstraint::incrementTargetValue(double incr)
-        {
-            std::cerr << "Can't increment barycenter constraint." << std::endl;
-            throw 1;
-        }
-
         BarycenterConstraint3X::BarycenterConstraint3X(MeshPtr &mesh, GeomPtr &geom)
         {
             initValue = meshBarycenter(geom, mesh);
@@ -71,9 +32,8 @@ namespace rsurfaces
         {
             // Take the same weights from the non-3X version of this constraint,
             // and duplicate them 3 times on each 3x3 diagonal block.
-            BarycenterConstraint single;
             std::vector<Triplet> singleTriplets;
-            single.addTriplets(singleTriplets, mesh, geom, 0);
+            addSingleTriplets(singleTriplets, mesh, geom, 0);
 
             for (Triplet t : singleTriplets)
             {
@@ -85,9 +45,8 @@ namespace rsurfaces
 
         void BarycenterConstraint3X::addEntries(Eigen::MatrixXd &M, MeshPtr &mesh, GeomPtr &geom, int baseRow)
         {
-            BarycenterConstraint single;
             std::vector<Triplet> singleTriplets;
-            single.addTriplets(singleTriplets, mesh, geom, 0);
+            addSingleTriplets(singleTriplets, mesh, geom, 0);
 
             for (Triplet t : singleTriplets)
             {
@@ -97,29 +56,15 @@ namespace rsurfaces
             }
         }
 
-        void BarycenterConstraint3X::addValue(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow)
-        {
-            Vector3 center = meshBarycenter(geom, mesh);
-            Vector3 diff = center - initValue;
-            V(baseRow) = diff.x;
-            V(baseRow + 1) = diff.y;
-            V(baseRow + 2) = diff.z;
-        }
-
-        double BarycenterConstraint3X::getTargetValue()
-        {
-            return 0;
-        }
-
-        void BarycenterConstraint3X::incrementTargetValue(double incr)
-        {
-            std::cerr << "Can't increment barycenter constraint." << std::endl;
-            throw 1;
-        }
-
         size_t BarycenterConstraint3X::nRows()
         {
             return 3;
+        }
+
+        void BarycenterConstraint3X::ProjectConstraint(MeshPtr &mesh, GeomPtr &geom)
+        {
+            Vector3 center = meshBarycenter(geom, mesh);
+            translateMesh(geom, mesh, initValue - center);
         }
 
     } // namespace Constraints

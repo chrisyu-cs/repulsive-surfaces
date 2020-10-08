@@ -7,9 +7,10 @@
 
 namespace rsurfaces
 {
-
     namespace Hs
     {
+        using Constraints::SimpleProjectorConstraint;
+
         inline Vector3 HatGradientOnTriangle(GCFace face, GCVertex vert, GeomPtr &geom)
         {
             // Find the half-edge starting at vert in face
@@ -120,7 +121,62 @@ namespace rsurfaces
             return (beta - 2.0) / alpha;
         }
 
-        void FillMatrixHigh(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom)
+        HsMetric::HsMetric(SurfaceEnergy *energy_)
+        {
+            initFromEnergy(energy_);
+            // If no constraints are supplied, then we add our own barycenter
+            // constraint as a default
+            simpleConstraints.push_back(new Constraints::BarycenterConstraint3X(mesh, geom));
+            // Remember to delete our constraint if we made our own
+            usedDefaultConstraint = true;
+        }
+
+        HsMetric::HsMetric(SurfaceEnergy *energy_, std::vector<SimpleProjectorConstraint *> &spcs)
+        {
+            initFromEnergy(energy_);
+            usedDefaultConstraint = false;
+
+            if (spcs.size() == 0)
+            {
+                std::cerr << "ERROR: Need at least one constraint to initialize HsMetric." << std::endl;
+                std::exit(1);
+            }
+
+            for (SimpleProjectorConstraint *spc : spcs)
+            {
+                // Push pointers to the existing constraints, which should
+                // exist in SurfaceFlow (and not be allocated here)
+                simpleConstraints.push_back(spc);
+            }
+        }
+
+        void HsMetric::initFromEnergy(SurfaceEnergy *energy_)
+        {
+            Vector2 ab = energy_->GetExponents();
+            mesh = energy_->GetMesh();
+            geom = energy_->GetGeom();
+            order_s = get_s(ab.x, ab.y);
+            bvh = energy_->GetBVH();
+            bh_theta = energy_->GetTheta();
+            bct = 0;
+        }
+
+        HsMetric::~HsMetric()
+        {
+            if (bct)
+            {
+                delete bct;
+            }
+            if (usedDefaultConstraint)
+            {
+                for (size_t i = 0; i < simpleConstraints.size(); i++)
+                {
+                    delete simpleConstraints[i];
+                }
+            }
+        }
+
+        void HsMetric::FillMatrixHigh(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom)
         {
             VertexIndices indices = mesh->getVertexIndices();
             for (GCFace f1 : mesh->faces())
@@ -134,7 +190,7 @@ namespace rsurfaces
             }
         }
 
-        void FillMatrixFracOnly(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom)
+        void HsMetric::FillMatrixFracOnly(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom)
         {
             VertexIndices indices = mesh->getVertexIndices();
 
@@ -149,22 +205,50 @@ namespace rsurfaces
             }
         }
 
-        void ProjectGradient(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double alpha, double beta, MeshPtr &mesh, GeomPtr &geom)
+        size_t HsMetric::topLeftNumRows()
+        {
+            size_t nConstraints = 0;
+            for (SimpleProjectorConstraint *spc : simpleConstraints)
+            {
+                nConstraints += spc->nRows();
+            }
+            return 3 * mesh->nVertices() + nConstraints;
+        }
+
+        void HsMetric::addSimpleConstraintEntries(Eigen::MatrixXd &M)
+        {
+            size_t curRow = 3 * mesh->nVertices();
+            for (SimpleProjectorConstraint *spc : simpleConstraints)
+            {
+                Constraints::addEntriesToSymmetric(*spc, M, mesh, geom, curRow);
+                curRow += spc->nRows();
+            }
+        }
+
+        void HsMetric::addSimpleConstraintTriplets(std::vector<Triplet> &triplets)
+        {
+            size_t curRow = 3 * mesh->nVertices();
+            for (SimpleProjectorConstraint *spc : simpleConstraints)
+            {
+                Constraints::addTripletsToSymmetric(*spc, triplets, mesh, geom, curRow);
+                curRow += spc->nRows();
+            }
+        }
+
+        void HsMetric::ProjectGradient(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest)
         {
             // Assemble the metric matrix
             Eigen::MatrixXd M_small, M;
             int nVerts = mesh->nVertices();
             M_small.setZero(nVerts + 1, nVerts + 1);
-            int dims = 3 * nVerts + 3;
+            int dims = topLeftNumRows();
+
             M.setZero(dims, dims);
-            FillMatrixHigh(M_small, get_s(alpha, beta), mesh, geom);
-            // Add single row in small block for barycenter
-            Constraints::BarycenterConstraint bconstraint;
-            Constraints::addEntriesToSymmetric(bconstraint, M_small, mesh, geom, nVerts);
+            FillMatrixHigh(M_small, order_s, mesh, geom);
             // Reduplicate entries 3x along diagonals; barycenter row gets tripled
             MatrixUtils::TripleMatrix(M_small, M);
-            // Add rows for scaling to tripled block
-            // Constraints::addScalingEntries(M, mesh, geom, 3 * nVerts + 3);
+            // Add rows in tripled block for barycenter constraint (and potentially others)
+            addSimpleConstraintEntries(M);
 
             // Flatten the gradient into a single column
             Eigen::VectorXd gradientCol;
@@ -175,51 +259,41 @@ namespace rsurfaces
             MatrixUtils::ColumnIntoMatrix(gradientCol, dest);
         }
 
-        void ProjectViaSparseMat(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, SurfaceEnergy *energy,
-                                 BlockClusterTree *&bct, SparseFactorization &factor)
+        void HsMetric::ProjectViaSparseMat(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest)
         {
             // Reshape the gradient N x 3 matrix into a 3N-vector.
-            Eigen::VectorXd gradientCol;
-            gradientCol.setZero(3 * energy->GetMesh()->nVertices() + 3);
+            Eigen::VectorXd gradientCol, gradientColProj;
+            gradientCol.setZero(topLeftNumRows());
             MatrixUtils::MatrixIntoColumn(gradient, gradientCol);
 
-            ProjectViaSparse(gradientCol, gradientCol, energy, bct, factor);
+            ProjectViaSparse(gradientCol, gradientCol);
 
             // Reshape it back into the output N x 3 matrix.
             MatrixUtils::ColumnIntoMatrix(gradientCol, dest);
         }
 
-        void ProjectViaSparse(Eigen::VectorXd &gradientCol, Eigen::VectorXd &dest, SurfaceEnergy *energy,
-                              BlockClusterTree *&bct, SparseFactorization &factor)
+        void HsMetric::ProjectViaSparse(Eigen::VectorXd &gradientCol, Eigen::VectorXd &dest)
         {
-            Vector2 ab = energy->GetExponents();
-            double alpha = ab.x;
-            double beta = ab.y;
+            size_t nRows = topLeftNumRows();
 
-            double s = Hs::get_s(alpha, beta);
-            MeshPtr mesh = energy->GetMesh();
-            GeomPtr geom = energy->GetGeom();
-
-            if (!factor.initialized)
+            if (!factorizedLaplacian.initialized)
             {
                 // Assemble the cotan Laplacian
                 std::vector<Triplet> triplets, triplets3x;
                 H1::getTriplets(triplets, mesh, geom);
-                // Add a constraint row / col corresponding to barycenter weights
-                Constraints::BarycenterConstraint bconstraint;
-                Constraints::addTripletsToSymmetric(bconstraint, triplets, mesh, geom, mesh->nVertices());
                 // Expand the matrix by 3x
                 MatrixUtils::TripleTriplets(triplets, triplets3x);
+
+                // Add constraint rows / cols for "simple" constraints included in Laplacian
+                addSimpleConstraintTriplets(triplets3x);
                 // Pre-factorize the cotan Laplacian
-                Eigen::SparseMatrix<double> L(3 * mesh->nVertices() + 3, 3 * mesh->nVertices() + 3);
+                Eigen::SparseMatrix<double> L(nRows, nRows);
                 L.setFromTriplets(triplets3x.begin(), triplets3x.end());
-                factor.Compute(L);
+                factorizedLaplacian.Compute(L);
             }
 
             // Multiply by L^{-1} once by solving Lx = b
-            gradientCol = factor.Solve(gradientCol);
-
-            BVHNode6D *bvh = energy->GetBVH();
+            gradientCol = factorizedLaplacian.Solve(gradientCol);
 
             if (!bvh)
             {
@@ -227,8 +301,8 @@ namespace rsurfaces
                 // Multiply by L^{2 - s}, a fractional Laplacian; this has order 4 - 2s
                 Eigen::MatrixXd M, M3;
                 M.setZero(mesh->nVertices(), mesh->nVertices());
-                M3.setZero(3 * mesh->nVertices() + 3, 3 * mesh->nVertices() + 3);
-                Hs::FillMatrixFracOnly(M, 4 - 2 * s, mesh, geom);
+                M3.setZero(nRows, nRows);
+                FillMatrixFracOnly(M, 4 - 2 * order_s, mesh, geom);
                 MatrixUtils::TripleMatrix(M, M3);
                 gradientCol = M3 * gradientCol;
             }
@@ -238,7 +312,7 @@ namespace rsurfaces
                 if (!bct)
                 {
                     long bctConstructStart = currentTimeMilliseconds();
-                    bct = new BlockClusterTree(mesh, geom, bvh, energy->GetTheta(), 4 - 2 * s);
+                    bct = new BlockClusterTree(mesh, geom, bvh, bh_theta, 4 - 2 * order_s);
                     long bctConstructEnd = currentTimeMilliseconds();
                     std::cout << "    * BCT construction = " << (bctConstructEnd - bctConstructStart) << " ms" << std::endl;
                 }
@@ -249,31 +323,35 @@ namespace rsurfaces
                 std::cout << "    * BCT multiply = " << (bctMultEnd - bctMultStart) << " ms" << std::endl;
             }
 
+            // Re-zero out Lagrange multipliers, since the first solve
+            // will have left some junk in them
+            for (size_t i = 3 * mesh->nVertices(); i < nRows; i++)
+            {
+                gradientCol(i) = 0;
+            }
+
             // Multiply by L^{-1} again by solving Lx = b
-            dest = factor.Solve(gradientCol);
+            dest = factorizedLaplacian.Solve(gradientCol);
         }
 
-        void GetSchurComplement(std::vector<ConstraintPack> constraints, SurfaceEnergy *energy,
-                                SchurComplement &dest, BlockClusterTree *&bct, SparseFactorization &factor)
+        void HsMetric::GetSchurComplement(std::vector<ConstraintPack> constraints, SchurComplement &dest)
         {
-            MeshPtr mesh = energy->GetMesh();
-            GeomPtr geom = energy->GetGeom();
-
             size_t nVerts = mesh->nVertices();
-            size_t nRows = 0;
+            size_t compNRows = 0;
+            size_t bigNRows = topLeftNumRows();
 
             // Figure out how many rows the constraint block is
             for (ConstraintPack &c : constraints)
             {
-                nRows += c.constraint->nRows();
+                compNRows += c.constraint->nRows();
             }
-            if (nRows == 0)
+            if (compNRows == 0)
             {
                 std::cout << "No constraints provided to Schur complement." << std::endl;
                 throw 1;
             }
 
-            dest.C.setZero(nRows, 3 * nVerts + 3);
+            dest.C.setZero(compNRows, bigNRows);
             size_t curRow = 0;
 
             // Fill in the constraint block by getting the entries for each constraint
@@ -292,22 +370,22 @@ namespace rsurfaces
 
             // First allocate some space for a single column
             Eigen::VectorXd curCol;
-            curCol.setZero(3 * nVerts + 3);
+            curCol.setZero(bigNRows);
             // And some space for A^{-1} C^T
             Eigen::MatrixXd A_inv_CT;
-            A_inv_CT.setZero(3 * nVerts + 3, nRows);
+            A_inv_CT.setZero(bigNRows, compNRows);
 
             // For each column, copy it into curCol, and do the solve for A^{-1}
-            for (size_t r = 0; r < nRows; r++)
+            for (size_t r = 0; r < compNRows; r++)
             {
                 // Copy the row of C into the column
                 for (size_t i = 0; i < 3 * nVerts; i++)
                 {
                     curCol(i) = dest.C(r, i);
                 }
-                ProjectViaSparse(curCol, curCol, energy, bct, factor);
+                ProjectViaSparse(curCol, curCol);
                 // Copy the column into the column of A^{-1} C^T
-                for (size_t i = 0; i < 3 * nVerts + 3; i++)
+                for (size_t i = 0; i < bigNRows; i++)
                 {
                     A_inv_CT(i, r) = curCol(i);
                 }
@@ -317,12 +395,8 @@ namespace rsurfaces
             dest.M_A = -dest.C * A_inv_CT;
         }
 
-        void ProjectViaSchur(SchurComplement &comp, Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest,
-                             SurfaceEnergy *energy, BlockClusterTree *&bct, SparseFactorization &factor)
+        void HsMetric::ProjectViaSchur(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, SchurComplement &comp)
         {
-            MeshPtr mesh = energy->GetMesh();
-            GeomPtr geom = energy->GetGeom();
-
             size_t nVerts = mesh->nVertices();
             // Invert the "saddle matrix" now:
             // the block of M^{-1} we want is A^{-1} + A^{-1} C^T (M/A)^{-1} C A^{-1}
@@ -330,9 +404,9 @@ namespace rsurfaces
             // Reuse curCol to store A^{-1} x
             // First allocate some space for a single column
             Eigen::VectorXd curCol;
-            curCol.setZero(3 * nVerts + 3);
+            curCol.setZero(comp.C.cols());
             MatrixUtils::MatrixIntoColumn(gradient, curCol);
-            ProjectViaSparse(curCol, curCol, energy, bct, factor);
+            ProjectViaSparse(curCol, curCol);
 
             // Now we compute the correction.
             // Again we already have A^{-1} once, so no need to recompute it
@@ -342,18 +416,14 @@ namespace rsurfaces
             MatrixUtils::SolveDenseSystem(comp.M_A, C_Ai_x, MAi_C_Ai_x);
             Eigen::VectorXd B_MAi_C_Ai_x = comp.C.transpose() * MAi_C_Ai_x;
             // Apply A^{-1} from scratch one more time
-            ProjectViaSparse(B_MAi_C_Ai_x, B_MAi_C_Ai_x, energy, bct, factor);
+            ProjectViaSparse(B_MAi_C_Ai_x, B_MAi_C_Ai_x);
 
             curCol = curCol + B_MAi_C_Ai_x;
             MatrixUtils::ColumnIntoMatrix(curCol, dest);
         }
 
-        void BackprojectViaSchur(std::vector<ConstraintPack> &constraints, SchurComplement &comp,
-                                 SurfaceEnergy *energy, BlockClusterTree *&bct, SparseFactorization &factor)
+        void HsMetric::ProjectSchurConstraints(std::vector<ConstraintPack> &constraints, SchurComplement &comp)
         {
-            MeshPtr mesh = energy->GetMesh();
-            GeomPtr geom = energy->GetGeom();
-
             size_t nRows = comp.M_A.rows();
             Eigen::VectorXd vals(nRows);
             int curRow = 0;
@@ -369,7 +439,7 @@ namespace rsurfaces
             // Apply C^T
             Eigen::VectorXd correction = comp.C.transpose() * vals;
             // Apply A^{-1}
-            ProjectViaSparse(correction, correction, energy, bct, factor);
+            ProjectViaSparse(correction, correction);
 
             // Apply the correction to the vertex positions
             VertexIndices verts = mesh->getVertexIndices();
@@ -379,6 +449,14 @@ namespace rsurfaces
                 int base = 3 * verts[v];
                 Vector3 vertCorr{correction(base), correction(base + 1), correction(base + 2)};
                 geom->inputVertexPositions[v] += vertCorr;
+            }
+        }
+
+        void HsMetric::ProjectSimpleConstraints()
+        {
+            for (SimpleProjectorConstraint *spc : simpleConstraints)
+            {
+                spc->ProjectConstraint(mesh, geom);
             }
         }
     } // namespace Hs

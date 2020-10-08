@@ -32,11 +32,13 @@ namespace rsurfaces
         }
 
         double sum = 0;
-        #pragma omp parallel for reduction(+ : sum) shared(root)
+        #pragma omp parallel for reduction(+ : sum) shared(root, energyPerFace)
         for (size_t i = 0; i < kernel->mesh->nFaces(); i++)
         {
             GCFace f = kernel->mesh->face(i);
-            sum += computeEnergyOfFace(f, root);
+            double e_f = computeEnergyOfFace(f, root);
+            energyPerFace[f] = e_f;
+            sum += e_f;
         }
         return sum;
     }
@@ -186,6 +188,7 @@ namespace rsurfaces
         }
 
         root = Create6DBVHFromMeshFaces(kernel->mesh, kernel->geom);
+        energyPerFace = geometrycentral::surface::FaceData<double>(*kernel->mesh);
     }
 
     MeshPtr BarnesHutTPEnergy6D::GetMesh()

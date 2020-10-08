@@ -15,11 +15,12 @@ namespace rsurfaces
         static MainApp *instance;
         MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow *flow_, polyscope::SurfaceMesh *psMesh_, std::string meshName_);
 
-        void PlotL2Gradient();
         void TestLML();
         void TestMVProduct();
         void BenchmarkBH();
         void TestBarnesHut();
+        void PlotEnergyPerFace();
+        void Scale2x();
 
         void TakeNaiveStep(double t);
         void TakeFractionalSobolevStep();

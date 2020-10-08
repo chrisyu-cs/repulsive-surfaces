@@ -6,15 +6,20 @@ namespace rsurfaces
 {
     namespace Constraints
     {
-        class ScalingConstraint : public SaddleMatrixConstraint
+        class VertexPinConstraint : public SimpleProjectorConstraint
         {
         public:
+            VertexPinConstraint(MeshPtr &mesh, GeomPtr &geom);
             virtual void addTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow);
             virtual void addEntries(Eigen::MatrixXd &M, MeshPtr &mesh, GeomPtr &geom, int baseRow);
-            virtual void addValue(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow);
-            virtual double getTargetValue();
-            virtual void incrementTargetValue(double incr);
             virtual size_t nRows();
+            virtual void ProjectConstraint(MeshPtr &mesh, GeomPtr &geom);
+        
+            void pinVertices(MeshPtr &mesh, GeomPtr &geom, std::vector<size_t> &indices_);
+
+        private:
+            std::vector<size_t> indices;
+            std::vector<Vector3> initPositions;
         };
     } // namespace Constraints
 } // namespace rsurfaces

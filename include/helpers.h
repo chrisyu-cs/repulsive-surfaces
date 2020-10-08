@@ -166,6 +166,10 @@ namespace rsurfaces
         Vector3 sum{0, 0, 0};
         for (GCFace f : v.adjacentFaces())
         {
+            if (f.isBoundaryLoop())
+            {
+                continue;
+            }
             // Get two vectors from the face
             Vector3 e1 = vectorOfHalfedge(geom, f.halfedge());
             Vector3 e2 = vectorOfHalfedge(geom, f.halfedge().next());

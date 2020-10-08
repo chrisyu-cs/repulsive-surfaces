@@ -81,6 +81,7 @@ set(SRCS
   src/sobolev/constraints/scaling.cpp
   src/sobolev/constraints/total_area.cpp
   src/sobolev/constraints/total_volume.cpp
+  src/sobolev/constraints/vertex_pin.cpp
   src/spatial/bvh_6d.cpp
   src/spatial/bvh_data.cpp
   src/spatial/bvh_flattened.cpp
