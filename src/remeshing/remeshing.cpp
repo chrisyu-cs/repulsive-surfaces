@@ -16,7 +16,12 @@ namespace rsurfaces
         {
             return abs(d1 - 6) + abs(d2 - 6) + abs(d3 - 6) + abs(d4 - 6);
         }
-
+        
+        void collapseEdge(MeshPtr const &mesh, Edge e)
+        {
+            
+        }
+        
         bool shouldFlip(Edge e)
         {
             // check how close the diamond vertices are to degree 6
@@ -38,7 +43,7 @@ namespace rsurfaces
         {
             for(Edge e : mesh->edges())
             {
-                if(shouldFlip(e))
+                if(!e.isBoundary() && shouldFlip(e))
                 {
                     mesh->flip(e);
                 }
@@ -58,7 +63,7 @@ namespace rsurfaces
             queue<Edge> toCheck;
             // true if edge is currently in toCheck
             EdgeData<bool> inQueue(*mesh);
-            // start with ALL edges
+            // start with all edges
             for (Edge e : mesh->edges())
             {
                 toCheck.push(e);
@@ -73,7 +78,7 @@ namespace rsurfaces
                 toCheck.pop();
                 inQueue[e] = false;
                 // if not Delaunay, flip edge and enqueue the surrounding "diamond" edges (if not already)
-                if (!isDelaunay(geometry, e))
+                if (!e.isBoundary() && !isDelaunay(geometry, e))
                 {
                     flipCnt++;
                     Halfedge he = e.halfedge();
@@ -113,17 +118,24 @@ namespace rsurfaces
             VertexData<Vector3> newVertexPosition(*mesh);
             for (Vertex v : mesh->vertices())
             {
-                // calculate average of surrounding vertices
-                newVertexPosition[v] = Vector3::zero();
-                for (Vertex j : v.adjacentVertices())
+                if(v.isBoundary())
                 {
-                    newVertexPosition[v] += geometry->inputVertexPositions[j];
+                    newVertexPosition[v] = geometry->inputVertexPositions[v];
                 }
-                newVertexPosition[v] /= v.degree();
-                // and project the average to the tangent plane
-                Vector3 updateDirection = newVertexPosition[v] - geometry->inputVertexPositions[v];
-                updateDirection = projectToPlane(updateDirection, geometry->vertexNormals[v]);
-                newVertexPosition[v] = geometry->inputVertexPositions[v] + updateDirection;
+                else
+                {
+                    // calculate average of surrounding vertices
+                    newVertexPosition[v] = Vector3::zero();
+                    for (Vertex j : v.adjacentVertices())
+                    {
+                        newVertexPosition[v] += geometry->inputVertexPositions[j];
+                    }
+                    newVertexPosition[v] /= v.degree();
+                    // and project the average to the tangent plane
+                    Vector3 updateDirection = newVertexPosition[v] - geometry->inputVertexPositions[v];
+                    updateDirection = projectToPlane(updateDirection, geometry->vertexNormals[v]);
+                    newVertexPosition[v] = geometry->inputVertexPositions[v] + updateDirection;
+                }
             }
             // update final vertices
             for (Vertex v : mesh->vertices())
@@ -167,18 +179,24 @@ namespace rsurfaces
             VertexData<Vector3> newVertexPosition(*mesh);
             for (Vertex v : mesh->vertices())
             {
-                newVertexPosition[v] = Vector3::zero();
-                Vector3 updateDirection = Vector3::zero();
-                // for each face
-                for (Face f : v.adjacentFaces())
+                if(v.isBoundary())
                 {
-                    // add the circumcenter weighted by face area to the update direction
-                    Vector3 circum = findCircumcenter(geometry, f);
-                    updateDirection += geometry->faceAreas[f] * (circum - geometry->inputVertexPositions[v]);
+                    newVertexPosition[v] = geometry->inputVertexPositions[v];
                 }
-                // project update direction to tangent plane
-                updateDirection = projectToPlane(updateDirection, geometry->vertexNormals[v]);
-                newVertexPosition[v] = geometry->inputVertexPositions[v] + updateDirection;
+                else{
+                    newVertexPosition[v] = Vector3::zero();
+                    Vector3 updateDirection = Vector3::zero();
+                    // for each face
+                    for (Face f : v.adjacentFaces())
+                    {
+                        // add the circumcenter weighted by face area to the update direction
+                        Vector3 circum = findCircumcenter(geometry, f);
+                        updateDirection += geometry->faceAreas[f] * (circum - geometry->inputVertexPositions[v]);
+                    }
+                    // project update direction to tangent plane
+                    updateDirection = projectToPlane(updateDirection, geometry->vertexNormals[v]);
+                    newVertexPosition[v] = geometry->inputVertexPositions[v] + updateDirection;
+                }
             }
             // update final vertices
             for (Vertex v : mesh->vertices())
@@ -186,5 +204,100 @@ namespace rsurfaces
                 geometry->inputVertexPositions[v] = newVertexPosition[v];
             }
         }
+        
+        void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry)
+        {
+            // compute average edge length
+            double L = 0;
+            // queue of edge to check length
+            queue<Edge> toCheck;
+            for(Edge e : mesh->edges())
+            {
+                L += geometry->edgeLength(e);
+                toCheck.push(e);
+            }
+            L /= mesh->nEdges();
+            
+            
+            while(!toCheck.empty())
+            {
+                Edge e = toCheck.front();
+                toCheck.pop();
+                // split if too long, collapse if too short
+                if(geometry->edgeLength(e) > L*4.0/3)
+                {
+ /*                   Vector3 endPos1 = geometry->inputVertexPositions[e.halfedge().tailVertex()];
+                    Vector3 endPos2 = geometry->inputVertexPositions[e.halfedge().tipVertex()];
+                    Halfedge he = mesh->splitEdgeTriangular(e);
+                    Vertex newV = he.vertex();
+                    geometry->inputVertexPositions[newV] = (endPos1 + endPos2)/2; */
+                }
+                else if(geometry->edgeLength(e) < L*4.0/5)
+                {
+                    collapseEdge(mesh, e);
+                }
+            }
+            
+        }
+        
+        Vector3 findBarycenter(Vector3 p1, Vector3 p2, Vector3 p3)
+        {
+            return (p1 + p2 + p3)/3;
+        }
+
+        Vector3 findBarycenter(GeomPtr const &geometry, Face f)
+        {
+            // retrieve the face's vertices
+            int index = 0;
+            Vector3 p[3];
+            for (Vertex v0 : f.adjacentVertices())
+            {
+                p[index] = geometry->inputVertexPositions[v0];
+                index++;
+            }
+            return findBarycenter(p[0], p[1], p[2]);
+        }
+        
+        void smoothByFaceWeight(MeshPtr const &mesh, GeomPtr const &geometry)
+        {
+            FaceData<double> faceWeight(*mesh);
+            for(Face f : mesh->faces()){
+                faceWeight[f] = .000001+abs(findBarycenter(geometry, f).z+1000000);
+            }
+            // smoothed vertex positions
+            VertexData<Vector3> newVertexPosition(*mesh);
+            for (Vertex v : mesh->vertices())
+            {
+                if(v.isBoundary())
+                {
+                    newVertexPosition[v] = geometry->inputVertexPositions[v];
+                }
+                else{
+                    Vector3 newV = Vector3::zero();
+                    Vector3 updateDirection = Vector3::zero();
+                    double s = 0;
+                    for (Face f : v.adjacentFaces())
+                    {
+                        // add the circumcenter weighted by face area to the update direction
+                        Vector3 bary = findBarycenter(geometry, f);
+                        double w = geometry->faceAreas[f] * faceWeight[f];
+                        newV += w * bary;
+                        s += w;
+                    }
+                    newV /= s;
+                    
+                    // project update direction to tangent plane
+                    updateDirection = newV - geometry->inputVertexPositions[v];
+                    updateDirection = projectToPlane(updateDirection, geometry->vertexNormals[v]);
+                    newVertexPosition[v] = geometry->inputVertexPositions[v] + updateDirection;
+                }
+            }
+            // update final vertices
+            for (Vertex v : mesh->vertices())
+            {
+                geometry->inputVertexPositions[v] = newVertexPosition[v];
+            }
+        }
+        
     } // namespace remeshing
 } // namespace rsurfaces

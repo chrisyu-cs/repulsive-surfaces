@@ -31,5 +31,9 @@ namespace rsurfaces
         Vector3 findCircumcenter(GeomPtr const &geometry, Face f);
 
         void smoothByCircumcenter(MeshPtr const &mesh, GeomPtr const &geometry);
+        
+        void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry);
+        
+        void smoothByFaceWeight(MeshPtr const &mesh, GeomPtr const &geometry);
     } // namespace remeshing
 } // namespace rsurfaces
