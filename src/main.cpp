@@ -28,6 +28,7 @@
 #include "spatial/convolution_kernel.h"
 #include "block_cluster_tree.h"
 #include "scene_file.h"
+#include "surface_derivatives.h"
 
 #include "remeshing/remeshing.h"
 
@@ -228,6 +229,61 @@ namespace rsurfaces
     {
       geom->inputVertexPositions[v] = 2 * geom->inputVertexPositions[v];
     }
+  }
+
+  Jacobian numericalNormalDeriv(GeomPtr &geom, GCVertex vert, GCVertex wrt)
+  {
+    double h = 1e-4;
+
+    Vector3 origNormal = vertexAreaNormalUnnormalized(geom, vert);
+    Vector3 origPos = geom->inputVertexPositions[wrt];
+    geom->inputVertexPositions[wrt] = origPos + Vector3{h, 0, 0};
+    geom->refreshQuantities();
+    Vector3 n_x = vertexAreaNormalUnnormalized(geom, vert);
+
+    geom->inputVertexPositions[wrt] = origPos + Vector3{0, h, 0};
+    geom->refreshQuantities();
+    Vector3 n_y = vertexAreaNormalUnnormalized(geom, vert);
+
+    geom->inputVertexPositions[wrt] = origPos + Vector3{0, 0, h};
+    geom->refreshQuantities();
+    Vector3 n_z = vertexAreaNormalUnnormalized(geom, vert);
+
+    geom->inputVertexPositions[wrt] = origPos;
+    geom->refreshQuantities();
+
+    Vector3 deriv_y = (n_y - origNormal) / h;
+    Vector3 deriv_z = (n_z - origNormal) / h;
+    Vector3 deriv_x = (n_x - origNormal) / h;
+    Jacobian J_num{deriv_x, deriv_y, deriv_z};
+    return J_num;
+  }
+
+  void MainApp::TestNormalDeriv()
+  {
+    GCVertex vert;
+    for (GCVertex v : mesh->vertices())
+    {
+      if (v.isBoundary())
+      {
+        vert = v;
+        break;
+      }
+    }
+    std::cout << "Testing vertex " << vert << std::endl;
+    for (GCVertex neighbor : vert.adjacentVertices())
+    {
+      std::cout << "Derivative of normal of " << vert << " wrt " << neighbor << std::endl;
+      Jacobian dWrtNeighbor = SurfaceDerivs::vertexNormalWrtVertex(geom, vert, neighbor);
+      dWrtNeighbor.Print();
+      std::cout << "Numerical:" << std::endl;
+      numericalNormalDeriv(geom, vert, neighbor).Print();
+    }
+    std::cout << "Derivative of normal of " << vert << " wrt " << vert << std::endl;
+    Jacobian dWrtSelf = SurfaceDerivs::vertexNormalWrtVertex(geom, vert, vert);
+    dWrtSelf.Print();
+    std::cout << "Numerical:" << std::endl;
+    numericalNormalDeriv(geom, vert, vert).Print();
   }
 
   void MainApp::TestMVProduct()
@@ -479,6 +535,11 @@ void customCallback()
   if (ImGui::Button("Scale mesh 2x", ImVec2{ITEM_WIDTH, 0}))
   {
     MainApp::instance->Scale2x();
+  }
+
+  if (ImGui::Button("Normal deriv", ImVec2{ITEM_WIDTH, 0}))
+  {
+    MainApp::instance->TestNormalDeriv();
   }
   ImGui::EndGroup();
 

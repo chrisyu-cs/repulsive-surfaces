@@ -155,6 +155,16 @@ namespace rsurfaces
         return f.mass;
     }
 
+    inline Vector3 vertexAreaNormalUnnormalized(GeomPtr const &geom, GCVertex v)
+    {
+        Vector3 normal{0, 0, 0};
+        for (GCFace f : v.adjacentFaces())
+        {
+            normal += geom->faceArea(f) * geom->faceNormal(f);
+        }
+        return normal;
+    }
+
     inline Vector3 vectorOfHalfedge(GeomPtr const &geom, GCHalfedge he)
     {
         // Vector points from tail to head

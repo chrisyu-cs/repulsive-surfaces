@@ -173,6 +173,72 @@ namespace rsurfaces
             }
             return sum;
         }
+
+        inline Jacobian triAreaNormalWrtVertex(const GeomPtr &geom, GCFace &f, GCVertex &wrt)
+        {
+            double area = geom->faceAreas[f];
+            Vector3 normal = geom->faceNormals[f];
+
+            Vector3 dArea = triangleAreaWrtVertex(geom, f, wrt);
+            Jacobian dNormal = normalWrtVertex(geom, f, wrt);
+
+            Jacobian s1 = Jacobian::OuterProductToJacobian(normal, dArea);
+            Jacobian s2 = area * dNormal;
+
+            Jacobian sum = s1 + s2;
+            return sum;
+        }
+
+        inline Jacobian vertexNormalWrtVertex(const GeomPtr &geom, GCVertex &vert, GCVertex &wrt)
+        {
+            Jacobian J{Vector3{0, 0, 0}, Vector3{0, 0, 0}, Vector3{0, 0, 0}};
+            if (vert == wrt)
+            {
+                // If differentiating by same vertex, then differentiate
+                // (area * normal) for all surrounding faces
+                for (GCFace f : vert.adjacentFaces())
+                {
+                    if (f.isBoundaryLoop())
+                    {
+                        continue;
+                    }
+                    J = J + triAreaNormalWrtVertex(geom, f, wrt);
+                }
+                return J;
+            }
+
+            else
+            {
+                // Otherwise, need to differentiate (area * normal) for
+                // the two shared faces
+                GCHalfedge connecting;
+                bool found = false;
+                // Find the half-edge connecting the two
+                for (GCHalfedge he : wrt.incomingHalfedges())
+                {
+                    if (he.vertex() == vert)
+                    {
+                        connecting = he;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    return J;
+                }
+                // Need to differentiate (area * normal) on both sides
+                for (GCFace f : connecting.edge().adjacentFaces())
+                {
+                    if (f.isBoundaryLoop())
+                    {
+                        continue;
+                    }
+                    J = J + triAreaNormalWrtVertex(geom, f, wrt);
+                }
+                return J;
+            }
+        }
     }; // namespace SurfaceDerivs
 
 } // namespace rsurfaces
