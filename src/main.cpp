@@ -646,8 +646,9 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::sce
 
   SurfaceFlow *flow = new SurfaceFlow(energy);
   bool kernelRemoved = false;
-  // Set this up here, so that we can aggregate all vertex pins into the same constraint
-  Constraints::VertexPinConstraint *c = 0;
+  // Set these up here, so that we can aggregate all vertex pins into the same constraint
+  Constraints::VertexPinConstraint *pinC = 0;
+  Constraints::VertexNormalConstraint *normC = 0;
 
   for (scene::ConstraintData &data : scene.constraints)
   {
@@ -663,11 +664,12 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::sce
     case scene::ConstraintType::TotalVolume:
       flow->addSchurConstraint<Constraints::TotalVolumeConstraint>(m.mesh, m.geom, data.targetMultiplier, data.numIterations);
       break;
+
     case scene::ConstraintType::BoundaryPins:
     {
-      if (!c)
+      if (!pinC)
       {
-        c = flow->addSimpleConstraint<Constraints::VertexPinConstraint>(m.mesh, m.geom);
+        pinC = flow->addSimpleConstraint<Constraints::VertexPinConstraint>(m.mesh, m.geom);
       }
       // Manually add all of the boundary vertex indices as pins
       std::vector<size_t> boundaryInds;
@@ -679,22 +681,57 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::sce
           boundaryInds.push_back(inds[v]);
         }
       }
-      c->pinVertices(m.mesh, m.geom, boundaryInds);
+      pinC->pinVertices(m.mesh, m.geom, boundaryInds);
       kernelRemoved = true;
     }
+    break;
+
     case scene::ConstraintType::VertexPins:
     {
-      if (!c)
+      if (!pinC)
       {
-        c = flow->addSimpleConstraint<Constraints::VertexPinConstraint>(m.mesh, m.geom);
+        pinC = flow->addSimpleConstraint<Constraints::VertexPinConstraint>(m.mesh, m.geom);
       }
       // Add the specified vertices as pins
-      c->pinVertices(m.mesh, m.geom, scene.vertexPins);
+      pinC->pinVertices(m.mesh, m.geom, scene.vertexPins);
       // Clear the data vector so that we don't add anything twice
       scene.vertexPins.clear();
       kernelRemoved = true;
     }
     break;
+
+    case scene::ConstraintType::BoundaryNormals:
+    {
+      if (!normC)
+      {
+        normC = flow->addSimpleConstraint<Constraints::VertexNormalConstraint>(m.mesh, m.geom);
+      }
+      // Manually add all of the boundary vertex indices as pins
+      std::vector<size_t> boundaryInds;
+      VertexIndices inds = m.mesh->getVertexIndices();
+      for (GCVertex v : m.mesh->vertices())
+      {
+        if (v.isBoundary())
+        {
+          boundaryInds.push_back(inds[v]);
+        }
+      }
+      normC->pinVertices(m.mesh, m.geom, boundaryInds);
+    }
+
+    case scene::ConstraintType::VertexNormals:
+    {
+      if (!normC)
+      {
+        normC = flow->addSimpleConstraint<Constraints::VertexNormalConstraint>(m.mesh, m.geom);
+      }
+      // Add the specified vertices as pins
+      normC->pinVertices(m.mesh, m.geom, scene.vertexNormals);
+      // Clear the data vector so that we don't add anything twice
+      scene.vertexNormals.clear();
+    }
+    break;
+    
     default:
       std::cout << "  * Skipping unrecognized constraint type" << std::endl;
       break;

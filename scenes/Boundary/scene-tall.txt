@@ -1,5 +1,6 @@
 repel_mesh chimney-tall.obj
 constrain boundary_vertices
-constrain area
+# constrain area
 # constrain vertex 1457
+constrain boundary_normals
 
