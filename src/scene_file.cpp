@@ -52,6 +52,10 @@ namespace rsurfaces
                 return "boundary pins";
             case ConstraintType::VertexPins:
                 return "vertex pins";
+            case ConstraintType::BoundaryNormals:
+                return "boundary normals";
+            case ConstraintType::VertexNormals:
+                return "vertex normals";
             default:
                 return "unknown";
             }
@@ -80,6 +84,14 @@ namespace rsurfaces
             {
                 return ConstraintType::VertexPins;
             }
+            else if (consType == "boundary_normals")
+            {
+                return ConstraintType::BoundaryNormals;
+            }
+            else if (consType == "normal" || consType == "normals")
+            {
+                return ConstraintType::VertexNormals;
+            }
             else
             {
                 std::cerr << "  * Unknown constraint type " << consType << std::endl;
@@ -105,12 +117,23 @@ namespace rsurfaces
             {
                 ConstraintData consData{getConstraintType(parts[1]), 1, 0};
 
+                // Get the list of vertices specified to be pinned
                 if (consData.type == ConstraintType::VertexPins)
                 {
                     for (size_t i = 2; i < parts.size(); i++)
                     {
                         size_t pin = stoul(parts[i]);
                         data.vertexPins.push_back(pin);
+                    }
+                }
+
+                // Likewise get the list of normals
+                else if (consData.type == ConstraintType::VertexNormals)
+                {
+                    for (size_t i = 2; i < parts.size(); i++)
+                    {
+                        size_t pin = stoul(parts[i]);
+                        data.vertexNormals.push_back(pin);
                     }
                 }
 

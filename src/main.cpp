@@ -28,6 +28,7 @@
 #include "spatial/convolution_kernel.h"
 #include "block_cluster_tree.h"
 #include "scene_file.h"
+#include "surface_derivatives.h"
 
 #include "remeshing/remeshing.h"
 
@@ -228,6 +229,61 @@ namespace rsurfaces
     {
       geom->inputVertexPositions[v] = 2 * geom->inputVertexPositions[v];
     }
+  }
+
+  Jacobian numericalNormalDeriv(GeomPtr &geom, GCVertex vert, GCVertex wrt)
+  {
+    double h = 1e-4;
+
+    Vector3 origNormal = vertexAreaNormal(geom, vert);
+    Vector3 origPos = geom->inputVertexPositions[wrt];
+    geom->inputVertexPositions[wrt] = origPos + Vector3{h, 0, 0};
+    geom->refreshQuantities();
+    Vector3 n_x = vertexAreaNormal(geom, vert);
+
+    geom->inputVertexPositions[wrt] = origPos + Vector3{0, h, 0};
+    geom->refreshQuantities();
+    Vector3 n_y = vertexAreaNormal(geom, vert);
+
+    geom->inputVertexPositions[wrt] = origPos + Vector3{0, 0, h};
+    geom->refreshQuantities();
+    Vector3 n_z = vertexAreaNormal(geom, vert);
+
+    geom->inputVertexPositions[wrt] = origPos;
+    geom->refreshQuantities();
+
+    Vector3 deriv_y = (n_y - origNormal) / h;
+    Vector3 deriv_z = (n_z - origNormal) / h;
+    Vector3 deriv_x = (n_x - origNormal) / h;
+    Jacobian J_num{deriv_x, deriv_y, deriv_z};
+    return J_num;
+  }
+
+  void MainApp::TestNormalDeriv()
+  {
+    GCVertex vert;
+    for (GCVertex v : mesh->vertices())
+    {
+      if (v.isBoundary())
+      {
+        vert = v;
+        break;
+      }
+    }
+    std::cout << "Testing vertex " << vert << std::endl;
+    for (GCVertex neighbor : vert.adjacentVertices())
+    {
+      std::cout << "Derivative of normal of " << vert << " wrt " << neighbor << std::endl;
+      Jacobian dWrtNeighbor = SurfaceDerivs::vertexNormalWrtVertex(geom, vert, neighbor);
+      dWrtNeighbor.Print();
+      std::cout << "Numerical:" << std::endl;
+      numericalNormalDeriv(geom, vert, neighbor).Print();
+    }
+    std::cout << "Derivative of normal of " << vert << " wrt " << vert << std::endl;
+    Jacobian dWrtSelf = SurfaceDerivs::vertexNormalWrtVertex(geom, vert, vert);
+    dWrtSelf.Print();
+    std::cout << "Numerical:" << std::endl;
+    numericalNormalDeriv(geom, vert, vert).Print();
   }
 
   void MainApp::TestMVProduct()
@@ -480,6 +536,11 @@ void customCallback()
   {
     MainApp::instance->Scale2x();
   }
+
+  if (ImGui::Button("Normal deriv", ImVec2{ITEM_WIDTH, 0}))
+  {
+    MainApp::instance->TestNormalDeriv();
+  }
   ImGui::EndGroup();
 
   ImGui::Text("Remeshing tests");
@@ -585,8 +646,9 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::sce
 
   SurfaceFlow *flow = new SurfaceFlow(energy);
   bool kernelRemoved = false;
-  // Set this up here, so that we can aggregate all vertex pins into the same constraint
-  Constraints::VertexPinConstraint *c = 0;
+  // Set these up here, so that we can aggregate all vertex pins into the same constraint
+  Constraints::VertexPinConstraint *pinC = 0;
+  Constraints::VertexNormalConstraint *normC = 0;
 
   for (scene::ConstraintData &data : scene.constraints)
   {
@@ -602,11 +664,12 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::sce
     case scene::ConstraintType::TotalVolume:
       flow->addSchurConstraint<Constraints::TotalVolumeConstraint>(m.mesh, m.geom, data.targetMultiplier, data.numIterations);
       break;
+
     case scene::ConstraintType::BoundaryPins:
     {
-      if (!c)
+      if (!pinC)
       {
-        c = flow->addSimpleConstraint<Constraints::VertexPinConstraint>(m.mesh, m.geom);
+        pinC = flow->addSimpleConstraint<Constraints::VertexPinConstraint>(m.mesh, m.geom);
       }
       // Manually add all of the boundary vertex indices as pins
       std::vector<size_t> boundaryInds;
@@ -618,22 +681,57 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::sce
           boundaryInds.push_back(inds[v]);
         }
       }
-      c->pinVertices(m.mesh, m.geom, boundaryInds);
+      pinC->pinVertices(m.mesh, m.geom, boundaryInds);
       kernelRemoved = true;
     }
+    break;
+
     case scene::ConstraintType::VertexPins:
     {
-      if (!c)
+      if (!pinC)
       {
-        c = flow->addSimpleConstraint<Constraints::VertexPinConstraint>(m.mesh, m.geom);
+        pinC = flow->addSimpleConstraint<Constraints::VertexPinConstraint>(m.mesh, m.geom);
       }
       // Add the specified vertices as pins
-      c->pinVertices(m.mesh, m.geom, scene.vertexPins);
+      pinC->pinVertices(m.mesh, m.geom, scene.vertexPins);
       // Clear the data vector so that we don't add anything twice
       scene.vertexPins.clear();
       kernelRemoved = true;
     }
     break;
+
+    case scene::ConstraintType::BoundaryNormals:
+    {
+      if (!normC)
+      {
+        normC = flow->addSimpleConstraint<Constraints::VertexNormalConstraint>(m.mesh, m.geom);
+      }
+      // Manually add all of the boundary vertex indices as pins
+      std::vector<size_t> boundaryInds;
+      VertexIndices inds = m.mesh->getVertexIndices();
+      for (GCVertex v : m.mesh->vertices())
+      {
+        if (v.isBoundary())
+        {
+          boundaryInds.push_back(inds[v]);
+        }
+      }
+      normC->pinVertices(m.mesh, m.geom, boundaryInds);
+    }
+
+    case scene::ConstraintType::VertexNormals:
+    {
+      if (!normC)
+      {
+        normC = flow->addSimpleConstraint<Constraints::VertexNormalConstraint>(m.mesh, m.geom);
+      }
+      // Add the specified vertices as pins
+      normC->pinVertices(m.mesh, m.geom, scene.vertexNormals);
+      // Clear the data vector so that we don't add anything twice
+      scene.vertexNormals.clear();
+    }
+    break;
+    
     default:
       std::cout << "  * Skipping unrecognized constraint type" << std::endl;
       break;

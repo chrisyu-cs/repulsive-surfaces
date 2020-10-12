@@ -16,6 +16,11 @@ namespace rsurfaces
         return a + (b * -1);
     }
 
+    Jacobian operator-(const Jacobian &a)
+    {
+        return a * -1;
+    }
+
     Jacobian operator*(const Jacobian &a, double c)
     {
         return Jacobian{a.col1 * c, a.col2 * c, a.col3 * c};
@@ -24,6 +29,11 @@ namespace rsurfaces
     Jacobian operator*(double c, const Jacobian &a)
     {
         return a * c;
+    }
+
+    Jacobian operator/(const Jacobian &a, double c)
+    {
+        return a * (1.0 / c);
     }
 
 } // namespace rsurfaces

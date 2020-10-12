@@ -16,7 +16,9 @@ namespace rsurfaces
             TotalArea,
             TotalVolume,
             BoundaryPins,
-            VertexPins
+            VertexPins,
+            BoundaryNormals,
+            VertexNormals
         };
 
         struct ConstraintData
@@ -40,6 +42,7 @@ namespace rsurfaces
             std::vector<ObstacleData> obstacles;
             std::vector<ConstraintData> constraints;
             std::vector<size_t> vertexPins;
+            std::vector<size_t> vertexNormals;
         };
 
         template <class Container>
@@ -55,5 +58,7 @@ namespace rsurfaces
         SceneData parseScene(std::string filename);
 
     } // namespace scene
+
+    
 
 } // namespace rsurfaces
