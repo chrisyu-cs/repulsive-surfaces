@@ -6,7 +6,7 @@ namespace rsurfaces
     {
         using std::cout;
         using std::queue;
-
+        
         inline Vector3 projectToPlane(Vector3 v, Vector3 norm)
         {
             return v - norm * dot(norm, v);
@@ -15,11 +15,6 @@ namespace rsurfaces
         inline int degreeDifference(int d1, int d2, int d3, int d4)
         {
             return abs(d1 - 6) + abs(d2 - 6) + abs(d3 - 6) + abs(d4 - 6);
-        }
-        
-        void collapseEdge(MeshPtr const &mesh, Edge e)
-        {
-            
         }
         
         bool shouldFlip(Edge e)
@@ -205,7 +200,7 @@ namespace rsurfaces
             }
         }
         
-        void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry)
+        void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry) // work in progress
         {
             // compute average edge length
             double L = 0;
@@ -234,7 +229,7 @@ namespace rsurfaces
                 }
                 else if(geometry->edgeLength(e) < L*4.0/5)
                 {
-                    collapseEdge(mesh, e);
+//                    mesh->myCollapseEdgeTriangular(e);
                 }
             }
             
@@ -258,12 +253,8 @@ namespace rsurfaces
             return findBarycenter(p[0], p[1], p[2]);
         }
         
-        void smoothByFaceWeight(MeshPtr const &mesh, GeomPtr const &geometry)
+        void smoothByFaceWeight(MeshPtr const &mesh, GeomPtr const &geometry, FaceData<double> faceWeight)
         {
-            FaceData<double> faceWeight(*mesh);
-            for(Face f : mesh->faces()){
-                faceWeight[f] = .000001+abs(findBarycenter(geometry, f).z+1000000);
-            }
             // smoothed vertex positions
             VertexData<Vector3> newVertexPosition(*mesh);
             for (Vertex v : mesh->vertices())
@@ -272,13 +263,14 @@ namespace rsurfaces
                 {
                     newVertexPosition[v] = geometry->inputVertexPositions[v];
                 }
-                else{
+                else
+                {
                     Vector3 newV = Vector3::zero();
                     Vector3 updateDirection = Vector3::zero();
                     double s = 0;
                     for (Face f : v.adjacentFaces())
                     {
-                        // add the circumcenter weighted by face area to the update direction
+                        // add the barycenter weighted by face area
                         Vector3 bary = findBarycenter(geometry, f);
                         double w = geometry->faceAreas[f] * faceWeight[f];
                         newV += w * bary;
