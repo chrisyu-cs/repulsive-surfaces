@@ -235,19 +235,19 @@ namespace rsurfaces
   {
     double h = 1e-4;
 
-    Vector3 origNormal = vertexAreaNormalUnnormalized(geom, vert);
+    Vector3 origNormal = vertexAreaNormal(geom, vert);
     Vector3 origPos = geom->inputVertexPositions[wrt];
     geom->inputVertexPositions[wrt] = origPos + Vector3{h, 0, 0};
     geom->refreshQuantities();
-    Vector3 n_x = vertexAreaNormalUnnormalized(geom, vert);
+    Vector3 n_x = vertexAreaNormal(geom, vert);
 
     geom->inputVertexPositions[wrt] = origPos + Vector3{0, h, 0};
     geom->refreshQuantities();
-    Vector3 n_y = vertexAreaNormalUnnormalized(geom, vert);
+    Vector3 n_y = vertexAreaNormal(geom, vert);
 
     geom->inputVertexPositions[wrt] = origPos + Vector3{0, 0, h};
     geom->refreshQuantities();
-    Vector3 n_z = vertexAreaNormalUnnormalized(geom, vert);
+    Vector3 n_z = vertexAreaNormal(geom, vert);
 
     geom->inputVertexPositions[wrt] = origPos;
     geom->refreshQuantities();

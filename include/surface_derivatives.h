@@ -2,6 +2,7 @@
 
 #include "rsurface_types.h"
 #include <iomanip>
+#include "helpers.h"
 
 namespace rsurfaces
 {
@@ -58,8 +59,10 @@ namespace rsurfaces
 
     Jacobian operator+(const Jacobian &a, const Jacobian &b);
     Jacobian operator-(const Jacobian &a, const Jacobian &b);
+    Jacobian operator-(const Jacobian &a);
     Jacobian operator*(const Jacobian &a, double c);
     Jacobian operator*(double c, const Jacobian &a);
+    Jacobian operator/(const Jacobian &a, double c);
 
     inline bool findVertexInTriangle(GCFace &face, GCVertex &vert, GCHalfedge &output)
     {
@@ -189,7 +192,7 @@ namespace rsurfaces
             return sum;
         }
 
-        inline Jacobian vertexNormalWrtVertex(const GeomPtr &geom, GCVertex &vert, GCVertex &wrt)
+        inline Jacobian vertexNormalUWrtVertex(const GeomPtr &geom, GCVertex &vert, GCVertex &wrt)
         {
             Jacobian J{Vector3{0, 0, 0}, Vector3{0, 0, 0}, Vector3{0, 0, 0}};
             if (vert == wrt)
@@ -238,6 +241,22 @@ namespace rsurfaces
                 }
                 return J;
             }
+        }
+
+        inline Jacobian vertexNormalWrtVertex(const GeomPtr &geom, GCVertex &vert, GCVertex &wrt)
+        {
+            // Normal times area
+            Vector3 AN = vertexAreaNormalUnnormalized(geom, vert);
+            // Derivative of AN
+            Jacobian dAN = vertexNormalUWrtVertex(geom, vert, wrt);
+            // We want to differentiate N = AN / |AN|, so we'll use the quotient rule:
+            // dN = (AN * d|AN| - dAN * |AN|) / |AN|^2
+            double norm_AN = AN.norm();
+            // Chain rule: d|AN| = (AN / |AN|) * dAN
+            Vector3 d_norm_AN = dAN.LeftMultiply(AN / norm_AN);
+
+            Jacobian dN = (Jacobian::OuterProductToJacobian(AN, d_norm_AN) - dAN * norm_AN) / (norm_AN * norm_AN);
+            return -dN;
         }
     }; // namespace SurfaceDerivs
 
