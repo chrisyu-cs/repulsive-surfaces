@@ -17,6 +17,19 @@ namespace rsurfaces
             return abs(d1 - 6) + abs(d2 - 6) + abs(d3 - 6) + abs(d4 - 6);
         }
         
+        void collapseEdge(MeshPtr const &mesh, GeomPtr const &geometry, Edge e)
+        {
+            Vertex v = e.halfedge().vertex();
+            if(v.degree() <= 3) return;
+            for(int i = v.getIndex(); i < (int)mesh->nVertices()-1; i++)
+            {
+                geometry->inputVertexPositions[i] = geometry->inputVertexPositions[i+1];
+            }
+//            mesh->myCollapseEdgeTriangular(e);
+            
+        }
+        
+        
         bool shouldFlip(Edge e)
         {
             // check how close the diamond vertices are to degree 6
@@ -205,19 +218,19 @@ namespace rsurfaces
             // compute average edge length
             double L = 0;
             // queue of edge to check length
-            queue<Edge> toCheck;
+            std::vector<Edge> toCheck;
             for(Edge e : mesh->edges())
             {
                 L += geometry->edgeLength(e);
-                toCheck.push(e);
+                toCheck.push_back(e);
             }
             L /= mesh->nEdges();
             
             
             while(!toCheck.empty())
             {
-                Edge e = toCheck.front();
-                toCheck.pop();
+                Edge e = toCheck.back();
+                toCheck.pop_back();
                 // split if too long, collapse if too short
                 if(geometry->edgeLength(e) > L*4.0/3)
                 {
@@ -229,7 +242,7 @@ namespace rsurfaces
                 }
                 else if(geometry->edgeLength(e) < L*4.0/5)
                 {
-//                    mesh->myCollapseEdgeTriangular(e);
+                    collapseEdge(mesh, geometry, e);
                 }
             }
             
@@ -272,7 +285,7 @@ namespace rsurfaces
                     {
                         // add the barycenter weighted by face area
                         Vector3 bary = findBarycenter(geometry, f);
-                        double w = geometry->faceAreas[f] * faceWeight[f];
+                        double w = geometry->faceAreas[f] / faceWeight[f];
                         newV += w * bary;
                         s += w;
                     }
@@ -281,7 +294,7 @@ namespace rsurfaces
                     // project update direction to tangent plane
                     updateDirection = newV - geometry->inputVertexPositions[v];
                     updateDirection = projectToPlane(updateDirection, geometry->vertexNormals[v]);
-                    newVertexPosition[v] = geometry->inputVertexPositions[v] + updateDirection;
+                    newVertexPosition[v] = geometry->inputVertexPositions[v] + 0.1*updateDirection;
                 }
             }
             // update final vertices

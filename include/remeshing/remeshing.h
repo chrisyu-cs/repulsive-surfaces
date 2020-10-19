@@ -16,6 +16,10 @@ namespace rsurfaces
         using namespace geometrycentral;
         using namespace geometrycentral::surface;
         
+        void collapseEdge(MeshPtr const &mesh, GeomPtr const &geometry, Edge e);
+        
+        void testStuff(MeshPtr const &mesh, GeomPtr const &geometry, int edgeIndex);
+        
         bool shouldFlip(Edge e);
         
         void adjustVertexDegrees(MeshPtr const &mesh);
