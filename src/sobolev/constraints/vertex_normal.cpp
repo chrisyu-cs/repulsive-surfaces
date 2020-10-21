@@ -65,6 +65,17 @@ namespace rsurfaces
             }
         }
 
+        void VertexNormalConstraint::addErrorValues(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        {
+            for (size_t i = 0; i < indices.size(); i++)
+            {
+                Vector3 current = vertexAreaNormal(geom, mesh->vertex(indices[i]));
+                V(baseRow + 3 * i) = (current.x - initNormals[i].x);
+                V(baseRow + 3 * i + 1) = (current.y - initNormals[i].y);
+                V(baseRow + 3 * i + 2) = (current.z - initNormals[i].z);
+            }
+        }
+
         size_t VertexNormalConstraint::nRows()
         {
             // Every vertex gets 3 rows

@@ -258,24 +258,6 @@ namespace rsurfaces
         return splitPoint;
     }
 
-    bool BVHNode6D::isAdmissibleFrom(Vector3 atPos, double thresholdTheta)
-    {
-        if (nodeType == BVHNodeType::Leaf)
-        {
-            if (centerOfMass == atPos)
-                return false;
-            else
-                return true;
-        }
-        if (nodeType == BVHNodeType::Interior)
-        {
-            double d = norm(centerOfMass - atPos);
-            return nodeRatioBox(minCoords, maxCoords, d) < thresholdTheta;
-        }
-        else
-            return true;
-    }
-
     void BVHNode6D::recomputeCentersOfMass(MeshPtr const &mesh, GeomPtr const &geom)
     {
         if (nodeType == BVHNodeType::Empty)

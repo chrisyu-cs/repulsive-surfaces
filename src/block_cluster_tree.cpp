@@ -100,17 +100,20 @@ namespace rsurfaces
         // A cluster is never admissible with itself
         if (pair.cluster1 == pair.cluster2)
             return false;
+
+        // A cluster is never admissible with a cluster whose center is inside its bounding box
+        if (pair.cluster1->boxContainsPoint(pair.cluster2->centerOfMass) ||
+            pair.cluster2->boxContainsPoint(pair.cluster1->centerOfMass))
+        {
+            return false;
+        }
+
         // Compute distance between centers of masses of clusters, along with cluster bounding radii
         double distance = norm(pair.cluster1->centerOfMass - pair.cluster2->centerOfMass);
-        double radius1 = norm(pair.cluster1->maxCoords - pair.cluster1->minCoords) / 2;
-        double radius2 = norm(pair.cluster2->maxCoords - pair.cluster2->minCoords) / 2;
-        // A cluster is never admissible with a cluster whose center is inside its bounding radius
-        if (distance < radius1 || distance < radius2)
-            return false;
 
-        // Compute Barnes-Hut distance ratios from boundary to boundary of bounding radii
-        double ratio1 = pair.cluster1->nodeRatio(distance - radius2);
-        double ratio2 = pair.cluster2->nodeRatio(distance - radius1);
+        // Compute Barnes-Hut distance ratios
+        double ratio1 = pair.cluster1->nodeRatio(distance);
+        double ratio2 = pair.cluster2->nodeRatio(distance);
 
         // Consider admissible only if both Barnes-Hut checks pass
         bool isAdm = fmax(ratio1, ratio2) < theta;
@@ -160,15 +163,15 @@ namespace rsurfaces
         Eigen::VectorXd result;
         result.setZero(b_hat.rows());
 
-        #pragma omp parallel firstprivate(result) shared(b_hat)
+#pragma omp parallel firstprivate(result) shared(b_hat)
         {
-        #pragma omp for
+#pragma omp for
             for (size_t i = 0; i < inadmissiblePairs.size(); i++)
             {
                 AfFullProduct(inadmissiblePairs[i], v_hat, result);
             }
 
-        #pragma omp critical
+#pragma omp critical
             {
                 b_hat += result;
             }
@@ -246,10 +249,10 @@ namespace rsurfaces
         // Percolate W^T * v upward through the tree
         percolateWtDot(treeContainer->tree, v, mesh, geom);
 
-        // For each cluster I, we need to sum over all clusters J that are
-        // admissible with it. Since we already have a list of all admissible
-        // pairs, we can just do this for all clusters at once.
-        #pragma omp parallel for shared(admissibleByCluster, treeContainer)
+// For each cluster I, we need to sum over all clusters J that are
+// admissible with it. Since we already have a list of all admissible
+// pairs, we can just do this for all clusters at once.
+#pragma omp parallel for shared(admissibleByCluster, treeContainer)
         for (size_t i = 0; i < admissibleByCluster.size(); i++)
         {
             for (ClusterPair const &pair : admissibleByCluster[i])

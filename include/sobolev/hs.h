@@ -23,10 +23,12 @@ namespace rsurfaces
         struct SparseFactorization
         {
             Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> factor;
+            size_t nRows = 0;
             bool initialized = false;
 
             inline void Compute(Eigen::SparseMatrix<double> M)
             {
+                nRows = M.rows();
                 initialized = true;
                 factor.compute(M);
             }
@@ -45,6 +47,10 @@ namespace rsurfaces
         Vector3 HatGradientOnTriangle(GCFace face, GCVertex vert, GeomPtr &geom);
         double get_s(double alpha, double beta);
 
+        /*
+        * This class contains everything necessary to compute an Hs-projected
+        * gradient direction. A new instance should be used every timestep.
+        */
         class HsMetric
         {
         public:
@@ -56,6 +62,8 @@ namespace rsurfaces
             void FillMatrixHigh(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom);
             // Build the base fractional Laplacian of order s.
             void FillMatrixFracOnly(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom);
+            // Build the base fractional Laplacian of order s.
+            void FillMatrixVertsFirst(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom);
 
             void ProjectGradient(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest);
 
@@ -71,6 +79,7 @@ namespace rsurfaces
             void ProjectSchurConstraints(std::vector<ConstraintPack> &constraints, SchurComplement &comp);
 
             void ProjectSimpleConstraints();
+            void ProjectSimpleConstraintsWithSaddle();
 
         private:
             size_t topLeftNumRows();

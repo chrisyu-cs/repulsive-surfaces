@@ -21,6 +21,17 @@ namespace rsurfaces
             VertexNormals
         };
 
+        enum class PotentialType
+        {
+            SquaredError
+        };
+
+        struct PotentialData
+        {
+            PotentialType type;
+            double weight;
+        };
+
         struct ConstraintData
         {
             ConstraintType type;
@@ -41,6 +52,7 @@ namespace rsurfaces
             double beta;
             std::vector<ObstacleData> obstacles;
             std::vector<ConstraintData> constraints;
+            std::vector<PotentialData> potentials;
             std::vector<size_t> vertexPins;
             std::vector<size_t> vertexNormals;
         };

@@ -113,6 +113,18 @@ namespace rsurfaces
                     cout << "  * Using exponents (" << data.alpha << ", " << data.beta << ")" << endl;
                 }
             }
+            else if (parts[0] == "minimize")
+            {
+                if (parts[1] == "squared_error")
+                {
+                    double weight = 1;
+                    if (parts.size() >= 3) {
+                        weight = stod(parts[2]);
+                    }
+                    data.potentials.push_back(PotentialData{PotentialType::SquaredError, weight});
+                    cout << "  * Adding squared error potential (weight " << weight << ")" << endl;
+                }
+            }
             else if (parts[0] == "constrain")
             {
                 ConstraintData consData{getConstraintType(parts[1]), 1, 0};

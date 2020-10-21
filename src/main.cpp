@@ -14,6 +14,7 @@
 #include "energy/barnes_hut_tpe_xdiff.h"
 #include "energy/barnes_hut_newtonian.h"
 #include "energy/static_obstacle.h"
+#include "energy/squared_error.h"
 #include "helpers.h"
 #include <memory>
 #include "spatial/bvh_flattened.h"
@@ -27,7 +28,6 @@
 #include "spatial/convolution.h"
 #include "spatial/convolution_kernel.h"
 #include "block_cluster_tree.h"
-#include "scene_file.h"
 #include "surface_derivatives.h"
 
 #include "remeshing/remeshing.h"
@@ -310,11 +310,18 @@ namespace rsurfaces
       // Dense multiplication
       // Assemble the dense operator
       std::cout << "Multiplying dense" << std::endl;
-      Eigen::MatrixXd dense, dense_small;
+      Eigen::MatrixXd dense, dense_small, dense_small2;
+
       dense_small.setZero(mesh->nVertices(), mesh->nVertices());
+      dense_small2 = dense_small;
       dense.setZero(3 * mesh->nVertices(), 3 * mesh->nVertices());
       hs.FillMatrixFracOnly(dense_small, s, mesh, geom);
       MatrixUtils::TripleMatrix(dense_small, dense);
+      hs.FillMatrixVertsFirst(dense_small2, s, mesh, geom);
+
+      std::cout << (dense_small2 - dense_small) << std::endl;
+      std::cout << "Difference in dense matrices = " << (dense_small2 - dense_small).norm() << std::endl;
+
       long denseAssemblyTime = currentTimeMilliseconds();
       // Multiply dense
       Eigen::VectorXd denseRes = dense * gVec;
@@ -431,6 +438,24 @@ namespace rsurfaces
     StaticObstacle *obstacle = new StaticObstacle(mesh, geom, std::move(obstacleMesh), std::move(obstacleGeometry), exp, bh_theta, weight);
     flow->AddAdditionalEnergy(obstacle);
     std::cout << "Added " << filename << " as obstacle with weight " << weight << std::endl;
+  }
+
+  void MainApp::AddPotential(scene::PotentialType pType, double weight)
+  {
+    switch (pType)
+    {
+    case scene::PotentialType::SquaredError:
+    {
+      SquaredError *errorPotential = new SquaredError(mesh, geom, weight);
+      flow->AddAdditionalEnergy(errorPotential);
+      break;
+    }
+    default:
+    {
+      std::cout << "Unknown potential type." << std::endl;
+      break;
+    }
+    }
   }
 } // namespace rsurfaces
 
@@ -731,7 +756,7 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::sce
       scene.vertexNormals.clear();
     }
     break;
-    
+
     default:
       std::cout << "  * Skipping unrecognized constraint type" << std::endl;
       break;
@@ -835,6 +860,11 @@ int main(int argc, char **argv)
   MainApp::instance = new MainApp(m.mesh, m.geom, flow, m.psMesh, m.meshName);
   MainApp::instance->bh_theta = theta;
   MainApp::instance->kernel = m.kernel;
+
+  for (scene::PotentialData &p : data.potentials)
+  {
+    MainApp::instance->AddPotential(p.type, p.weight);
+  }
 
   for (scene::ObstacleData &obs : data.obstacles)
   {

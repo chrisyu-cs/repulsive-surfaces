@@ -37,6 +37,17 @@ namespace rsurfaces
             }
         }
 
+        void VertexPinConstraint::addErrorValues(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        {
+            for (size_t i = 0; i < indices.size(); i++)
+            {
+                Vector3 current = geom->inputVertexPositions[mesh->vertex(indices[i])];
+                V(baseRow + 3 * i) = current.x - initPositions[i].x;
+                V(baseRow + 3 * i + 1) = current.y - initPositions[i].y;
+                V(baseRow + 3 * i + 2) = current.z - initPositions[i].z;
+            }
+        }
+
         size_t VertexPinConstraint::nRows()
         {
             // Every vertex gets 3 rows, one to freeze each of its coordinates

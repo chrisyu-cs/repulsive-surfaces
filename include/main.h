@@ -6,6 +6,7 @@
 #include "polyscope/polyscope.h"
 #include "polyscope/surface_mesh.h"
 #include "energy/barnes_hut_tpe_6d.h"
+#include "scene_file.h"
 
 namespace rsurfaces
 {
@@ -26,6 +27,7 @@ namespace rsurfaces
         void TakeNaiveStep(double t);
         void TakeFractionalSobolevStep();
         void AddObstacle(std::string filename, double weight);
+        void AddPotential(scene::PotentialType pType, double weight);
 
         MeshPtr mesh;
         GeomPtr geom;

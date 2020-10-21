@@ -65,7 +65,37 @@ namespace rsurfaces
         size_t assignIDsRecursively(size_t startID);
         // Recursively recompute all centers of mass in this tree
         void recomputeCentersOfMass(MeshPtr const &mesh, GeomPtr const &geom);
-        bool isAdmissibleFrom(Vector3 vertPos, double thresholdTheta);
+
+        inline bool isAdmissibleFrom(Vector3 atPos, double thresholdTheta)
+        {
+            if (nodeType == BVHNodeType::Leaf)
+            {
+                if (centerOfMass == atPos)
+                    return false;
+                else
+                    return true;
+            }
+            else if (nodeType == BVHNodeType::Interior)
+            {
+                if (boxContainsPoint(atPos))
+                {
+                    return false;
+                }
+                double d = norm(centerOfMass - atPos);
+                return nodeRatioBox(minCoords, maxCoords, d) < thresholdTheta;
+            }
+            else
+                return true;
+        }
+
+        inline bool boxContainsPoint(Vector3 pos)
+        {
+            bool xOK = (minCoords.x < pos.x) && (pos.x < maxCoords.x);
+            bool yOK = (minCoords.y < pos.y) && (pos.y < maxCoords.y);
+            bool zOK = (minCoords.z < pos.z) && (pos.z < maxCoords.z);
+            return xOK && yOK && zOK;
+        }
+
         void printSummary();
         MassNormalPoint GetMassNormalPoint();
 

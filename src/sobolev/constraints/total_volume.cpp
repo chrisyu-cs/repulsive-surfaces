@@ -45,7 +45,7 @@ namespace rsurfaces
             }
         }
 
-        void TotalVolumeConstraint::addValue(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        void TotalVolumeConstraint::addErrorValues(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow)
         {
             double current = totalVolume(geom, mesh);
             V(baseRow) = current - initValue;

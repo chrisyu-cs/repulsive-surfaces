@@ -44,6 +44,29 @@ namespace rsurfaces
         }
     }
 
+    // Find the set of triangles adjacent to either vertex, without duplicates
+    inline void GetFacesWithoutDuplicates(GCVertex v1, GCVertex v2, std::vector<GCFace> &faces)
+    {
+        std::unordered_set<GCFace> fInds;
+        for (GCFace f : v1.adjacentFaces())
+        {
+            if (fInds.count(f) == 0)
+            {
+                faces.push_back(f);
+                fInds.insert(f);
+            }
+        }
+        for (GCFace f : v2.adjacentFaces())
+        {
+            if (fInds.count(f) == 0)
+            {
+                faces.push_back(f);
+                fInds.insert(f);
+            }
+        }
+    }
+
+
     inline void MultiplyVecByMass(Eigen::VectorXd &A, MeshPtr const &mesh, GeomPtr const &geom)
     {
         VertexIndices inds = mesh->getVertexIndices();

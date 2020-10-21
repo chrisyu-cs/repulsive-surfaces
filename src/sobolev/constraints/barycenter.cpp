@@ -56,6 +56,15 @@ namespace rsurfaces
             }
         }
 
+        void BarycenterConstraint3X::addErrorValues(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        {
+            Vector3 current = meshBarycenter(geom, mesh);
+            V(baseRow    ) = current.x - initValue.x;
+            V(baseRow + 1) = current.y - initValue.y;
+            V(baseRow + 2) = current.z - initValue.z;
+        }
+
+
         size_t BarycenterConstraint3X::nRows()
         {
             return 3;

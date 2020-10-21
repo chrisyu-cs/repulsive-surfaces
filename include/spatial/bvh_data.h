@@ -8,7 +8,6 @@ namespace rsurfaces
     {
         // Compute diagonal distance from corner to corner
         Vector3 diag = maxCoords - minCoords;
-        double maxCoord = fmax(diag.x, fmax(diag.y, diag.z));
         return diag.norm() / d;
     }
 

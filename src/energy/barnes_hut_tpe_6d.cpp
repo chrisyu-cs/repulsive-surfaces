@@ -164,7 +164,7 @@ namespace rsurfaces
                 // Differentiate both terms for all neighbors
                 for (GCVertex v : face1.adjacentVertices())
                 {
-                    // Derivatives of both foward and reverse terms
+                    // Derivatives of both forward and reverse terms
                     MatrixUtils::addToRow(gradients, indices[v], kernel->tpe_gradient_pair(face1, mnp2, v));
                     MatrixUtils::addToRow(gradients, indices[v], kernel->tpe_gradient_pair(mnp2, face1, v));
                 }

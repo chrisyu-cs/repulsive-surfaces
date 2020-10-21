@@ -205,6 +205,45 @@ namespace rsurfaces
             }
         }
 
+        void HsMetric::FillMatrixVertsFirst(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom)
+        {
+            VertexIndices indices = mesh->getVertexIndices();
+            std::vector<GCFace> faces;
+
+            for (GCVertex u : mesh->vertices())
+            {
+                for (GCVertex v : mesh->vertices())
+                {
+                    faces.clear();
+                    GetFacesWithoutDuplicates(u, v, faces);
+                    double A_uv = 0;
+
+                    for (GCFace f1 : faces)
+                    {
+                        for (GCFace f2 : faces)
+                        {
+                            if (f1 == f2)
+                            {
+                                continue;
+                            }
+                            double u_hat_f1 = HatAtTriangleCenter(f1, u);
+                            double u_hat_f2 = HatAtTriangleCenter(f2, u);
+                            double v_hat_f1 = HatAtTriangleCenter(f1, v);
+                            double v_hat_f2 = HatAtTriangleCenter(f2, v);
+                            double dist_term = MetricDistanceTermFrac(s, faceBarycenter(geom, f1), faceBarycenter(geom, f2));
+
+                            double area1 = geom->faceAreas[f1];
+                            double area2 = geom->faceAreas[f2];
+
+                            double numer = (u_hat_f1 - u_hat_f2) * (v_hat_f1 - v_hat_f2);
+                            A_uv += numer * dist_term * area1 * area2;
+                        }
+                    }
+                    M(indices[u], indices[v]) = A_uv;
+                }
+            }
+        }
+
         size_t HsMetric::topLeftNumRows()
         {
             size_t nConstraints = 0;
@@ -426,10 +465,12 @@ namespace rsurfaces
         {
             size_t nRows = comp.M_A.rows();
             Eigen::VectorXd vals(nRows);
+            vals.setZero();
             int curRow = 0;
+            // Fill right-hand side with error values
             for (ConstraintPack &c : constraints)
             {
-                c.constraint->addValue(vals, mesh, geom, curRow);
+                c.constraint->addErrorValues(vals, mesh, geom, curRow);
                 curRow += c.constraint->nRows();
             }
             // In this case we want the block of the inverse that multiplies the bottom block
@@ -457,6 +498,31 @@ namespace rsurfaces
             for (SimpleProjectorConstraint *spc : simpleConstraints)
             {
                 spc->ProjectConstraint(mesh, geom);
+            }
+        }
+
+        void HsMetric::ProjectSimpleConstraintsWithSaddle()
+        {
+            Eigen::VectorXd vals(factorizedLaplacian.nRows);
+            vals.setZero();
+            int baseRow = 3 * mesh->nVertices();
+            int currRow = baseRow;
+            // Fill the right-hand side with error values
+            for (SimpleProjectorConstraint *spc : simpleConstraints)
+            {
+                spc->addErrorValues(vals, mesh, geom, currRow);
+                currRow += spc->nRows();
+            }
+            // Solve for the correction
+            Eigen::VectorXd corr = factorizedLaplacian.Solve(vals);
+
+            // Apply the correction
+            VertexIndices verts = mesh->getVertexIndices();
+            for (GCVertex v : mesh->vertices())
+            {
+                size_t base = 3 * verts[v];
+                Vector3 vertCorr{corr(base), corr(base + 1), corr(base + 2)};
+                geom->inputVertexPositions[v] -= vertCorr;
             }
         }
     } // namespace Hs

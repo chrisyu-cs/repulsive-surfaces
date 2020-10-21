@@ -155,6 +155,7 @@ namespace rsurfaces
         }
         // Fix simple things like barycenter drift
         hs.ProjectSimpleConstraints();
+        // hs.ProjectSimpleConstraintsWithSaddle();
 
         long timeEnd = currentTimeMilliseconds();
 
