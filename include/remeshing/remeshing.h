@@ -16,6 +16,10 @@ namespace rsurfaces
         using namespace geometrycentral;
         using namespace geometrycentral::surface;
         
+        void collapseEdge(MeshPtr const &mesh, GeomPtr const &geometry, Edge e);
+        
+        void testStuff(MeshPtr const &mesh, GeomPtr const &geometry, int edgeIndex);
+        
         bool shouldFlip(Edge e);
         
         void adjustVertexDegrees(MeshPtr const &mesh);
@@ -26,10 +30,18 @@ namespace rsurfaces
 
         void smoothByLaplacian(MeshPtr const &mesh, GeomPtr const &geometry);
 
-        Vector3 findcircumcenter(Vector3 p1, Vector3 p2, Vector3 p3);
+        Vector3 findCircumcenter(Vector3 p1, Vector3 p2, Vector3 p3);
 
         Vector3 findCircumcenter(GeomPtr const &geometry, Face f);
 
         void smoothByCircumcenter(MeshPtr const &mesh, GeomPtr const &geometry);
+        
+        void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry);
+        
+        Vector3 findBarycenter(Vector3 p1, Vector3 p2, Vector3 p3);
+
+        Vector3 findBarycenter(GeomPtr const &geometry, Face f);
+        
+        void smoothByFaceWeight(MeshPtr const &mesh, GeomPtr const &geometry, FaceData<double> faceWeight);
     } // namespace remeshing
 } // namespace rsurfaces
