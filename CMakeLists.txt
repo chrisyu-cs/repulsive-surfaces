@@ -71,6 +71,8 @@ set(SRCS
   src/energy/barnes_hut_newtonian.cpp
   src/energy/barnes_hut_tpe_6d.cpp
   src/energy/barnes_hut_tpe_xdiff.cpp
+  src/energy/total_area_potential.cpp
+  src/energy/total_volume_potential.cpp
   src/energy/tpe_kernel.cpp
   src/energy/squared_error.cpp
   src/energy/static_obstacle.cpp

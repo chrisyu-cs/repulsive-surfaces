@@ -23,7 +23,9 @@ namespace rsurfaces
 
         enum class PotentialType
         {
-            SquaredError
+            SquaredError,
+            Area,
+            Volume
         };
 
         struct PotentialData

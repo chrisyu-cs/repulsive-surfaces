@@ -115,14 +115,22 @@ namespace rsurfaces
             }
             else if (parts[0] == "minimize")
             {
+                double weight = 1;
+                if (parts.size() >= 3) {
+                    weight = stod(parts[2]);
+                }
                 if (parts[1] == "squared_error")
                 {
-                    double weight = 1;
-                    if (parts.size() >= 3) {
-                        weight = stod(parts[2]);
-                    }
                     data.potentials.push_back(PotentialData{PotentialType::SquaredError, weight});
                     cout << "  * Adding squared error potential (weight " << weight << ")" << endl;
+                }
+                else if (parts[1] == "area") {
+                    data.potentials.push_back(PotentialData{PotentialType::Area, weight});
+                    cout << "  * Adding area potential (weight " << weight << ")" << endl;
+                }
+                else if (parts[1] == "volume") {
+                    data.potentials.push_back(PotentialData{PotentialType::Volume, weight});
+                    cout << "  * Adding volume potential (weight " << weight << ")" << endl;
                 }
             }
             else if (parts[0] == "constrain")

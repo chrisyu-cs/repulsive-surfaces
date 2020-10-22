@@ -9,12 +9,7 @@
 #include "surface_derivatives.h"
 
 #include "energy/tpe_kernel.h"
-#include "energy/all_pairs_tpe.h"
-#include "energy/all_pairs_with_bvh.h"
-#include "energy/barnes_hut_tpe_xdiff.h"
-#include "energy/barnes_hut_newtonian.h"
-#include "energy/static_obstacle.h"
-#include "energy/squared_error.h"
+#include "energy/all_energies.h"
 #include "helpers.h"
 #include <memory>
 #include "spatial/bvh_flattened.h"
@@ -448,6 +443,18 @@ namespace rsurfaces
     {
       SquaredError *errorPotential = new SquaredError(mesh, geom, weight);
       flow->AddAdditionalEnergy(errorPotential);
+      break;
+    }
+    case scene::PotentialType::Area:
+    {
+      TotalAreaPotential *areaPotential = new TotalAreaPotential(mesh, geom, weight);
+      flow->AddAdditionalEnergy(areaPotential);
+      break;
+    }
+    case scene::PotentialType::Volume:
+    {
+      TotalVolumePotential *volumePotential = new TotalVolumePotential(mesh, geom, weight);
+      flow->AddAdditionalEnergy(volumePotential);
       break;
     }
     default:
