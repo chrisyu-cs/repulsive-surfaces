@@ -1,4 +1,5 @@
 #include "main.h"
+#include "main_picking.h"
 
 #include "geometrycentral/surface/halfedge_mesh.h"
 #include "geometrycentral/surface/meshio.h"
@@ -43,6 +44,8 @@ namespace rsurfaces
     psMesh = psMesh_;
     meshName = meshName_;
     vertBVH = 0;
+    ctrlMouseDown = false;
+    hasPickedVertex = false;
   }
 
   void MainApp::TakeNaiveStep(double t)
@@ -216,6 +219,97 @@ namespace rsurfaces
 
     delete energy_bh;
     delete tpe;
+  }
+
+  bool MainApp::pickNearbyVertex(GCVertex &out)
+  {
+    using namespace polyscope;
+    Vector2 screenPos = getMouseScreenPos();
+
+    std::pair<Structure *, size_t> pickVal =
+        pick::evaluatePickQuery(screenPos.x, screenPos.y);
+
+    GCVertex pickedVert;
+    GCFace pickedFace;
+    GCEdge pickedEdge;
+    GCHalfedge pickedHalfedge;
+
+    glm::mat4 view = polyscope::view::getCameraViewMatrix();
+    glm::mat4 proj = polyscope::view::getCameraPerspectiveMatrix();
+    glm::mat4 viewProj = proj * view;
+
+    polyscope::SurfaceMesh *asMesh = dynamic_cast<polyscope::SurfaceMesh *>(pickVal.first);
+
+    if (tryGetPickedVertex(asMesh, pickVal.second, mesh, pickedVert))
+    {
+      out = pickedVert;
+      return true;
+    }
+    else if (tryGetPickedFace(asMesh, pickVal.second, mesh, pickedFace))
+    {
+      out = nearestVertexToScreenPos(screenPos, geom, viewProj, pickedFace);
+      return true;
+    }
+    else if (tryGetPickedEdge(asMesh, pickVal.second, mesh, pickedEdge))
+    {
+      out = nearestVertexToScreenPos(screenPos, geom, viewProj, pickedEdge);
+      return true;
+    }
+    else if (tryGetPickedHalfedge(asMesh, pickVal.second, mesh, pickedHalfedge))
+    {
+      out = nearestVertexToScreenPos(screenPos, geom, viewProj, pickedHalfedge);
+      return true;
+    }
+    else
+    {
+      std::cout << "No valid element was picked (index " << pickVal.second << ")" << std::endl;
+      return false;
+    }
+  }
+
+  void MainApp::HandlePicking()
+  {
+    using namespace polyscope;
+
+    auto io = ImGui::GetIO();
+    glm::mat4 view = polyscope::view::getCameraViewMatrix();
+    glm::mat4 proj = polyscope::view::getCameraPerspectiveMatrix();
+    glm::mat4 viewProj = proj * view;
+
+    if (io.KeyCtrl && io.MouseDown[0])
+    {
+      if (!ctrlMouseDown)
+      {
+        if (pickNearbyVertex(pickedVertex))
+        {
+          hasPickedVertex = true;
+          vertInds = mesh->getVertexIndices();
+          Vector3 screen = projectToScreenCoords3(geom->inputVertexPositions[pickedVertex], viewProj);
+          pickDepth = screen.z;
+
+          Vector3 unprojected = unprojectFromScreenCoords3(Vector2{screen.x, screen.y}, pickDepth, viewProj);
+        }
+        ctrlMouseDown = true;
+      }
+      else
+      {
+        if (hasPickedVertex) {
+          Vector2 mousePos = getMouseScreenPos();
+          Vector3 unprojected = unprojectFromScreenCoords3(mousePos, pickDepth, viewProj);
+          geom->inputVertexPositions[pickedVertex] = unprojected;
+          
+          updateMeshPositions();
+        }
+      }
+    }
+    else
+    {
+      if (ctrlMouseDown)
+      {
+        ctrlMouseDown = false;
+        hasPickedVertex = false;
+      }
+    }
   }
 
   void MainApp::Scale2x()
@@ -507,6 +601,8 @@ void customCallback()
   {
     saveScreenshot(screenshotNum++);
   }
+
+  rsurfaces::MainApp::instance->HandlePicking();
 
   ImGui::Text("Iteration limit");
   ImGui::InputInt("", &stepLimit);

@@ -24,6 +24,8 @@ namespace rsurfaces
         void Scale2x();
         void TestNormalDeriv();
 
+        void HandlePicking();
+
         void TakeNaiveStep(double t);
         void TakeFractionalSobolevStep();
         void AddObstacle(std::string filename, double weight);
@@ -47,5 +49,13 @@ namespace rsurfaces
         BVHNode6D *vertBVH;
         bool normalizeView;
         double bh_theta;
+
+    private:
+        VertexIndices vertInds;
+        GCVertex pickedVertex;
+        double pickDepth;
+        bool pickNearbyVertex(GCVertex &out);
+        bool ctrlMouseDown;
+        bool hasPickedVertex;
     };
 } // namespace rsurfaces
