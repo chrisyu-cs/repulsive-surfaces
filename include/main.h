@@ -8,6 +8,8 @@
 #include "energy/barnes_hut_tpe_6d.h"
 #include "scene_file.h"
 
+#include "energy/squared_error.h"
+
 namespace rsurfaces
 {
     class MainApp
@@ -55,7 +57,9 @@ namespace rsurfaces
         GCVertex pickedVertex;
         double pickDepth;
         bool pickNearbyVertex(GCVertex &out);
+        SquaredError* vertexPotential;
         bool ctrlMouseDown;
+        Vector3 initialPickedPosition;
         bool hasPickedVertex;
     };
 } // namespace rsurfaces

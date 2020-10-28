@@ -44,6 +44,7 @@ namespace rsurfaces
     psMesh = psMesh_;
     meshName = meshName_;
     vertBVH = 0;
+    vertexPotential = 0;
     ctrlMouseDown = false;
     hasPickedVertex = false;
   }
@@ -288,16 +289,22 @@ namespace rsurfaces
           pickDepth = screen.z;
 
           Vector3 unprojected = unprojectFromScreenCoords3(Vector2{screen.x, screen.y}, pickDepth, viewProj);
+          initialPickedPosition = geom->inputVertexPositions[pickedVertex];
         }
         ctrlMouseDown = true;
       }
       else
       {
-        if (hasPickedVertex) {
+        if (hasPickedVertex)
+        {
           Vector2 mousePos = getMouseScreenPos();
           Vector3 unprojected = unprojectFromScreenCoords3(mousePos, pickDepth, viewProj);
           geom->inputVertexPositions[pickedVertex] = unprojected;
-          
+          if (vertexPotential)
+          {
+            vertexPotential->ChangeVertexTarget(pickedVertex, unprojected);
+          }
+
           updateMeshPositions();
         }
       }
@@ -308,6 +315,8 @@ namespace rsurfaces
       {
         ctrlMouseDown = false;
         hasPickedVertex = false;
+        // geom->inputVertexPositions[pickedVertex] = initialPickedPosition;
+        updateMeshPositions();
       }
     }
   }
@@ -536,6 +545,7 @@ namespace rsurfaces
     case scene::PotentialType::SquaredError:
     {
       SquaredError *errorPotential = new SquaredError(mesh, geom, weight);
+      vertexPotential = errorPotential;
       flow->AddAdditionalEnergy(errorPotential);
       break;
     }

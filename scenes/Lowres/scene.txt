@@ -1,0 +1,3 @@
+repel_mesh tube_regular.obj 6 12
+minimize squared_error
+
