@@ -10,6 +10,7 @@ namespace rsurfaces
         {
         public:
             VertexPinConstraint(MeshPtr &mesh, GeomPtr &geom);
+            virtual void ResetFunction(MeshPtr &mesh, GeomPtr &geom);
             virtual void addTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow);
             virtual void addEntries(Eigen::MatrixXd &M, MeshPtr &mesh, GeomPtr &geom, int baseRow);
             virtual void addErrorValues(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow);

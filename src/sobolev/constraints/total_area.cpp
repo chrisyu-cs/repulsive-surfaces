@@ -8,6 +8,11 @@ namespace rsurfaces
     {
         TotalAreaConstraint::TotalAreaConstraint(MeshPtr &mesh, GeomPtr &geom)
         {
+            ResetFunction(mesh, geom);
+        }
+
+        void TotalAreaConstraint::ResetFunction(MeshPtr &mesh, GeomPtr &geom)
+        {
             initValue = totalArea(geom, mesh);
         }
 

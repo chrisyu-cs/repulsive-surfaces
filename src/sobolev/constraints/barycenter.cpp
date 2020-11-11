@@ -25,6 +25,11 @@ namespace rsurfaces
 
         BarycenterConstraint3X::BarycenterConstraint3X(MeshPtr &mesh, GeomPtr &geom)
         {
+            ResetFunction(mesh, geom);
+        }
+
+        void BarycenterConstraint3X::ResetFunction(MeshPtr &mesh, GeomPtr &geom)
+        {
             initValue = meshBarycenter(geom, mesh);
         }
 

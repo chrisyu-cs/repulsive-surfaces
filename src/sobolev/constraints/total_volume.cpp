@@ -8,6 +8,11 @@ namespace rsurfaces
 
         TotalVolumeConstraint::TotalVolumeConstraint(MeshPtr &mesh, GeomPtr &geom)
         {
+            ResetFunction(mesh, geom);
+        }
+
+        void TotalVolumeConstraint::ResetFunction(MeshPtr &mesh, GeomPtr &geom)
+        {
             initValue = totalVolume(geom, mesh);
         }
 

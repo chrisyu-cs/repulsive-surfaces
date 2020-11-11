@@ -12,6 +12,13 @@
 
 namespace rsurfaces
 {
+    struct PriorityVertex
+    {
+        GCVertex vertex;
+        double priority;
+        Vector3 position;
+    };
+
     class MainApp
     {
     public:
@@ -26,6 +33,7 @@ namespace rsurfaces
         void Scale2x();
         void TestNormalDeriv();
 
+        void GetFalloffWindow(GCVertex v, double radius, std::vector<PriorityVertex> &verts);
         void HandlePicking();
 
         void TakeNaiveStep(double t);
@@ -53,8 +61,9 @@ namespace rsurfaces
         double bh_theta;
 
     private:
-        VertexIndices vertInds;
         GCVertex pickedVertex;
+        std::vector<PriorityVertex> dragVertices;
+
         double pickDepth;
         bool pickNearbyVertex(GCVertex &out);
         SquaredError* vertexPotential;

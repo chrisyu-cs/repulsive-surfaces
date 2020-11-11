@@ -268,6 +268,70 @@ namespace rsurfaces
         }
     }
 
+    class PVCompare
+    {
+    public:
+        bool operator()(PriorityVertex v1, PriorityVertex v2)
+        {
+            return (v1.priority > v2.priority);
+        }
+    };
+
+    double gaussian(double radius, double dist)
+    {
+        double radterm = dist / radius;
+        double epow = exp(-0.5 * radterm * radterm);
+        return epow;
+    }
+
+    void MainApp::GetFalloffWindow(GCVertex v, double radius, std::vector<PriorityVertex> &verts)
+    {
+        // Do a simple Dijkstra search on edges
+        VertexData<bool> seen(*mesh, false);
+        std::priority_queue<PriorityVertex, std::vector<PriorityVertex>, PVCompare> queue;
+        queue.push(PriorityVertex{v, 0, geom->inputVertexPositions[v]});
+
+        while (!queue.empty())
+        {
+            PriorityVertex next = queue.top();
+            queue.pop();
+
+            if (next.priority > radius)
+            {
+                break;
+            }
+            else if (seen[next.vertex])
+            {
+                continue;
+            }
+            else
+            {
+                // Mark the next vertex as seen
+                seen[next.vertex] = true;
+                // Compute the weight
+                double weight = gaussian(radius / 3, next.priority);
+                verts.push_back(PriorityVertex{next.vertex, weight, geom->inputVertexPositions[next.vertex]});
+
+                // Enqueue all neighbors
+                for (GCVertex neighbor : next.vertex.adjacentVertices())
+                {
+                    if (seen[neighbor])
+                    {
+                        continue;
+                    }
+                    // Add the next edge distance
+                    Vector3 p1 = geom->inputVertexPositions[next.vertex];
+                    Vector3 p2 = geom->inputVertexPositions[neighbor];
+                    double neighborDist = next.priority + norm(p1 - p2);
+
+                    queue.push(PriorityVertex{neighbor, neighborDist, geom->inputVertexPositions[neighbor]});
+                }
+            }
+        }
+
+        std::cout << "Got " << verts.size() << " vertices" << std::endl;
+    }
+
     void MainApp::HandlePicking()
     {
         using namespace polyscope;
@@ -284,7 +348,8 @@ namespace rsurfaces
                 if (pickNearbyVertex(pickedVertex))
                 {
                     hasPickedVertex = true;
-                    vertInds = mesh->getVertexIndices();
+                    GetFalloffWindow(pickedVertex, 0.5, dragVertices);
+
                     Vector3 screen = projectToScreenCoords3(geom->inputVertexPositions[pickedVertex], viewProj);
                     pickDepth = screen.z;
 
@@ -299,11 +364,15 @@ namespace rsurfaces
                 {
                     Vector2 mousePos = getMouseScreenPos();
                     Vector3 unprojected = unprojectFromScreenCoords3(mousePos, pickDepth, viewProj);
-                    geom->inputVertexPositions[pickedVertex] = unprojected;
-                    if (vertexPotential)
+                    Vector3 displacement = unprojected - initialPickedPosition;
+
+                    for (PriorityVertex &v : dragVertices)
                     {
-                        vertexPotential->ChangeVertexTarget(pickedVertex, unprojected);
+                        Vector3 newPos = v.position + v.priority * displacement;
+                        geom->inputVertexPositions[v.vertex] = newPos;
                     }
+
+                    flow->ResetAllConstraints();
 
                     updateMeshPositions();
                 }
@@ -315,6 +384,7 @@ namespace rsurfaces
             {
                 ctrlMouseDown = false;
                 hasPickedVertex = false;
+                dragVertices.clear();
                 // geom->inputVertexPositions[pickedVertex] = initialPickedPosition;
                 updateMeshPositions();
             }

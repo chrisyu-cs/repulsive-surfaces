@@ -89,7 +89,7 @@ namespace rsurfaces
         UpdateEnergies();
 
         // Grab the tangent-point energy specifically
-        BarnesHutTPEnergy6D* bhEnergy = dynamic_cast<BarnesHutTPEnergy6D*>(energies[0]);
+        BarnesHutTPEnergy6D *bhEnergy = dynamic_cast<BarnesHutTPEnergy6D *>(energies[0]);
 
         // Measure the energy at the start of the timestep -- just for
         // diagnostic purposes
@@ -182,6 +182,18 @@ namespace rsurfaces
     {
         Vector3 center = meshBarycenter(geom, mesh);
         translateMesh(geom, mesh, origBarycenter - center);
+    }
+
+    void SurfaceFlow::ResetAllConstraints()
+    {
+        for (ConstraintPack &p : schurConstraints)
+        {
+            p.constraint->ResetFunction(mesh, geom);
+        }
+        for (Constraints::SimpleProjectorConstraint *c : simpleConstraints)
+        {
+            c->ResetFunction(mesh, geom);
+        }
     }
 
     SurfaceEnergy *SurfaceFlow::BaseEnergy()

@@ -15,6 +15,15 @@ namespace rsurfaces
             }
         }
 
+        void VertexPinConstraint::ResetFunction(MeshPtr &mesh, GeomPtr &geom)
+        {
+            for (size_t i = 0; i < indices.size(); i++)
+            {
+                initPositions[i] = geom->inputVertexPositions[mesh->vertex(indices[i])];
+            }
+        }
+
+
         void VertexPinConstraint::addTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow)
         {
             // All we do is put a 1 in the index for all pinned vertices

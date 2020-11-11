@@ -11,6 +11,7 @@ namespace rsurfaces
         {
         public:
             virtual ~ConstraintBase() {}
+            virtual void ResetFunction(MeshPtr &mesh, GeomPtr &geom) = 0;
             virtual void addTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow) = 0;
             virtual void addEntries(Eigen::MatrixXd &M, MeshPtr &mesh, GeomPtr &geom, int baseRow) = 0;
             virtual void addErrorValues(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow) = 0;

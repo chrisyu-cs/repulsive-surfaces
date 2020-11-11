@@ -17,6 +17,14 @@ namespace rsurfaces
             }
         }
 
+        void VertexNormalConstraint::ResetFunction(MeshPtr &mesh, GeomPtr &geom)
+        {
+            for (size_t i = 0; i < indices.size(); i++)
+            {
+                initNormals[i] = vertexAreaNormal(geom, mesh->vertex(indices[i]));
+            }
+        }
+
         void VertexNormalConstraint::addTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow)
         {
             VertexIndices allInds = mesh->getVertexIndices();
