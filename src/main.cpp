@@ -1000,7 +1000,7 @@ int main(int argc, char **argv)
 
     int default_threads = omp_get_max_threads();
     std::cout << "OMP autodetected " << default_threads << " threads." << std::endl;
-    omp_set_num_threads(default_threads - 2);
+    omp_set_num_threads(default_threads / 2 + 2);
 
     // Parse args
     try
