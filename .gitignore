@@ -1,6 +1,7 @@
 # Data
 *.mp4
 *.ttf
+*.gif
 notes/
 
 # Build directories
