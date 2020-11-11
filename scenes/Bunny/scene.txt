@@ -2,6 +2,6 @@ repel_mesh bunny.obj 6 12
 constrain area
 constrain volume
 # minimize volume 1000
-# minimize area 1000
-minimize squared_error
+minimize area 1000
+# minimize squared_error
 

@@ -196,6 +196,14 @@ namespace rsurfaces
         }
     }
 
+    void SurfaceFlow::ResetAllPotentials()
+    {
+        for (SurfaceEnergy *energy : energies)
+        {
+            energy->ResetTargets();
+        }
+    }
+
     SurfaceEnergy *SurfaceFlow::BaseEnergy()
     {
         return energies[0];

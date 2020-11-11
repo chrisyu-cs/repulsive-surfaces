@@ -14,14 +14,7 @@ namespace rsurfaces
     // Returns the current value of the energy.
     double TotalAreaPotential::Value()
     {
-        double sum = 0;
-        // Sum of all squared deviations from original positions
-        #pragma omp parallel for reduction(+ : sum)
-        for (size_t i = 0; i < mesh->nFaces(); i++)
-        {
-            sum += geom->faceAreas[mesh->face(i)];
-        }
-        return weight * sum;
+        return weight * totalArea(geom, mesh);
     }
 
     // Returns the current differential of the energy, stored in the given
@@ -43,7 +36,7 @@ namespace rsurfaces
                 {
                     sumDerivs += SurfaceDerivs::triangleAreaWrtVertex(geom, f, v_i);
                 }
-                MatrixUtils::addToRow(output, inds[v_i], sumDerivs);
+                MatrixUtils::addToRow(output, inds[v_i], weight * sumDerivs);
             }
         }
     }

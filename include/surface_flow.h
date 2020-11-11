@@ -20,6 +20,7 @@ namespace rsurfaces
         void RecenterMesh();
         const double LS_STEP_THRESHOLD = 1e-20;
         void ResetAllConstraints();
+        void ResetAllPotentials();
 
         template <typename Constraint>
         Constraint* addSchurConstraint(MeshPtr &mesh, GeomPtr &geom, double multiplier, long iterations)

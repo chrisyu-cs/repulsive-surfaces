@@ -132,6 +132,14 @@ namespace rsurfaces
                     data.potentials.push_back(PotentialData{PotentialType::Volume, weight});
                     cout << "  * Adding volume potential (weight " << weight << ")" << endl;
                 }
+                else if (parts[1] == "area_deviation") {
+                    data.potentials.push_back(PotentialData{PotentialType::SoftAreaConstraint, weight});
+                    cout << "  * Adding soft area potential (weight " << weight << ")" << endl;
+                }
+                else if (parts[1] == "volume_deviation") {
+                    data.potentials.push_back(PotentialData{PotentialType::SoftVolumeConstraint, weight});
+                    cout << "  * Adding soft volume potential (weight " << weight << ")" << endl;
+                }
             }
             else if (parts[0] == "constrain")
             {

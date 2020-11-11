@@ -1,27 +1,31 @@
-#include "energy/total_volume_potential.h"
+#include "energy/soft_volume_constraint.h"
 #include "matrix_utils.h"
 #include "surface_derivatives.h"
 
 namespace rsurfaces
 {
-    TotalVolumePotential::TotalVolumePotential(MeshPtr mesh_, GeomPtr geom_, double weight_)
+    SoftVolumeConstraint::SoftVolumeConstraint(MeshPtr mesh_, GeomPtr geom_, double weight_)
     {
         mesh = mesh_;
         geom = geom_;
         weight = weight_;
+        initialVolume = totalVolume(geom, mesh);
     }
 
     // Returns the current value of the energy.
-    double TotalVolumePotential::Value()
+    double SoftVolumeConstraint::Value()
     {
-        return weight * totalVolume(geom, mesh);
+        double volDev = totalVolume(geom, mesh) - initialVolume;
+        return weight * (volDev * volDev);
     }
 
     // Returns the current differential of the energy, stored in the given
     // V x 3 matrix, where each row holds the differential (a 3-vector) with
     // respect to the corresponding vertex.
-    void TotalVolumePotential::Differential(Eigen::MatrixXd &output)
+    void SoftVolumeConstraint::Differential(Eigen::MatrixXd &output)
     {
+        double currentValue = Value();
+
         VertexIndices inds = mesh->getVertexIndices();
         #pragma omp parallel shared(output)
         {
@@ -31,6 +35,9 @@ namespace rsurfaces
                 GCVertex v_i = mesh->vertex(i);
                 // Derivative of local volume is just the area weighted normal
                 Vector3 deriv_v = areaWeightedNormal(geom, v_i);
+                // Derivative of V^2 = 2 V (dV/dx)
+                deriv_v = 2 * currentValue * deriv_v;
+
                 MatrixUtils::addToRow(output, inds[v_i], weight * deriv_v);
             }
         }
@@ -38,39 +45,39 @@ namespace rsurfaces
 
     // Update the energy to reflect the current state of the mesh. This could
     // involve building a new BVH for Barnes-Hut energies, for instance.
-    void TotalVolumePotential::Update()
+    void SoftVolumeConstraint::Update()
     {
         // Nothing needs to be done
     }
 
     // Get the mesh associated with this energy.
-    MeshPtr TotalVolumePotential::GetMesh()
+    MeshPtr SoftVolumeConstraint::GetMesh()
     {
         return mesh;
     }
 
     // Get the geometry associated with this geometry.
-    GeomPtr TotalVolumePotential::GetGeom()
+    GeomPtr SoftVolumeConstraint::GetGeom()
     {
         return geom;
     }
 
     // Get the exponents of this energy; only applies to tangent-point energies.
-    Vector2 TotalVolumePotential::GetExponents()
+    Vector2 SoftVolumeConstraint::GetExponents()
     {
         return Vector2{1, 0};
     }
 
     // Get a pointer to the current BVH for this energy.
     // Return 0 if the energy doesn't use a BVH.
-    BVHNode6D* TotalVolumePotential::GetBVH()
+    BVHNode6D* SoftVolumeConstraint::GetBVH()
     {
         return 0;
     }
 
     // Return the separation parameter for this energy.
     // Return 0 if this energy doesn't do hierarchical approximation.
-    double TotalVolumePotential::GetTheta() {
+    double SoftVolumeConstraint::GetTheta() {
         return 0;
     }
 

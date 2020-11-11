@@ -371,8 +371,17 @@ namespace rsurfaces
                         Vector3 newPos = v.position + v.priority * displacement;
                         geom->inputVertexPositions[v.vertex] = newPos;
                     }
-
+                    
                     flow->ResetAllConstraints();
+                    flow->ResetAllPotentials();
+
+                    if (vertexPotential)
+                    {
+                        for (PriorityVertex &v : dragVertices)
+                        {
+                            vertexPotential->ChangeVertexTarget(v.vertex, geom->inputVertexPositions[v.vertex]);
+                        }
+                    }
 
                     updateMeshPositions();
                 }
@@ -630,6 +639,17 @@ namespace rsurfaces
             TotalVolumePotential *volumePotential = new TotalVolumePotential(mesh, geom, weight);
             flow->AddAdditionalEnergy(volumePotential);
             break;
+        }
+        case scene::PotentialType::SoftAreaConstraint:
+        {
+            SoftAreaConstraint *softArea = new SoftAreaConstraint(mesh, geom, weight);
+            flow->AddAdditionalEnergy(softArea);
+            break;
+        }
+        case scene::PotentialType::SoftVolumeConstraint:
+        {
+            SoftVolumeConstraint *softVol = new SoftVolumeConstraint(mesh, geom, weight);
+            flow->AddAdditionalEnergy(softVol);
         }
         default:
         {

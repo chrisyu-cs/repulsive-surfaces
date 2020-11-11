@@ -25,7 +25,9 @@ namespace rsurfaces
         {
             SquaredError,
             Area,
-            Volume
+            Volume,
+            SoftAreaConstraint,
+            SoftVolumeConstraint
         };
 
         struct PotentialData
