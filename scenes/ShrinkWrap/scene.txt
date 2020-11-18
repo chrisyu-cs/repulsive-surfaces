@@ -1,0 +1,5 @@
+repel_mesh largesphere.obj 6 12
+constrain volume 0.3 100
+obstacle bunny.obj 1 centered
+iteration_limit 110
+
