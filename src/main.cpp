@@ -650,6 +650,7 @@ namespace rsurfaces
         {
             SoftVolumeConstraint *softVol = new SoftVolumeConstraint(mesh, geom, weight);
             flow->AddAdditionalEnergy(softVol);
+            break;
         }
         default:
         {
@@ -665,7 +666,6 @@ bool run = false;
 bool takeScreenshots = false;
 uint screenshotNum = 0;
 bool uiNormalizeView = false;
-int stepLimit;
 int numSteps;
 
 void saveScreenshot(uint i)
@@ -705,7 +705,7 @@ void customCallback()
     rsurfaces::MainApp::instance->HandlePicking();
 
     ImGui::Text("Iteration limit");
-    ImGui::InputInt("", &stepLimit);
+    ImGui::InputInt("", &MainApp::instance->stepLimit);
 
     if (uiNormalizeView != MainApp::instance->normalizeView)
     {
@@ -724,7 +724,7 @@ void customCallback()
             saveScreenshot(screenshotNum++);
         }
         numSteps++;
-        if (stepLimit > 0 && numSteps >= stepLimit)
+        if (MainApp::instance->stepLimit > 0 && numSteps >= MainApp::instance->stepLimit)
         {
             run = false;
         }
@@ -1063,6 +1063,7 @@ int main(int argc, char **argv)
     MainApp::instance = new MainApp(m.mesh, m.geom, flow, m.psMesh, m.meshName);
     MainApp::instance->bh_theta = theta;
     MainApp::instance->kernel = m.kernel;
+    MainApp::instance->stepLimit = data.iterationLimit;
 
     for (scene::PotentialData &p : data.potentials)
     {

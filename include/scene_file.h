@@ -59,6 +59,7 @@ namespace rsurfaces
             std::vector<PotentialData> potentials;
             std::vector<size_t> vertexPins;
             std::vector<size_t> vertexNormals;
+            int iterationLimit = 0;
         };
 
         template <class Container>

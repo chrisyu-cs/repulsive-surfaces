@@ -48,6 +48,7 @@ namespace rsurfaces
         polyscope::SurfaceMesh *psMesh;
         std::vector<polyscope::SurfaceMesh *> obstacles;
         std::string meshName;
+        int stepLimit;
 
         inline void reregisterMesh()
         {
