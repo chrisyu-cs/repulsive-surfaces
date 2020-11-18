@@ -505,6 +505,17 @@ namespace rsurfaces
                     Vector3 vertCorr{correction(base), correction(base + 1), correction(base + 2)};
                     geom->inputVertexPositions[v] += vertCorr;
                 }
+
+                vals.setZero();
+                curRow = 0;
+                // Fill right-hand side with error values
+                for (ConstraintPack &c : constraints)
+                {
+                    c.constraint->addErrorValues(vals, mesh, geom, curRow);
+                    curRow += c.constraint->nRows();
+                }
+                double corrError = vals.lpNorm<Eigen::Infinity>();
+                std::cout << "Corrected error " << constraintError << " -> " << corrError << std::endl;
             }
         }
 

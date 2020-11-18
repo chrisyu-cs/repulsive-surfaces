@@ -37,8 +37,8 @@ namespace rsurfaces
         void HandlePicking();
 
         void TakeNaiveStep(double t);
-        void TakeFractionalSobolevStep();
-        void AddObstacle(std::string filename, double weight);
+        void TakeFractionalSobolevStep(bool remeshAfter);
+        void AddObstacle(std::string filename, double weight, bool recenter);
         void AddPotential(scene::PotentialType pType, double weight);
 
         MeshPtr mesh;

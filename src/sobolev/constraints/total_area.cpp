@@ -53,7 +53,7 @@ namespace rsurfaces
         void TotalAreaConstraint::addErrorValues(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow)
         {
             double current = totalArea(geom, mesh);
-            V(baseRow) = current - initValue;
+            V(baseRow) = (current - initValue);
         }
 
         double TotalAreaConstraint::getTargetValue()

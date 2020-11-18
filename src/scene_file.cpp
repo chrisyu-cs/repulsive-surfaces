@@ -192,9 +192,13 @@ namespace rsurfaces
             {
                 ObstacleData obsData;
                 obsData.obstacleName = dir_root + parts[1];
-                if (parts.size() == 3)
+                if (parts.size() >= 3)
                 {
                     obsData.weight = stod(parts[2]);
+                    if (parts.size() == 4 && parts[3] == "centered")
+                    {
+                        obsData.recenter = true;
+                    }
                 }
                 else
                 {

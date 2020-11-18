@@ -53,7 +53,7 @@ namespace rsurfaces
         void TotalVolumeConstraint::addErrorValues(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow)
         {
             double current = totalVolume(geom, mesh);
-            V(baseRow) = current - initValue;
+            V(baseRow) = (current - initValue);
         }
 
         double TotalVolumeConstraint::getTargetValue()

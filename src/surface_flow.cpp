@@ -148,6 +148,10 @@ namespace rsurfaces
         double energyBeforeBackproj = GetEnergyValue();
 
         long timeBackproj = currentTimeMilliseconds();
+        
+        H1::ProjectConstraints(mesh, geom, schurConstraints, simpleConstraints, 1);
+
+        /*
         if (schurConstraints.size() > 0)
         {
             // Project onto constraint manifold using Schur complement
@@ -155,7 +159,7 @@ namespace rsurfaces
         }
         // Fix simple things like barycenter drift
         hs.ProjectSimpleConstraints();
-        // hs.ProjectSimpleConstraintsWithSaddle();
+        */
 
         long timeEnd = currentTimeMilliseconds();
 

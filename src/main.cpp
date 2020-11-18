@@ -54,9 +54,21 @@ namespace rsurfaces
         flow->StepNaive(t);
     }
 
-    void MainApp::TakeFractionalSobolevStep()
+    void MainApp::TakeFractionalSobolevStep(bool remeshAfter)
     {
         flow->StepFractionalSobolev();
+        
+        if (remeshAfter)
+        {
+            std::cout << "Remeshing..." << std::endl;
+            // remeshing::fixDelaunay(MainApp::instance->mesh, MainApp::instance->geom);
+            for (int i = 0; i < 3; i++)
+            {
+                remeshing::smoothByLaplacian(MainApp::instance->mesh, MainApp::instance->geom);
+                remeshing::fixDelaunay(MainApp::instance->mesh, MainApp::instance->geom);
+            }
+            MainApp::instance->reregisterMesh();
+        }
     }
 
     void MainApp::updateMeshPositions()
@@ -371,7 +383,7 @@ namespace rsurfaces
                         Vector3 newPos = v.position + v.priority * displacement;
                         geom->inputVertexPositions[v.vertex] = newPos;
                     }
-                    
+
                     flow->ResetAllConstraints();
                     flow->ResetAllPotentials();
 
@@ -597,7 +609,7 @@ namespace rsurfaces
         std::cout << "Gradient evaluation: " << ((double)totalG / nTrials) << " ms" << std::endl;
     }
 
-    void MainApp::AddObstacle(std::string filename, double weight)
+    void MainApp::AddObstacle(std::string filename, double weight, bool recenter)
     {
         std::unique_ptr<HalfedgeMesh> obstacleMesh;
         std::unique_ptr<VertexPositionGeometry> obstacleGeometry;
@@ -606,6 +618,16 @@ namespace rsurfaces
 
         obstacleGeometry->requireVertexDualAreas();
         obstacleGeometry->requireVertexNormals();
+
+        if (recenter)
+        {
+            Vector3 obstacleCenter = meshBarycenter(obstacleGeometry, obstacleMesh);
+            std::cout << "Recentering obstacle " << filename << " (offset " << obstacleCenter << ")" << std::endl;
+            for (GCVertex v : obstacleMesh->vertices())
+            {
+                obstacleGeometry->inputVertexPositions[v] = obstacleGeometry->inputVertexPositions[v] - obstacleCenter;
+            }
+        }
 
         std::string mesh_name = polyscope::guessNiceNameFromPath(filename);
         polyscope::SurfaceMesh *psMesh = polyscope::registerSurfaceMesh(mesh_name, obstacleGeometry->inputVertexPositions,
@@ -667,6 +689,7 @@ bool takeScreenshots = false;
 uint screenshotNum = 0;
 bool uiNormalizeView = false;
 int numSteps;
+bool remesh = false;
 
 void saveScreenshot(uint i)
 {
@@ -701,6 +724,7 @@ void customCallback()
     {
         saveScreenshot(screenshotNum++);
     }
+    ImGui::Checkbox("Dynamic remeshing", &remesh);
 
     rsurfaces::MainApp::instance->HandlePicking();
 
@@ -716,7 +740,7 @@ void customCallback()
     ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
     if (ImGui::Button("Take 1 step", ImVec2{ITEM_WIDTH, 0}) || run)
     {
-        MainApp::instance->TakeFractionalSobolevStep();
+        MainApp::instance->TakeFractionalSobolevStep(remesh);
         // rsurfaces::MainApp::instance->TakeNaiveStep(0.01);
         MainApp::instance->updateMeshPositions();
         if (takeScreenshots)
@@ -1072,7 +1096,7 @@ int main(int argc, char **argv)
 
     for (scene::ObstacleData &obs : data.obstacles)
     {
-        MainApp::instance->AddObstacle(obs.obstacleName, obs.weight);
+        MainApp::instance->AddObstacle(obs.obstacleName, obs.weight, obs.recenter);
     }
 
     // Give control to the polyscope gui

@@ -47,6 +47,7 @@ namespace rsurfaces
         {
             std::string obstacleName;
             double weight;
+            bool recenter = false;
         };
 
         struct SceneData
