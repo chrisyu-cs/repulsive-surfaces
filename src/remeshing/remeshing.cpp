@@ -7,6 +7,8 @@ namespace rsurfaces
         using std::cout;
         using std::queue;
         
+        // helper functions
+        
         inline Vector3 projectToPlane(Vector3 v, Vector3 norm)
         {
             return v - norm * dot(norm, v);
@@ -14,45 +16,194 @@ namespace rsurfaces
         
         inline int degreeDifference(int d1, int d2, int d3, int d4)
         {
-            return abs(d1 - 6) + abs(d2 - 6) + abs(d3 - 6) + abs(d4 - 6);
+            return abs(d1 - 6) + abs(d2- 6) + abs(d3 - 6) + abs(d4 - 6);
+//            return abs(d1 - 6)*abs(d1 - 6) + abs(d2- 6)*abs(d2 - 6) + abs(d3 - 6)*abs(d3 - 6) + abs(d4 - 6)*abs(d4 - 6);
         }
         
-        void collapseEdge(MeshPtr const &mesh, GeomPtr const &geometry, Edge e)
+        inline Vector3 edgeMidpoint(MeshPtr const &mesh, GeomPtr const &geometry, Edge e)
         {
-            Vertex v = e.halfedge().vertex();
-            if(v.degree() <= 3) return;
-            for(int i = v.getIndex(); i < (int)mesh->nVertices()-1; i++)
-            {
-                geometry->inputVertexPositions[i] = geometry->inputVertexPositions[i+1];
-            }
-//            mesh->myCollapseEdgeTriangular(e);
-            
+            Vector3 endPos1 = geometry->inputVertexPositions[e.halfedge().tailVertex()];
+            Vector3 endPos2 = geometry->inputVertexPositions[e.halfedge().tipVertex()];
+            return (endPos1+endPos2)/2;
         }
         
-        
-        bool shouldFlip(Edge e)
+        inline double diamondAngle(Vector3 a, Vector3 b, Vector3 c, Vector3 d)
         {
-            // check how close the diamond vertices are to degree 6
+            Vector3 n1 = cross(b-a, c-a);
+            Vector3 n2 = cross(b-d, a-d);
+            return PI-angle(n1, n2);
+        }
+        
+        inline bool checkFoldover(Vector3 a, Vector3 b, Vector3 c, Vector3 x)
+        {
+            return diamondAngle(a, b, c, x) > PI-0.3;
+        }
+        
+        bool shouldFlip(MeshPtr const &mesh, GeomPtr const &geometry, Edge e)
+        {
             Halfedge he = e.halfedge();
-            Vertex v1 = he.next().vertex();
-            Vertex v2 = he.next().next().vertex();
-            Vertex v3 = he.twin().next().vertex();
+            Vertex v1 = he.vertex();
+            Vertex v2 = he.next().vertex();
+            Vertex v3 = he.next().next().vertex();
             Vertex v4 = he.twin().next().next().vertex();
             
+            Vector3 a = geometry->inputVertexPositions[v1];
+            Vector3 b = geometry->inputVertexPositions[v2];
+            Vector3 c = geometry->inputVertexPositions[v3];
+            Vector3 d = geometry->inputVertexPositions[v4];
+            if(diamondAngle(d, c, a, b) < PI/2) return false;
+            
+            // check how close the diamond vertices are to degree 6
             int d1 = v1.degree();
             int d2 = v2.degree();
             int d3 = v3.degree();
             int d4 = v4.degree();
             
-            return degreeDifference(d1, d2, d3, d4) > degreeDifference(d1 - 1, d2 + 1, d3 - 1, d4 + 1);
+//            if(d1 == 3 || d2 == 3 || d3 == 3 || d4 == 3 || d1 - 1 <= 3 || d3 - 1 <= 3) return false;
+            return degreeDifference(d1, d2, d3, d4) > degreeDifference(d1 - 1, d2 - 1, d3 + 1, d4 + 1);
         }
         
-        void adjustVertexDegrees(MeshPtr const &mesh)
+        bool shouldCollapse(MeshPtr const &mesh, GeomPtr const &geometry, Edge e) // still working on it
+        {
+            std::vector<Edge> toCheck;
+            Vertex v1 = e.halfedge().vertex();
+            Vertex v2 = e.halfedge().twin().vertex();
+            Halfedge he = v1.halfedge();
+            Halfedge st = he;
+            do
+            {
+                
+            }
+            while(he != st);
+            return true;
+        }
+        
+        // debug functions
+        
+        void collapseEdge(MeshPtr const &mesh, GeomPtr const &geometry, Edge e)
+        {
+            Vertex v;
+//            if(v.degree() <= 3) return;
+//            for(int i = v.getIndex(); i < (int)mesh->nVertices()-1; i++)
+//            {
+//                geometry->inputVertexPositions[i] = geometry->inputVertexPositions[i+1];
+//            }
+           mesh->myCollapseEdgeTriangular(e, v);
+        }
+        
+        void testCollapseEdge(MeshPtr const &mesh, GeomPtr const &geometry, int index)
+        {
+            int i = 0;
+            for(Edge e : mesh->edges())
+            {
+        //      if(i <= 10000) std::cerr<<e.getIndex()<<std::endl;
+                if((int)e.getIndex() == index){
+        //          std::cerr<<e.halfedge().next()<<std::endl;
+                    std::cerr<<"collapsed "<<e<<std::endl;        
+                    collapseEdge(mesh, geometry, e);
+                    break;
+                }
+                i++;
+            }
+//            std::cerr<<"Here1!"<<std::endl;
+            mesh->validateConnectivity();
+//            std::cerr<<"Here2!"<<std::endl;
+            mesh->compress();
+//            std::cerr<<"Here3!"<<std::endl;
+            mesh->validateConnectivity();
+ //           std::cerr<<"Here4!"<<std::endl;
+        }
+        
+        bool checkDegree(MeshPtr const &mesh){
+            for(Vertex v : mesh->vertices()){
+                if(v.degree() == 2 && !v.isBoundary()){
+                    std::cerr<<"broken: "<<v<<std::endl;
+                    return false;
+                }
+            }
+            return true;
+        }
+        
+        void testStuff(MeshPtr const &mesh, GeomPtr const &geometry, int index)
+        {
+            
+            /*for(Vertex v : mesh->vertices())
+            {
+                if((int)v.getIndex() == index){
+                    mesh->removeVertex(v);
+                    break;
+                }
+            }*/
+            for(Edge e : mesh->edges()){
+                if((int)e.getIndex() == index){
+                    mesh->flip(e);
+                    break;
+                }
+            }
+            /*std::vector<int> toRemove{888,886,881,879,877,876,873,868,866,864,863,862,861,860,859,857,856,854,853,851,850,849,848,847,846,842,841,840,838,836};
+            reverse(std::begin(toRemove), std::end(toRemove));
+            
+            while(!toRemove.empty()){
+                int ind = toRemove.back();
+                toRemove.pop_back();
+                for(Edge e : mesh->edges()){
+                    if((int)e.getIndex() == ind){
+                        std::cerr<<e<<std::endl;
+                        mesh->myCollapseEdgeTriangular(e);
+                    }
+                }
+            }*/
+            
+            std::cerr<<"Here1!"<<std::endl;
+            mesh->validateConnectivity();
+            std::cerr<<"Here2!"<<std::endl;
+            mesh->compress();
+            std::cerr<<"Here3!"<<std::endl;
+            
+        }
+        
+        void testStuff2(MeshPtr const &mesh, GeomPtr const &geometry)
+        {
+            int i = 0;
+            for(Vertex v : mesh->vertices())
+            {
+        //      if(i <= 10000) std::cerr<<e.getIndex()<<std::endl;
+                std::cerr<<v.getIndex()<<geometry->inputVertexPositions[v]<<std::endl;
+                i++;
+            }
+        }
+        
+        void showEdge(MeshPtr const &mesh, GeomPtr const &geometry, int index)
+        {
+            int i = 0;
+            /*for(Edge e : mesh->edges())
+            {
+                if((int)e.getIndex() == index){
+                    geometry->inputVertexPositions[e.halfedge().vertex()] *= 1.1;
+                    geometry->inputVertexPositions[e.halfedge().twin().vertex()] *= 1.1;
+                    break;
+                }
+                i++;
+            }*/
+            for(Vertex v : mesh->vertices())
+            {
+                if((int)v.getIndex() == index){
+                    geometry->inputVertexPositions[v] *= 1.1;
+                    break;
+                }
+                i++;
+            }
+        }
+        
+        // non-debug functions from here
+        
+        void adjustVertexDegrees(MeshPtr const &mesh, GeomPtr const &geometry)
         {
             for(Edge e : mesh->edges())
             {
-                if(!e.isBoundary() && shouldFlip(e))
+                if(!e.isBoundary() && shouldFlip(mesh, geometry, e))
                 {
+                    //checkDegree(mesh);
                     mesh->flip(e);
                 }
             }
@@ -142,7 +293,7 @@ namespace rsurfaces
                     // and project the average to the tangent plane
                     Vector3 updateDirection = newVertexPosition[v] - geometry->inputVertexPositions[v];
                     updateDirection = projectToPlane(updateDirection, geometry->vertexNormals[v]);
-                    newVertexPosition[v] = geometry->inputVertexPositions[v] + updateDirection;
+                    newVertexPosition[v] = geometry->inputVertexPositions[v] + 1.0*updateDirection;
                 }
             }
             // update final vertices
@@ -213,39 +364,69 @@ namespace rsurfaces
             }
         }
         
-        void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry) // work in progress
+        void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry, double targetL)
+        {
+            // queues of edges to CHECK to change
+            std::cout<<"start"<<std::endl;
+            std::vector<Edge> toSplit;
+            std::vector<Edge> toCollapse;
+            
+            for(Edge e : mesh->edges())
+            {
+                toSplit.push_back(e);
+            }
+            
+            // actually do it
+            std::cout<<"split"<<std::endl;
+            while(!toSplit.empty())
+            {
+                Edge e = toSplit.back();
+                toSplit.pop_back();
+                if(geometry->edgeLength(e) > targetL*4.0/3)
+                {
+                    Vector3 newPos = edgeMidpoint(mesh, geometry, e);
+                    Halfedge he = mesh->splitEdgeTriangular(e);
+                    Vertex newV = he.vertex();
+                    geometry->inputVertexPositions[newV] = newPos;
+                }
+                else
+                {
+                    toCollapse.push_back(e);
+                }                
+                
+            }
+            std::cout<<"collapse"<<std::endl;
+            while(!toCollapse.empty())
+            {
+                Edge e = toCollapse.back();
+                toCollapse.pop_back();
+                if(e.halfedge().next().getIndex() != INVALID_IND) // make sure it exists
+                {
+                    if(geometry->edgeLength(e) < targetL*2.0/3)
+                    {
+                        Vector3 newPos = edgeMidpoint(mesh, geometry, e);
+                        Vertex v;
+                        if(mesh->myCollapseEdgeTriangular(e, v)){
+                            geometry->inputVertexPositions[v] = newPos;
+                        }
+                    }
+                }
+            }
+            
+            mesh->validateConnectivity();
+            mesh->compress();
+        }
+        
+        void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry)
         {
             // compute average edge length
             double L = 0;
-            // queue of edge to check length
-            std::vector<Edge> toCheck;
             for(Edge e : mesh->edges())
             {
                 L += geometry->edgeLength(e);
-                toCheck.push_back(e);
             }
             L /= mesh->nEdges();
-            
-            
-            while(!toCheck.empty())
-            {
-                Edge e = toCheck.back();
-                toCheck.pop_back();
-                // split if too long, collapse if too short
-                if(geometry->edgeLength(e) > L*4.0/3)
-                {
- /*                   Vector3 endPos1 = geometry->inputVertexPositions[e.halfedge().tailVertex()];
-                    Vector3 endPos2 = geometry->inputVertexPositions[e.halfedge().tipVertex()];
-                    Halfedge he = mesh->splitEdgeTriangular(e);
-                    Vertex newV = he.vertex();
-                    geometry->inputVertexPositions[newV] = (endPos1 + endPos2)/2; */
-                }
-                else if(geometry->edgeLength(e) < L*4.0/5)
-                {
-                    collapseEdge(mesh, geometry, e);
-                }
-            }
-            
+            adjustEdgeLengths(mesh, geometry, L);
         }
         
         Vector3 findBarycenter(Vector3 p1, Vector3 p2, Vector3 p3)
@@ -301,6 +482,31 @@ namespace rsurfaces
             for (Vertex v : mesh->vertices())
             {
                 geometry->inputVertexPositions[v] = newVertexPosition[v];
+            }
+        }
+        
+        
+        void remesh(MeshPtr const &mesh, GeomPtr const &geometry){
+            double L = 0;
+            for(Edge e : mesh->edges())
+            {
+                L += geometry->edgeLength(e);
+            }
+            L /= mesh->nEdges();
+            for(int i = 0; i < 1; i++){
+                std::cout<<"fixing edges"<<std::endl;
+                mesh->validateConnectivity();
+                adjustEdgeLengths(mesh, geometry, L);
+                mesh->validateConnectivity();
+                std::cout<<"fixing vertices"<<std::endl;
+                mesh->validateConnectivity();
+                adjustVertexDegrees(mesh, geometry);
+                mesh->validateConnectivity();
+                std::cout<<"smoothing"<<std::endl;
+                mesh->validateConnectivity();
+                smoothByLaplacian(mesh, geometry);
+                mesh->validateConnectivity();
+                std::cout<<"done"<<std::endl;
             }
         }
         

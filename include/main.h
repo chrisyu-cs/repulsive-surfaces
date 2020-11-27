@@ -7,6 +7,7 @@
 #include "polyscope/surface_mesh.h"
 #include "energy/barnes_hut_tpe_6d.h"
 #include "scene_file.h"
+#include "geometrycentral/surface/meshio.h"
 
 namespace rsurfaces
 {
@@ -39,7 +40,7 @@ namespace rsurfaces
 
         inline void reregisterMesh()
         {
-            psMesh = polyscope::registerSurfaceMesh(meshName, geom->inputVertexPositions, mesh->getFaceVertexList());
+            psMesh = polyscope::registerSurfaceMesh(meshName, geom->inputVertexPositions, mesh->getFaceVertexList(), polyscopePermutations(*mesh));
         }
         
         void updateMeshPositions();

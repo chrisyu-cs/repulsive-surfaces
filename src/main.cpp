@@ -474,6 +474,8 @@ bool uiNormalizeView = false;
 int stepLimit;
 int numSteps;
 
+int partIndex = 4475;
+
 void saveScreenshot(uint i)
 {
   char buffer[5];
@@ -585,6 +587,7 @@ void customCallback()
   if (ImGui::Button("Fix Delaunay"))
   {
     remeshing::fixDelaunay(MainApp::instance->mesh, MainApp::instance->geom);
+    MainApp::instance->mesh->validateConnectivity();
     MainApp::instance->reregisterMesh();
   }
 
@@ -602,7 +605,7 @@ void customCallback()
 
   if (ImGui::Button("Laplacian optimize"))
   {
-    for (int i = 0; i < 1000; i++)
+    for (int i = 0; i < 10; i++)
     {
       remeshing::smoothByLaplacian(MainApp::instance->mesh, MainApp::instance->geom);
       remeshing::fixDelaunay(MainApp::instance->mesh, MainApp::instance->geom);
@@ -612,13 +615,78 @@ void customCallback()
 
   if (ImGui::Button("Circumcenter optimize"))
   {
-    for (int i = 0; i < 1000; i++)
+    for (int i = 0; i < 10; i++)
     {
       remeshing::smoothByCircumcenter(MainApp::instance->mesh, MainApp::instance->geom);
       remeshing::fixDelaunay(MainApp::instance->mesh, MainApp::instance->geom);
     }
     MainApp::instance->reregisterMesh();
   }
+  if (ImGui::Button("Adjust edge lengths"))
+  {
+    remeshing::adjustEdgeLengths(MainApp::instance->mesh, MainApp::instance->geom);
+    MainApp::instance->reregisterMesh();
+  }
+  if (ImGui::Button("Adjust vertex degrees"))
+  {
+    remeshing::adjustVertexDegrees(MainApp::instance->mesh, MainApp::instance->geom);
+    MainApp::instance->reregisterMesh();
+  }
+ 
+  if (ImGui::Button("Face Weight Smooth"))
+  {
+    FaceData<double> faceWeight(*(MainApp::instance->mesh));
+    for(int i = 0; i < 100; i++){
+        for(Face f : (MainApp::instance->mesh)->faces()){
+            faceWeight[f] = 10*(-remeshing::findBarycenter((MainApp::instance->geom), f).z + 1.5) + 0;
+        }
+        
+        remeshing::smoothByFaceWeight(MainApp::instance->mesh, MainApp::instance->geom, faceWeight);
+ //       remeshing::fixDelaunay(MainApp::instance->mesh, MainApp::instance->geom);
+    }
+    MainApp::instance->reregisterMesh();
+  }
+  if (ImGui::Button("Remesh"))
+  {
+    remeshing::remesh(MainApp::instance->mesh, MainApp::instance->geom);
+    MainApp::instance->reregisterMesh();
+  }
+  ImGui::EndGroup();
+  
+  // testing stuff
+  
+  ImGui::Text("Testing stuff");
+  
+  ImGui::BeginGroup();
+  ImGui::InputInt("partIndex", &partIndex);
+  if (ImGui::Button("Test collapse edge"))
+  {
+    remeshing::testCollapseEdge(MainApp::instance->mesh, MainApp::instance->geom, partIndex);
+    MainApp::instance->reregisterMesh();
+  } 
+  if (ImGui::Button("Test stuff"))
+  {
+    remeshing::testStuff(MainApp::instance->mesh, MainApp::instance->geom, partIndex);
+//    MainApp::instance->mesh->validateConnectivity();
+//    MainApp::instance->mesh->compress();
+    MainApp::instance->reregisterMesh();
+  } 
+  
+  if (ImGui::Button("Test stuff 2"))
+  {
+    remeshing::testStuff2(MainApp::instance->mesh, MainApp::instance->geom);
+    MainApp::instance->reregisterMesh();
+  } 
+  
+  if (ImGui::Button("Show Vertex"))
+  {
+    remeshing::showEdge(MainApp::instance->mesh, MainApp::instance->geom, partIndex);
+    MainApp::instance->reregisterMesh();
+  }
+  if (ImGui::Button("Validate"))
+  {
+    MainApp::instance->mesh->validateConnectivity();
+  } 
   ImGui::EndGroup();
 }
 

@@ -16,13 +16,16 @@ namespace rsurfaces
         using namespace geometrycentral;
         using namespace geometrycentral::surface;
         
+        void testCollapseEdge(MeshPtr const &mesh, GeomPtr const &geometry, int index);
+        void testStuff(MeshPtr const &mesh, GeomPtr const &geometry, int index);
+        void testStuff2(MeshPtr const &mesh, GeomPtr const &geometry);
+        void showEdge(MeshPtr const &mesh, GeomPtr const &geometry, int index);
+        
         void collapseEdge(MeshPtr const &mesh, GeomPtr const &geometry, Edge e);
         
         void testStuff(MeshPtr const &mesh, GeomPtr const &geometry, int edgeIndex);
         
-        bool shouldFlip(Edge e);
-        
-        void adjustVertexDegrees(MeshPtr const &mesh);
+        void adjustVertexDegrees(MeshPtr const &mesh, GeomPtr const &geometry);
 
         bool isDelaunay(GeomPtr const &geometry, Edge e);
 
@@ -43,5 +46,8 @@ namespace rsurfaces
         Vector3 findBarycenter(GeomPtr const &geometry, Face f);
         
         void smoothByFaceWeight(MeshPtr const &mesh, GeomPtr const &geometry, FaceData<double> faceWeight);
+        
+        
+        void remesh(MeshPtr const &mesh, GeomPtr const &geometry);
     } // namespace remeshing
 } // namespace rsurfaces
