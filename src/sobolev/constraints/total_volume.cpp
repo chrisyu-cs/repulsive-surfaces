@@ -8,6 +8,11 @@ namespace rsurfaces
 
         TotalVolumeConstraint::TotalVolumeConstraint(MeshPtr &mesh, GeomPtr &geom)
         {
+            ResetFunction(mesh, geom);
+        }
+
+        void TotalVolumeConstraint::ResetFunction(MeshPtr &mesh, GeomPtr &geom)
+        {
             initValue = totalVolume(geom, mesh);
         }
 
@@ -48,7 +53,7 @@ namespace rsurfaces
         void TotalVolumeConstraint::addErrorValues(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow)
         {
             double current = totalVolume(geom, mesh);
-            V(baseRow) = current - initValue;
+            V(baseRow) = (current - initValue);
         }
 
         double TotalVolumeConstraint::getTargetValue()

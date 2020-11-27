@@ -40,6 +40,8 @@ namespace rsurfaces {
         // Return 0 if this energy doesn't do hierarchical approximation.
         virtual double GetTheta();
 
+        void ChangeVertexTarget(GCVertex v, Vector3 newPos);
+
     private: 
         MeshPtr mesh;
         GeomPtr geom;

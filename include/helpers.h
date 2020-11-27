@@ -146,7 +146,8 @@ namespace rsurfaces
         return sum / 4;
     }
 
-    inline Vector3 meshBarycenter(GeomPtr const &geom, MeshPtr const &mesh)
+    template <typename GPtr, typename MPtr>
+    inline Vector3 meshBarycenter(GPtr const &geom, MPtr const &mesh)
     {
         Vector3 center{0, 0, 0};
         double sumWeight = 0;

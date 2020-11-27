@@ -25,7 +25,9 @@ namespace rsurfaces
         {
             SquaredError,
             Area,
-            Volume
+            Volume,
+            SoftAreaConstraint,
+            SoftVolumeConstraint
         };
 
         struct PotentialData
@@ -45,6 +47,7 @@ namespace rsurfaces
         {
             std::string obstacleName;
             double weight;
+            bool recenter = false;
         };
 
         struct SceneData
@@ -57,6 +60,7 @@ namespace rsurfaces
             std::vector<PotentialData> potentials;
             std::vector<size_t> vertexPins;
             std::vector<size_t> vertexNormals;
+            int iterationLimit = 0;
         };
 
         template <class Container>

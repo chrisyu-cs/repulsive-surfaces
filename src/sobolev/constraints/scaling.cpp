@@ -5,6 +5,10 @@ namespace rsurfaces
 {
     namespace Constraints
     {
+        void ScalingConstraint::ResetFunction(MeshPtr &mesh, GeomPtr &geom)
+        {
+        }
+
         void ScalingConstraint::addTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow)
         {
 

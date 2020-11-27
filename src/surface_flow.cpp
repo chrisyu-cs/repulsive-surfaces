@@ -89,7 +89,7 @@ namespace rsurfaces
         UpdateEnergies();
 
         // Grab the tangent-point energy specifically
-        BarnesHutTPEnergy6D* bhEnergy = dynamic_cast<BarnesHutTPEnergy6D*>(energies[0]);
+        BarnesHutTPEnergy6D *bhEnergy = dynamic_cast<BarnesHutTPEnergy6D *>(energies[0]);
 
         // Measure the energy at the start of the timestep -- just for
         // diagnostic purposes
@@ -148,6 +148,10 @@ namespace rsurfaces
         double energyBeforeBackproj = GetEnergyValue();
 
         long timeBackproj = currentTimeMilliseconds();
+        
+        H1::ProjectConstraints(mesh, geom, schurConstraints, simpleConstraints, 1);
+
+        /*
         if (schurConstraints.size() > 0)
         {
             // Project onto constraint manifold using Schur complement
@@ -155,7 +159,7 @@ namespace rsurfaces
         }
         // Fix simple things like barycenter drift
         hs.ProjectSimpleConstraints();
-        // hs.ProjectSimpleConstraintsWithSaddle();
+        */
 
         long timeEnd = currentTimeMilliseconds();
 
@@ -182,6 +186,26 @@ namespace rsurfaces
     {
         Vector3 center = meshBarycenter(geom, mesh);
         translateMesh(geom, mesh, origBarycenter - center);
+    }
+
+    void SurfaceFlow::ResetAllConstraints()
+    {
+        for (ConstraintPack &p : schurConstraints)
+        {
+            p.constraint->ResetFunction(mesh, geom);
+        }
+        for (Constraints::SimpleProjectorConstraint *c : simpleConstraints)
+        {
+            c->ResetFunction(mesh, geom);
+        }
+    }
+
+    void SurfaceFlow::ResetAllPotentials()
+    {
+        for (SurfaceEnergy *energy : energies)
+        {
+            energy->ResetTargets();
+        }
     }
 
     SurfaceEnergy *SurfaceFlow::BaseEnergy()

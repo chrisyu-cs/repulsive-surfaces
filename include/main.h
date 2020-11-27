@@ -9,8 +9,17 @@
 #include "scene_file.h"
 #include "geometrycentral/surface/meshio.h"
 
+#include "energy/squared_error.h"
+
 namespace rsurfaces
 {
+    struct PriorityVertex
+    {
+        GCVertex vertex;
+        double priority;
+        Vector3 position;
+    };
+
     class MainApp
     {
     public:
@@ -25,9 +34,12 @@ namespace rsurfaces
         void Scale2x();
         void TestNormalDeriv();
 
+        void GetFalloffWindow(GCVertex v, double radius, std::vector<PriorityVertex> &verts);
+        void HandlePicking();
+
         void TakeNaiveStep(double t);
-        void TakeFractionalSobolevStep();
-        void AddObstacle(std::string filename, double weight);
+        void TakeFractionalSobolevStep(bool remeshAfter);
+        void AddObstacle(std::string filename, double weight, bool recenter);
         void AddPotential(scene::PotentialType pType, double weight);
 
         MeshPtr mesh;
@@ -37,6 +49,7 @@ namespace rsurfaces
         polyscope::SurfaceMesh *psMesh;
         std::vector<polyscope::SurfaceMesh *> obstacles;
         std::string meshName;
+        int stepLimit;
 
         inline void reregisterMesh()
         {
@@ -48,5 +61,16 @@ namespace rsurfaces
         BVHNode6D *vertBVH;
         bool normalizeView;
         double bh_theta;
+
+    private:
+        GCVertex pickedVertex;
+        std::vector<PriorityVertex> dragVertices;
+
+        double pickDepth;
+        bool pickNearbyVertex(GCVertex &out);
+        SquaredError* vertexPotential;
+        bool ctrlMouseDown;
+        Vector3 initialPickedPosition;
+        bool hasPickedVertex;
     };
 } // namespace rsurfaces

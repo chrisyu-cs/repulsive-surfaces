@@ -20,8 +20,8 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STR
 
   # using Clang (linux or apple) or GCC
   message("Using clang/gcc compiler flags")
-  SET(BASE_CXX_FLAGS "-std=c++17 -Wall -Wextra -Werror")
-  SET(DISABLED_WARNINGS " -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field")
+  SET(BASE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Werror")
+  SET(DISABLED_WARNINGS " -Wno-unknown-warning-option -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-copy -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field")
   SET(TRACE_INCLUDES " -H -Wno-error=unused-command-line-argument")
 
   if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
@@ -71,6 +71,8 @@ set(SRCS
   src/energy/barnes_hut_newtonian.cpp
   src/energy/barnes_hut_tpe_6d.cpp
   src/energy/barnes_hut_tpe_xdiff.cpp
+  src/energy/soft_area_constraint.cpp
+  src/energy/soft_volume_constraint.cpp
   src/energy/total_area_potential.cpp
   src/energy/total_volume_potential.cpp
   src/energy/tpe_kernel.cpp

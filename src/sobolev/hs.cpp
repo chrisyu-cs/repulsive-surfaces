@@ -464,32 +464,58 @@ namespace rsurfaces
         void HsMetric::ProjectSchurConstraints(std::vector<ConstraintPack> &constraints, SchurComplement &comp)
         {
             size_t nRows = comp.M_A.rows();
+            int nIters = 0;
             Eigen::VectorXd vals(nRows);
-            vals.setZero();
-            int curRow = 0;
-            // Fill right-hand side with error values
-            for (ConstraintPack &c : constraints)
-            {
-                c.constraint->addErrorValues(vals, mesh, geom, curRow);
-                curRow += c.constraint->nRows();
-            }
-            // In this case we want the block of the inverse that multiplies the bottom block
-            // -A^{-1} B (M/A)^{-1}, where B = C^T
-            // Apply (M/A) inverse first
-            MatrixUtils::SolveDenseSystem(comp.M_A, vals, vals);
-            // Apply C^T
-            Eigen::VectorXd correction = comp.C.transpose() * vals;
-            // Apply A^{-1}
-            ProjectViaSparse(correction, correction);
 
-            // Apply the correction to the vertex positions
-            VertexIndices verts = mesh->getVertexIndices();
-            size_t nVerts = mesh->nVertices();
-            for (GCVertex v : mesh->vertices())
+            while (nIters < 1)
             {
-                int base = 3 * verts[v];
-                Vector3 vertCorr{correction(base), correction(base + 1), correction(base + 2)};
-                geom->inputVertexPositions[v] += vertCorr;
+                vals.setZero();
+                int curRow = 0;
+                // Fill right-hand side with error values
+                for (ConstraintPack &c : constraints)
+                {
+                    c.constraint->addErrorValues(vals, mesh, geom, curRow);
+                    curRow += c.constraint->nRows();
+                }
+
+                double constraintError = vals.lpNorm<Eigen::Infinity>();
+                std::cout << "Constraint error after " << nIters << " iterations = " << constraintError << std::endl;
+                if (nIters > 0 && constraintError < 1e-3)
+                {
+                    break;
+                }
+
+                nIters++;
+
+                // In this case we want the block of the inverse that multiplies the bottom block
+                // -A^{-1} B (M/A)^{-1}, where B = C^T
+                // Apply (M/A) inverse first
+                MatrixUtils::SolveDenseSystem(comp.M_A, vals, vals);
+                // Apply C^T
+                Eigen::VectorXd correction = comp.C.transpose() * vals;
+                // Apply A^{-1}
+                ProjectViaSparse(correction, correction);
+
+                // Apply the correction to the vertex positions
+                VertexIndices verts = mesh->getVertexIndices();
+                size_t nVerts = mesh->nVertices();
+                for (GCVertex v : mesh->vertices())
+                {
+                    int base = 3 * verts[v];
+                    Vector3 vertCorr{correction(base), correction(base + 1), correction(base + 2)};
+                    geom->inputVertexPositions[v] += vertCorr;
+                }
+
+                vals.setZero();
+                curRow = 0;
+                // Fill right-hand side with error values
+                for (ConstraintPack &c : constraints)
+                {
+                    c.constraint->addErrorValues(vals, mesh, geom, curRow);
+                    curRow += c.constraint->nRows();
+                }
+                double corrError = vals.lpNorm<Eigen::Infinity>();
+                std::cout << "Corrected error " << constraintError << " -> " << corrError << std::endl;
             }
         }
 
