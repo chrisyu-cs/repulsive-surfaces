@@ -16,8 +16,8 @@ namespace rsurfaces
         
         inline int degreeDifference(int d1, int d2, int d3, int d4)
         {
-            return abs(d1 - 6) + abs(d2- 6) + abs(d3 - 6) + abs(d4 - 6);
-//            return abs(d1 - 6)*abs(d1 - 6) + abs(d2- 6)*abs(d2 - 6) + abs(d3 - 6)*abs(d3 - 6) + abs(d4 - 6)*abs(d4 - 6);
+            //return abs(d1 - 6) + abs(d2- 6) + abs(d3 - 6) + abs(d4 - 6);
+            return abs(d1 - 6)*abs(d1 - 6) + abs(d2- 6)*abs(d2 - 6) + abs(d3 - 6)*abs(d3 - 6) + abs(d4 - 6)*abs(d4 - 6);
         }
         
         inline Vector3 edgeMidpoint(MeshPtr const &mesh, GeomPtr const &geometry, Edge e)
@@ -27,7 +27,42 @@ namespace rsurfaces
             return (endPos1+endPos2)/2;
         }
         
-        inline double diamondAngle(Vector3 a, Vector3 b, Vector3 c, Vector3 d)
+        Vector3 findCircumcenter(Vector3 p1, Vector3 p2, Vector3 p3)
+        {
+            // barycentric coordinates of circumcenter
+            double a = (p3 - p2).norm();
+            double b = (p3 - p1).norm();
+            double c = (p2 - p1).norm();
+            double a2 = a * a;
+            double b2 = b * b;
+            double c2 = c * c;
+            Vector3 O{a2 * (b2 + c2 - a2), b2 * (c2 + a2 - b2), c2 * (a2 + b2 - c2)};
+            // normalize to sum of 1
+            O /= O[0] + O[1] + O[2];
+            // change back to space
+            return O[0] * p1 + O[1] * p2 + O[2] * p3;
+        }
+
+        Vector3 findCircumcenter(GeomPtr const &geometry, Face f)
+        {
+            // retrieve the face's vertices
+            int index = 0;
+            Vector3 p[3];
+            for (Vertex v0 : f.adjacentVertices())
+            {
+                p[index] = geometry->inputVertexPositions[v0];
+                index++;
+            }
+            return findCircumcenter(p[0], p[1], p[2]);
+        }
+        bool isDelaunay(GeomPtr const &geometry, Edge e)
+        {
+            float angle1 = geometry->cornerAngle(e.halfedge().next().next().corner());
+            float angle2 = geometry->cornerAngle(e.halfedge().twin().next().next().corner());
+            return angle1 + angle2 <= PI;
+        }
+        
+        inline double diamondAngle(Vector3 a, Vector3 b, Vector3 c, Vector3 d) // dihedral angle at edge a-b
         {
             Vector3 n1 = cross(b-a, c-a);
             Vector3 n2 = cross(b-d, a-d);
@@ -36,7 +71,7 @@ namespace rsurfaces
         
         inline bool checkFoldover(Vector3 a, Vector3 b, Vector3 c, Vector3 x)
         {
-            return diamondAngle(a, b, c, x) > PI-0.3;
+            return diamondAngle(a, b, c, x) < .5;
         }
         
         bool shouldFlip(MeshPtr const &mesh, GeomPtr const &geometry, Edge e)
@@ -63,18 +98,48 @@ namespace rsurfaces
             return degreeDifference(d1, d2, d3, d4) > degreeDifference(d1 - 1, d2 - 1, d3 + 1, d4 + 1);
         }
         
-        bool shouldCollapse(MeshPtr const &mesh, GeomPtr const &geometry, Edge e) // still working on it
+        bool shouldCollapse(MeshPtr const &mesh, GeomPtr const &geometry, Edge e)
         {
-            std::vector<Edge> toCheck;
+            std::vector<Halfedge> toCheck;
             Vertex v1 = e.halfedge().vertex();
             Vertex v2 = e.halfedge().twin().vertex();
+            Vector3 midpoint = edgeMidpoint(mesh, geometry, e);
+            // find (halfedge) link around the edge, starting with those surrounding v1
             Halfedge he = v1.halfedge();
             Halfedge st = he;
-            do
-            {
-                
+            do{
+                he = he.next();
+                if(he.vertex() != v2 && he.next().vertex() != v2){
+                    toCheck.push_back(he);
+                }
+                he = he.next().twin();
             }
             while(he != st);
+            // v2
+            he = v2.halfedge();
+            st = he;
+            do{
+                he = he.next();
+                if(he.vertex() != v1 && he.next().vertex() != v1){
+                    toCheck.push_back(he);
+                }
+                he = he.next().twin();
+            }
+            while(he != st);
+            
+            for(Halfedge he0 : toCheck){
+                Halfedge heT = he0.twin();
+                Vertex v1 = heT.vertex();
+                Vertex v2 = heT.next().vertex();
+                Vertex v3 = heT.next().next().vertex();
+                Vector3 a = geometry->inputVertexPositions[v1];
+                Vector3 b = geometry->inputVertexPositions[v2];
+                Vector3 c = geometry->inputVertexPositions[v3];
+                if(checkFoldover(a, b, c, midpoint)){
+                    std::cout<<"prevented foldover"<<std::endl;
+                    return false;
+                }
+            }
             return true;
         }
         
@@ -209,12 +274,7 @@ namespace rsurfaces
             }
         }
 
-        bool isDelaunay(GeomPtr const &geometry, Edge e)
-        {
-            float angle1 = geometry->cornerAngle(e.halfedge().next().next().corner());
-            float angle2 = geometry->cornerAngle(e.halfedge().twin().next().next().corner());
-            return angle1 + angle2 <= PI;
-        }
+        
 
         void fixDelaunay(MeshPtr const &mesh, GeomPtr const &geometry)
         {
@@ -303,34 +363,7 @@ namespace rsurfaces
             }
         }
 
-        Vector3 findCircumcenter(Vector3 p1, Vector3 p2, Vector3 p3)
-        {
-            // barycentric coordinates of circumcenter
-            double a = (p3 - p2).norm();
-            double b = (p3 - p1).norm();
-            double c = (p2 - p1).norm();
-            double a2 = a * a;
-            double b2 = b * b;
-            double c2 = c * c;
-            Vector3 O{a2 * (b2 + c2 - a2), b2 * (c2 + a2 - b2), c2 * (a2 + b2 - c2)};
-            // normalize to sum of 1
-            O /= O[0] + O[1] + O[2];
-            // change back to space
-            return O[0] * p1 + O[1] * p2 + O[2] * p3;
-        }
-
-        Vector3 findCircumcenter(GeomPtr const &geometry, Face f)
-        {
-            // retrieve the face's vertices
-            int index = 0;
-            Vector3 p[3];
-            for (Vertex v0 : f.adjacentVertices())
-            {
-                p[index] = geometry->inputVertexPositions[v0];
-                index++;
-            }
-            return findCircumcenter(p[0], p[1], p[2]);
-        }
+        
 
         void smoothByCircumcenter(MeshPtr const &mesh, GeomPtr const &geometry)
         {
@@ -364,7 +397,20 @@ namespace rsurfaces
             }
         }
         
-        void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry, double targetL)
+        double findTargetL(MeshPtr const &mesh, GeomPtr const &geometry, Edge e)
+        {
+            Vertex v = e.halfedge().vertex();
+            geometry->requireVertexDualAreas();
+            geometry->requireVertexGaussianCurvatures();
+            double A = geometry->vertexDualAreas[v];
+            double S = geometry->vertexGaussianCurvatures[v];
+            double K = S/A;
+            double L = 1/(sqrt(K)+9);
+            return L;
+            
+        }
+        
+        void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry)
         {
             // queues of edges to CHECK to change
             std::cout<<"start"<<std::endl;
@@ -382,7 +428,7 @@ namespace rsurfaces
             {
                 Edge e = toSplit.back();
                 toSplit.pop_back();
-                if(geometry->edgeLength(e) > targetL*4.0/3)
+                if(geometry->edgeLength(e) > findTargetL(mesh, geometry, e)*4.0/3)
                 {
                     Vector3 newPos = edgeMidpoint(mesh, geometry, e);
                     Halfedge he = mesh->splitEdgeTriangular(e);
@@ -402,12 +448,14 @@ namespace rsurfaces
                 toCollapse.pop_back();
                 if(e.halfedge().next().getIndex() != INVALID_IND) // make sure it exists
                 {
-                    if(geometry->edgeLength(e) < targetL*2.0/3)
+                    if(geometry->edgeLength(e) < findTargetL(mesh, geometry, e)*2.0/3)
                     {
                         Vector3 newPos = edgeMidpoint(mesh, geometry, e);
                         Vertex v;
-                        if(mesh->myCollapseEdgeTriangular(e, v)){
-                            geometry->inputVertexPositions[v] = newPos;
+                        if(shouldCollapse(mesh, geometry, e) && mesh->myCollapseEdgeTriangular(e, v)){
+                            if(!v.isBoundary()){
+                                geometry->inputVertexPositions[v] = newPos;
+                            }
                         }
                     }
                 }
@@ -415,18 +463,6 @@ namespace rsurfaces
             
             mesh->validateConnectivity();
             mesh->compress();
-        }
-        
-        void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry)
-        {
-            // compute average edge length
-            double L = 0;
-            for(Edge e : mesh->edges())
-            {
-                L += geometry->edgeLength(e);
-            }
-            L /= mesh->nEdges();
-            adjustEdgeLengths(mesh, geometry, L);
         }
         
         Vector3 findBarycenter(Vector3 p1, Vector3 p2, Vector3 p3)
@@ -487,16 +523,10 @@ namespace rsurfaces
         
         
         void remesh(MeshPtr const &mesh, GeomPtr const &geometry){
-            double L = 0;
-            for(Edge e : mesh->edges())
-            {
-                L += geometry->edgeLength(e);
-            }
-            L /= mesh->nEdges();
             for(int i = 0; i < 1; i++){
                 std::cout<<"fixing edges"<<std::endl;
                 mesh->validateConnectivity();
-                adjustEdgeLengths(mesh, geometry, L);
+                adjustEdgeLengths(mesh, geometry);
                 mesh->validateConnectivity();
                 std::cout<<"fixing vertices"<<std::endl;
                 mesh->validateConnectivity();
