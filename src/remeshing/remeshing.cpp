@@ -148,12 +148,9 @@ namespace rsurfaces
         void collapseEdge(MeshPtr const &mesh, GeomPtr const &geometry, Edge e)
         {
             Vertex v;
-//            if(v.degree() <= 3) return;
-//            for(int i = v.getIndex(); i < (int)mesh->nVertices()-1; i++)
-//            {
-//                geometry->inputVertexPositions[i] = geometry->inputVertexPositions[i+1];
-//            }
-           mesh->myCollapseEdgeTriangular(e, v);
+
+            // TEMPORARILY COMMENTED
+            // mesh->myCollapseEdgeTriangular(e, v);
         }
         
         void testCollapseEdge(MeshPtr const &mesh, GeomPtr const &geometry, int index)
@@ -442,6 +439,9 @@ namespace rsurfaces
                 
             }
             std::cout<<"collapse"<<std::endl;
+
+            /* TEMPORARILY COMMENTED
+
             while(!toCollapse.empty())
             {
                 Edge e = toCollapse.back();
@@ -460,6 +460,7 @@ namespace rsurfaces
                     }
                 }
             }
+            */
             
             mesh->validateConnectivity();
             mesh->compress();

@@ -761,6 +761,7 @@ void customCallback()
 
     ImGui::BeginGroup();
     ImGui::Indent(INDENT);
+
     if (ImGui::Button("Test LML inv", ImVec2{ITEM_WIDTH, 0}))
     {
         MainApp::instance->TestLML();
@@ -809,6 +810,7 @@ void customCallback()
         MainApp::instance->mesh->validateConnectivity();
         MainApp::instance->reregisterMesh();
     }
+    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
 
     if (ImGui::Button("Laplacian smooth"))
     {
@@ -821,8 +823,9 @@ void customCallback()
         remeshing::smoothByCircumcenter(MainApp::instance->mesh, MainApp::instance->geom);
         MainApp::instance->reregisterMesh();
     }
+    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
 
-    if (ImGui::Button("Laplacian optimize"))
+    if (ImGui::Button("Laplacian opt"))
     {
         for (int i = 0; i < 10; i++)
         {
@@ -832,7 +835,7 @@ void customCallback()
         MainApp::instance->reregisterMesh();
     }
 
-    if (ImGui::Button("Circumcenter optimize"))
+    if (ImGui::Button("Circumcenter opt"))
     {
         for (int i = 0; i < 10; i++)
         {
@@ -841,16 +844,18 @@ void customCallback()
         }
         MainApp::instance->reregisterMesh();
     }
+    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
     if (ImGui::Button("Adjust edge lengths"))
     {
         remeshing::adjustEdgeLengths(MainApp::instance->mesh, MainApp::instance->geom);
         MainApp::instance->reregisterMesh();
     }
-    if (ImGui::Button("Adjust vertex degrees"))
+    if (ImGui::Button("Adjust vert degrees"))
     {
         remeshing::adjustVertexDegrees(MainApp::instance->mesh, MainApp::instance->geom);
         MainApp::instance->reregisterMesh();
     }
+    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
  
     if (ImGui::Button("Face Weight Smooth"))
     {
