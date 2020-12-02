@@ -150,13 +150,13 @@ namespace rsurfaces
 
         long timeBackproj = currentTimeMilliseconds();
         
-        H1::ProjectConstraints(mesh, geom, schurConstraints, simpleConstraints, 2);
+        // H1::ProjectConstraints(mesh, geom, schurConstraints, simpleConstraints, 2);
 
-        // if (schurConstraints.size() > 0)
-        // {
-        //     hs.ProjectSchurConstraints(schurConstraints, comp);
-        // }
-        // hs.ProjectSimpleConstraints();
+        if (schurConstraints.size() > 0)
+        {
+            hs.ProjectSchurConstraints(schurConstraints, comp, 1);
+        }
+        hs.ProjectSimpleConstraints();
 
         std::cout << "  Barycenter = " << meshBarycenter(geom, mesh) << std::endl;
         

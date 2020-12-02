@@ -397,20 +397,22 @@ namespace rsurfaces
             }
         }
         
-        double findTargetL(MeshPtr const &mesh, GeomPtr const &geometry, Edge e)
+        // flatLength: specifies how long the target edge length should be in flat regions
+        // epsilon: controls how much variation in target length occurs due to curvature
+        double findTargetL(MeshPtr const &mesh, GeomPtr const &geometry, Edge e, double flatLength, double epsilon)
         {
             Vertex v = e.halfedge().vertex();
             geometry->requireVertexDualAreas();
             geometry->requireVertexGaussianCurvatures();
             double A = geometry->vertexDualAreas[v];
             double S = geometry->vertexGaussianCurvatures[v];
-            double K = S/A;
-            double L = 1/(sqrt(K)+9);
+            double K = S / A;
+            double L = flatLength * epsilon / (sqrt(fabs(K)) + epsilon);
             return L;
             
         }
         
-        void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry)
+        void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry, double flatLength, double epsilon, double minLength)
         {
             // queues of edges to CHECK to change
             std::cout<<"start"<<std::endl;
@@ -428,7 +430,8 @@ namespace rsurfaces
             {
                 Edge e = toSplit.back();
                 toSplit.pop_back();
-                if(geometry->edgeLength(e) > findTargetL(mesh, geometry, e)*4.0/3)
+                double length_e = geometry->edgeLength(e);
+                if(length_e > minLength && length_e > findTargetL(mesh, geometry, e, flatLength, epsilon)*4.0/3)
                 {
                     Vector3 newPos = edgeMidpoint(mesh, geometry, e);
                     Halfedge he = mesh->splitEdgeTriangular(e);
@@ -448,7 +451,7 @@ namespace rsurfaces
                 toCollapse.pop_back();
                 if(e.halfedge().next().getIndex() != INVALID_IND) // make sure it exists
                 {
-                    if(geometry->edgeLength(e) < findTargetL(mesh, geometry, e)*2.0/3)
+                    if(geometry->edgeLength(e) < findTargetL(mesh, geometry, e, flatLength, epsilon)*2.0/3)
                     {
                         Vector3 newPos = edgeMidpoint(mesh, geometry, e);
                         Vertex v;
@@ -526,7 +529,7 @@ namespace rsurfaces
             for(int i = 0; i < 1; i++){
                 std::cout<<"fixing edges"<<std::endl;
                 mesh->validateConnectivity();
-                adjustEdgeLengths(mesh, geometry);
+                adjustEdgeLengths(mesh, geometry, 0.1, 0.1, 0.05);
                 mesh->validateConnectivity();
                 std::cout<<"fixing vertices"<<std::endl;
                 mesh->validateConnectivity();

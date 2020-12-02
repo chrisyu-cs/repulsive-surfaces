@@ -1,5 +1,6 @@
 repel_mesh largesphere.obj 6 12
-constrain volume 0.25 100
-obstacle bunny.obj 1 centered
-iteration_limit 160
+constrain volume 0.2 200
+constrain vertex 1
+obstacle bunny.obj 0.1 centered
+iteration_limit 220
 

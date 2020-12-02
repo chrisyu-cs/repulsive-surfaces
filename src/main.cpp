@@ -46,6 +46,7 @@ namespace rsurfaces
         vertexPotential = 0;
         ctrlMouseDown = false;
         hasPickedVertex = false;
+        numSteps = 0;
     }
 
     void MainApp::TakeNaiveStep(double t)
@@ -59,7 +60,9 @@ namespace rsurfaces
 
         if (remeshAfter)
         {
-            remesher.Remesh(5, (numSteps % 10 == 0));
+            bool doCollapse = (numSteps % 10 == 0);
+            if (doCollapse) std::cout << numSteps << ": Doing edge collapses this iteration..." << std::endl;
+            remesher.Remesh(5, doCollapse);
             MainApp::instance->reregisterMesh();
         }
         else
@@ -878,7 +881,7 @@ void customCallback()
     ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
     if (ImGui::Button("Adjust edge lengths"))
     {
-        remeshing::adjustEdgeLengths(MainApp::instance->mesh, MainApp::instance->geom);
+        remeshing::adjustEdgeLengths(MainApp::instance->mesh, MainApp::instance->geom, 0.25, 0.5, 0.05);
         MainApp::instance->reregisterMesh();
     }
     if (ImGui::Button("Adjust vert degrees"))

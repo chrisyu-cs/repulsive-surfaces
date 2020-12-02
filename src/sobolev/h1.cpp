@@ -83,8 +83,20 @@ namespace rsurfaces
                 triplets.clear();
                 triplets3x.clear();
                 H1::getTriplets(triplets, mesh, geom, false);
+
+                /*
+                Eigen::SparseMatrix<double> L(mesh->nVertices(), mesh->nVertices());
+                // Construct the small Laplacian
+                L.setFromTriplets(triplets.begin(), triplets.end());
+                // Multiply the bi-Laplacian
+                L = L * L;
+                triplets.clear();
+                MatrixUtils::GetTripletsFromSparse(L, triplets);
+                */
+
                 MatrixUtils::TripleTriplets(triplets, triplets3x);
                 size_t curRow = 3 * mesh->nVertices();
+                
 
                 // Add constraint rows
                 for (ConstraintPack &pack : constraints)

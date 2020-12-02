@@ -461,13 +461,13 @@ namespace rsurfaces
             MatrixUtils::ColumnIntoMatrix(curCol, dest);
         }
 
-        void HsMetric::ProjectSchurConstraints(std::vector<ConstraintPack> &constraints, SchurComplement &comp)
+        void HsMetric::ProjectSchurConstraints(std::vector<ConstraintPack> &constraints, SchurComplement &comp, int newtonSteps)
         {
             size_t nRows = comp.M_A.rows();
             int nIters = 0;
             Eigen::VectorXd vals(nRows);
 
-            while (nIters < 1)
+            while (nIters < newtonSteps)
             {
                 vals.setZero();
                 int curRow = 0;
@@ -480,7 +480,7 @@ namespace rsurfaces
 
                 double constraintError = vals.lpNorm<Eigen::Infinity>();
                 std::cout << "Constraint error after " << nIters << " iterations = " << constraintError << std::endl;
-                if (nIters > 0 && constraintError < 1e-3)
+                if (nIters > 0 && constraintError < 1e-2)
                 {
                     break;
                 }

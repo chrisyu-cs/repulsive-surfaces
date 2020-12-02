@@ -36,7 +36,6 @@ namespace rsurfaces
             DynamicRemesher(MeshPtr mesh_, GeomPtr geom_);
             void SetModes(RemeshingMode rMode, SmoothingMode sMode, FlippingMode fMode);
             void Remesh(int numIters, bool changeTopology);
-            void SmoothAndFlip(int numIters);
             void KeepVertexDataUpdated(VertexDataWrapper *data);
 
             SmoothingMode smoothingMode;
@@ -49,6 +48,7 @@ namespace rsurfaces
 
             MeshPtr mesh;
             GeomPtr geom;
+            double initialAverageLength;
             std::vector<VertexDataWrapper *> vectorData;
         };
 

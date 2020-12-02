@@ -9,6 +9,14 @@ namespace rsurfaces
             mesh = mesh_;
             geom = geom_;
 
+            double sumLength = 0;
+            for (Edge e : mesh->edges()) {
+                sumLength += geom->edgeLength(e);
+            }
+            initialAverageLength = sumLength / mesh->nEdges();
+
+            std::cout << "Initial average edge length = " << initialAverageLength << std::endl;
+
             remeshingMode = RemeshingMode::SmoothAndFlip;
             smoothingMode = SmoothingMode::Laplacian;
             flippingMode = FlippingMode::Delaunay;
@@ -51,7 +59,7 @@ namespace rsurfaces
             case RemeshingMode::SmoothFlipAndCollapse:
             {
                 // Only do one edge split/collapse step
-                if (changeTopology) adjustEdgeLengths(mesh, geom);
+                if (changeTopology) adjustEdgeLengths(mesh, geom, initialAverageLength * 2, 1, initialAverageLength * 0.9);
 
                 for (int i = 0; i < numIters; i++)
                 {
@@ -66,16 +74,6 @@ namespace rsurfaces
             }
             
             geom->refreshQuantities();
-        }
-
-        void DynamicRemesher::SmoothAndFlip(int numIters)
-        {
-            adjustEdgeLengths(mesh, geom);
-            for (int i = 0; i < numIters; i++)
-            {
-                smoothVertices();
-                flipEdges();
-            }
         }
 
         void DynamicRemesher::flipEdges()
