@@ -95,6 +95,7 @@ namespace rsurfaces
         // diagnostic purposes
         long timeEnergy = currentTimeMilliseconds();
         double energyBefore = GetEnergyValue();
+        std::cout << "Initial energy = " << energyBefore << std::endl;
         long timeStart = currentTimeMilliseconds();
 
         std::cout << "  * Energy evaluation: " << (timeStart - timeEnergy) << " ms" << std::endl;
@@ -149,17 +150,16 @@ namespace rsurfaces
 
         long timeBackproj = currentTimeMilliseconds();
         
-        H1::ProjectConstraints(mesh, geom, schurConstraints, simpleConstraints, 1);
+        H1::ProjectConstraints(mesh, geom, schurConstraints, simpleConstraints, 2);
 
-        /*
-        if (schurConstraints.size() > 0)
-        {
-            // Project onto constraint manifold using Schur complement
-            hs.ProjectSchurConstraints(schurConstraints, comp);
-        }
-        // Fix simple things like barycenter drift
-        hs.ProjectSimpleConstraints();
-        */
+        // if (schurConstraints.size() > 0)
+        // {
+        //     hs.ProjectSchurConstraints(schurConstraints, comp);
+        // }
+        // hs.ProjectSimpleConstraints();
+
+        std::cout << "  Barycenter = " << meshBarycenter(geom, mesh) << std::endl;
+        
 
         long timeEnd = currentTimeMilliseconds();
 

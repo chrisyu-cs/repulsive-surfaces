@@ -136,7 +136,7 @@ namespace rsurfaces
                 Vector3 b = geometry->inputVertexPositions[v2];
                 Vector3 c = geometry->inputVertexPositions[v3];
                 if(checkFoldover(a, b, c, midpoint)){
-                    std::cout<<"prevented foldover"<<std::endl;
+                    // std::cout<<"prevented foldover"<<std::endl;
                     return false;
                 }
             }
@@ -148,9 +148,12 @@ namespace rsurfaces
         void collapseEdge(MeshPtr const &mesh, GeomPtr const &geometry, Edge e)
         {
             Vertex v;
-
-            // TEMPORARILY COMMENTED
-            // mesh->myCollapseEdgeTriangular(e, v);
+//            if(v.degree() <= 3) return;
+//            for(int i = v.getIndex(); i < (int)mesh->nVertices()-1; i++)
+//            {
+//                geometry->inputVertexPositions[i] = geometry->inputVertexPositions[i+1];
+//            }
+           mesh->myCollapseEdgeTriangular(e, v);
         }
         
         void testCollapseEdge(MeshPtr const &mesh, GeomPtr const &geometry, int index)
@@ -439,9 +442,6 @@ namespace rsurfaces
                 
             }
             std::cout<<"collapse"<<std::endl;
-
-            /* TEMPORARILY COMMENTED
-
             while(!toCollapse.empty())
             {
                 Edge e = toCollapse.back();
@@ -460,7 +460,6 @@ namespace rsurfaces
                     }
                 }
             }
-            */
             
             mesh->validateConnectivity();
             mesh->compress();

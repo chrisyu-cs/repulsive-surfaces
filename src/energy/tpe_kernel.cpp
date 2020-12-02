@@ -16,6 +16,9 @@ namespace rsurfaces
 
     void TPEKernel::recomputeBarycenters()
     {
+        faceBarycenters.clear();
+        faceBarycenters = geometrycentral::surface::FaceData<Vector3>(*mesh);
+
         for (GCFace f : mesh->faces())
         {
             faceBarycenters[f] = faceBarycenter(geom, f);

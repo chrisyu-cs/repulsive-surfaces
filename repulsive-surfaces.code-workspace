@@ -64,7 +64,12 @@
 			"cfenv": "cpp",
 			"cinttypes": "cpp",
 			"typeinfo": "cpp",
-			"typeindex": "cpp"
+			"typeindex": "cpp",
+			"bit": "cpp",
+			"condition_variable": "cpp",
+			"hash_map": "cpp",
+			"future": "cpp",
+			"mutex": "cpp"
 		}
 	}
 }

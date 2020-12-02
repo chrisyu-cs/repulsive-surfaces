@@ -2,6 +2,7 @@
 
 #include "rsurface_types.h"
 #include "surface_flow.h"
+#include "remeshing/dynamic_remesher.h"
 
 #include "polyscope/polyscope.h"
 #include "polyscope/surface_mesh.h"
@@ -61,6 +62,8 @@ namespace rsurfaces
         BVHNode6D *vertBVH;
         bool normalizeView;
         double bh_theta;
+        remeshing::DynamicRemesher remesher;
+        int numSteps;
 
     private:
         GCVertex pickedVertex;
