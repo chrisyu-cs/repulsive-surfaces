@@ -417,7 +417,8 @@ namespace rsurfaces
             }
             averageK /= 2;
             double L = flatLength * epsilon / (sqrt(averageK) + epsilon);
-            return L;
+            // return L;
+            return flatLength;
         }
         
         void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry, double flatLength, double epsilon, double minLength)

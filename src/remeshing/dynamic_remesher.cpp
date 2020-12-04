@@ -59,7 +59,7 @@ namespace rsurfaces
             case RemeshingMode::SmoothFlipAndCollapse:
             {
                 // Only do one edge split/collapse step
-                if (changeTopology) adjustEdgeLengths(mesh, geom, initialAverageLength * 2, 1, initialAverageLength * 0.8);
+                if (changeTopology) adjustEdgeLengths(mesh, geom, initialAverageLength, 1, initialAverageLength * 0.6);
 
                 for (int i = 0; i < numIters; i++)
                 {
