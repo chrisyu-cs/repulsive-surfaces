@@ -163,15 +163,15 @@ namespace rsurfaces
         Eigen::VectorXd result;
         result.setZero(b_hat.rows());
 
-#pragma omp parallel firstprivate(result) shared(b_hat)
+        #pragma omp parallel firstprivate(result) shared(b_hat)
         {
-#pragma omp for
+            #pragma omp for
             for (size_t i = 0; i < inadmissiblePairs.size(); i++)
             {
                 AfFullProduct(inadmissiblePairs[i], v_hat, result);
             }
 
-#pragma omp critical
+            #pragma omp critical
             {
                 b_hat += result;
             }

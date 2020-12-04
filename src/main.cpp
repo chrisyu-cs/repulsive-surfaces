@@ -60,7 +60,7 @@ namespace rsurfaces
 
         if (remeshAfter)
         {
-            bool doCollapse = (numSteps % 10 == 0);
+            bool doCollapse = (numSteps % 1 == 0);
             if (doCollapse) std::cout << numSteps << ": Doing edge collapses this iteration..." << std::endl;
             remesher.Remesh(5, doCollapse);
             MainApp::instance->reregisterMesh();
@@ -1002,6 +1002,7 @@ MeshAndEnergy initTPEOnMesh(std::string meshFile, double alpha, double beta)
     geomShared->requireFaceAreas();
     geomShared->requireVertexNormals();
     geomShared->requireVertexDualAreas();
+    geomShared->requireVertexGaussianCurvatures();
 
     TPEKernel *tpe = new rsurfaces::TPEKernel(meshShared, geomShared, alpha, beta);
 
@@ -1121,8 +1122,8 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::sce
 
     if (!kernelRemoved)
     {
-        std::cout << "Auto-adding barycenter constraint to eliminate constant kernel of Laplacian" << std::endl;
-        flow->addSimpleConstraint<Constraints::BarycenterConstraint3X>(m.mesh, m.geom);
+        // std::cout << "Auto-adding barycenter constraint to eliminate constant kernel of Laplacian" << std::endl;
+        // flow->addSimpleConstraint<Constraints::BarycenterConstraint3X>(m.mesh, m.geom);
     }
 
     return flow;
@@ -1228,6 +1229,8 @@ int main(int argc, char **argv)
         MainApp::instance->AddObstacle(obs.obstacleName, obs.weight, obs.recenter);
     }
 
+    MainApp::instance->updateMeshPositions();
+    
     // Give control to the polyscope gui
     polyscope::show();
 

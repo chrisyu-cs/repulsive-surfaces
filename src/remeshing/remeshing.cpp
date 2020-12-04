@@ -507,18 +507,29 @@ namespace rsurfaces
                 geometry->inputVertexPositions[v] = newVertexPosition[v];
             }
         }
+
+        double getSmoothGaussianCurvature(GeomPtr const &geometry, Vertex v)
+        {
+            double A = vertexDualArea(geometry, v);
+            double S = vertexGaussianCurvature(geometry, v);
+            double K = S / A;
+            return K;
+        }
         
         // flatLength: specifies how long the target edge length should be in flat regions
         // epsilon: controls how much variation in target length occurs due to curvature
         double findTargetL(MeshPtr const &mesh, GeomPtr const &geometry, Edge e, double flatLength, double epsilon)
         {
+            // Areas and curvatures are already required in main.cpp
             Vertex v = e.halfedge().vertex();
-            double A = vertexDualArea(geometry, v);
-            double S = vertexGaussianCurvature(geometry, v);
-            double K = S / A;
-            double L = flatLength * epsilon / (sqrt(fabs(K)) + epsilon);
-            return L;
-            
+            double averageK = 0;
+            for (Vertex v : e.adjacentVertices()) {
+                averageK += getSmoothGaussianCurvature(geometry, v);
+            }
+            averageK /= 2;
+            double L = flatLength * epsilon / (sqrt(averageK) + epsilon);
+            // return L;
+            return flatLength;
         }
         
         void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry, double flatLength, double epsilon, double minLength)
@@ -540,7 +551,7 @@ namespace rsurfaces
                 Edge e = toSplit.back();
                 toSplit.pop_back();
                 double length_e = geometry->edgeLength(e);
-                if(length_e > minLength && length_e > findTargetL(mesh, geometry, e, flatLength, epsilon)*4.0/3)
+                if(length_e > minLength && length_e > findTargetL(mesh, geometry, e, flatLength, epsilon) * 1.5)
                 {
                     Vector3 newPos = edgeMidpoint(mesh, geometry, e);
                     Halfedge he = mesh->splitEdgeTriangular(e);
@@ -560,7 +571,7 @@ namespace rsurfaces
                 toCollapse.pop_back();
                 if(e.halfedge().next().getIndex() != INVALID_IND) // make sure it exists
                 {
-                    if(geometry->edgeLength(e) < findTargetL(mesh, geometry, e, flatLength, epsilon)*2.0/3)
+                    if(geometry->edgeLength(e) < findTargetL(mesh, geometry, e, flatLength, epsilon) * 0.5)
                     {
                         Vector3 newPos = edgeMidpoint(mesh, geometry, e);
                         Vertex v;

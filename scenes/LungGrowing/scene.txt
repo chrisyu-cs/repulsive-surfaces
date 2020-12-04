@@ -1,6 +1,7 @@
 repel_mesh sphere.obj 6 12
-constrain area 3 300
-constrain volume 2.7 300
+constrain barycenter
+constrain area 3 500
+constrain volume 2.8 500
 obstacle bounding2.obj 0.1
-iteration_limit 400
+iteration_limit 600
 
