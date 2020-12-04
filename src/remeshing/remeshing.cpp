@@ -649,7 +649,7 @@ namespace rsurfaces
             for(int i = 0; i < 1; i++){
                 std::cout<<"fixing edges"<<std::endl;
                 mesh->validateConnectivity();
-                adjustEdgeLengths(mesh, geometry, .1, 0.1, 0.05); //.1, .1, .05
+                adjustEdgeLengths(mesh, geometry, 1, 0.1, 0.5); 
                 mesh->validateConnectivity();
                 std::cout<<"flipping"<<std::endl;
                 mesh->validateConnectivity();
