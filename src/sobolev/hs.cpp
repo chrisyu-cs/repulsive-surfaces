@@ -136,12 +136,6 @@ namespace rsurfaces
             initFromEnergy(energy_);
             usedDefaultConstraint = false;
 
-            if (spcs.size() == 0)
-            {
-                std::cerr << "ERROR: Need at least one constraint to initialize HsMetric." << std::endl;
-                std::exit(1);
-            }
-
             for (SimpleProjectorConstraint *spc : spcs)
             {
                 // Push pointers to the existing constraints, which should
@@ -319,7 +313,7 @@ namespace rsurfaces
             {
                 // Assemble the cotan Laplacian
                 std::vector<Triplet> triplets, triplets3x;
-                H1::getTriplets(triplets, mesh, geom);
+                H1::getTriplets(triplets, mesh, geom, 1e-4);
                 // Expand the matrix by 3x
                 MatrixUtils::TripleTriplets(triplets, triplets3x);
 
@@ -529,6 +523,11 @@ namespace rsurfaces
 
         void HsMetric::ProjectSimpleConstraintsWithSaddle()
         {
+            if (simpleConstraints.size() == 0)
+            {
+                return;
+            }
+            
             Eigen::VectorXd vals(factorizedLaplacian.nRows);
             vals.setZero();
             int baseRow = 3 * mesh->nVertices();

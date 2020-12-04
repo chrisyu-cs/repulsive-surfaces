@@ -4,4 +4,4 @@ constrain volume
 # minimize volume_deviation 100
 # minimize area_deviation 100
 # minimize squared_error 0.2
-
+iteration_limit 200

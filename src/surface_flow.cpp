@@ -22,6 +22,7 @@ namespace rsurfaces
         stepCount = 0;
 
         origBarycenter = meshBarycenter(geom, mesh);
+        std::cout << "Original barycenter = " << origBarycenter << std::endl;
         RecenterMesh();
     }
 
