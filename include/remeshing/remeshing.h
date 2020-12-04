@@ -35,7 +35,6 @@ namespace rsurfaces
         void fixDelaunay(MeshPtr const &mesh, GeomPtr const &geometry);
 
         void smoothByLaplacian(MeshPtr const &mesh, GeomPtr const &geometry);
-        //void smoothByLaplacian2(MeshPtr const &mesh, GeomPtr const &geometry);
 
         Vector3 findCircumcenter(Vector3 p1, Vector3 p2, Vector3 p3);
 
