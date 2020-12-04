@@ -2,6 +2,7 @@
 
 #include "rsurface_types.h"
 #include "surface_energy.h"
+#include "vertex_data_wrapper.h"
 
 namespace rsurfaces {
     class SquaredError : public SurfaceEnergy {
@@ -42,10 +43,12 @@ namespace rsurfaces {
 
         void ChangeVertexTarget(GCVertex v, Vector3 newPos);
 
+        // In some cases, we might require positions to be modified externally
+        VertexDataWrapper originalPositions;
+
     private: 
         MeshPtr mesh;
         GeomPtr geom;
         double weight;
-        geometrycentral::surface::VertexData<Vector3> originalPositions;
     };
 }

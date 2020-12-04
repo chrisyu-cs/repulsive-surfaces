@@ -27,6 +27,20 @@ namespace rsurfaces
             return Vector3{M(row, 0), M(row, 1), M(row, 2)};
         }
 
+        inline void GetTripletsFromSparse(Eigen::SparseMatrix<double> &A, std::vector<Triplet> &triplets)
+        {
+            for (int k = 0; k < A.outerSize(); ++k)
+            {
+                for (SparseMatrix<double>::InnerIterator it(A, k); it; ++it)
+                {
+                    int row = it.row();
+                    int col = it.col();
+                    double v = it.value();
+                    triplets.push_back(Triplet{row, col, v});
+                }
+            }
+        }
+
         void TripleTriplets(std::vector<Triplet> &orig, std::vector<Triplet> &output);
         void TripleMatrix(Eigen::MatrixXd &M, Eigen::MatrixXd &out);
         void MatrixIntoColumn(Eigen::MatrixXd &M, Eigen::VectorXd &out);

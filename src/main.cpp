@@ -37,9 +37,8 @@ namespace rsurfaces
     MainApp *MainApp::instance = 0;
 
     MainApp::MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow *flow_, polyscope::SurfaceMesh *psMesh_, std::string meshName_)
+        : mesh(std::move(mesh_)), geom(std::move(geom_)), remesher(mesh, geom)
     {
-        mesh = std::move(mesh_);
-        geom = std::move(geom_);
         flow = flow_;
         psMesh = psMesh_;
         meshName = meshName_;
@@ -47,6 +46,7 @@ namespace rsurfaces
         vertexPotential = 0;
         ctrlMouseDown = false;
         hasPickedVertex = false;
+        numSteps = 0;
     }
 
     void MainApp::TakeNaiveStep(double t)
@@ -57,17 +57,17 @@ namespace rsurfaces
     void MainApp::TakeFractionalSobolevStep(bool remeshAfter)
     {
         flow->StepFractionalSobolev();
-        
+
         if (remeshAfter)
         {
-            std::cout << "Remeshing..." << std::endl;
-            // remeshing::fixDelaunay(MainApp::instance->mesh, MainApp::instance->geom);
-            for (int i = 0; i < 3; i++)
-            {
-                remeshing::smoothByLaplacian(MainApp::instance->mesh, MainApp::instance->geom);
-                remeshing::fixDelaunay(MainApp::instance->mesh, MainApp::instance->geom);
-            }
+            bool doCollapse = (numSteps % 10 == 0);
+            if (doCollapse) std::cout << numSteps << ": Doing edge collapses this iteration..." << std::endl;
+            remesher.Remesh(5, doCollapse);
             MainApp::instance->reregisterMesh();
+        }
+        else
+        {
+            MainApp::instance->updateMeshPositions();
         }
     }
 
@@ -648,6 +648,7 @@ namespace rsurfaces
             SquaredError *errorPotential = new SquaredError(mesh, geom, weight);
             vertexPotential = errorPotential;
             flow->AddAdditionalEnergy(errorPotential);
+            remesher.KeepVertexDataUpdated(&errorPotential->originalPositions);
             break;
         }
         case scene::PotentialType::Area:
@@ -688,8 +689,8 @@ bool run = false;
 bool takeScreenshots = false;
 uint screenshotNum = 0;
 bool uiNormalizeView = false;
-int numSteps;
 bool remesh = false;
+bool changeTopo = false;
 
 int partIndex = 4475;
 
@@ -700,6 +701,26 @@ void saveScreenshot(uint i)
     std::string fname = "frames/frame" + std::string(buffer) + ".png";
     polyscope::screenshot(fname, false);
     std::cout << "Saved screenshot to " << fname << std::endl;
+}
+
+template <typename ItemType>
+void selectFromDropdown(std::string label, const ItemType choices[], size_t nChoices, ItemType &store)
+{
+    using namespace rsurfaces;
+
+    // Dropdown menu for list of remeshing mode settings
+    if (ImGui::BeginCombo(label.c_str(), remeshing::StringOfMode(store).c_str()))
+    {
+        for (size_t i = 0; i < nChoices; i++)
+        {
+            bool is_selected = (store == choices[i]);
+            if (ImGui::Selectable(remeshing::StringOfMode(choices[i]).c_str(), is_selected))
+                store = choices[i];
+            if (is_selected)
+                ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
 }
 
 // A user-defined callback, for creating control panels (etc)
@@ -728,6 +749,20 @@ void customCallback()
     }
     ImGui::Checkbox("Dynamic remeshing", &remesh);
 
+    const remeshing::RemeshingMode rModes[] = {remeshing::RemeshingMode::FlipOnly,
+                                               remeshing::RemeshingMode::SmoothAndFlip,
+                                               remeshing::RemeshingMode::SmoothFlipAndCollapse};
+
+    const remeshing::SmoothingMode sModes[] = {remeshing::SmoothingMode::Laplacian,
+                                               remeshing::SmoothingMode::Circumcenter};
+
+    const remeshing::FlippingMode fModes[] = {remeshing::FlippingMode::Delaunay,
+                                              remeshing::FlippingMode::Degree};
+
+    selectFromDropdown("Remeshing mode", rModes, IM_ARRAYSIZE(rModes), MainApp::instance->remesher.remeshingMode);
+    selectFromDropdown("Smoothing mode", sModes, IM_ARRAYSIZE(sModes), MainApp::instance->remesher.smoothingMode);
+    selectFromDropdown("Flipping mode", fModes, IM_ARRAYSIZE(fModes), MainApp::instance->remesher.flippingMode);
+
     rsurfaces::MainApp::instance->HandlePicking();
 
     ImGui::Text("Iteration limit");
@@ -743,14 +778,13 @@ void customCallback()
     if (ImGui::Button("Take 1 step", ImVec2{ITEM_WIDTH, 0}) || run)
     {
         MainApp::instance->TakeFractionalSobolevStep(remesh);
-        // rsurfaces::MainApp::instance->TakeNaiveStep(0.01);
-        MainApp::instance->updateMeshPositions();
+
         if (takeScreenshots)
         {
             saveScreenshot(screenshotNum++);
         }
-        numSteps++;
-        if (MainApp::instance->stepLimit > 0 && numSteps >= MainApp::instance->stepLimit)
+        MainApp::instance->numSteps++;
+        if (MainApp::instance->stepLimit > 0 && MainApp::instance->numSteps >= MainApp::instance->stepLimit)
         {
             run = false;
         }
@@ -761,6 +795,7 @@ void customCallback()
 
     ImGui::BeginGroup();
     ImGui::Indent(INDENT);
+
     if (ImGui::Button("Test LML inv", ImVec2{ITEM_WIDTH, 0}))
     {
         MainApp::instance->TestLML();
@@ -809,6 +844,7 @@ void customCallback()
         MainApp::instance->mesh->validateConnectivity();
         MainApp::instance->reregisterMesh();
     }
+    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
 
     if (ImGui::Button("Laplacian smooth"))
     {
@@ -821,8 +857,9 @@ void customCallback()
         remeshing::smoothByCircumcenter(MainApp::instance->mesh, MainApp::instance->geom);
         MainApp::instance->reregisterMesh();
     }
+    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
 
-    if (ImGui::Button("Laplacian optimize"))
+    if (ImGui::Button("Laplacian opt"))
     {
         for (int i = 0; i < 10; i++)
         {
@@ -832,7 +869,7 @@ void customCallback()
         MainApp::instance->reregisterMesh();
     }
 
-    if (ImGui::Button("Circumcenter optimize"))
+    if (ImGui::Button("Circumcenter opt"))
     {
         for (int i = 0; i < 10; i++)
         {
@@ -841,27 +878,30 @@ void customCallback()
         }
         MainApp::instance->reregisterMesh();
     }
+    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
     if (ImGui::Button("Adjust edge lengths"))
     {
-        remeshing::adjustEdgeLengths(MainApp::instance->mesh, MainApp::instance->geom);
+        remeshing::adjustEdgeLengths(MainApp::instance->mesh, MainApp::instance->geom, 0.25, 0.5, 0.05);
         MainApp::instance->reregisterMesh();
     }
-    if (ImGui::Button("Adjust vertex degrees"))
+    if (ImGui::Button("Adjust vert degrees"))
     {
         remeshing::adjustVertexDegrees(MainApp::instance->mesh, MainApp::instance->geom);
         MainApp::instance->reregisterMesh();
     }
- 
+    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
+
     if (ImGui::Button("Face Weight Smooth"))
     {
         FaceData<double> faceWeight(*(MainApp::instance->mesh));
-        for(int i = 0; i < 100; i++){
-            for(Face f : (MainApp::instance->mesh)->faces())
+        for (int i = 0; i < 100; i++)
+        {
+            for (Face f : (MainApp::instance->mesh)->faces())
             {
-                faceWeight[f] = 10*(-remeshing::findBarycenter((MainApp::instance->geom), f).z + 1.5) + 0;
+                faceWeight[f] = 10 * (-remeshing::findBarycenter((MainApp::instance->geom), f).z + 1.5) + 0;
             }
             remeshing::smoothByFaceWeight(MainApp::instance->mesh, MainApp::instance->geom, faceWeight);
- //         remeshing::fixDelaunay(MainApp::instance->mesh, MainApp::instance->geom);
+            //         remeshing::fixDelaunay(MainApp::instance->mesh, MainApp::instance->geom);
         }
         MainApp::instance->reregisterMesh();
     }
@@ -871,32 +911,32 @@ void customCallback()
         MainApp::instance->reregisterMesh();
     }
     ImGui::EndGroup();
-  
+
     // testing stuff
-  
+
     ImGui::Text("Testing stuff");
-  
+
     ImGui::BeginGroup();
     ImGui::InputInt("partIndex", &partIndex);
     if (ImGui::Button("Test collapse edge"))
     {
         remeshing::testCollapseEdge(MainApp::instance->mesh, MainApp::instance->geom, partIndex);
         MainApp::instance->reregisterMesh();
-    } 
+    }
     if (ImGui::Button("Test stuff"))
     {
         remeshing::testStuff(MainApp::instance->mesh, MainApp::instance->geom, partIndex);
-//      MainApp::instance->mesh->validateConnectivity();
-//      MainApp::instance->mesh->compress();
+        //      MainApp::instance->mesh->validateConnectivity();
+        //      MainApp::instance->mesh->compress();
         MainApp::instance->reregisterMesh();
-    } 
-  
+    }
+
     if (ImGui::Button("Test stuff 2"))
     {
         remeshing::testStuff2(MainApp::instance->mesh, MainApp::instance->geom);
         MainApp::instance->reregisterMesh();
-    } 
-  
+    }
+
     if (ImGui::Button("Show Vertex"))
     {
         remeshing::showEdge(MainApp::instance->mesh, MainApp::instance->geom, partIndex);
@@ -905,8 +945,8 @@ void customCallback()
     if (ImGui::Button("Validate"))
     {
         MainApp::instance->mesh->validateConnectivity();
-    } 
-    ImGui::EndGroup();
+    }
+    
     if (ImGui::Button("Test vertex"))
     {
         remeshing::testVertex(MainApp::instance->mesh, MainApp::instance->geom, partIndex);
@@ -928,6 +968,7 @@ void customCallback()
 //      MainApp::instance->mesh->compress();
         MainApp::instance->reregisterMesh();
     } 
+    ImGui::EndGroup();
 }
 
 struct MeshAndEnergy

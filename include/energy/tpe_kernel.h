@@ -40,23 +40,23 @@ namespace rsurfaces
         // Cached list of face barycenters to avoid recomputation
         geometrycentral::surface::FaceData<Vector3> faceBarycenters;
         void recomputeBarycenters();
+        template <typename F>
+        Vector3 getBarycenterCached(F face);
 
     private:
         template <typename F1, typename F2>
         Vector3 tpe_gradient_Kf(F1 f1, F2 f2, GCVertex wrt, Vector3 disp, Vector3 n1);
 
-        template <typename F>
-        Vector3 getBarycenterCached(GeomPtr &geom, F face);
     };
 
     template <typename F>
-    inline Vector3 TPEKernel::getBarycenterCached(GeomPtr &geom, F face)
+    inline Vector3 TPEKernel::getBarycenterCached(F face)
     {
         return faceBarycenter(geom, face);
     }
 
     template <>
-    inline Vector3 TPEKernel::getBarycenterCached(GeomPtr &geom, GCFace face)
+    inline Vector3 TPEKernel::getBarycenterCached(GCFace face)
     {
         return faceBarycenters[face];
     }
@@ -65,8 +65,8 @@ namespace rsurfaces
     double TPEKernel::tpe_Kf(F1 f1, F2 f2)
     {
         Vector3 n1 = faceNormal(geom, f1);
-        Vector3 v1 = getBarycenterCached(geom, f1);
-        Vector3 v2 = getBarycenterCached(geom, f2);
+        Vector3 v1 = getBarycenterCached(f1);
+        Vector3 v2 = getBarycenterCached(f2);
         return tpe_Kf(v1, v2, n1);
     }
 
@@ -78,8 +78,8 @@ namespace rsurfaces
             return 0;
         }
         Vector3 n1 = faceNormal(geom, f1);
-        Vector3 v1 = getBarycenterCached(geom, f1);
-        Vector3 v2 = getBarycenterCached(geom, f2);
+        Vector3 v1 = getBarycenterCached(f1);
+        Vector3 v2 = getBarycenterCached(f2);
         return tpe_Kf(v1, v2, n1);
     }
 
@@ -96,8 +96,8 @@ namespace rsurfaces
     {
         double w1 = faceArea(geom, f1);
         double w2 = faceArea(geom, f2);
-        Vector3 v1 = getBarycenterCached(geom, f1);
-        Vector3 v2 = getBarycenterCached(geom, f2);
+        Vector3 v1 = getBarycenterCached(f1);
+        Vector3 v2 = getBarycenterCached(f2);
 
         Vector3 disp = v2 - v1;
         double r2 = disp.norm2();
@@ -108,8 +108,8 @@ namespace rsurfaces
     template <typename F1, typename F2>
     Vector3 TPEKernel::tpe_gradient_pair(F1 f1, F2 f2, GCVertex wrt)
     {
-        Vector3 p1 = getBarycenterCached(geom, f1);
-        Vector3 p2 = getBarycenterCached(geom, f2);
+        Vector3 p1 = getBarycenterCached(f1);
+        Vector3 p2 = getBarycenterCached(f2);
         Vector3 n1 = faceNormal(geom, f1);
 
         double Kf = tpe_Kf(p1, p2, n1);

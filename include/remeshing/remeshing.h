@@ -43,7 +43,7 @@ namespace rsurfaces
 
         void smoothByCircumcenter(MeshPtr const &mesh, GeomPtr const &geometry);
         
-        void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry);
+        void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry, double flatLength, double epsilon, double minLength);
         
         Vector3 findBarycenter(Vector3 p1, Vector3 p2, Vector3 p3);
 

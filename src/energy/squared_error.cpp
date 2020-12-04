@@ -10,7 +10,7 @@ namespace rsurfaces
         weight = weight_;
 
         // Record initial positions
-        originalPositions = geometrycentral::surface::VertexData<Vector3>(*mesh);
+        originalPositions.ResetData(mesh);
         for (GCVertex v : mesh->vertices())
         {
             originalPositions[v] = geom->inputVertexPositions[v];

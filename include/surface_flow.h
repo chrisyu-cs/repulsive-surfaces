@@ -21,6 +21,9 @@ namespace rsurfaces
         const double LS_STEP_THRESHOLD = 1e-20;
         void ResetAllConstraints();
         void ResetAllPotentials();
+        
+        void UpdateEnergies();
+        double GetEnergyValue();
 
         template <typename Constraint>
         Constraint* addSchurConstraint(MeshPtr &mesh, GeomPtr &geom, double multiplier, long iterations)
@@ -47,8 +50,6 @@ namespace rsurfaces
 
 
     private:
-        void UpdateEnergies();
-        double GetEnergyValue();
         void AddGradientToMatrix(Eigen::MatrixXd &gradient);
 
         std::vector<SurfaceEnergy *> energies;

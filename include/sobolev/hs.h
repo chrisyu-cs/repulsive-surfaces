@@ -76,7 +76,7 @@ namespace rsurfaces
 
             void ProjectViaSchur(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, SchurComplement &comp);
 
-            void ProjectSchurConstraints(std::vector<ConstraintPack> &constraints, SchurComplement &comp);
+            void ProjectSchurConstraints(std::vector<ConstraintPack> &constraints, SchurComplement &comp, int newtonSteps);
 
             void ProjectSimpleConstraints();
             void ProjectSimpleConstraintsWithSaddle();

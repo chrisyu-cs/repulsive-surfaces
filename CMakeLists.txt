@@ -78,6 +78,7 @@ set(SRCS
   src/energy/tpe_kernel.cpp
   src/energy/squared_error.cpp
   src/energy/static_obstacle.cpp
+  src/remeshing/dynamic_remesher.cpp
   src/remeshing/remeshing.cpp
   src/sobolev/h1.cpp
   src/sobolev/hs.cpp
