@@ -71,7 +71,7 @@ namespace rsurfaces
         
         inline bool checkFoldover(Vector3 a, Vector3 b, Vector3 c, Vector3 x)
         {
-            return diamondAngle(a, b, c, x) < .5;
+            return diamondAngle(a, b, c, x) < 1;
         }
         
         bool shouldFlip(MeshPtr const &mesh, GeomPtr const &geometry, Edge e)
@@ -260,6 +260,57 @@ namespace rsurfaces
             }
         }
         
+        
+        void testVertex(MeshPtr const &mesh, GeomPtr const &geometry, int index)
+        {
+            for(Vertex v : mesh->vertices()){
+                if((int)v.getIndex() == index){
+                    std::cerr<<geometry->vertexNormals[v]<<std::endl;
+                    break;
+                }
+            }
+            std::cerr<<"Here1!"<<std::endl;
+            mesh->validateConnectivity();
+            std::cerr<<"Here2!"<<std::endl;
+            mesh->compress();
+            std::cerr<<"Here3!"<<std::endl;
+            
+        }
+        void testEdge(MeshPtr const &mesh, GeomPtr const &geometry, int index)
+        {
+            for(Edge e : mesh->edges()){
+                if((int)e.getIndex() == index){
+                    Vector3 newPos = edgeMidpoint(mesh, geometry, e);
+                    Halfedge he = mesh->splitEdgeTriangular(e);
+                    Vertex newV = he.vertex();
+                    geometry->inputVertexPositions[newV] = newPos;
+                    break;
+                }
+            }
+            std::cerr<<"Here1!"<<std::endl;
+            mesh->validateConnectivity();
+            std::cerr<<"Here2!"<<std::endl;
+            mesh->compress();
+            std::cerr<<"Here3!"<<std::endl;
+            
+        }
+        void testFace(MeshPtr const &mesh, GeomPtr const &geometry, int index)
+        {
+            for(Face f : mesh->faces()){
+                if((int)f.getIndex() == index){
+                    std::cerr<<geometry->faceAreas[f];
+                    break;
+                }
+            }
+
+            std::cerr<<"Here1!"<<std::endl;
+            mesh->validateConnectivity();
+            std::cerr<<"Here2!"<<std::endl;
+            mesh->compress();
+            std::cerr<<"Here3!"<<std::endl;
+            
+        }
+        
         // non-debug functions from here
         
         void adjustVertexDegrees(MeshPtr const &mesh, GeomPtr const &geometry)
@@ -353,7 +404,7 @@ namespace rsurfaces
                     // and project the average to the tangent plane
                     Vector3 updateDirection = newVertexPosition[v] - geometry->inputVertexPositions[v];
                     updateDirection = projectToPlane(updateDirection, geometry->vertexNormals[v]);
-                    newVertexPosition[v] = geometry->inputVertexPositions[v] + 1.0*updateDirection;
+                    newVertexPosition[v] = geometry->inputVertexPositions[v] + .1*updateDirection;
                 }
             }
             // update final vertices
@@ -363,10 +414,47 @@ namespace rsurfaces
             }
         }
 
-        
+        /*void smoothByLaplacian2(MeshPtr const &mesh, GeomPtr const &geometry)
+        {
+            // smoothed vertex positions
+            VertexData<Vector3> newVertexPosition(*mesh);
+            for (Vertex v : mesh->vertices())
+            {
+                if(v.isBoundary())
+                {
+                    newVertexPosition[v] = geometry->inputVertexPositions[v];
+                }
+                else
+                {
+                    // calculate average of surrounding vertices
+                    newVertexPosition[v] = Vector3::zero();
+                    // compute this vertex's normal to be the average of the surrounding vertices' normals
+                    Vector3 nm = Vector3::zero();
+                    for (Vertex j : v.adjacentVertices())
+                    {
+                        newVertexPosition[v] += geometry->inputVertexPositions[j];
+                        nm += geometry->vertexNormals[j];
+                    }
+                    if(nm != Vector3::zero()){
+                        nm = nm.normalize();
+                    }
+                    newVertexPosition[v] /= v.degree();
+                    // and project the average to the tangent plane
+                    Vector3 updateDirection = newVertexPosition[v] - geometry->inputVertexPositions[v];
+                    updateDirection = projectToPlane(updateDirection, nm);
+                    newVertexPosition[v] = geometry->inputVertexPositions[v] + .1*updateDirection;
+                }
+            }
+            // update final vertices
+            for (Vertex v : mesh->vertices())
+            {
+                geometry->inputVertexPositions[v] = newVertexPosition[v];
+            }
+        }*/
 
         void smoothByCircumcenter(MeshPtr const &mesh, GeomPtr const &geometry)
         {
+            geometry->requireFaceAreas();
             // smoothed vertex positions
             VertexData<Vector3> newVertexPosition(*mesh);
             for (Vertex v : mesh->vertices())
@@ -378,13 +466,19 @@ namespace rsurfaces
                 else{
                     newVertexPosition[v] = Vector3::zero();
                     Vector3 updateDirection = Vector3::zero();
+                    double s = 0;
                     // for each face
                     for (Face f : v.adjacentFaces())
                     {
                         // add the circumcenter weighted by face area to the update direction
                         Vector3 circum = findCircumcenter(geometry, f);
                         updateDirection += geometry->faceAreas[f] * (circum - geometry->inputVertexPositions[v]);
+                        s += geometry->faceAreas[f];
                     }
+                    std::cerr<<updateDirection<<std::endl;
+                    std::cerr<<" "<<s<<std::endl;
+                    updateDirection /= s;
+                    std::cerr<<"  "<<updateDirection<<std::endl;
                     // project update direction to tangent plane
                     updateDirection = projectToPlane(updateDirection, geometry->vertexNormals[v]);
                     newVertexPosition[v] = geometry->inputVertexPositions[v] + updateDirection;
@@ -405,7 +499,7 @@ namespace rsurfaces
             double A = geometry->vertexDualAreas[v];
             double S = geometry->vertexGaussianCurvatures[v];
             double K = S/A;
-            double L = 1/(sqrt(K)+9);
+            double L = .15/(sqrt(fabs(K))+.1);
             return L;
             
         }
@@ -528,14 +622,16 @@ namespace rsurfaces
                 mesh->validateConnectivity();
                 adjustEdgeLengths(mesh, geometry);
                 mesh->validateConnectivity();
-                std::cout<<"fixing vertices"<<std::endl;
+                std::cout<<"flipping"<<std::endl;
                 mesh->validateConnectivity();
-                adjustVertexDegrees(mesh, geometry);
+                fixDelaunay(mesh, geometry);
                 mesh->validateConnectivity();
-                std::cout<<"smoothing"<<std::endl;
-                mesh->validateConnectivity();
-                smoothByLaplacian(mesh, geometry);
-                mesh->validateConnectivity();
+                for(int j = 0; j < 10; j++){
+                    std::cout<<"smoothing"<<std::endl;
+                    mesh->validateConnectivity();
+                    smoothByCircumcenter(mesh, geometry);
+                    mesh->validateConnectivity();
+                }
                 std::cout<<"done"<<std::endl;
             }
         }

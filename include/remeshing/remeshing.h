@@ -20,6 +20,9 @@ namespace rsurfaces
         void testStuff(MeshPtr const &mesh, GeomPtr const &geometry, int index);
         void testStuff2(MeshPtr const &mesh, GeomPtr const &geometry);
         void showEdge(MeshPtr const &mesh, GeomPtr const &geometry, int index);
+        void testVertex(MeshPtr const &mesh, GeomPtr const &geometry, int index);
+        void testEdge(MeshPtr const &mesh, GeomPtr const &geometry, int index);
+        void testFace(MeshPtr const &mesh, GeomPtr const &geometry, int index);
         
         void collapseEdge(MeshPtr const &mesh, GeomPtr const &geometry, Edge e);
         
@@ -32,6 +35,7 @@ namespace rsurfaces
         void fixDelaunay(MeshPtr const &mesh, GeomPtr const &geometry);
 
         void smoothByLaplacian(MeshPtr const &mesh, GeomPtr const &geometry);
+        //void smoothByLaplacian2(MeshPtr const &mesh, GeomPtr const &geometry);
 
         Vector3 findCircumcenter(Vector3 p1, Vector3 p2, Vector3 p3);
 

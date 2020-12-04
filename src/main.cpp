@@ -907,7 +907,27 @@ void customCallback()
         MainApp::instance->mesh->validateConnectivity();
     } 
     ImGui::EndGroup();
-
+    if (ImGui::Button("Test vertex"))
+    {
+        remeshing::testVertex(MainApp::instance->mesh, MainApp::instance->geom, partIndex);
+//      MainApp::instance->mesh->validateConnectivity();
+//      MainApp::instance->mesh->compress();
+        MainApp::instance->reregisterMesh();
+    } 
+    if (ImGui::Button("Test edge"))
+    {
+        remeshing::testEdge(MainApp::instance->mesh, MainApp::instance->geom, partIndex);
+//      MainApp::instance->mesh->validateConnectivity();
+//      MainApp::instance->mesh->compress();
+        MainApp::instance->reregisterMesh();
+    } 
+    if (ImGui::Button("Test face"))
+    {
+        remeshing::testFace(MainApp::instance->mesh, MainApp::instance->geom, partIndex);
+//      MainApp::instance->mesh->validateConnectivity();
+//      MainApp::instance->mesh->compress();
+        MainApp::instance->reregisterMesh();
+    } 
 }
 
 struct MeshAndEnergy
