@@ -22,7 +22,7 @@ namespace rsurfaces
             for(Corner c : v.adjacentCorners()){
                 norm += geometry->cornerAngle(c) * geometry->faceNormal(c.face());
             }
-            std::cerr<<norm<<std::endl;
+            //std::cerr<<norm<<std::endl;
             return normalize(norm);
         }
         
@@ -527,8 +527,8 @@ namespace rsurfaces
                 averageK += getSmoothGaussianCurvature(geometry, v);
             }
             averageK /= 2;
-            double L = flatLength * epsilon / (sqrt(averageK) + epsilon);
-            // return L;
+            double L = flatLength * epsilon / (sqrt(fabs(averageK)) + epsilon);
+            return L;
             return flatLength;
         }
         
@@ -649,13 +649,13 @@ namespace rsurfaces
             for(int i = 0; i < 1; i++){
                 std::cout<<"fixing edges"<<std::endl;
                 mesh->validateConnectivity();
-                adjustEdgeLengths(mesh, geometry, 0.1, 0.1, 0.5); 
+                adjustEdgeLengths(mesh, geometry, 1, 0.5, 0.05); 
                 mesh->validateConnectivity();
                 std::cout<<"flipping"<<std::endl;
                 mesh->validateConnectivity();
                 fixDelaunay(mesh, geometry);
                 mesh->validateConnectivity();
-                for(int j = 0; j < 1; j++){
+                for(int j = 0; j < 10; j++){
                     std::cout<<"smoothing"<<std::endl;
                     mesh->validateConnectivity();
                     smoothByCircumcenter(mesh, geometry);
