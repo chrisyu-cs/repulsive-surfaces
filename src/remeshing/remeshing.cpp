@@ -109,9 +109,9 @@ namespace rsurfaces
             return PI-angle(n1, n2);
         }
         
-        inline bool checkFoldover(Vector3 a, Vector3 b, Vector3 c, Vector3 x)
+        inline bool checkFoldover(Vector3 a, Vector3 b, Vector3 c, Vector3 x, double angle)
         {
-            return diamondAngle(a, b, c, x) < 2;
+            return diamondAngle(a, b, c, x) < angle;
         }
         
         bool shouldFlip(MeshPtr const &mesh, GeomPtr const &geometry, Edge e)
@@ -175,7 +175,36 @@ namespace rsurfaces
                 Vector3 a = geometry->inputVertexPositions[v1];
                 Vector3 b = geometry->inputVertexPositions[v2];
                 Vector3 c = geometry->inputVertexPositions[v3];
-                if(checkFoldover(a, b, c, midpoint)){
+                if(checkFoldover(a, b, c, midpoint, 2)){
+                    // std::cout<<"prevented foldover"<<std::endl;
+                    return false;
+                }
+            }
+            return true;
+        }
+        
+        bool shouldMove(MeshPtr const &mesh, GeomPtr const &geometry, Vertex v, Vector3 x)
+        {
+            std::vector<Halfedge> toCheck;
+            // find (halfedge) link around v
+            Halfedge he = v.halfedge();
+            Halfedge st = he;
+            do{
+                he = he.next();
+                toCheck.push_back(he);
+                he = he.next().twin();
+            }
+            while(he != st);
+            
+            for(Halfedge he0 : toCheck){
+                Halfedge heT = he0.twin();
+                Vertex v1 = heT.vertex();
+                Vertex v2 = heT.next().vertex();
+                Vertex v3 = heT.next().next().vertex();
+                Vector3 a = geometry->inputVertexPositions[v1];
+                Vector3 b = geometry->inputVertexPositions[v2];
+                Vector3 c = geometry->inputVertexPositions[v3];
+                if(checkFoldover(a, b, c, x, 2)){
                     // std::cout<<"prevented foldover"<<std::endl;
                     return false;
                 }
@@ -478,11 +507,9 @@ namespace rsurfaces
             VertexData<Vector3> newVertexPosition(*mesh);
             for (Vertex v : mesh->vertices())
             {
-                if(v.isBoundary())
+                newVertexPosition[v] = geometry->inputVertexPositions[v]; // default
+                if(!v.isBoundary())
                 {
-                    newVertexPosition[v] = geometry->inputVertexPositions[v];
-                }
-                else{
                     newVertexPosition[v] = Vector3::zero();
                     Vector3 updateDirection = Vector3::zero();
                     // for each face
@@ -497,8 +524,8 @@ namespace rsurfaces
                     //std::cerr<<"  "<<updateDirection<<std::endl;
                     // project update direction to tangent plane
                     updateDirection = projectToPlane(updateDirection, vertexNormal(geometry, v));
-                    newVertexPosition[v] = geometry->inputVertexPositions[v] + .5 * updateDirection;
-                    //std::cerr<<updateDirection<<std::endl;
+                    Vector3 newPos = geometry->inputVertexPositions[v] + .5 * updateDirection;
+                    newVertexPosition[v] = newPos;
                 }
             }
             // update final vertices
@@ -649,7 +676,7 @@ namespace rsurfaces
             for(int i = 0; i < 1; i++){
                 std::cout<<"fixing edges"<<std::endl;
                 mesh->validateConnectivity();
-                adjustEdgeLengths(mesh, geometry, 1, 0.5, 0.05); 
+                adjustEdgeLengths(mesh, geometry, 0.3, 0.1, 0.05); 
                 mesh->validateConnectivity();
                 std::cout<<"flipping"<<std::endl;
                 mesh->validateConnectivity();

@@ -26,8 +26,6 @@ namespace rsurfaces
         
         void collapseEdge(MeshPtr const &mesh, GeomPtr const &geometry, Edge e);
         
-        void testStuff(MeshPtr const &mesh, GeomPtr const &geometry, int edgeIndex);
-        
         void adjustVertexDegrees(MeshPtr const &mesh, GeomPtr const &geometry);
 
         bool isDelaunay(GeomPtr const &geometry, Edge e);
