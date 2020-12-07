@@ -97,6 +97,7 @@ set(SRCS
   src/fractional_laplacian.cpp
   src/main.cpp
   src/matrix_utils.cpp
+  src/obj_writer.cpp
   src/scene_file.cpp
   src/surface_derivatives.cpp
   src/surface_flow.cpp

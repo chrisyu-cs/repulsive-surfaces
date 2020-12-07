@@ -17,8 +17,8 @@ namespace rsurfaces
 
             std::cout << "Initial average edge length = " << initialAverageLength << std::endl;
 
-            remeshingMode = RemeshingMode::SmoothAndFlip;
-            smoothingMode = SmoothingMode::Laplacian;
+            remeshingMode = RemeshingMode::SmoothFlipAndCollapse;
+            smoothingMode = SmoothingMode::Circumcenter;
             flippingMode = FlippingMode::Delaunay;
         }
 
