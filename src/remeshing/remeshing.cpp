@@ -9,14 +9,6 @@ namespace rsurfaces
         
         // immediate functions not in geometry-central
         
-        /*double faceArea(GeomPtr const &geometry, Face f){
-            Halfedge he = f.halfedge();
-            Vector3 a = geometry->inputVertexPositions[he.vertex()];
-            Vector3 b = geometry->inputVertexPositions[he.next().vertex()];
-            Vector3 c = geometry->inputVertexPositions[he.next().next().vertex()];
-            return .5 * norm(cross(a - b, a - c));
-        }*/
-        
         Vector3 vertexNormal(GeomPtr const &geometry, Vertex v){
             Vector3 norm = Vector3::zero();
             for(Corner c : v.adjacentCorners()){
@@ -45,6 +37,16 @@ namespace rsurfaces
         
         double vertexGaussianCurvature(GeomPtr const &geometry, Vertex v){
             return 2*PI - vertexAngleSum(geometry, v);
+        }
+        
+        double faceGaussianCurvature(GeomPtr const &geometry, Face f){
+            Halfedge he = f.halfedge();
+            double a1 = geometry->cornerAngle(he.corner()) * 2*PI/vertexAngleSum(geometry, he.vertex());
+            he = he.next();
+            double a2 = geometry->cornerAngle(he.corner()) * 2*PI/vertexAngleSum(geometry, he.vertex());
+            he = he.next();
+            double a3 = geometry->cornerAngle(he.corner()) * 2*PI/vertexAngleSum(geometry, he.vertex());
+            return PI - a1 - a2 - a3;
         }
         
         // helper functions
@@ -499,6 +501,22 @@ namespace rsurfaces
                 geometry->inputVertexPositions[v] = newVertexPosition[v];
             }
         }
+        
+        double getFaceSmoothGaussianCurvature(GeomPtr const &geometry, Face f)
+        {
+            double A = geometry->faceArea(f);
+            double S = faceGaussianCurvature(geometry, f); 
+            double K = S / A;
+            return K;
+        }
+        
+        double findFaceTargetL(MeshPtr const &mesh, GeomPtr const &geometry, Face f, double flatLength, double epsilon)
+        {
+            double K = getFaceSmoothGaussianCurvature(geometry, f);
+            double L = flatLength * epsilon / (sqrt(fabs(K)) + epsilon);
+            return L;
+            // return flatLength;
+        }
 
         void smoothByCircumcenter(MeshPtr const &mesh, GeomPtr const &geometry)
         {
@@ -510,14 +528,15 @@ namespace rsurfaces
                 newVertexPosition[v] = geometry->inputVertexPositions[v]; // default
                 if(!v.isBoundary())
                 {
-                    newVertexPosition[v] = Vector3::zero();
                     Vector3 updateDirection = Vector3::zero();
                     // for each face
                     for (Face f : v.adjacentFaces())
                     {
                         // add the circumcenter weighted by face area to the update direction
                         Vector3 circum = findCircumcenter(geometry, f);
-                        updateDirection += geometry->faceArea(f) * (circum - geometry->inputVertexPositions[v]);
+                        double D = 1/findFaceTargetL(mesh, geometry, f, 2, 0.2);
+                        D *= D;
+                        updateDirection += geometry->faceArea(f) * 1 * (circum - geometry->inputVertexPositions[v]);
                     }
                     //std::cerr<<updateDirection<<std::endl;
                     updateDirection /= (3 * vertexDualArea(geometry, v));
@@ -535,6 +554,7 @@ namespace rsurfaces
             }
         }
 
+        
         double getSmoothGaussianCurvature(GeomPtr const &geometry, Vertex v)
         {
             double A = vertexDualArea(geometry, v);
@@ -548,15 +568,14 @@ namespace rsurfaces
         double findTargetL(MeshPtr const &mesh, GeomPtr const &geometry, Edge e, double flatLength, double epsilon)
         {
             // Areas and curvatures are already required in main.cpp
-            Vertex v = e.halfedge().vertex();
             double averageK = 0;
             for (Vertex v : e.adjacentVertices()) {
                 averageK += getSmoothGaussianCurvature(geometry, v);
             }
             averageK /= 2;
             double L = flatLength * epsilon / (sqrt(fabs(averageK)) + epsilon);
-            // return L;
-            return flatLength;
+            return L;
+            // return flatLength;
         }
         
         void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry, double flatLength, double epsilon, double minLength)
@@ -676,13 +695,13 @@ namespace rsurfaces
             for(int i = 0; i < 1; i++){
                 std::cout<<"fixing edges"<<std::endl;
                 mesh->validateConnectivity();
-                adjustEdgeLengths(mesh, geometry, 0.3, 0.1, 0.05); 
+                adjustEdgeLengths(mesh, geometry, 2, 0.2, 0.05); 
                 mesh->validateConnectivity();
                 std::cout<<"flipping"<<std::endl;
                 mesh->validateConnectivity();
                 fixDelaunay(mesh, geometry);
                 mesh->validateConnectivity();
-                for(int j = 0; j < 10; j++){
+                for(int j = 0; j < 2; j++){
                     std::cout<<"smoothing"<<std::endl;
                     mesh->validateConnectivity();
                     smoothByCircumcenter(mesh, geometry);
