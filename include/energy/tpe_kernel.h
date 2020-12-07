@@ -124,7 +124,7 @@ namespace rsurfaces
         Vector3 term2 = Kf * grad_area1 * area2;
         Vector3 term3 = Kf * area1 * grad_area2;
 
-        return term1 + term2 + term3;
+        return (term1 + term2 + term3);
     }
 
     template <typename F1, typename F2>

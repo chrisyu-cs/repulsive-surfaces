@@ -555,7 +555,7 @@ namespace rsurfaces
             }
             averageK /= 2;
             double L = flatLength * epsilon / (sqrt(fabs(averageK)) + epsilon);
-            return L;
+            // return L;
             return flatLength;
         }
         

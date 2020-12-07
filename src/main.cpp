@@ -25,6 +25,7 @@
 #include "spatial/convolution_kernel.h"
 #include "block_cluster_tree.h"
 #include "surface_derivatives.h"
+#include "obj_writer.h"
 
 #include "remeshing/remeshing.h"
 
@@ -687,9 +688,11 @@ namespace rsurfaces
 // UI parameters
 bool run = false;
 bool takeScreenshots = false;
+bool saveOBJs = false;
 uint screenshotNum = 0;
+uint objNum = 0;
 bool uiNormalizeView = false;
-bool remesh = false;
+bool remesh = true;
 bool changeTopo = false;
 
 int partIndex = 4475;
@@ -697,10 +700,19 @@ int partIndex = 4475;
 void saveScreenshot(uint i)
 {
     char buffer[5];
-    std::snprintf(buffer, sizeof(buffer), "%04d", screenshotNum);
+    std::snprintf(buffer, sizeof(buffer), "%04d", i);
     std::string fname = "frames/frame" + std::string(buffer) + ".png";
     polyscope::screenshot(fname, false);
     std::cout << "Saved screenshot to " << fname << std::endl;
+}
+
+void saveOBJ(rsurfaces::MeshPtr mesh, rsurfaces::GeomPtr geom, uint i) {
+
+    char buffer[5];
+    std::snprintf(buffer, sizeof(buffer), "%04d", i);
+    std::string fname = "objs/frame" + std::string(buffer) + ".obj";
+    rsurfaces::writeMeshToOBJ(mesh, geom, fname);
+    std::cout << "Saved OBJ frame to " << fname << std::endl;
 }
 
 template <typename ItemType>
@@ -747,6 +759,14 @@ void customCallback()
     {
         saveScreenshot(screenshotNum++);
     }
+
+    ImGui::Checkbox("Write OBJs", &saveOBJs);
+    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
+    if ((saveOBJs && objNum == 0) || ImGui::Button("Write OBJ", ImVec2{ITEM_WIDTH, 0}))
+    {
+        saveOBJ(MainApp::instance->mesh, MainApp::instance->geom, objNum++);
+    }
+
     ImGui::Checkbox("Dynamic remeshing", &remesh);
 
     const remeshing::RemeshingMode rModes[] = {remeshing::RemeshingMode::FlipOnly,
@@ -783,12 +803,17 @@ void customCallback()
         {
             saveScreenshot(screenshotNum++);
         }
+        if (saveOBJs)
+        {
+            saveOBJ(MainApp::instance->mesh, MainApp::instance->geom, objNum++);
+        }
         MainApp::instance->numSteps++;
         if (MainApp::instance->stepLimit > 0 && MainApp::instance->numSteps >= MainApp::instance->stepLimit)
         {
             run = false;
         }
     }
+
     ImGui::EndGroup();
 
     ImGui::Text("Accuracy tests");
@@ -983,6 +1008,7 @@ struct MeshAndEnergy
 MeshAndEnergy initTPEOnMesh(std::string meshFile, double alpha, double beta)
 {
     using namespace rsurfaces;
+    std::cout << "Initializing tangent-point energy with (" << alpha << ", " << beta << ")" << std::endl;
 
     std::unique_ptr<HalfedgeMesh> u_mesh;
     std::unique_ptr<VertexPositionGeometry> u_geometry;
@@ -1211,7 +1237,7 @@ int main(int argc, char **argv)
         data = defaultScene(inFile);
     }
 
-    MeshAndEnergy m = initTPEOnMesh(data.meshName, 6, 12);
+    MeshAndEnergy m = initTPEOnMesh(data.meshName, data.alpha, data.beta);
     SurfaceFlow *flow = setUpFlow(m, theta, data);
 
     MainApp::instance = new MainApp(m.mesh, m.geom, flow, m.psMesh, m.meshName);
