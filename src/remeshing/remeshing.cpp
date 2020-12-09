@@ -18,15 +18,6 @@ namespace rsurfaces
             return normalize(norm);
         }
         
-        double vertexDualArea(GeomPtr const &geometry, Vertex v){
-            double area = 0;
-            for(Face f : v.adjacentFaces()){
-                area += geometry->faceArea(f)/3;
-                //if(geometry->faceArea(f) == 0) std::cerr<<"uh"<<std::endl;
-            }
-            return area;
-        }
-        
         double vertexAngleSum(GeomPtr const &geometry, Vertex v){
             double sum = 0;
             for(Corner c : v.adjacentCorners()){
@@ -47,6 +38,16 @@ namespace rsurfaces
             he = he.next();
             double a3 = geometry->cornerAngle(he.corner()) * 2*PI/vertexAngleSum(geometry, he.vertex());
             return PI - a1 - a2 - a3;
+        }
+        
+        double faceMeanCurvature(GeomPtr const &geometry, Face f){
+            Halfedge he = f.halfedge();
+            double h1 = geometry->vertexMeanCurvature(he.vertex());
+            he = he.next();
+            double h2 = geometry->vertexMeanCurvature(he.vertex());
+            he = he.next();
+            double h3 = geometry->vertexMeanCurvature(he.vertex());
+            return (h1 + h2 + h3)/3;
         }
         
         // helper functions
@@ -412,8 +413,6 @@ namespace rsurfaces
             }
         }
 
-        
-
         void fixDelaunay(MeshPtr const &mesh, GeomPtr const &geometry)
         {
             // queue of edges to check if Delaunay
@@ -510,6 +509,14 @@ namespace rsurfaces
             return K;
         }
         
+        double getFaceSmoothMeanCurvature(GeomPtr const &geometry, Face f)
+        {
+            double A = geometry->faceArea(f);
+            double S = faceMeanCurvature(geometry, f); 
+            double K = S / A;
+            return K;
+        }
+        
         double findFaceTargetL(MeshPtr const &mesh, GeomPtr const &geometry, Face f, double flatLength, double epsilon)
         {
             double K = getFaceSmoothGaussianCurvature(geometry, f);
@@ -529,17 +536,19 @@ namespace rsurfaces
                 if(!v.isBoundary())
                 {
                     Vector3 updateDirection = Vector3::zero();
-                    // for each face
+                    //double totalD = 0;
                     for (Face f : v.adjacentFaces())
                     {
                         // add the circumcenter weighted by face area to the update direction
                         Vector3 circum = findCircumcenter(geometry, f);
-                        double D = 1/findFaceTargetL(mesh, geometry, f, 2, 0.2);
-                        D *= D;
-                        updateDirection += geometry->faceArea(f) * 1 * (circum - geometry->inputVertexPositions[v]);
+                        //double D = 1/findFaceTargetL(mesh, geometry, f, 1, 0.1);
+                        //D = D*D;
+                        updateDirection += geometry->faceArea(f) * (circum - geometry->inputVertexPositions[v]);
+                        //totalD += geometry->faceArea(f) * D;
                     }
                     //std::cerr<<updateDirection<<std::endl;
-                    updateDirection /= (3 * vertexDualArea(geometry, v));
+                    updateDirection /= (3 * geometry->vertexDualArea(v));
+                    //updateDirection /= totalD;
                     //std::cerr<<"  "<<updateDirection<<std::endl;
                     // project update direction to tangent plane
                     updateDirection = projectToPlane(updateDirection, vertexNormal(geometry, v));
@@ -557,8 +566,16 @@ namespace rsurfaces
         
         double getSmoothGaussianCurvature(GeomPtr const &geometry, Vertex v)
         {
-            double A = vertexDualArea(geometry, v);
+            double A = geometry->vertexDualArea(v);
             double S = vertexGaussianCurvature(geometry, v);
+            double K = S / A;
+            return K;
+        }
+        
+        double getSmoothMeanCurvature(GeomPtr const &geometry, Vertex v)
+        {
+            double A = geometry->vertexDualArea(v);
+            double S = geometry->vertexMeanCurvature(v);
             double K = S / A;
             return K;
         }
@@ -633,6 +650,25 @@ namespace rsurfaces
             mesh->validateConnectivity();
             mesh->compress();
         }
+
+        void remesh(MeshPtr const &mesh, GeomPtr const &geometry){
+            for(int i = 0; i < 1; i++){
+                std::cout<<"fixing edges"<<std::endl;
+                adjustEdgeLengths(mesh, geometry, 1, 0.1, 0.05); 
+                std::cout<<"flipping"<<std::endl;
+                fixDelaunay(mesh, geometry);
+                for(int j = 0; j < 10; j++){
+                    std::cout<<"smoothing"<<std::endl;
+                    smoothByCircumcenter(mesh, geometry);
+                    std::cout<<"flipping"<<std::endl;
+                    fixDelaunay(mesh, geometry);
+                }
+                std::cout<<"done"<<std::endl;
+            }
+            mesh->validateConnectivity();
+        }
+        
+        // not used right now
         
         Vector3 findBarycenter(Vector3 p1, Vector3 p2, Vector3 p3)
         {
@@ -689,27 +725,5 @@ namespace rsurfaces
                 geometry->inputVertexPositions[v] = newVertexPosition[v];
             }
         }
-        
-        
-        void remesh(MeshPtr const &mesh, GeomPtr const &geometry){
-            for(int i = 0; i < 1; i++){
-                std::cout<<"fixing edges"<<std::endl;
-                mesh->validateConnectivity();
-                adjustEdgeLengths(mesh, geometry, 2, 0.2, 0.05); 
-                mesh->validateConnectivity();
-                std::cout<<"flipping"<<std::endl;
-                mesh->validateConnectivity();
-                fixDelaunay(mesh, geometry);
-                mesh->validateConnectivity();
-                for(int j = 0; j < 2; j++){
-                    std::cout<<"smoothing"<<std::endl;
-                    mesh->validateConnectivity();
-                    smoothByCircumcenter(mesh, geometry);
-                    mesh->validateConnectivity();
-                }
-                std::cout<<"done"<<std::endl;
-            }
-        }
-        
     } // namespace remeshing
 } // namespace rsurfaces
