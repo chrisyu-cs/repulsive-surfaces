@@ -1,0 +1,2 @@
+repel_mesh BrokenFigureEightTubeMesh_11740F.obj 6 12
+constrain barycenter

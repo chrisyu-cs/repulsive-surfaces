@@ -268,20 +268,42 @@ namespace rsurfaces
             }
         }
 
-        void HsMetric::ProjectGradient(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest)
+        void HsMetric::ProjectGradientExact(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, std::vector<ConstraintPack> &schurConstraints)
         {
             // Assemble the metric matrix
             Eigen::MatrixXd M_small, M;
             int nVerts = mesh->nVertices();
-            M_small.setZero(nVerts + 1, nVerts + 1);
-            int dims = topLeftNumRows();
+            M_small.setZero(nVerts, nVerts);
+            int dims = 3 * nVerts;
+
+            for (SimpleProjectorConstraint *cons : simpleConstraints)
+            {
+                dims += cons->nRows();
+            }
+
+            for (ConstraintPack &schur : schurConstraints)
+            {
+                dims += schur.constraint->nRows();
+            }
 
             M.setZero(dims, dims);
             FillMatrixHigh(M_small, order_s, mesh, geom);
             // Reduplicate entries 3x along diagonals; barycenter row gets tripled
             MatrixUtils::TripleMatrix(M_small, M);
-            // Add rows in tripled block for barycenter constraint (and potentially others)
-            addSimpleConstraintEntries(M);
+
+            size_t curRow = 3 * nVerts;
+
+            for (SimpleProjectorConstraint *cons : simpleConstraints)
+            {
+                Constraints::addEntriesToSymmetric(*cons, M, mesh, geom, curRow);
+                curRow += cons->nRows();
+            }
+
+            for (ConstraintPack &pack : schurConstraints)
+            {
+                Constraints::addEntriesToSymmetric(*pack.constraint, M, mesh, geom, curRow);
+                curRow += pack.constraint->nRows();
+            }
 
             // Flatten the gradient into a single column
             Eigen::VectorXd gradientCol;
@@ -319,7 +341,7 @@ namespace rsurfaces
             {
                 // Assemble the cotan Laplacian
                 std::vector<Triplet> triplets, triplets3x;
-                H1::getTriplets(triplets, mesh, geom, 1e-6);
+                H1::getTriplets(triplets, mesh, geom, epsilon);
                 // Expand the matrix by 3x
                 MatrixUtils::TripleTriplets(triplets, triplets3x);
 

@@ -135,11 +135,14 @@ namespace rsurfaces
         double gradDot = (gradient.transpose() * gradientProj).trace() / (gNorm * gProjNorm);
 
         // Guess a step size
-        double initGuess = prevStep * 1.25;
-        if (prevStep <= LS_STEP_THRESHOLD)
-        {
-            initGuess = (gProjNorm < 1) ? 1.0 / sqrt(gProjNorm) : 1.0 / gProjNorm;
-        }
+        // double initGuess = prevStep * 1.25;
+        double initGuess = (gProjNorm < 1) ? 1.0 / sqrt(gProjNorm) : 1.0 / gProjNorm;
+        initGuess *= 4;
+
+        // if (prevStep <= LS_STEP_THRESHOLD)
+        // {
+        //     initGuess = (gProjNorm < 1) ? 1.0 / sqrt(gProjNorm) : 1.0 / gProjNorm;
+        // }
         std::cout << "  * Initial step size guess = " << initGuess << std::endl;
 
         // Take the step using line search

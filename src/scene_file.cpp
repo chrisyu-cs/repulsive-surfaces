@@ -102,6 +102,9 @@ namespace rsurfaces
         void processLine(SceneData &data, std::string dir_root, std::vector<std::string> &parts)
         {
             using namespace std;
+            if (parts.size() == 0) {
+                return;
+            }
             if (parts[0] == "repel_mesh")
             {
                 data.meshName = dir_root + parts[1];

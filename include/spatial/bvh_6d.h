@@ -77,7 +77,13 @@ namespace rsurfaces
             }
             else if (nodeType == BVHNodeType::Interior)
             {
+                // If the point is inside the bounding box, don't allow
                 if (boxContainsPoint(atPos))
+                {
+                    return false;
+                }
+                // Also don't allow if the average normal becomes exactly 0
+                else if (!averageNormal.isDefined())
                 {
                     return false;
                 }
