@@ -3,6 +3,7 @@
 #include "rsurface_types.h"
 #include "sobolev/constraints.h"
 #include "surface_energy.h"
+#include "line_search.h"
 
 namespace rsurfaces
 {
@@ -15,15 +16,12 @@ namespace rsurfaces
         void StepNaive(double t);
         void StepFractionalSobolev();
         SurfaceEnergy *BaseEnergy();
-        double LineSearchStep(Eigen::MatrixXd &gradient, double initGuess, double gradDot);
 
         void RecenterMesh();
-        const double LS_STEP_THRESHOLD = 1e-20;
         void ResetAllConstraints();
         void ResetAllPotentials();
         
         void UpdateEnergies();
-        double GetEnergyValue();
 
         template <typename Constraint>
         Constraint* addSchurConstraint(MeshPtr &mesh, GeomPtr &geom, double multiplier, long iterations)
@@ -50,8 +48,6 @@ namespace rsurfaces
 
 
     private:
-        void AddGradientToMatrix(Eigen::MatrixXd &gradient);
-
         std::vector<SurfaceEnergy *> energies;
         MeshPtr mesh;
         GeomPtr geom;
@@ -62,8 +58,5 @@ namespace rsurfaces
         Vector3 origBarycenter;
 
         double prevStep;
-        void SaveCurrentPositions();
-        void RestorePositions();
-        void SetGradientStep(Eigen::MatrixXd &gradient, double delta);
     };
 } // namespace rsurfaces

@@ -69,7 +69,8 @@
 			"condition_variable": "cpp",
 			"hash_map": "cpp",
 			"future": "cpp",
-			"mutex": "cpp"
+			"mutex": "cpp",
+			"variant": "cpp"
 		}
 	}
 }

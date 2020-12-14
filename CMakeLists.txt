@@ -95,6 +95,7 @@ set(SRCS
   src/spatial/convolution_kernel.cpp
   src/block_cluster_tree.cpp
   src/fractional_laplacian.cpp
+  src/line_search.cpp
   src/main.cpp
   src/matrix_utils.cpp
   src/obj_writer.cpp
