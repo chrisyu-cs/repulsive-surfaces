@@ -4,6 +4,7 @@
 #include "sobolev/constraints.h"
 #include "surface_energy.h"
 #include "line_search.h"
+#include "sobolev/hs_ncg.h"
 
 namespace rsurfaces
 {
@@ -14,7 +15,9 @@ namespace rsurfaces
         void AddAdditionalEnergy(SurfaceEnergy *extraEnergy);
 
         void StepNaive(double t);
-        void StepFractionalSobolev();
+        void StepProjectedGradient();
+        void StepNCG();
+
         SurfaceEnergy *BaseEnergy();
 
         void RecenterMesh();
@@ -56,6 +59,9 @@ namespace rsurfaces
         std::vector<ConstraintPack> schurConstraints;
         std::vector<Constraints::SimpleProjectorConstraint*> simpleConstraints;
         Vector3 origBarycenter;
+        Hs::HsNCG* ncg;
+
+        double evaluateEnergy();
 
         double prevStep;
     };

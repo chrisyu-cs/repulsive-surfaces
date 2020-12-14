@@ -2,30 +2,39 @@
 
 #include "sobolev/hs.h"
 
-namespace rsurfaces {
+namespace rsurfaces
+{
 
     using Constraints::ConstraintBase;
 
-    namespace Hs {
+    namespace Hs
+    {
 
         class HsNCG
         {
-            public:
-            HsNCG(HsMetric *hs_);
+        public:
+            HsNCG(SurfaceEnergy *energy_, std::vector<Constraints::SimpleProjectorConstraint *> &spcs_);
             ~HsNCG() {}
-            
-            void ComputeNCGDirection(Eigen::MatrixXd &l2DiffCurr, Eigen::MatrixXd &hsOutput);
 
-            private:
-            HsMetric *hs;
-            Eigen::MatrixXd l2DiffPrev;
-            Eigen::MatrixXd hsGradPrev;
+            double UpdateConjugateDir(Eigen::MatrixXd &l2DiffCurr);
+            Eigen::MatrixXd &direction();
+
+            inline void ResetMemory()
+            {
+                resetFlag = true;
+            }
+
+        private:
+            Eigen::MatrixXd l2Diff_n_1;
+            Eigen::MatrixXd delta_xn_1;
             Eigen::MatrixXd conjugateDir;
             bool resetFlag;
-            
+            SurfaceEnergy *energy;
+            std::vector<Constraints::SimpleProjectorConstraint *> &spcs;
+
             double computeB_PolakRibiere(Eigen::MatrixXd &l2DiffCurr, Eigen::MatrixXd &hsGradCurr);
         };
 
-    }
+    } // namespace Hs
 
-}
+} // namespace rsurfaces

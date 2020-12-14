@@ -55,7 +55,7 @@ namespace rsurfaces
         {
         public:
             HsMetric(SurfaceEnergy *energy_);
-            HsMetric(SurfaceEnergy *energy_, std::vector<Constraints::SimpleProjectorConstraint*> &spcs);
+            HsMetric(SurfaceEnergy *energy_, std::vector<Constraints::SimpleProjectorConstraint *> &spcs);
             ~HsMetric();
 
             // Build the "high order" fractional Laplacian of order 2s.
@@ -64,36 +64,45 @@ namespace rsurfaces
             void FillMatrixFracOnly(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom);
             // Build the base fractional Laplacian of order s.
             void FillMatrixVertsFirst(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom);
-
             void ProjectGradientExact(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, std::vector<ConstraintPack> &schurConstraints);
 
-            // Project the gradient into Hs by using the L^{-1} M L^{-1} factorization
-            void ProjectViaSparse(Eigen::VectorXd &gradient, Eigen::VectorXd &dest);
-            // Same as above but with the input/output being matrices
-            void ProjectViaSparseMat(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest);
-
-            void GetSchurComplement(std::vector<ConstraintPack> constraints, SchurComplement &dest);
-
-            void ProjectViaSchur(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, SchurComplement &comp);
-
-            void ProjectSchurConstraints(std::vector<ConstraintPack> &constraints, SchurComplement &comp, int newtonSteps);
 
             void ProjectSimpleConstraints();
             void ProjectSimpleConstraintsWithSaddle();
 
-        private:
+            inline void InvertMetric(Eigen::VectorXd &gradient, Eigen::VectorXd &dest)
+            {
+                ProjectSparseWithR1Update(gradient, dest);
+            }
+
+            inline void InvertMetricMat(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest)
+            {
+                ProjectSparseWithR1UpdateMat(gradient, dest);
+            }
+
             size_t topLeftNumRows();
+            MeshPtr mesh;
+            GeomPtr geom;
+
+        private:
             void addSimpleConstraintEntries(Eigen::MatrixXd &M);
             void addSimpleConstraintTriplets(std::vector<Triplet> &triplets);
             void initFromEnergy(SurfaceEnergy *energy_);
 
-            MeshPtr mesh;
-            GeomPtr geom;
+            // Project the gradient into Hs by using the L^{-1} M L^{-1} factorization
+            void ProjectSparse(Eigen::VectorXd &gradient, Eigen::VectorXd &dest);
+            // Same as above but with the input/output being matrices
+            void ProjectSparseMat(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest);
+
+            void ProjectSparseWithR1Update(Eigen::VectorXd &gradient, Eigen::VectorXd &dest);
+            void ProjectSparseWithR1UpdateMat(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest);
+
             BVHNode6D *bvh;
             double order_s;
             double bh_theta;
 
-            std::vector<Constraints::SimpleProjectorConstraint*> simpleConstraints;
+            SurfaceEnergy *energy;
+            std::vector<Constraints::SimpleProjectorConstraint *> simpleConstraints;
             bool usedDefaultConstraint;
             SparseFactorization factorizedLaplacian;
             BlockClusterTree *bct;

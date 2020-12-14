@@ -26,6 +26,7 @@
 #include "block_cluster_tree.h"
 #include "surface_derivatives.h"
 #include "obj_writer.h"
+#include "dropdown_strings.h"
 
 #include "remeshing/remeshing.h"
 
@@ -48,6 +49,7 @@ namespace rsurfaces
         ctrlMouseDown = false;
         hasPickedVertex = false;
         numSteps = 0;
+        methodChoice = GradientMethod::HsProjected;
     }
 
     void MainApp::TakeNaiveStep(double t)
@@ -57,12 +59,23 @@ namespace rsurfaces
 
     void MainApp::TakeFractionalSobolevStep(bool remeshAfter)
     {
-        flow->StepFractionalSobolev();
+        switch (methodChoice)
+        {
+        case GradientMethod::HsProjected:
+            flow->StepProjectedGradient();
+            break;
+        case GradientMethod::HsNCG:
+            flow->StepNCG();
+            break;
+        default:
+            throw std::runtime_error("Unknown gradient method type.");
+        }
 
         if (remeshAfter)
         {
             bool doCollapse = (numSteps % 1 == 0);
-            if (doCollapse) std::cout << numSteps << ": Doing edge collapses this iteration..." << std::endl;
+            if (doCollapse)
+                std::cout << numSteps << ": Doing edge collapses this iteration..." << std::endl;
             remesher.Remesh(5, doCollapse);
             MainApp::instance->reregisterMesh();
         }
@@ -113,24 +126,6 @@ namespace rsurfaces
         M.setZero(nVerts, 3);
         MatrixUtils::ColumnIntoMatrix(vec, M);
         PlotMatrix(M, psMesh, name);
-    }
-
-    void MainApp::TestLML()
-    {
-        SurfaceEnergy *energy = flow->BaseEnergy();
-        Vector2 exps = energy->GetExponents();
-        energy->Update();
-
-        Eigen::MatrixXd gradient(mesh->nVertices(), 3);
-        energy->Differential(gradient);
-        Eigen::MatrixXd result = gradient;
-
-        Hs::HsMetric hs(energy);
-
-        hs.ProjectViaSparseMat(gradient, result);
-
-        std::cout << result << std::endl;
-        PlotMatrix(result, psMesh, "LML approx");
     }
 
     void MainApp::TestBarnesHut()
@@ -706,7 +701,8 @@ void saveScreenshot(uint i)
     std::cout << "Saved screenshot to " << fname << std::endl;
 }
 
-void saveOBJ(rsurfaces::MeshPtr mesh, rsurfaces::GeomPtr geom, uint i) {
+void saveOBJ(rsurfaces::MeshPtr mesh, rsurfaces::GeomPtr geom, uint i)
+{
 
     char buffer[5];
     std::snprintf(buffer, sizeof(buffer), "%04d", i);
@@ -721,12 +717,12 @@ void selectFromDropdown(std::string label, const ItemType choices[], size_t nCho
     using namespace rsurfaces;
 
     // Dropdown menu for list of remeshing mode settings
-    if (ImGui::BeginCombo(label.c_str(), remeshing::StringOfMode(store).c_str()))
+    if (ImGui::BeginCombo(label.c_str(), StringOfMode(store).c_str()))
     {
         for (size_t i = 0; i < nChoices; i++)
         {
             bool is_selected = (store == choices[i]);
-            if (ImGui::Selectable(remeshing::StringOfMode(choices[i]).c_str(), is_selected))
+            if (ImGui::Selectable(StringOfMode(choices[i]).c_str(), is_selected))
                 store = choices[i];
             if (is_selected)
                 ImGui::SetItemDefaultFocus();
@@ -766,6 +762,11 @@ void customCallback()
     {
         saveOBJ(MainApp::instance->mesh, MainApp::instance->geom, objNum++);
     }
+
+    const GradientMethod methods[] = {GradientMethod::HsProjected,
+                                      GradientMethod::HsNCG};
+
+    selectFromDropdown("Method", methods, IM_ARRAYSIZE(methods), MainApp::instance->methodChoice);
 
     ImGui::Checkbox("Dynamic remeshing", &remesh);
 
@@ -821,11 +822,6 @@ void customCallback()
     ImGui::BeginGroup();
     ImGui::Indent(INDENT);
 
-    if (ImGui::Button("Test LML inv", ImVec2{ITEM_WIDTH, 0}))
-    {
-        MainApp::instance->TestLML();
-    }
-    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
     if (ImGui::Button("Test MV product", ImVec2{ITEM_WIDTH, 0}))
     {
         MainApp::instance->TestMVProduct();
@@ -971,28 +967,28 @@ void customCallback()
     {
         MainApp::instance->mesh->validateConnectivity();
     }
-    
+
     if (ImGui::Button("Test vertex"))
     {
         remeshing::testVertex(MainApp::instance->mesh, MainApp::instance->geom, partIndex);
-//      MainApp::instance->mesh->validateConnectivity();
-//      MainApp::instance->mesh->compress();
+        //      MainApp::instance->mesh->validateConnectivity();
+        //      MainApp::instance->mesh->compress();
         MainApp::instance->reregisterMesh();
-    } 
+    }
     if (ImGui::Button("Test edge"))
     {
         remeshing::testEdge(MainApp::instance->mesh, MainApp::instance->geom, partIndex);
-//      MainApp::instance->mesh->validateConnectivity();
-//      MainApp::instance->mesh->compress();
+        //      MainApp::instance->mesh->validateConnectivity();
+        //      MainApp::instance->mesh->compress();
         MainApp::instance->reregisterMesh();
-    } 
+    }
     if (ImGui::Button("Test face"))
     {
         remeshing::testFace(MainApp::instance->mesh, MainApp::instance->geom, partIndex);
-//      MainApp::instance->mesh->validateConnectivity();
-//      MainApp::instance->mesh->compress();
+        //      MainApp::instance->mesh->validateConnectivity();
+        //      MainApp::instance->mesh->compress();
         MainApp::instance->reregisterMesh();
-    } 
+    }
     ImGui::EndGroup();
 }
 
@@ -1256,7 +1252,7 @@ int main(int argc, char **argv)
     }
 
     MainApp::instance->updateMeshPositions();
-    
+
     // Give control to the polyscope gui
     polyscope::show();
 

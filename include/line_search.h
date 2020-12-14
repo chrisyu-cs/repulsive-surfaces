@@ -29,15 +29,13 @@ namespace rsurfaces
     {
         public:
         LineSearch(MeshPtr mesh_, GeomPtr geom_, std::vector<SurfaceEnergy*> energies_);
-        double BacktrackingLineSearch(Eigen::MatrixXd &gradient, double initGuess, double gradDot);
+        double BacktrackingLineSearch(Eigen::MatrixXd &gradient, double initGuess, double gradDot, bool negativeIsForward = true);
         
         private:
         MeshPtr mesh;
         GeomPtr geom;
         std::vector<SurfaceEnergy*> energies;
         Eigen::MatrixXd origPositions;
-
-        bool checkWolfeCondition(double initGradNorm);
 
         void SaveCurrentPositions();
         void RestorePositions();

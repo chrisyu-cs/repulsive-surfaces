@@ -38,6 +38,7 @@ namespace rsurfaces
                 // Each vertex produces a derivative wrt its surrounding faces
                 for (GCFace f : v_i.adjacentFaces())
                 {
+                    if (f.isBoundaryLoop()) continue;
                     sumDerivs += SurfaceDerivs::triangleAreaWrtVertex(geom, f, v_i);
                 }
                 // Differential of A^2 = 2 A (dA/dx)

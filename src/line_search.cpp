@@ -57,7 +57,7 @@ namespace rsurfaces
             size_t ind_v = indices[v];
             Vector3 pos_v = GetRow(origPositions, ind_v);
             Vector3 grad_v = GetRow(gradient, ind_v);
-            geom->inputVertexPositions[v] = pos_v - delta * grad_v;
+            geom->inputVertexPositions[v] = pos_v + delta * grad_v;
         }
 
         geom->refreshQuantities();
@@ -68,7 +68,7 @@ namespace rsurfaces
         }
     }
 
-    double LineSearch::BacktrackingLineSearch(Eigen::MatrixXd &gradient, double initGuess, double gradDot)
+    double LineSearch::BacktrackingLineSearch(Eigen::MatrixXd &gradient, double initGuess, double gradDot, bool negativeIsForward)
     {
         double delta = initGuess;
         SaveCurrentPositions();
@@ -89,7 +89,9 @@ namespace rsurfaces
         while (delta > LS_STEP_THRESHOLD)
         {
             // Take the gradient step
-            SetGradientStep(gradient, delta);
+            double signedStep = (negativeIsForward) ? -delta : delta;
+            SetGradientStep(gradient, signedStep);
+            
             nextEnergy = GetEnergyValue(energies);
             double decrease = initialEnergy - nextEnergy;
             double targetDecrease = sigma * delta * gradNorm * gradDot;
@@ -118,17 +120,6 @@ namespace rsurfaces
             std::cout << "  * Took step of size " << delta << " after " << numBacktracks << " backtracks" << std::endl;
             return delta;
         }
-    }
-
-    bool LineSearch::checkWolfeCondition(double initGradNorm)
-    {
-        Eigen::MatrixXd currGrad;
-        currGrad.setZero(mesh->nVertices(), 3);
-
-        AddGradientsToMatrix(energies, currGrad);
-        double gradNorm = currGrad.norm();
-
-        return (gradNorm < initGradNorm);
     }
 
 

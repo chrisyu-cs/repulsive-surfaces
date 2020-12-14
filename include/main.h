@@ -27,7 +27,6 @@ namespace rsurfaces
         static MainApp *instance;
         MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow *flow_, polyscope::SurfaceMesh *psMesh_, std::string meshName_);
 
-        void TestLML();
         void TestMVProduct();
         void BenchmarkBH();
         void TestBarnesHut();
@@ -51,12 +50,13 @@ namespace rsurfaces
         std::vector<polyscope::SurfaceMesh *> obstacles;
         std::string meshName;
         int stepLimit;
+        GradientMethod methodChoice;
 
         inline void reregisterMesh()
         {
             psMesh = polyscope::registerSurfaceMesh(meshName, geom->inputVertexPositions, mesh->getFaceVertexList(), polyscopePermutations(*mesh));
         }
-        
+
         void updateMeshPositions();
 
         BVHNode6D *vertBVH;
@@ -71,7 +71,7 @@ namespace rsurfaces
 
         double pickDepth;
         bool pickNearbyVertex(GCVertex &out);
-        SquaredError* vertexPotential;
+        SquaredError *vertexPotential;
         bool ctrlMouseDown;
         Vector3 initialPickedPosition;
         bool hasPickedVertex;

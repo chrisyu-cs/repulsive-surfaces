@@ -30,6 +30,12 @@ namespace rsurfaces
         size_t elementID;
     };
 
+    enum class GradientMethod
+    {
+        HsProjected,
+        HsNCG
+    };
+
     struct MassNormalPoint
     {
         double mass;

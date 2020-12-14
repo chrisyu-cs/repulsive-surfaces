@@ -124,6 +124,7 @@ namespace rsurfaces
         HsMetric::HsMetric(SurfaceEnergy *energy_)
         {
             initFromEnergy(energy_);
+            energy = energy_;
             // If no constraints are supplied, then we add our own barycenter
             // constraint as a default
             simpleConstraints.push_back(new Constraints::BarycenterConstraint3X(mesh, geom));
@@ -134,6 +135,7 @@ namespace rsurfaces
         HsMetric::HsMetric(SurfaceEnergy *energy_, std::vector<SimpleProjectorConstraint *> &spcs)
         {
             initFromEnergy(energy_);
+            energy = energy_;
             usedDefaultConstraint = false;
 
             for (SimpleProjectorConstraint *spc : spcs)
@@ -314,20 +316,20 @@ namespace rsurfaces
             MatrixUtils::ColumnIntoMatrix(gradientCol, dest);
         }
 
-        void HsMetric::ProjectViaSparseMat(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest)
+        void HsMetric::ProjectSparseMat(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest)
         {
             // Reshape the gradient N x 3 matrix into a 3N-vector.
             Eigen::VectorXd gradientCol, gradientColProj;
             gradientCol.setZero(topLeftNumRows());
             MatrixUtils::MatrixIntoColumn(gradient, gradientCol);
 
-            ProjectViaSparse(gradientCol, gradientCol);
+            ProjectSparse(gradientCol, gradientCol);
 
             // Reshape it back into the output N x 3 matrix.
             MatrixUtils::ColumnIntoMatrix(gradientCol, dest);
         }
 
-        void HsMetric::ProjectViaSparse(Eigen::VectorXd &gradientCol, Eigen::VectorXd &dest)
+        void HsMetric::ProjectSparse(Eigen::VectorXd &gradientCol, Eigen::VectorXd &dest)
         {
             size_t nRows = topLeftNumRows();
 
@@ -372,16 +374,9 @@ namespace rsurfaces
             {
                 if (!bct)
                 {
-                    long bctConstructStart = currentTimeMilliseconds();
                     bct = new BlockClusterTree(mesh, geom, bvh, bh_theta, 4 - 2 * order_s);
-                    long bctConstructEnd = currentTimeMilliseconds();
-                    std::cout << "    * BCT construction = " << (bctConstructEnd - bctConstructStart) << " ms" << std::endl;
                 }
-                long bctMultStart = currentTimeMilliseconds();
                 bct->MultiplyVector3(gradientCol, gradientCol);
-                long bctMultEnd = currentTimeMilliseconds();
-
-                std::cout << "    * BCT multiply = " << (bctMultEnd - bctMultStart) << " ms" << std::endl;
             }
 
             // Re-zero out Lagrange multipliers, since the first solve
@@ -395,152 +390,64 @@ namespace rsurfaces
             dest = factorizedLaplacian.Solve(gradientCol);
         }
 
-        void HsMetric::GetSchurComplement(std::vector<ConstraintPack> constraints, SchurComplement &dest)
+        void HsMetric::ProjectSparseWithR1Update(Eigen::VectorXd &DE, Eigen::VectorXd &dest)
         {
-            size_t nVerts = mesh->nVertices();
-            size_t compNRows = 0;
-            size_t bigNRows = topLeftNumRows();
+            // We want to add a rank-1 update for DE * DE^T
+            // First just compute A^{-1} x
+            Eigen::VectorXd Ainv_x;
+            Ainv_x.setZero(DE.rows());
+            ProjectSparse(DE, Ainv_x);
 
-            // Figure out how many rows the constraint block is
-            for (ConstraintPack &c : constraints)
-            {
-                compNRows += c.constraint->nRows();
-            }
-            if (compNRows == 0)
-            {
-                std::cout << "No constraints provided to Schur complement." << std::endl;
-                throw 1;
-            }
+            double currE = 1;//energy->Value();
 
-            dest.C.setZero(compNRows, bigNRows);
-            size_t curRow = 0;
+            // Now we want to compute the numerator A^{-1} x x^T A^{-1} x
+            // Right now "dest" already holds A^{-1} x, and "DE" holds x
+            // First compute the scalar (x^T * A^{-1} * x)
+            double xT_A_x = (DE.transpose() / currE) * Ainv_x;
+            // Inner part of is x * (x^T * A^{-1} * x)
+            Eigen::VectorXd numer = ((DE / currE) * xT_A_x);
+            // Multiply by A^{-1} to get the whole thing
+            ProjectSparse(numer, numer);
 
-            // Fill in the constraint block by getting the entries for each constraint
-            // while incrementing the rows
-            for (ConstraintPack &c : constraints)
-            {
-                c.constraint->addEntries(dest.C, mesh, geom, curRow);
-                curRow += c.constraint->nRows();
-            }
+            // Denominator is (1 + x^T A^{-1} x)
+            double denom = (1 + xT_A_x / currE);
 
-            // https://en.wikipedia.org/wiki/Schur_complement
-            // We want to compute (M/A) = D - C A^{-1} B.
-            // In our case, D = 0, and B = C^T, so this is C A^{-1} C^T.
-            // Unfortunately this means we have to apply A^{-1} once for each column of C^T,
-            // which could get expensive if we have too many constraints.
+            std::cout << "Ainv norm = " << Ainv_x.norm() << std::endl;
+            std::cout << "Update norm = " << (numer / denom).norm() << std::endl;
 
-            // First allocate some space for a single column
-            Eigen::VectorXd curCol;
-            curCol.setZero(bigNRows);
-            // And some space for A^{-1} C^T
-            Eigen::MatrixXd A_inv_CT;
-            A_inv_CT.setZero(bigNRows, compNRows);
-
-            // For each column, copy it into curCol, and do the solve for A^{-1}
-            for (size_t r = 0; r < compNRows; r++)
-            {
-                // Copy the row of C into the column
-                for (size_t i = 0; i < 3 * nVerts; i++)
-                {
-                    curCol(i) = dest.C(r, i);
-                }
-                ProjectViaSparse(curCol, curCol);
-                // Copy the column into the column of A^{-1} C^T
-                for (size_t i = 0; i < bigNRows; i++)
-                {
-                    A_inv_CT(i, r) = curCol(i);
-                }
-            }
-
-            // Now we've multiplied A^{-1} C^T, so just multiply this with C and negate it
-            dest.M_A = -dest.C * A_inv_CT;
+            dest = Ainv_x - (numer / denom);
         }
 
-        void HsMetric::ProjectViaSchur(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, SchurComplement &comp)
+
+        void HsMetric::ProjectSparseWithR1UpdateMat(Eigen::MatrixXd &DE, Eigen::MatrixXd &dest)
         {
-            size_t nVerts = mesh->nVertices();
-            // Invert the "saddle matrix" now:
-            // the block of M^{-1} we want is A^{-1} + A^{-1} C^T (M/A)^{-1} C A^{-1}
+            // We want to add a rank-1 update for DE * DE^T
+            // First just compute A^{-1} x
+            Eigen::MatrixXd Ainv_x;
+            Ainv_x.setZero(DE.rows(), DE.cols());
+            ProjectSparseMat(DE, Ainv_x);
 
-            // Reuse curCol to store A^{-1} x
-            // First allocate some space for a single column
-            Eigen::VectorXd curCol;
-            curCol.setZero(comp.C.cols());
-            MatrixUtils::MatrixIntoColumn(gradient, curCol);
-            ProjectViaSparse(curCol, curCol);
+            // Now we want to compute the numerator A^{-1} x x^T A^{-1} x
+            // Right now "Ainv_x" already holds A^{-1} x, and "DE" holds x
+            // First compute the scalar (x^T * A^{-1} * x)
+            double xT_A_x = (DE.transpose() * Ainv_x).trace();
+            std::cout << "xT_A_x = " << xT_A_x << std::endl;
+            // Inner part of is x * (x^T * A^{-1} * x)
+            Eigen::MatrixXd numer = (DE * xT_A_x);
+            // Multiply by A^{-1} to get the whole thing
+            ProjectSparseMat(numer, numer);
 
-            // Now we compute the correction.
-            // Again we already have A^{-1} once, so no need to recompute it
-            Eigen::VectorXd C_Ai_x = comp.C * curCol;
-            Eigen::VectorXd MAi_C_Ai_x;
-            MAi_C_Ai_x.setZero(C_Ai_x.rows());
-            MatrixUtils::SolveDenseSystem(comp.M_A, C_Ai_x, MAi_C_Ai_x);
-            Eigen::VectorXd B_MAi_C_Ai_x = comp.C.transpose() * MAi_C_Ai_x;
-            // Apply A^{-1} from scratch one more time
-            ProjectViaSparse(B_MAi_C_Ai_x, B_MAi_C_Ai_x);
+            // Denominator is (1 + x^T A^{-1} x)
+            double denom = (1 + xT_A_x);
 
-            curCol = curCol + B_MAi_C_Ai_x;
-            MatrixUtils::ColumnIntoMatrix(curCol, dest);
+            std::cout << "R1 update: " << numer.norm() << " / " << denom << std::endl;
+
+            std::cout << "Ainv norm = " << Ainv_x.norm() << std::endl;
+            std::cout << "Update norm = " << (numer / denom).norm() << std::endl;
+            dest = Ainv_x - (numer / denom);
+            std::cout << "Dest norm = " << dest.norm() << std::endl;
         }
-
-        void HsMetric::ProjectSchurConstraints(std::vector<ConstraintPack> &constraints, SchurComplement &comp, int newtonSteps)
-        {
-            size_t nRows = comp.M_A.rows();
-            int nIters = 0;
-            Eigen::VectorXd vals(nRows);
-
-            while (nIters < newtonSteps)
-            {
-                vals.setZero();
-                int curRow = 0;
-                // Fill right-hand side with error values
-                for (ConstraintPack &c : constraints)
-                {
-                    c.constraint->addErrorValues(vals, mesh, geom, curRow);
-                    curRow += c.constraint->nRows();
-                }
-
-                double constraintError = vals.lpNorm<Eigen::Infinity>();
-                std::cout << "Constraint error after " << nIters << " iterations = " << constraintError << std::endl;
-                if (nIters > 0 && constraintError < 1e-2)
-                {
-                    break;
-                }
-
-                nIters++;
-
-                // In this case we want the block of the inverse that multiplies the bottom block
-                // -A^{-1} B (M/A)^{-1}, where B = C^T
-                // Apply (M/A) inverse first
-                MatrixUtils::SolveDenseSystem(comp.M_A, vals, vals);
-                // Apply C^T
-                Eigen::VectorXd correction = comp.C.transpose() * vals;
-                // Apply A^{-1}
-                ProjectViaSparse(correction, correction);
-
-                // Apply the correction to the vertex positions
-                VertexIndices verts = mesh->getVertexIndices();
-                size_t nVerts = mesh->nVertices();
-                for (GCVertex v : mesh->vertices())
-                {
-                    int base = 3 * verts[v];
-                    Vector3 vertCorr{correction(base), correction(base + 1), correction(base + 2)};
-                    geom->inputVertexPositions[v] += vertCorr;
-                }
-
-                vals.setZero();
-                curRow = 0;
-                // Fill right-hand side with error values
-                for (ConstraintPack &c : constraints)
-                {
-                    c.constraint->addErrorValues(vals, mesh, geom, curRow);
-                    curRow += c.constraint->nRows();
-                }
-                double corrError = vals.lpNorm<Eigen::Infinity>();
-                std::cout << "Corrected error " << constraintError << " -> " << corrError << std::endl;
-            }
-        }
-
+        
         void HsMetric::ProjectSimpleConstraints()
         {
             for (SimpleProjectorConstraint *spc : simpleConstraints)
