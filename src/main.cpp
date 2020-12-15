@@ -128,6 +128,14 @@ namespace rsurfaces
         PlotMatrix(M, psMesh, name);
     }
 
+
+    void MainApp::PlotGradients()
+    {
+        Eigen::MatrixXd l2diff;
+        l2diff.setZero(3 * mesh->nVertices(), 3);
+        flow->AssembleGradients(l2diff);
+    }
+
     void MainApp::TestBarnesHut()
     {
         TPEKernel *tpe = new rsurfaces::TPEKernel(mesh, geom, 6, 12);

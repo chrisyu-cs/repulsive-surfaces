@@ -87,7 +87,7 @@ namespace rsurfaces
         Eigen::MatrixXd l2diff, hsGrad;
         l2diff.setZero(mesh->nVertices(), 3);
         hsGrad = l2diff;
-        AddGradientsToMatrix(energies, l2diff);
+        AssembleGradients(l2diff);
         double l2DiffNorm = l2diff.norm();
 
         std::cout << "l2 diff norm (outside) = " << l2DiffNorm << std::endl;
@@ -131,6 +131,18 @@ namespace rsurfaces
         std::cout << "  Total time for gradient step = " << (timeEnd - timeStart) << " ms" << std::endl;
     }
 
+    void SurfaceFlow::AssembleGradients(Eigen::MatrixXd &dest)
+    {
+        AddGradientsToMatrix(energies, dest);
+    }
+
+    std::unique_ptr<Hs::HsMetric> SurfaceFlow::GetMetric()
+    {
+        BarnesHutTPEnergy6D *bhEnergy = dynamic_cast<BarnesHutTPEnergy6D *>(energies[0]);
+        return std::unique_ptr<Hs::HsMetric>(new Hs::HsMetric(bhEnergy, simpleConstraints));
+    }
+
+
     void SurfaceFlow::StepProjectedGradient()
     {
         long timeStart = currentTimeMilliseconds();
@@ -140,36 +152,35 @@ namespace rsurfaces
         UpdateEnergies();
 
         // Grab the tangent-point energy specifically
-        BarnesHutTPEnergy6D *bhEnergy = dynamic_cast<BarnesHutTPEnergy6D *>(energies[0]);
 
         // Assemble sum of L2 differentials of all energies involved
         // (including tangent-point energy)
-        Eigen::MatrixXd gradient, gradientProj;
-        gradient.setZero(mesh->nVertices(), 3);
+        Eigen::MatrixXd l2diff, gradientProj;
+        l2diff.setZero(mesh->nVertices(), 3);
         gradientProj.setZero(mesh->nVertices(), 3);
 
-        AddGradientsToMatrix(energies, gradient);
-        double gNorm = gradient.norm();
+        AssembleGradients(l2diff);
+        double gNorm = l2diff.norm();
 
-        Hs::HsMetric hs(bhEnergy, simpleConstraints);
+        std::unique_ptr<Hs::HsMetric> hs = GetMetric();
 
         // Schur complement will be reused in multiple steps
         Hs::SchurComplement comp;
         if (schurConstraints.size() > 0)
         {
-            GetSchurComplement(hs, schurConstraints, comp);
-            ProjectViaSchur(hs, gradient, gradientProj, comp);
+            GetSchurComplement(*hs, schurConstraints, comp);
+            ProjectViaSchur(*hs, l2diff, gradientProj, comp);
         }
         else
         {
-            hs.InvertMetricMat(gradient, gradientProj);
+            hs->InvertMetricMat(l2diff, gradientProj);
         }
 
         VertexIndices inds = mesh->getVertexIndices();
 
         double gProjNorm = gradientProj.norm();
         // Measure dot product of search direction with original gradient direction
-        double gradDot = (gradient.transpose() * gradientProj).trace() / (gNorm * gProjNorm);
+        double gradDot = (l2diff.transpose() * gradientProj).trace() / (gNorm * gProjNorm);
 
         // Guess a step size
         // double initGuess = prevStep * 1.25;
@@ -183,9 +194,9 @@ namespace rsurfaces
 
         if (schurConstraints.size() > 0)
         {
-            ProjectSchurConstraints(hs, schurConstraints, comp, 1);
+            ProjectSchurConstraints(*hs, schurConstraints, comp, 1);
         }
-        hs.ProjectSimpleConstraints();
+        hs->ProjectSimpleConstraints();
 
         for (ConstraintPack &c : schurConstraints)
         {

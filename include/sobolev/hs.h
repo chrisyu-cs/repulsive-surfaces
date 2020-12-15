@@ -72,12 +72,12 @@ namespace rsurfaces
 
             inline void InvertMetric(Eigen::VectorXd &gradient, Eigen::VectorXd &dest)
             {
-                ProjectSparseWithR1Update(gradient, dest);
+                ProjectSparse(gradient, dest);
             }
 
             inline void InvertMetricMat(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest)
             {
-                ProjectSparseWithR1UpdateMat(gradient, dest);
+                ProjectSparseMat(gradient, dest);
             }
 
             size_t topLeftNumRows();

@@ -398,7 +398,7 @@ namespace rsurfaces
             Ainv_x.setZero(DE.rows());
             ProjectSparse(DE, Ainv_x);
 
-            double currE = 1;//energy->Value();
+            double currE = 1; //energy->Value();
 
             // Now we want to compute the numerator A^{-1} x x^T A^{-1} x
             // Right now "dest" already holds A^{-1} x, and "DE" holds x
@@ -417,7 +417,6 @@ namespace rsurfaces
 
             dest = Ainv_x - (numer / denom);
         }
-
 
         void HsMetric::ProjectSparseWithR1UpdateMat(Eigen::MatrixXd &DE, Eigen::MatrixXd &dest)
         {
@@ -447,7 +446,7 @@ namespace rsurfaces
             dest = Ainv_x - (numer / denom);
             std::cout << "Dest norm = " << dest.norm() << std::endl;
         }
-        
+
         void HsMetric::ProjectSimpleConstraints()
         {
             for (SimpleProjectorConstraint *spc : simpleConstraints)

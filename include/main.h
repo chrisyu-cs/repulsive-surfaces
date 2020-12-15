@@ -30,6 +30,7 @@ namespace rsurfaces
         void TestMVProduct();
         void BenchmarkBH();
         void TestBarnesHut();
+        void PlotGradients();
         void PlotEnergyPerFace();
         void Scale2x();
         void TestNormalDeriv();
