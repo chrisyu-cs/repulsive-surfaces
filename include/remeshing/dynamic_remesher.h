@@ -51,55 +51,5 @@ namespace rsurfaces
             double initialAverageLength;
             std::vector<VertexDataWrapper *> vectorData;
         };
-
-        template <typename Mode>
-        inline std::string StringOfMode(Mode mode)
-        {
-            throw std::runtime_error("Can't use unspecialized template here.");
-        }
-
-        template <>
-        inline std::string StringOfMode(RemeshingMode mode)
-        {
-            switch (mode)
-            {
-            case RemeshingMode::FlipOnly:
-                return "Flip only";
-            case RemeshingMode::SmoothAndFlip:
-                return "Smooth + flip";
-            case RemeshingMode::SmoothFlipAndCollapse:
-                return "Smooth + flip + collapse";
-            default:
-                throw std::runtime_error("Unknown remeshing mode.");
-            }
-        }
-
-        template <>
-        inline std::string StringOfMode(SmoothingMode mode)
-        {
-            switch (mode)
-            {
-            case SmoothingMode::Circumcenter:
-                return "Circumcenter";
-            case SmoothingMode::Laplacian:
-                return "Laplacian";
-            default:
-                throw std::runtime_error("Unknown smoothing mode.");
-            }
-        }
-
-        template <>
-        inline std::string StringOfMode(FlippingMode mode)
-        {
-            switch (mode)
-            {
-            case FlippingMode::Delaunay:
-                return "Delaunay";
-            case FlippingMode::Degree:
-                return "Degree";
-            default:
-                throw std::runtime_error("Unknown flipping mode.");
-            }
-        }
     } // namespace remeshing
 } // namespace rsurfaces
