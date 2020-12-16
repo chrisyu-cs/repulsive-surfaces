@@ -595,6 +595,19 @@ namespace rsurfaces
             // return flatLength;
         }
         
+        double findMeanTargetL(MeshPtr const &mesh, GeomPtr const &geometry, Edge e, double flatLength, double epsilon)
+        {
+            // Areas and curvatures are already required in main.cpp
+            double averageH = 0;
+            for (Vertex v : e.adjacentVertices()) {
+                averageH += getSmoothMeanCurvature(geometry, v);
+            }
+            averageH /= 2;
+            double L = flatLength * epsilon / (fabs(averageH) + epsilon);
+            return L;
+            // return flatLength;
+        }
+        
         void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry, double flatLength, double epsilon, double minLength)
         {
             // queues of edges to CHECK to change
