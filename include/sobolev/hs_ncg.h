@@ -16,7 +16,7 @@ namespace rsurfaces
             HsNCG(SurfaceEnergy *energy_, std::vector<Constraints::SimpleProjectorConstraint *> &spcs_);
             ~HsNCG() {}
 
-            double UpdateConjugateDir(Eigen::MatrixXd &l2DiffCurr);
+            double UpdateConjugateDir(Eigen::MatrixXd &l2DiffCurr, Hs::HsMetric &hs);
             Eigen::MatrixXd &direction();
 
             inline void ResetMemory()

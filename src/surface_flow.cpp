@@ -97,7 +97,9 @@ namespace rsurfaces
             ncg = new Hs::HsNCG(bhEnergy, simpleConstraints);
         }
 
-        double hsGradNormBefore = ncg->UpdateConjugateDir(l2diff);
+        std::unique_ptr<Hs::HsMetric> hs = GetMetric();
+
+        double hsGradNormBefore = ncg->UpdateConjugateDir(l2diff, *hs);
         double gProjNorm = ncg->direction().norm();
         double initGuess = guessStepSize(gProjNorm);
 
@@ -142,6 +144,46 @@ namespace rsurfaces
         return std::unique_ptr<Hs::HsMetric>(new Hs::HsMetric(bhEnergy, simpleConstraints));
     }
 
+    void SurfaceFlow::StepProjectedGradientExact()
+    {
+        long timeStart = currentTimeMilliseconds();
+        stepCount++;
+        std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
+        std::cout << "Using Hs projected gradient method..." << std::endl;
+        UpdateEnergies();
+
+        // Assemble sum of L2 differentials of all energies involved
+        // (including tangent-point energy)
+        Eigen::MatrixXd l2diff, gradientProj;
+        l2diff.setZero(mesh->nVertices(), 3);
+        gradientProj.setZero(mesh->nVertices(), 3);
+
+        AssembleGradients(l2diff);
+        double gNorm = l2diff.norm();
+
+        std::unique_ptr<Hs::HsMetric> hs = GetMetric();
+        hs->ProjectGradientExact(l2diff, gradientProj, schurConstraints);
+
+        VertexIndices inds = mesh->getVertexIndices();
+
+        double gProjNorm = gradientProj.norm();
+        // Measure dot product of search direction with original gradient direction
+        double gradDot = (l2diff.transpose() * gradientProj).trace() / (gNorm * gProjNorm);
+
+        // Guess a step size
+        // double initGuess = prevStep * 1.25;
+        double initGuess = guessStepSize(gProjNorm);
+
+        std::cout << "  * Initial step size guess = " << initGuess << std::endl;
+
+        // Take the step using line search
+        LineSearch search(mesh, geom, energies);
+        search.BacktrackingLineSearch(gradientProj, initGuess, gradDot);
+        geom->refreshQuantities();
+
+        long timeEnd = currentTimeMilliseconds();
+        std::cout << "  Total time for gradient step = " << (timeEnd - timeStart) << " ms" << std::endl;
+    }
 
     void SurfaceFlow::StepProjectedGradient()
     {
@@ -150,8 +192,6 @@ namespace rsurfaces
         std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
         std::cout << "Using Hs projected gradient method..." << std::endl;
         UpdateEnergies();
-
-        // Grab the tangent-point energy specifically
 
         // Assemble sum of L2 differentials of all energies involved
         // (including tangent-point energy)

@@ -24,10 +24,8 @@ namespace rsurfaces
             return numer / denom;
         }
 
-        double HsNCG::UpdateConjugateDir(Eigen::MatrixXd &l2Diff_n)
+        double HsNCG::UpdateConjugateDir(Eigen::MatrixXd &l2Diff_n, Hs::HsMetric &hs)
         {
-            HsMetric hs(energy, spcs);
-
             if (resetFlag)
             {
                 // The first conjugate direction s_0 is just the first projected gradient

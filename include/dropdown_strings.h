@@ -20,6 +20,8 @@ namespace rsurfaces
             return "Hs-NCG";
         case GradientMethod::HsProjected:
             return "Hs-Projected";
+        case GradientMethod::HsExactProjected:
+            return "Hs-ExactProjected";
         default:
             throw std::runtime_error("Unknown method type.");
         }

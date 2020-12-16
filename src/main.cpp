@@ -67,6 +67,9 @@ namespace rsurfaces
         case GradientMethod::HsNCG:
             flow->StepNCG();
             break;
+        case GradientMethod::HsExactProjected:
+            flow->StepProjectedGradientExact();
+            break;
         default:
             throw std::runtime_error("Unknown gradient method type.");
         }
@@ -128,12 +131,39 @@ namespace rsurfaces
         PlotMatrix(M, psMesh, name);
     }
 
-
     void MainApp::PlotGradients()
     {
-        Eigen::MatrixXd l2diff;
-        l2diff.setZero(3 * mesh->nVertices(), 3);
-        flow->AssembleGradients(l2diff);
+        Eigen::MatrixXd l2Diff, hsGrad, hsGradExact;
+        l2Diff.setZero(mesh->nVertices(), 3);
+        hsGrad.setZero(mesh->nVertices(), 3);
+        hsGradExact.setZero(mesh->nVertices(), 3);
+
+        flow->UpdateEnergies();
+
+        std::cout << "Assembling L2 differential..." << std::endl;
+        long diffTimeStart = currentTimeMilliseconds();
+        flow->AssembleGradients(l2Diff);
+        long diffTimeEnd = currentTimeMilliseconds();
+        std::cout << "Differential took " << (diffTimeEnd - diffTimeStart) << " ms" << std::endl;
+
+        std::unique_ptr<Hs::HsMetric> hs = flow->GetMetric();
+
+        std::cout << "Inverting \"sparse\" metric..." << std::endl;
+        long sparseTimeStart = currentTimeMilliseconds();
+        hs->InvertMetricMat(l2Diff, hsGrad);
+        long sparseTimeEnd = currentTimeMilliseconds();
+        std::cout << "Sparse metric took " << (sparseTimeEnd - sparseTimeStart) << " ms" << std::endl;
+        
+        std::cout << "Inverting dense metric..." << std::endl;
+        long timeStart = currentTimeMilliseconds();
+        std::vector<ConstraintPack> empty;
+        hs->ProjectGradientExact(l2Diff, hsGradExact, empty);
+        long timeEnd = currentTimeMilliseconds();
+        std::cout << "Dense metric took " << (timeEnd - timeStart) << " ms" << std::endl;
+
+        PlotMatrix(l2Diff, psMesh, "L2 differential");
+        PlotMatrix(hsGrad, psMesh, "Hs sparse gradient");
+        PlotMatrix(hsGradExact, psMesh, "Hs dense gradient");
     }
 
     void MainApp::TestBarnesHut()
@@ -772,7 +802,8 @@ void customCallback()
     }
 
     const GradientMethod methods[] = {GradientMethod::HsProjected,
-                                      GradientMethod::HsNCG};
+                                      GradientMethod::HsNCG,
+                                      GradientMethod::HsExactProjected};
 
     selectFromDropdown("Method", methods, IM_ARRAYSIZE(methods), MainApp::instance->methodChoice);
 
@@ -855,9 +886,9 @@ void customCallback()
         MainApp::instance->Scale2x();
     }
 
-    if (ImGui::Button("Normal deriv", ImVec2{ITEM_WIDTH, 0}))
+    if (ImGui::Button("Plot gradients", ImVec2{ITEM_WIDTH, 0}))
     {
-        MainApp::instance->TestNormalDeriv();
+        MainApp::instance->PlotGradients();
     }
     ImGui::EndGroup();
 
@@ -1167,7 +1198,8 @@ rsurfaces::scene::SceneData defaultScene(std::string meshName)
     data.meshName = meshName;
     data.alpha = 6;
     data.beta = 12;
-    data.constraints = std::vector<ConstraintData>({ConstraintData{scene::ConstraintType::TotalArea, 1, 0},
+    data.constraints = std::vector<ConstraintData>({ConstraintData{scene::ConstraintType::Barycenter, 1, 0},
+                                                    ConstraintData{scene::ConstraintType::TotalArea, 1, 0},
                                                     ConstraintData{scene::ConstraintType::TotalVolume, 1, 0}});
     return data;
 }
