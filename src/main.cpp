@@ -941,9 +941,10 @@ void customCallback()
     ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
     if (ImGui::Button("Adjust edge lengths"))
     {
-        remeshing::adjustEdgeLengths(MainApp::instance->mesh, MainApp::instance->geom, 0.1, 0.1, 0.05);
+        remeshing::adjustEdgeLengths(MainApp::instance->mesh, MainApp::instance->geom, 0.01, 0.1, 0.001);
         MainApp::instance->reregisterMesh();
     }
+    
     if (ImGui::Button("Adjust vert degrees"))
     {
         remeshing::adjustVertexDegrees(MainApp::instance->mesh, MainApp::instance->geom);

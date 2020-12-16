@@ -225,7 +225,7 @@ namespace rsurfaces
 //            {
 //                geometry->inputVertexPositions[i] = geometry->inputVertexPositions[i+1];
 //            }
-           mesh->myCollapseEdgeTriangular(e, v);
+           mesh->collapseEdgeTriangular(e);
         }
         
         void testCollapseEdge(MeshPtr const &mesh, GeomPtr const &geometry, int index)
@@ -637,10 +637,12 @@ namespace rsurfaces
                     if(geometry->edgeLength(e) < findTargetL(mesh, geometry, e, flatLength, epsilon) * 0.5)
                     {
                         Vector3 newPos = edgeMidpoint(mesh, geometry, e);
-                        Vertex v;
-                        if(shouldCollapse(mesh, geometry, e) && mesh->myCollapseEdgeTriangular(e, v)){
-                            if(!v.isBoundary()){
-                                geometry->inputVertexPositions[v] = newPos;
+                        if(shouldCollapse(mesh, geometry, e)){
+                        Vertex v = mesh->collapseEdgeTriangular(e);
+                            if (v != Vertex()) {
+                                if(!v.isBoundary()) {
+                                    geometry->inputVertexPositions[v] = newPos;
+                                }
                             }
                         }
                     }
@@ -649,6 +651,7 @@ namespace rsurfaces
             
             mesh->validateConnectivity();
             mesh->compress();
+            geometry->refreshQuantities();
         }
 
         void remesh(MeshPtr const &mesh, GeomPtr const &geometry){

@@ -55,6 +55,8 @@ namespace rsurfaces
 
         inline void reregisterMesh()
         {
+            std::cout << "Registering " << geom->inputVertexPositions.size() << " vertex positions" << std::endl;
+            std::cout << "Registering " << mesh->getFaceVertexList().size() << " faces" << std::endl;
             psMesh = polyscope::registerSurfaceMesh(meshName, geom->inputVertexPositions, mesh->getFaceVertexList(), polyscopePermutations(*mesh));
         }
 
