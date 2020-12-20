@@ -627,7 +627,7 @@ namespace rsurfaces
                 Edge e = toSplit.back();
                 toSplit.pop_back();
                 double length_e = geometry->edgeLength(e);
-                if(length_e > minLength && length_e > findTargetL(mesh, geometry, e, flatLength, epsilon) * 1.5)
+                if(length_e > minLength && length_e > findMeanTargetL(mesh, geometry, e, flatLength, epsilon) * 1.5)
                 {
                     Vector3 newPos = edgeMidpoint(mesh, geometry, e);
                     Halfedge he = mesh->splitEdgeTriangular(e);
@@ -647,7 +647,7 @@ namespace rsurfaces
                 toCollapse.pop_back();
                 if(e.halfedge().next().getIndex() != INVALID_IND) // make sure it exists
                 {
-                    if(geometry->edgeLength(e) < findTargetL(mesh, geometry, e, flatLength, epsilon) * 0.5)
+                    if(geometry->edgeLength(e) < findMeanTargetL(mesh, geometry, e, flatLength, epsilon) * 0.5)
                     {
                         Vector3 newPos = edgeMidpoint(mesh, geometry, e);
                         if(shouldCollapse(mesh, geometry, e)){
