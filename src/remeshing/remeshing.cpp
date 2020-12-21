@@ -582,15 +582,15 @@ namespace rsurfaces
         
         // flatLength: specifies how long the target edge length should be in flat regions
         // epsilon: controls how much variation in target length occurs due to curvature
-        double findTargetL(MeshPtr const &mesh, GeomPtr const &geometry, Edge e, double flatLength, double epsilon)
+        double findGaussianTargetL(MeshPtr const &mesh, GeomPtr const &geometry, Edge e, double flatLength, double epsilon)
         {
             // Areas and curvatures are already required in main.cpp
             double averageK = 0;
             for (Vertex v : e.adjacentVertices()) {
-                averageK += getSmoothMeanCurvature(geometry, v);
+                averageK += getSmoothGaussianCurvature(geometry, v);
             }
             averageK /= 2;
-            double L = flatLength * epsilon / (fabs(averageK) + epsilon);
+            double L = flatLength * epsilon / (fabs(sqrt(averageK)) + epsilon);
             return L;
             // return flatLength;
         }
