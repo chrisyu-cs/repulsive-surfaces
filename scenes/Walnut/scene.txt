@@ -1,0 +1,7 @@
+repel_mesh inside.obj 6 12
+constrain barycenter
+constrain area 10 500
+constrain volume 10 500
+obstacle walnut_shell.obj .1
+iteration_limit 500
+

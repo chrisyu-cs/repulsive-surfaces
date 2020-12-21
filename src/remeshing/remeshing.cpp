@@ -595,6 +595,19 @@ namespace rsurfaces
             // return flatLength;
         }
         
+        double findMeanTargetL(MeshPtr const &mesh, GeomPtr const &geometry, Edge e, double flatLength, double epsilon)
+        {
+            // Areas and curvatures are already required in main.cpp
+            double averageH = 0;
+            for (Vertex v : e.adjacentVertices()) {
+                averageH += getSmoothMeanCurvature(geometry, v);
+            }
+            averageH /= 2;
+            double L = flatLength * epsilon / (fabs(averageH) + epsilon);
+            return L;
+            // return flatLength;
+        }
+        
         void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry, double flatLength, double epsilon, double minLength, bool curvatureAdaptive)
         {
             // queues of edges to CHECK to change
@@ -614,7 +627,7 @@ namespace rsurfaces
                 Edge e = toSplit.back();
                 toSplit.pop_back();
                 double length_e = geometry->edgeLength(e);
-                double threshold = (curvatureAdaptive) ? findTargetL(mesh, geometry, e, flatLength, epsilon) : flatLength;
+                double threshold = (curvatureAdaptive) ? findMeanTargetL(mesh, geometry, e, flatLength, epsilon) : flatLength;
                 if(length_e > minLength && length_e > threshold * 1.5)
                 {
                     Vector3 newPos = edgeMidpoint(mesh, geometry, e);
@@ -635,7 +648,7 @@ namespace rsurfaces
                 toCollapse.pop_back();
                 if(e.halfedge().next().getIndex() != INVALID_IND) // make sure it exists
                 {
-                    double threshold = (curvatureAdaptive) ? findTargetL(mesh, geometry, e, flatLength, epsilon) : flatLength;
+                    double threshold = (curvatureAdaptive) ? findMeanTargetL(mesh, geometry, e, flatLength, epsilon) : flatLength;
                     if(geometry->edgeLength(e) < threshold * 0.5)
                     {
                         Vector3 newPos = edgeMidpoint(mesh, geometry, e);
