@@ -27,6 +27,7 @@ namespace rsurfaces
                 he = he.next();
             } while (start != he);
 
+            // If vert isn't adjacent, value is 0
             if (!found)
             {
                 return Vector3{0, 0, 0};
@@ -296,7 +297,7 @@ namespace rsurfaces
             }
         }
 
-        Eigen::MatrixXd HsMetric::FillHsConstrained(std::vector<ConstraintPack> &schurConstraints)
+        Eigen::MatrixXd HsMetric::GetHsMatrixConstrained(std::vector<ConstraintPack> &schurConstraints)
         {
             Eigen::MatrixXd M_small, M;
             int nVerts = mesh->nVertices();
@@ -338,7 +339,7 @@ namespace rsurfaces
 
         void HsMetric::ProjectGradientExact(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, std::vector<ConstraintPack> &schurConstraints)
         {
-            Eigen::MatrixXd M = FillHsConstrained(schurConstraints);
+            Eigen::MatrixXd M = GetHsMatrixConstrained(schurConstraints);
 
             // Flatten the gradient into a single column
             Eigen::VectorXd gradientCol;

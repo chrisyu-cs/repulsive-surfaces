@@ -80,8 +80,8 @@ namespace rsurfaces
             void FillMatrixVertsFirst(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom);
             
             // Build an exact Hs preconditioner with high- and low-order terms.
-            Eigen::MatrixXd FillHsConstrained(std::vector<ConstraintPack> &schurConstraints);
-            
+            Eigen::MatrixXd GetHsMatrixConstrained(std::vector<ConstraintPack> &schurConstraints);
+
             void ProjectGradientExact(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, std::vector<ConstraintPack> &schurConstraints);
 
             void ProjectSimpleConstraints();

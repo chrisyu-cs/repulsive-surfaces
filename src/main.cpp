@@ -154,7 +154,7 @@ namespace rsurfaces
         hs->InvertMetricMat(l2Diff, hsGrad);
         long sparseTimeEnd = currentTimeMilliseconds();
         std::cout << "Sparse metric took " << (sparseTimeEnd - sparseTimeStart) << " ms" << std::endl;
-        
+
         std::cout << "Inverting dense metric..." << std::endl;
         long timeStart = currentTimeMilliseconds();
         std::vector<ConstraintPack> empty;
@@ -513,6 +513,8 @@ namespace rsurfaces
 
     void MainApp::TestMVProduct()
     {
+        geom->refreshQuantities();
+
         long gradientStartTime = currentTimeMilliseconds();
         // Use the differential of the energy as the test case
         SurfaceEnergy *energy = flow->BaseEnergy();
@@ -525,76 +527,99 @@ namespace rsurfaces
         double s = 4 - 2 * Hs::get_s(exps.x, exps.y);
 
         long gradientEndTime = currentTimeMilliseconds();
-
         Hs::HsMetric hs(energy);
 
-        for (int i = 0; i < 1; i++)
-        {
-            std::cout << "\nTesting for s = " << s << std::endl;
-            long denseStartTime = currentTimeMilliseconds();
-            // Dense multiplication
-            // Assemble the dense operator
-            std::cout << "Multiplying dense" << std::endl;
-            Eigen::MatrixXd dense, dense_small, dense_small2;
+        // Dense multiplication
+        std::cout << "Dense fractional Laplacian (s = " << s << "):" << std::endl;
+        Eigen::MatrixXd dense, dense_small;
+        dense_small.setZero(mesh->nVertices(), mesh->nVertices());
+        dense.setZero(3 * mesh->nVertices(), 3 * mesh->nVertices());
 
-            dense_small.setZero(mesh->nVertices(), mesh->nVertices());
-            dense_small2 = dense_small;
-            dense.setZero(3 * mesh->nVertices(), 3 * mesh->nVertices());
-            hs.FillMatrixFracOnly(dense_small, s, mesh, geom);
-            MatrixUtils::TripleMatrix(dense_small, dense);
-            hs.FillMatrixVertsFirst(dense_small2, s, mesh, geom);
+        long fracStart = currentTimeMilliseconds();
+        hs.FillMatrixFracOnly(dense_small, s, mesh, geom);
+        MatrixUtils::TripleMatrix(dense_small, dense);
+        Eigen::VectorXd denseRes = dense * gVec;
+        long fracEnd = currentTimeMilliseconds();
 
-            std::cout << "Difference in dense matrices = " << (dense_small2 - dense_small).norm() << std::endl;
+        // Block cluster tree multiplication
+        BVHNode6D *bvh = energy->GetBVH();
 
-            long denseAssemblyTime = currentTimeMilliseconds();
-            // Multiply dense
-            Eigen::VectorXd denseRes = dense * gVec;
-            long denseEndTime = currentTimeMilliseconds();
+        BlockClusterTree *bct = new BlockClusterTree(mesh, geom, bvh, bh_theta, s);
+        long fracBCT = currentTimeMilliseconds();
+        bct->SetKernelType(BCTKernelType::FractionalOnly);
+        Eigen::VectorXd bctRes = gVec;
+        bct->MultiplyVector3(gVec, bctRes);
+        long fracEnd2 = currentTimeMilliseconds();
 
-            std::cout << "Multiplying BCT" << std::endl;
-            // Block cluster tree multiplication
-            long bctStartTime = currentTimeMilliseconds();
-            BVHNode6D *bvh = energy->GetBVH();
+        bct->PrintData();
 
-            BlockClusterTree *bct = new BlockClusterTree(mesh, geom, bvh, bh_theta, s);
-            bct->PrintData();
-            long bctAssemblyTime = currentTimeMilliseconds();
-            Eigen::VectorXd bctRes = gVec;
-            bct->MultiplyVector3(gVec, bctRes);
-            long bctEndTime = currentTimeMilliseconds();
+        Eigen::VectorXd diff = denseRes - bctRes;
+        double error = 100 * diff.norm() / denseRes.norm();
+        std::cout << "Dense multiply norm = " << denseRes.norm() << std::endl;
+        std::cout << "Hierarchical multiply norm = " << bctRes.norm() << std::endl;
+        std::cout << "Relative error = " << error << " percent" << std::endl;
+        std::cout << "Dot product of directions = " << denseRes.dot(bctRes) / (denseRes.norm() * bctRes.norm()) << std::endl;
+        std::cout << "Dense assembly took " << (fracEnd - fracStart) << " ms, hierarchical product took " << (fracEnd2 - fracBCT) << " ms" << std::endl;
+        std::cout << "BCT assembly took " << (fracBCT - fracEnd) << " ms" << std::endl;
 
-            // Eigen::MatrixXd comp(3 * mesh->nVertices(), 2);
-            // comp.col(0) = denseRes;
-            // comp.col(1) = bctRes;
-            // std::cout << comp << std::endl;
+        // Reset for high-order term
+        denseRes.setZero();
+        bctRes.setZero();
+        dense_small.setZero();
+        dense.setZero();
+        s = Hs::get_s(exps.x, exps.y);
+        bct->SetExponent(s);
 
-            Eigen::VectorXd diff = denseRes - bctRes;
-            double error = 100 * diff.norm() / denseRes.norm();
+        std::cout << "High-order term (s = " << s << "):" << std::endl;
 
-            std::cout << "Dense multiply norm = " << denseRes.norm() << std::endl;
-            std::cout << "Hierarchical multiply norm = " << bctRes.norm() << std::endl;
-            std::cout << "Relative error = " << error << " percent" << std::endl;
-            std::cout << "Dot product of directions = " << denseRes.dot(bctRes) / (denseRes.norm() * bctRes.norm()) << std::endl;
+        long hiStart = currentTimeMilliseconds();
+        hs.FillMatrixHigh(dense_small, s, mesh, geom);
+        MatrixUtils::TripleMatrix(dense_small, dense);
+        denseRes = dense * gVec;
+        long hiEnd = currentTimeMilliseconds();
 
-            long gradientAssembly = gradientEndTime - gradientStartTime;
-            long denseAssembly = denseAssemblyTime - denseStartTime;
-            long denseMult = denseEndTime - denseAssemblyTime;
-            long bctAssembly = bctAssemblyTime - bctStartTime;
-            long bctMult = bctEndTime - bctAssemblyTime;
+        bct->SetKernelType(BCTKernelType::HighOrder);
+        bct->MultiplyVector3(gVec, bctRes);
+        long hiEnd2 = currentTimeMilliseconds();
 
-            bct->PrintData();
+        diff = denseRes - bctRes;
+        error = 100 * diff.norm() / denseRes.norm();
+        std::cout << "Dense multiply norm = " << denseRes.norm() << std::endl;
+        std::cout << "Hierarchical multiply norm = " << bctRes.norm() << std::endl;
+        std::cout << "Relative error = " << error << " percent" << std::endl;
+        std::cout << "Dot product of directions = " << denseRes.dot(bctRes) / (denseRes.norm() * bctRes.norm()) << std::endl;
+        std::cout << "Dense assembly took " << (hiEnd - hiStart) << " ms, hierarchical product took " << (hiEnd2 - hiEnd) << " ms" << std::endl;
 
-            std::cout << "Gradient assembly time = " << gradientAssembly << " ms" << std::endl;
-            std::cout << "Dense time = " << (denseAssembly + denseMult) << " ms" << std::endl;
-            std::cout << "  * Dense matrix assembly = " << denseAssembly << " ms" << std::endl;
-            std::cout << "  * Dense multiply = " << denseMult << " ms" << std::endl;
-            std::cout << "Hierarchical time = " << (bctAssembly + bctMult) << " ms" << std::endl;
-            std::cout << "  * Tree assembly = " << bctAssembly << " ms" << std::endl;
-            std::cout << "  * Tree multiply = " << bctMult << " ms" << std::endl;
+        // Reset for low-order term
+        denseRes.setZero();
+        bctRes.setZero();
+        dense_small.setZero();
+        dense.setZero();
+        s = Hs::get_s(exps.x, exps.y);
+        bct->SetExponent(s);
 
-            delete bct;
-            s -= 0.2;
-        }
+        std::cout << "Low-order term (s = " << s << "):" << std::endl;
+
+        long lowStart = currentTimeMilliseconds();
+        hs.FillMatrixLow(dense_small, s, mesh, geom);
+        MatrixUtils::TripleMatrix(dense_small, dense);
+        denseRes = dense * gVec;
+        long lowEnd = currentTimeMilliseconds();
+
+        bct->SetKernelType(BCTKernelType::LowOrder);
+        bct->MultiplyVector3(gVec, bctRes);
+        long lowEnd2 = currentTimeMilliseconds();
+
+        diff = denseRes - bctRes;
+        error = 100 * diff.norm() / denseRes.norm();
+        std::cout << "Dense multiply norm = " << denseRes.norm() << std::endl;
+        std::cout << "Hierarchical multiply norm = " << bctRes.norm() << std::endl;
+        std::cout << "Relative error = " << error << " percent" << std::endl;
+        std::cout << "Dot product of directions = " << denseRes.dot(bctRes) / (denseRes.norm() * bctRes.norm()) << std::endl;
+        std::cout << "Dense assembly took " << (lowEnd - lowStart) << " ms, hierarchical product took " << (lowEnd2 - lowEnd) << " ms" << std::endl;
+
+
+        delete bct;
     }
 
     class VectorInit
@@ -947,7 +972,7 @@ void customCallback()
         remeshing::adjustEdgeLengths(MainApp::instance->mesh, MainApp::instance->geom, 0.01, 0.1, 0.001);
         MainApp::instance->reregisterMesh();
     }
-    
+
     if (ImGui::Button("Adjust vert degrees"))
     {
         remeshing::adjustVertexDegrees(MainApp::instance->mesh, MainApp::instance->geom);
