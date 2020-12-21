@@ -80,6 +80,7 @@ namespace rsurfaces
             if (doCollapse)
                 std::cout << numSteps << ": Doing edge collapses this iteration..." << std::endl;
             remesher.Remesh(5, doCollapse);
+            mesh->compress();
             MainApp::instance->reregisterMesh();
         }
         else
@@ -157,7 +158,8 @@ namespace rsurfaces
         std::cout << "Inverting dense metric..." << std::endl;
         long timeStart = currentTimeMilliseconds();
         std::vector<ConstraintPack> empty;
-        hs->ProjectGradientExact(l2Diff, hsGradExact, empty);
+        // hs->ProjectGradientExact(l2Diff, hsGradExact, empty);
+        hsGradExact = hsGrad;
         long timeEnd = currentTimeMilliseconds();
         std::cout << "Dense metric took " << (timeEnd - timeStart) << " ms" << std::endl;
 
@@ -542,7 +544,6 @@ namespace rsurfaces
             MatrixUtils::TripleMatrix(dense_small, dense);
             hs.FillMatrixVertsFirst(dense_small2, s, mesh, geom);
 
-            std::cout << (dense_small2 - dense_small) << std::endl;
             std::cout << "Difference in dense matrices = " << (dense_small2 - dense_small).norm() << std::endl;
 
             long denseAssemblyTime = currentTimeMilliseconds();
@@ -822,6 +823,8 @@ void customCallback()
     selectFromDropdown("Remeshing mode", rModes, IM_ARRAYSIZE(rModes), MainApp::instance->remesher.remeshingMode);
     selectFromDropdown("Smoothing mode", sModes, IM_ARRAYSIZE(sModes), MainApp::instance->remesher.smoothingMode);
     selectFromDropdown("Flipping mode", fModes, IM_ARRAYSIZE(fModes), MainApp::instance->remesher.flippingMode);
+
+    ImGui::Checkbox("Curvature adaptive remeshing", &MainApp::instance->remesher.curvatureAdaptive);
 
     rsurfaces::MainApp::instance->HandlePicking();
 

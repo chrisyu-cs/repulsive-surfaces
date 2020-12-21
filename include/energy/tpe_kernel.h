@@ -13,12 +13,26 @@ namespace rsurfaces
     public:
         TPEKernel(const MeshPtr &m, const GeomPtr &g, double alpha, double beta);
 
-        inline double tpe_Kf(Vector3 v1, Vector3 v2, Vector3 n1)
+        static inline double tpe_Kf(Vector3 v1, Vector3 v2, Vector3 n1, double alpha, double beta)
         {
             Vector3 displacement = v1 - v2;
             double numer = pow(fabs(dot(n1, displacement)), alpha);
             double denom = pow(displacement.norm2(), beta / 2);
             return numer / denom;
+        }
+
+        static inline double tpe_Kf_symmetric(Vector3 v1, Vector3 v2, Vector3 n1, Vector3 n2, double alpha, double beta)
+        {
+            Vector3 displacement = v1 - v2;
+            double numer1 = pow(fabs(dot(n1, displacement)), alpha);
+            double numer2 = pow(fabs(dot(n2, displacement)), alpha);
+            double denom = pow(displacement.norm2(), beta / 2);
+            return 0.5 * (numer1 + numer2) / denom;
+        }
+        
+        inline double tpe_Kf(Vector3 v1, Vector3 v2, Vector3 n1)
+        {
+            return tpe_Kf(v1, v2, n1, alpha, beta);
         }
 
         template <typename F1, typename F2>

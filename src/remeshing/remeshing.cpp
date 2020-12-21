@@ -587,15 +587,15 @@ namespace rsurfaces
             // Areas and curvatures are already required in main.cpp
             double averageK = 0;
             for (Vertex v : e.adjacentVertices()) {
-                averageK += getSmoothGaussianCurvature(geometry, v);
+                averageK += getSmoothMeanCurvature(geometry, v);
             }
             averageK /= 2;
-            double L = flatLength * epsilon / (sqrt(fabs(averageK)) + epsilon);
+            double L = flatLength * epsilon / (fabs(averageK) + epsilon);
             return L;
             // return flatLength;
         }
         
-        void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry, double flatLength, double epsilon, double minLength)
+        void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry, double flatLength, double epsilon, double minLength, bool curvatureAdaptive)
         {
             // queues of edges to CHECK to change
             std::cout<<"start"<<std::endl;
@@ -614,7 +614,8 @@ namespace rsurfaces
                 Edge e = toSplit.back();
                 toSplit.pop_back();
                 double length_e = geometry->edgeLength(e);
-                if(length_e > minLength && length_e > findTargetL(mesh, geometry, e, flatLength, epsilon) * 1.5)
+                double threshold = (curvatureAdaptive) ? findTargetL(mesh, geometry, e, flatLength, epsilon) : flatLength;
+                if(length_e > minLength && length_e > threshold * 1.5)
                 {
                     Vector3 newPos = edgeMidpoint(mesh, geometry, e);
                     Halfedge he = mesh->splitEdgeTriangular(e);
@@ -634,7 +635,8 @@ namespace rsurfaces
                 toCollapse.pop_back();
                 if(e.halfedge().next().getIndex() != INVALID_IND) // make sure it exists
                 {
-                    if(geometry->edgeLength(e) < findTargetL(mesh, geometry, e, flatLength, epsilon) * 0.5)
+                    double threshold = (curvatureAdaptive) ? findTargetL(mesh, geometry, e, flatLength, epsilon) : flatLength;
+                    if(geometry->edgeLength(e) < threshold * 0.5)
                     {
                         Vector3 newPos = edgeMidpoint(mesh, geometry, e);
                         if(shouldCollapse(mesh, geometry, e)){

@@ -30,7 +30,9 @@ namespace rsurfaces
             {
                 // The first conjugate direction s_0 is just the first projected gradient
                 conjugateDir.setZero(l2Diff_n.rows(), l2Diff_n.cols());
-                hs.InvertMetricMat(l2Diff_n, conjugateDir);
+                // hs.InvertMetricMat(l2Diff_n, conjugateDir);
+                std::vector<ConstraintPack> empty;
+                hs.ProjectGradientExact(l2Diff_n, conjugateDir, empty);
                 double hsGradNorm = (l2Diff_n.transpose() * conjugateDir).trace();
                 std::cout << "l2Diff_n norm = " << l2Diff_n.norm() << std::endl;
                 std::cout << "delta_xn norm = " << conjugateDir.norm() << std::endl;
@@ -50,7 +52,9 @@ namespace rsurfaces
                 // Step 1: compute Hs gradient direction
                 Eigen::MatrixXd delta_xn;
                 delta_xn.setZero(l2Diff_n.rows(), l2Diff_n.cols());
-                hs.InvertMetricMat(l2Diff_n, delta_xn);
+                // hs.InvertMetricMat(l2Diff_n, delta_xn);
+                std::vector<ConstraintPack> empty;
+                hs.ProjectGradientExact(l2Diff_n, delta_xn, empty);
                 double hsGradNorm = (l2Diff_n.transpose() * delta_xn).trace();
                 std::cout << "l2Diff_n norm = " << l2Diff_n.norm() << std::endl;
                 std::cout << "delta_xn norm = " << delta_xn.norm() << std::endl;

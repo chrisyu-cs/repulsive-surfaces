@@ -88,7 +88,7 @@ namespace rsurfaces
             }
         }
 
-        inline void AddTriangleCenterTerm(Eigen::MatrixXd &M, double s, GCFace f1, GCFace f2, GeomPtr &geom, VertexIndices &indices)
+        inline void AddTriangleCenterTerm(Eigen::MatrixXd &M, double s, GCFace f1, GCFace f2, GeomPtr &geom, VertexIndices &indices, bool lowOrder)
         {
             std::vector<GCVertex> verts;
             GetVerticesWithoutDuplicates(f1, f2, verts);
@@ -99,7 +99,18 @@ namespace rsurfaces
             Vector3 mid1 = faceBarycenter(geom, f1);
             Vector3 mid2 = faceBarycenter(geom, f2);
 
-            double dist_term = MetricDistanceTermFrac(s, mid1, mid2);
+            double dist_term = 0;
+
+            if (lowOrder)
+            {
+                Vector3 n1 = faceNormal(geom, f1);
+                Vector3 n2 = faceNormal(geom, f2);
+                dist_term = MetricDistanceTermLowPure(s, mid1, mid2, n1, n2);
+            }
+            else
+            {
+                dist_term = MetricDistanceTermFrac(s, mid1, mid2);
+            }
 
             for (GCVertex u : verts)
             {
@@ -186,6 +197,21 @@ namespace rsurfaces
             }
         }
 
+        void HsMetric::FillMatrixLow(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom)
+        {
+            VertexIndices indices = mesh->getVertexIndices();
+
+            for (GCFace f1 : mesh->faces())
+            {
+                for (GCFace f2 : mesh->faces())
+                {
+                    if (f1 == f2)
+                        continue;
+                    AddTriangleCenterTerm(M, s, f1, f2, geom, indices, true);
+                }
+            }
+        }
+
         void HsMetric::FillMatrixFracOnly(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom)
         {
             VertexIndices indices = mesh->getVertexIndices();
@@ -196,7 +222,7 @@ namespace rsurfaces
                 {
                     if (f1 == f2)
                         continue;
-                    AddTriangleCenterTerm(M, s, f1, f2, geom, indices);
+                    AddTriangleCenterTerm(M, s, f1, f2, geom, indices, false);
                 }
             }
         }
@@ -270,9 +296,8 @@ namespace rsurfaces
             }
         }
 
-        void HsMetric::ProjectGradientExact(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, std::vector<ConstraintPack> &schurConstraints)
+        Eigen::MatrixXd HsMetric::FillHsConstrained(std::vector<ConstraintPack> &schurConstraints)
         {
-            // Assemble the metric matrix
             Eigen::MatrixXd M_small, M;
             int nVerts = mesh->nVertices();
             M_small.setZero(nVerts, nVerts);
@@ -290,6 +315,7 @@ namespace rsurfaces
 
             M.setZero(dims, dims);
             FillMatrixHigh(M_small, order_s, mesh, geom);
+            FillMatrixLow(M_small, order_s, mesh, geom);
             // Reduplicate entries 3x along diagonals; barycenter row gets tripled
             MatrixUtils::TripleMatrix(M_small, M);
 
@@ -307,9 +333,16 @@ namespace rsurfaces
                 curRow += pack.constraint->nRows();
             }
 
+            return M;
+        }
+
+        void HsMetric::ProjectGradientExact(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, std::vector<ConstraintPack> &schurConstraints)
+        {
+            Eigen::MatrixXd M = FillHsConstrained(schurConstraints);
+
             // Flatten the gradient into a single column
             Eigen::VectorXd gradientCol;
-            gradientCol.setZero(dims);
+            gradientCol.setZero(M.rows());
 
             MatrixUtils::MatrixIntoColumn(gradient, gradientCol);
             MatrixUtils::SolveDenseSystem(M, gradientCol, gradientCol);

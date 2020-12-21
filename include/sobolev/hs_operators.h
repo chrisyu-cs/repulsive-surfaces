@@ -1,6 +1,7 @@
 #pragma once
 
 #include "rsurface_types.h"
+#include "energy/tpe_kernel.h"
 
 namespace rsurfaces
 {
@@ -17,6 +18,14 @@ namespace rsurfaces
         {
             double dist_term = 1.0 / pow(norm(v1 - v2), 2 * s + 2);
             return dist_term;
+        }
+
+        inline double MetricDistanceTermLowPure(double s, Vector3 v1, Vector3 v2, Vector3 n1, Vector3 n2) {
+            double sigma = s - 1;
+            double s_pow = 2 * sigma + 1;
+            double a = 2;
+            double b = 4 + s_pow;
+            return TPEKernel::tpe_Kf_symmetric(v1, v2, n1, n2, a, b);
         }
 
         template <typename V, typename VF>

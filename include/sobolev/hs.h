@@ -42,6 +42,17 @@ namespace rsurfaces
                 }
                 return factor.solve(v);
             }
+            
+            inline Eigen::VectorXd SolveWithMasses(Eigen::VectorXd &v, Eigen::VectorXd &mass)
+            {
+                if (!initialized)
+                {
+                    std::cerr << "Sparse factorization was not initialized before attempting to solve." << std::endl;
+                    throw 1;
+                }
+                // Eigen::VectorXd 
+                return factor.solve(v);
+            }
         };
 
         Vector3 HatGradientOnTriangle(GCFace face, GCVertex vert, GeomPtr &geom);
@@ -60,12 +71,18 @@ namespace rsurfaces
 
             // Build the "high order" fractional Laplacian of order 2s.
             void FillMatrixHigh(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom);
+            // Add the regularizing "low order" term.
+            void FillMatrixLow(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom);
+            
             // Build the base fractional Laplacian of order s.
             void FillMatrixFracOnly(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom);
             // Build the base fractional Laplacian of order s.
             void FillMatrixVertsFirst(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom);
+            
+            // Build an exact Hs preconditioner with high- and low-order terms.
+            Eigen::MatrixXd FillHsConstrained(std::vector<ConstraintPack> &schurConstraints);
+            
             void ProjectGradientExact(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, std::vector<ConstraintPack> &schurConstraints);
-
 
             void ProjectSimpleConstraints();
             void ProjectSimpleConstraintsWithSaddle();

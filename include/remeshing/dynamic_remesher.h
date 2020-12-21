@@ -37,6 +37,7 @@ namespace rsurfaces
             void SetModes(RemeshingMode rMode, SmoothingMode sMode, FlippingMode fMode);
             void Remesh(int numIters, bool changeTopology);
             void KeepVertexDataUpdated(VertexDataWrapper *data);
+            bool curvatureAdaptive;
 
             SmoothingMode smoothingMode;
             RemeshingMode remeshingMode;
@@ -49,6 +50,8 @@ namespace rsurfaces
             MeshPtr mesh;
             GeomPtr geom;
             double initialAverageLength;
+            double initialHWeightedLength;
+            double epsilon;
             std::vector<VertexDataWrapper *> vectorData;
         };
     } // namespace remeshing

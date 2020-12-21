@@ -8,18 +8,35 @@ namespace rsurfaces
         {
             mesh = mesh_;
             geom = geom_;
+            epsilon = 0.1;
 
             double sumLength = 0;
-            for (Edge e : mesh->edges()) {
+            for (Edge e : mesh->edges())
+            {
                 sumLength += geom->edgeLength(e);
             }
             initialAverageLength = sumLength / mesh->nEdges();
 
+            double sumMeanCurv = 0;
+            double sumArea = 0;
+            for (Vertex v : mesh->vertices())
+            {
+                sumArea += geom->vertexDualArea(v);
+                sumMeanCurv += fabs(geom->vertexMeanCurvature(v));
+            }
+            sumMeanCurv /= sumArea;
+
+            initialHWeightedLength = initialAverageLength * fmax(1, sumMeanCurv);
+
             std::cout << "Initial average edge length = " << initialAverageLength << std::endl;
+            std::cout << "Average H = " << sumMeanCurv << std::endl;
+            std::cout << "Initial H-weighted length = " << initialHWeightedLength << std::endl;
 
             remeshingMode = RemeshingMode::SmoothFlipAndCollapse;
             smoothingMode = SmoothingMode::Circumcenter;
             flippingMode = FlippingMode::Delaunay;
+
+            curvatureAdaptive = false;
         }
 
         void DynamicRemesher::SetModes(RemeshingMode rMode, SmoothingMode sMode, FlippingMode fMode)
@@ -59,7 +76,12 @@ namespace rsurfaces
             case RemeshingMode::SmoothFlipAndCollapse:
             {
                 // Only do one edge split/collapse step
-                if (changeTopology) adjustEdgeLengths(mesh, geom, initialAverageLength, 0.1, initialAverageLength * 0.6);
+                if (changeTopology)
+                {
+                    double l = (curvatureAdaptive) ? initialHWeightedLength : initialAverageLength;
+                    double l_min = (curvatureAdaptive) ? initialAverageLength * 0.9 : initialAverageLength * 0.5;
+                    adjustEdgeLengths(mesh, geom, l, epsilon, l_min, curvatureAdaptive);
+                }
                 geom->refreshQuantities();
 
                 for (int i = 0; i < numIters; i++)
@@ -73,7 +95,7 @@ namespace rsurfaces
                 throw std::runtime_error("Unknown remeshing mode.");
                 break;
             }
-            
+
             geom->refreshQuantities();
         }
 
