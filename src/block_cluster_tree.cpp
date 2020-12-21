@@ -21,7 +21,6 @@ namespace rsurfaces
         exp_s = s_;
         separationCoeff = sepCoeff;
         epsilon = e;
-        kernelType = BCTKernelType::FractionalOnly;
 
         // std::cout << "Using " << nThreads << " threads." << std::endl;
 
@@ -36,8 +35,10 @@ namespace rsurfaces
 
         // Need to sort the pairs before doing any multiplication
         OrganizePairsByFirst();
-        // Now we can multiply
-        PremultiplyAf1();
+
+        highInitialized = false;
+        lowInitialized = false;
+        fracInitialized = false;
     }
 
     BlockClusterTree::~BlockClusterTree()
@@ -143,27 +144,58 @@ namespace rsurfaces
         }
     }
 
-    void BlockClusterTree::MultiplyAdmissible(Eigen::VectorXd &v_hat, Eigen::VectorXd &b_hat) const
+    void BlockClusterTree::PremultiplyAf1(BCTKernelType kType)
     {
-        for (ClusterPair const &pair : admissiblePairs)
+        switch (kType)
         {
-            AfApproxProduct(pair, v_hat, b_hat);
+        case BCTKernelType::FractionalOnly:
+            if (!fracInitialized)
+            {
+                Af_1_Frac.setOnes(tree_root->nElements);
+                MultiplyAfPercolated(Af_1_Frac, Af_1_Frac, kType);
+                fracInitialized = true;
+            }
+            break;
+        case BCTKernelType::HighOrder:
+            if (!highInitialized)
+            {
+                Af_1_High.setOnes(tree_root->nElements);
+                MultiplyAfPercolated(Af_1_High, Af_1_High, kType);
+                highInitialized = true;
+            }
+            break;
+        case BCTKernelType::LowOrder:
+            if (!lowInitialized)
+            {
+                Af_1_Low.setOnes(tree_root->nElements);
+                MultiplyAfPercolated(Af_1_Low, Af_1_Low, kType);
+                lowInitialized = true;
+            }
+            break;
+        default:
+            throw std::runtime_error("Unknown kernel type in PremultiplyAf1.");
         }
     }
 
-    void BlockClusterTree::MultiplyAdmissibleExact(Eigen::VectorXd &v_hat, Eigen::VectorXd &b_hat) const
+    const Eigen::VectorXd &BlockClusterTree::getPremultipliedAf1(BCTKernelType kType) const
     {
-        for (ClusterPair const &pair : admissiblePairs)
+        switch (kType)
         {
-            AfFullProduct(pair, v_hat, b_hat);
+        case BCTKernelType::FractionalOnly:
+            if (!fracInitialized)
+                throw std::runtime_error("You need to manually call PremultiplyAf1 for FractionalOnly.");
+            return Af_1_Frac;
+        case BCTKernelType::HighOrder:
+            if (!highInitialized)
+                throw std::runtime_error("You need to manually call PremultiplyAf1 for HighOrder.");
+            return Af_1_High;
+        case BCTKernelType::LowOrder:
+            if (!lowInitialized)
+                throw std::runtime_error("You need to manually call PremultiplyAf1 for LowOrder.");
+            return Af_1_Low;
+        default:
+            throw std::runtime_error("Unknown kernel type in getPremultipliedAf1.");
         }
-    }
-
-
-    void BlockClusterTree::PremultiplyAf1()
-    {
-        Af_1.setOnes(tree_root->nElements);
-        MultiplyAfPercolated(Af_1, Af_1);
     }
 
     void BlockClusterTree::OrganizePairsByFirst()

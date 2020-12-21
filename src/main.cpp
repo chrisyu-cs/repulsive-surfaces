@@ -546,9 +546,8 @@ namespace rsurfaces
 
         BlockClusterTree *bct = new BlockClusterTree(mesh, geom, bvh, bh_theta, s);
         long fracBCT = currentTimeMilliseconds();
-        bct->SetKernelType(BCTKernelType::FractionalOnly);
         Eigen::VectorXd bctRes = gVec;
-        bct->MultiplyVector3(gVec, bctRes);
+        bct->MultiplyVector3(gVec, bctRes, BCTKernelType::FractionalOnly);
         long fracEnd2 = currentTimeMilliseconds();
 
         bct->PrintData();
@@ -578,8 +577,7 @@ namespace rsurfaces
         denseRes = dense * gVec;
         long hiEnd = currentTimeMilliseconds();
 
-        bct->SetKernelType(BCTKernelType::HighOrder);
-        bct->MultiplyVector3(gVec, bctRes);
+        bct->MultiplyVector3(gVec, bctRes, BCTKernelType::HighOrder);
         long hiEnd2 = currentTimeMilliseconds();
 
         diff = denseRes - bctRes;
@@ -606,8 +604,7 @@ namespace rsurfaces
         denseRes = dense * gVec;
         long lowEnd = currentTimeMilliseconds();
 
-        bct->SetKernelType(BCTKernelType::LowOrder);
-        bct->MultiplyVector3(gVec, bctRes);
+        bct->MultiplyVector3(gVec, bctRes, BCTKernelType::LowOrder);
         long lowEnd2 = currentTimeMilliseconds();
 
         diff = denseRes - bctRes;
@@ -618,7 +615,38 @@ namespace rsurfaces
         std::cout << "Dot product of directions = " << denseRes.dot(bctRes) / (denseRes.norm() * bctRes.norm()) << std::endl;
         std::cout << "Dense assembly took " << (lowEnd - lowStart) << " ms, hierarchical product took " << (lowEnd2 - lowEnd) << " ms" << std::endl;
 
+        std::vector<ConstraintPack> schurConstraints;
+        Constraints::TotalAreaConstraint* c = new Constraints::TotalAreaConstraint(mesh, geom);
+        schurConstraints.push_back(ConstraintPack{c, 0, 0});
+        Eigen::SparseMatrix<double> C = hs.GetConstraintBlock(schurConstraints);
+        size_t fullSize = 3 * mesh->nVertices() + C.rows();
 
+        // Get lengthened gradient vector for combined test
+        Eigen::VectorXd gVecFull;
+        gVecFull.setZero(fullSize);
+        gVecFull.block(0, 0, 3 * mesh->nVertices(), 1) = gVec;
+
+        dense = hs.GetHsMatrixConstrained(schurConstraints);
+        std::cout << "Dense matrix has " << dense.rows() << " x " << dense.cols() << std::endl;
+        std::cout << "(Expected " << fullSize << ")" << std::endl;
+
+        denseRes.setZero(fullSize);
+        bctRes.setZero(fullSize);
+
+        denseRes = dense * gVecFull;
+        
+        bct->MultiplyVector3(gVecFull, bctRes, BCTKernelType::HighOrder, true);
+        bct->MultiplyVector3(gVecFull, bctRes, BCTKernelType::LowOrder, true);
+        bct->MultiplyConstraintBlock(gVecFull, bctRes, C, true);
+
+        diff = denseRes - bctRes;
+        error = 100 * diff.norm() / denseRes.norm();
+        std::cout << "Dense multiply norm = " << denseRes.norm() << std::endl;
+        std::cout << "Hierarchical multiply norm = " << bctRes.norm() << std::endl;
+        std::cout << "Relative error = " << error << " percent" << std::endl;
+        std::cout << "Dot product of directions = " << denseRes.dot(bctRes) / (denseRes.norm() * bctRes.norm()) << std::endl;
+
+        delete c;
         delete bct;
     }
 

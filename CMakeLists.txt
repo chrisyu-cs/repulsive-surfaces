@@ -82,6 +82,7 @@ set(SRCS
   src/remeshing/remeshing.cpp
   src/sobolev/h1.cpp
   src/sobolev/hs.cpp
+  src/sobolev/hs_iterative.cpp
   src/sobolev/hs_ncg.cpp
   src/sobolev/hs_schur.cpp
   src/sobolev/constraints.cpp

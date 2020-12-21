@@ -82,6 +82,9 @@ namespace rsurfaces
             // Build an exact Hs preconditioner with high- and low-order terms.
             Eigen::MatrixXd GetHsMatrixConstrained(std::vector<ConstraintPack> &schurConstraints);
 
+            // Build just the constraint block of the saddle matrix.
+            Eigen::SparseMatrix<double> GetConstraintBlock(std::vector<ConstraintPack> &schurConstraints);
+
             void ProjectGradientExact(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, std::vector<ConstraintPack> &schurConstraints);
 
             void ProjectSimpleConstraints();

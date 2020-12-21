@@ -12,7 +12,7 @@ namespace rsurfaces
 
         void HsIterative::ProjectGradientIterative(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, std::vector<ConstraintPack> &schurConstraints)
         {
-
+            std::cout << "TODO" << std::endl;
         }
 
     } // namespace Hs

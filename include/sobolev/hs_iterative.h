@@ -1,6 +1,7 @@
 #pragma once
 
 #include "sobolev/hs.h"
+#include "bct_matrix_replacement.h"
 
 namespace rsurfaces
 {

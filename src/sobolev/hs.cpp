@@ -337,6 +337,30 @@ namespace rsurfaces
             return M;
         }
 
+        Eigen::SparseMatrix<double> HsMetric::GetConstraintBlock(std::vector<ConstraintPack> &schurConstraints)
+        {
+            std::vector<Triplet> triplets;
+            size_t curRow = 0;
+
+            for (SimpleProjectorConstraint *cons : simpleConstraints)
+            {
+                cons->addTriplets(triplets, mesh, geom, curRow);
+                curRow += cons->nRows();
+            }
+
+            for (ConstraintPack &pack : schurConstraints)
+            {
+                pack.constraint->addTriplets(triplets, mesh, geom, curRow);
+                curRow += pack.constraint->nRows();
+            }
+
+            Eigen::SparseMatrix<double> C(curRow, 3 * mesh->nVertices());
+            C.setFromTriplets(triplets.begin(), triplets.end());
+
+            return C;
+        }
+
+
         void HsMetric::ProjectGradientExact(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, std::vector<ConstraintPack> &schurConstraints)
         {
             Eigen::MatrixXd M = GetHsMatrixConstrained(schurConstraints);
@@ -410,7 +434,7 @@ namespace rsurfaces
                 {
                     bct = new BlockClusterTree(mesh, geom, bvh, bh_theta, 4 - 2 * order_s);
                 }
-                bct->MultiplyVector3(gradientCol, gradientCol);
+                bct->MultiplyVector3(gradientCol, gradientCol, BCTKernelType::FractionalOnly);
             }
 
             // Re-zero out Lagrange multipliers, since the first solve
