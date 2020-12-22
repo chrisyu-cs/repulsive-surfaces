@@ -141,7 +141,7 @@ namespace rsurfaces
     std::unique_ptr<Hs::HsMetric> SurfaceFlow::GetMetric()
     {
         BarnesHutTPEnergy6D *bhEnergy = dynamic_cast<BarnesHutTPEnergy6D *>(energies[0]);
-        return std::unique_ptr<Hs::HsMetric>(new Hs::HsMetric(bhEnergy, simpleConstraints));
+        return std::unique_ptr<Hs::HsMetric>(new Hs::HsMetric(bhEnergy, simpleConstraints, schurConstraints));
     }
 
     void SurfaceFlow::StepProjectedGradientExact()
@@ -162,7 +162,7 @@ namespace rsurfaces
         double gNorm = l2diff.norm();
 
         std::unique_ptr<Hs::HsMetric> hs = GetMetric();
-        hs->ProjectGradientExact(l2diff, gradientProj, schurConstraints);
+        hs->ProjectGradientExact(l2diff, gradientProj);
 
         VertexIndices inds = mesh->getVertexIndices();
 
@@ -205,11 +205,9 @@ namespace rsurfaces
         std::unique_ptr<Hs::HsMetric> hs = GetMetric();
 
         // Schur complement will be reused in multiple steps
-        Hs::SchurComplement comp;
         if (schurConstraints.size() > 0)
         {
-            GetSchurComplement(*hs, schurConstraints, comp);
-            ProjectViaSchur(*hs, l2diff, gradientProj, comp);
+            ProjectViaSchur(*hs, l2diff, gradientProj);
         }
         else
         {
@@ -234,7 +232,7 @@ namespace rsurfaces
 
         if (schurConstraints.size() > 0)
         {
-            ProjectSchurConstraints(*hs, schurConstraints, comp, 1);
+            ProjectSchurConstraints(*hs, 1);
         }
         hs->ProjectSimpleConstraints();
 

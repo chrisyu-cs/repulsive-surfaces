@@ -619,7 +619,7 @@ namespace rsurfaces
         std::vector<ConstraintPack> schurConstraints;
         Constraints::TotalAreaConstraint *c = new Constraints::TotalAreaConstraint(mesh, geom);
         schurConstraints.push_back(ConstraintPack{c, 0, 0});
-        Eigen::SparseMatrix<double> C = hs.GetConstraintBlock(schurConstraints);
+        Eigen::SparseMatrix<double> C = hs.GetConstraintBlock();
         size_t fullSize = 3 * mesh->nVertices() + C.rows();
 
         // Get lengthened gradient vector for combined test
@@ -627,7 +627,7 @@ namespace rsurfaces
         gVecFull.setZero(fullSize);
         gVecFull.block(0, 0, 3 * mesh->nVertices(), 1) = gVec;
 
-        dense = hs.GetHsMatrixConstrained(schurConstraints);
+        dense = hs.GetHsMatrixConstrained();
         std::cout << "Dense matrix has " << dense.rows() << " x " << dense.cols() << std::endl;
         std::cout << "(Expected " << fullSize << ")" << std::endl;
 
@@ -655,7 +655,6 @@ namespace rsurfaces
     {
         geom->refreshQuantities();
 
-        std::vector<ConstraintPack> schurConstraints;
         // Constraints::TotalAreaConstraint *c = new Constraints::TotalAreaConstraint(mesh, geom);
         // schurConstraints.push_back(ConstraintPack{c, 0, 0});
 
@@ -668,11 +667,15 @@ namespace rsurfaces
         long gradientEndTime = currentTimeMilliseconds();
 
         Hs::HsMetric hs(energy);
+        Constraints::TotalAreaConstraint* areaConstraint = new Constraints::TotalAreaConstraint(mesh, geom);
+        ConstraintPack pack{areaConstraint, 0, 0};
+        // hs.newtonConstraints.push_back(pack);
+
         Eigen::VectorXd gVec;
-        gVec.setZero(hs.getNumRows(schurConstraints));
+        gVec.setZero(hs.getNumRows());
         MatrixUtils::MatrixIntoColumn(gradient, gVec);
 
-        std::cout << "Expected size is " << gVec.rows() << " rows" << std::endl;
+        std::cout << "Extended gradient vector has " << gVec.rows() << " rows" << std::endl;
 
         Eigen::VectorXd denseRes = gVec;
         denseRes.setZero();
@@ -680,14 +683,14 @@ namespace rsurfaces
 
         std::cout << "Projecting using dense system..." << std::endl;
         long denseStart = currentTimeMilliseconds();
-        Eigen::MatrixXd dense = hs.GetHsMatrixConstrained(schurConstraints);
+        Eigen::MatrixXd dense = hs.GetHsMatrixConstrained();
         MatrixUtils::SolveDenseSystem(dense, gVec, denseRes);
         long denseEnd = currentTimeMilliseconds();
         std::cout << "Finished in " << (denseEnd - denseStart) << " ms." << std::endl;
 
         std::cout << "Projecting using iterative method..." << std::endl;
         long iterStart = currentTimeMilliseconds();
-        Hs::ProjectHsGradientIterative(hs, gVec, iterativeRes, schurConstraints);
+        Hs::ProjectHsGradientIterative(hs, gVec, iterativeRes);
         long iterEnd = currentTimeMilliseconds();
         std::cout << "Finished in " << (iterEnd - iterStart) << " ms." << std::endl;
 
@@ -701,10 +704,7 @@ namespace rsurfaces
 
         std::cout << "Computed gradient in " << (gradientEndTime - gradientStartTime) << " ms" << std::endl;
 
-        for (ConstraintPack &c : schurConstraints)
-        {
-            delete c.constraint;
-        }
+        delete areaConstraint;
     }
 
     class VectorInit

@@ -7,6 +7,6 @@ namespace rsurfaces
 {
     namespace Hs
     {
-        void ProjectHsGradientIterative(Hs::HsMetric &hs, Eigen::VectorXd &gradient, Eigen::VectorXd &dest, std::vector<ConstraintPack> &schurConstraints);
+        void ProjectHsGradientIterative(Hs::HsMetric &hs, Eigen::VectorXd &gradient, Eigen::VectorXd &dest);
     } // namespace Hs
 } // namespace rsurfaces

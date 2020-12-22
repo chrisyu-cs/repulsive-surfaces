@@ -142,20 +142,16 @@ namespace rsurfaces
             simpleConstraints.push_back(new Constraints::BarycenterConstraint3X(mesh, geom));
             // Remember to delete our constraint if we made our own
             usedDefaultConstraint = true;
+            schurComplementComputed = false;
         }
 
-        HsMetric::HsMetric(SurfaceEnergy *energy_, std::vector<SimpleProjectorConstraint *> &spcs)
+        HsMetric::HsMetric(SurfaceEnergy *energy_, std::vector<SimpleProjectorConstraint *> &spcs, std::vector<ConstraintPack> &schurs)
+            : simpleConstraints(spcs), newtonConstraints(schurs)
         {
             initFromEnergy(energy_);
             energy = energy_;
             usedDefaultConstraint = false;
-
-            for (SimpleProjectorConstraint *spc : spcs)
-            {
-                // Push pointers to the existing constraints, which should
-                // exist in SurfaceFlow (and not be allocated here)
-                simpleConstraints.push_back(spc);
-            }
+            schurComplementComputed = false;
         }
 
         void HsMetric::initFromEnergy(SurfaceEnergy *energy_)
@@ -256,12 +252,12 @@ namespace rsurfaces
             }
         }
 
-        Eigen::MatrixXd HsMetric::GetHsMatrixConstrained(std::vector<ConstraintPack> &schurConstraints) const
+        Eigen::MatrixXd HsMetric::GetHsMatrixConstrained() const
         {
             Eigen::MatrixXd M_small, M;
             int nVerts = mesh->nVertices();
             M_small.setZero(nVerts, nVerts);
-            int dims = getNumRows(schurConstraints);
+            int dims = getNumRows();
 
             M.setZero(dims, dims);
             double s = getHsOrder();
@@ -278,7 +274,7 @@ namespace rsurfaces
                 curRow += cons->nRows();
             }
 
-            for (ConstraintPack &pack : schurConstraints)
+            for (const ConstraintPack &pack : newtonConstraints)
             {
                 Constraints::addEntriesToSymmetric(*pack.constraint, M, mesh, geom, curRow);
                 curRow += pack.constraint->nRows();
@@ -287,7 +283,7 @@ namespace rsurfaces
             return M;
         }
 
-        Eigen::SparseMatrix<double> HsMetric::GetConstraintBlock(std::vector<ConstraintPack> &schurConstraints) const
+        Eigen::SparseMatrix<double> HsMetric::GetConstraintBlock(bool includeNewton) const
         {
             std::vector<Triplet> triplets;
             size_t curRow = 0;
@@ -298,10 +294,13 @@ namespace rsurfaces
                 curRow += cons->nRows();
             }
 
-            for (ConstraintPack &pack : schurConstraints)
+            if (includeNewton)
             {
-                pack.constraint->addTriplets(triplets, mesh, geom, curRow);
-                curRow += pack.constraint->nRows();
+                for (const ConstraintPack &pack : newtonConstraints)
+                {
+                    pack.constraint->addTriplets(triplets, mesh, geom, curRow);
+                    curRow += pack.constraint->nRows();
+                }
             }
 
             Eigen::SparseMatrix<double> C(curRow, 3 * mesh->nVertices());
@@ -310,10 +309,9 @@ namespace rsurfaces
             return C;
         }
 
-
-        void HsMetric::ProjectGradientExact(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, std::vector<ConstraintPack> &schurConstraints) const
+        void HsMetric::ProjectGradientExact(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest) const
         {
-            Eigen::MatrixXd M = GetHsMatrixConstrained(schurConstraints);
+            Eigen::MatrixXd M = GetHsMatrixConstrained();
 
             // Flatten the gradient into a single column
             Eigen::VectorXd gradientCol;

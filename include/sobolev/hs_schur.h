@@ -7,11 +7,9 @@ namespace rsurfaces
 
     namespace Hs
     {
-        void GetSchurComplement(HsMetric &hs, std::vector<ConstraintPack> constraints, SchurComplement &dest);
-        void ProjectViaSchurV(HsMetric &hs, Eigen::VectorXd &gradient, Eigen::VectorXd &dest, SchurComplement &comp);
-        void ProjectViaSchur(HsMetric &hs, Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, SchurComplement &comp);
-        void ProjectSchurConstraints(HsMetric &hs, std::vector<ConstraintPack> &constraints, SchurComplement &comp, int newtonSteps);
-
+        void ProjectViaSchurV(const HsMetric &hs, Eigen::VectorXd &gradient, Eigen::VectorXd &dest);
+        void ProjectViaSchur(const HsMetric &hs, Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest);
+        void ProjectSchurConstraints(const HsMetric &hs, int newtonSteps);
     } // namespace Hs
 
 } // namespace rsurfaces

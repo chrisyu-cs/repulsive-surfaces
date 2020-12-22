@@ -1,4 +1,5 @@
 #include "sobolev/hs_iterative.h"
+#include "sobolev/hs_schur.h"
 
 namespace rsurfaces
 {
@@ -30,8 +31,8 @@ namespace rsurfaces
                 compute(fracL);
             }
 
-            Eigen::Index rows() const { return hs->getNumRows(schurConstraints); }
-            Eigen::Index cols() const { return hs->getNumRows(schurConstraints); }
+            Eigen::Index rows() const { return hs->getNumRows(); }
+            Eigen::Index cols() const { return hs->getNumRows(); }
 
             template <typename MatrixType>
             SparseHsPreconditioner &analyzePattern(const MatrixType &) { return *this; }
@@ -43,7 +44,8 @@ namespace rsurfaces
             SparseHsPreconditioner &compute(const MatrixType &fracL)
             {
                 hs = fracL.getHs();
-                std::cout << "Set Hs (" << hs->getNumRows(schurConstraints) << " rows)" << std::endl;
+                std::cout << "Set Hs (" << hs->getNumRows() << " rows)" << std::endl;
+
                 return *this;
             }
 
@@ -51,8 +53,14 @@ namespace rsurfaces
             template <typename Rhs, typename Dest>
             void _solve_impl(const Rhs &b, Dest &x) const
             {
-                x = hs->InvertMetricTemplated(b);
-                std::cout << "Solution norm = " << x.norm() << std::endl;
+                if (hs->newtonConstraints.size() > 0)
+                {
+                    x = hs->InvertMetricSchurTemplated(b);
+                }
+                else
+                {
+                    x = hs->InvertMetricTemplated(b);
+                }
             }
 
             template <typename Rhs>
@@ -65,13 +73,15 @@ namespace rsurfaces
 
             const Hs::HsMetric *hs;
             const std::vector<ConstraintPack> schurConstraints;
+            SchurComplement schur;
 
             Eigen::ComputationInfo info() { return Eigen::Success; }
         };
 
-        void ProjectHsGradientIterative(Hs::HsMetric &hs, Eigen::VectorXd &gradient, Eigen::VectorXd &dest, std::vector<ConstraintPack> &schurConstraints)
+        void ProjectHsGradientIterative(Hs::HsMetric &hs, Eigen::VectorXd &gradient, Eigen::VectorXd &dest)
         {
-            Eigen::SparseMatrix<double> constraintBlock = hs.GetConstraintBlock(schurConstraints);
+            Eigen::SparseMatrix<double> constraintBlock = hs.GetConstraintBlock();
+            std::cout << "Constraint block has " << constraintBlock.rows() << " rows" << std::endl;
             BlockClusterTree *bct = new BlockClusterTree(hs.mesh, hs.geom, hs.GetBVH(), hs.getBHTheta(), hs.getHsOrder());
 
             BCTMatrixReplacement fracL;
@@ -79,6 +89,8 @@ namespace rsurfaces
             fracL.addConstraintBlock(constraintBlock);
             fracL.setEpsilon(0);
             fracL.addMetric(&hs);
+
+            std::cout << "Matrix-vector product expects " << fracL.rows() << " rows" << std::endl;
 
             bct->recomputeBarycenters();
             bct->PremultiplyAf1(BCTKernelType::HighOrder);
@@ -89,7 +101,17 @@ namespace rsurfaces
 
             dest.setZero();
             Eigen::VectorXd initialGuess = dest;
-            hs.InvertMetric(gradient, initialGuess);
+
+            if (hs.newtonConstraints.size() > 0)
+            {
+                std::cout << "Using Schur complement for initial guess" << std::endl;
+                ProjectViaSchurV(hs, gradient, initialGuess);
+            }
+            else
+            {
+                std::cout << "Using sparse metric only for initial guess" << std::endl;
+                hs.InvertMetric(gradient, initialGuess);
+            }
 
             dest.setZero();
             cg.setTolerance(1e-2);
