@@ -7,6 +7,7 @@ namespace rsurfaces
 
     namespace Hs
     {
+        void UnprojectedSchurCorrection(const HsMetric &hs, Eigen::VectorXd hsGradient, Eigen::VectorXd &dest);
         void ProjectViaSchurV(const HsMetric &hs, Eigen::VectorXd &gradient, Eigen::VectorXd &dest);
         void ProjectViaSchur(const HsMetric &hs, Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest);
         void ProjectSchurConstraints(const HsMetric &hs, int newtonSteps);

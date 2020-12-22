@@ -17,6 +17,17 @@ namespace rsurfaces
             MatrixUtils::ColumnIntoMatrix(temp, dest);
         }
 
+        void UnprojectedSchurCorrection(const HsMetric &hs, Eigen::VectorXd hsGradient, Eigen::VectorXd &dest)
+        {
+            // Start from hsGradient = A^{-1} x
+            Eigen::VectorXd C_Ai_x = hs.Schur().C * hsGradient;
+            Eigen::VectorXd MAi_C_Ai_x;
+            MAi_C_Ai_x.setZero(C_Ai_x.rows());
+            MatrixUtils::SolveDenseSystem(hs.Schur().M_A, C_Ai_x, MAi_C_Ai_x);
+            dest = hs.Schur().C.transpose() * MAi_C_Ai_x;
+            // After the end of this function, need to apply A^{-1} to dest
+        }
+
         void ProjectViaSchurV(const HsMetric &hs, Eigen::VectorXd &curCol, Eigen::VectorXd &dest)
         {
             size_t nVerts = hs.mesh->nVertices();
@@ -25,13 +36,9 @@ namespace rsurfaces
             Eigen::VectorXd tempCol = curCol;
             hs.InvertMetric(tempCol, tempCol);
 
-            // Now we compute the correction.
-            // Again we already have A^{-1} once, so no need to recompute it
-            Eigen::VectorXd C_Ai_x = hs.Schur().C * tempCol;
-            Eigen::VectorXd MAi_C_Ai_x;
-            MAi_C_Ai_x.setZero(C_Ai_x.rows());
-            MatrixUtils::SolveDenseSystem(hs.Schur().M_A, C_Ai_x, MAi_C_Ai_x);
-            Eigen::VectorXd B_MAi_C_Ai_x = hs.Schur().C.transpose() * MAi_C_Ai_x;
+            // Now we compute the correction
+            Eigen::VectorXd B_MAi_C_Ai_x;
+            UnprojectedSchurCorrection(hs, tempCol, B_MAi_C_Ai_x);
             // Apply A^{-1} from scratch one more time
             hs.InvertMetric(B_MAi_C_Ai_x, B_MAi_C_Ai_x);
 
