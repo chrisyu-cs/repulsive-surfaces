@@ -7,6 +7,6 @@ namespace rsurfaces
 {
     namespace Hs
     {
-        void ProjectHsGradientIterative(Hs::HsMetric &hs, Eigen::VectorXd &gradient, Eigen::VectorXd &dest);
+        void ProjectUnconstrainedHsIterative(Hs::HsMetric &hs, Eigen::VectorXd &gradient, Eigen::VectorXd &dest, bool includeNewton = false);
     } // namespace Hs
 } // namespace rsurfaces

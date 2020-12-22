@@ -2,6 +2,7 @@
 
 #include "rsurface_types.h"
 #include "block_cluster_tree.h"
+#include "sobolev/hs.h"
 
 class BCTMatrixReplacement;
 using Eigen::SparseMatrix;
@@ -73,7 +74,7 @@ public:
         C = &C_;
     }
 
-    void addMetric(rsurfaces::Hs::HsMetric* hs_)
+    void addMetric(rsurfaces::Hs::HsMetric *hs_)
     {
         hs = hs_;
     }
@@ -93,18 +94,84 @@ public:
         return *C;
     }
 
-    void setEpsilon(double e)
-    {
-        epsilon = e;
-    }
-
-    double epsilon;
-
 private:
     const rsurfaces::BlockClusterTree *bct;
     const Eigen::SparseMatrix<double> *C;
     const rsurfaces::Hs::HsMetric *hs;
 };
+
+namespace rsurfaces
+{
+
+    namespace Hs
+    {
+        class SparseHsPreconditioner
+        {
+            typedef Eigen::Matrix<double, Eigen::Dynamic, 1> Vector;
+
+        public:
+            typedef typename Vector::StorageIndex StorageIndex;
+            enum
+            {
+                ColsAtCompileTime = Eigen::Dynamic,
+                MaxColsAtCompileTime = Eigen::Dynamic
+            };
+            SparseHsPreconditioner() {}
+
+            template <typename MatrixType>
+            explicit SparseHsPreconditioner(const MatrixType &fracL)
+            {
+                compute(fracL);
+            }
+
+            Eigen::Index rows() const { return hs->getNumRows(); }
+            Eigen::Index cols() const { return hs->getNumRows(); }
+
+            template <typename MatrixType>
+            SparseHsPreconditioner &analyzePattern(const MatrixType &) { return *this; }
+
+            template <typename MatrixType>
+            SparseHsPreconditioner &factorize(const MatrixType &) { return *this; }
+
+            template <typename MatrixType>
+            SparseHsPreconditioner &compute(const MatrixType &fracL)
+            {
+                hs = fracL.getHs();
+                std::cout << "Set Hs (" << hs->getNumRows() << " rows)" << std::endl;
+
+                return *this;
+            }
+
+            /** \internal */
+            template <typename Rhs, typename Dest>
+            void _solve_impl(const Rhs &b, Dest &x) const
+            {
+                if (hs->newtonConstraints.size() > 0)
+                {
+                    x = hs->InvertMetricSchurTemplated(b);
+                }
+                else
+                {
+                    x = hs->InvertMetricTemplated(b);
+                }
+            }
+
+            template <typename Rhs>
+            inline const Eigen::Solve<SparseHsPreconditioner, Rhs>
+            solve(const Eigen::MatrixBase<Rhs> &b) const
+            {
+                eigen_assert(m_invdiag.size() == b.rows() && "DiagonalPreconditioner::solve(): invalid number of rows of the right hand side matrix b");
+                return Eigen::Solve<SparseHsPreconditioner, Rhs>(*this, b.derived());
+            }
+
+            const Hs::HsMetric *hs;
+            const std::vector<ConstraintPack> schurConstraints;
+            SchurComplement schur;
+
+            Eigen::ComputationInfo info() { return Eigen::Success; }
+        };
+    } // namespace Hs
+} // namespace rsurfaces
 
 namespace Eigen
 {
@@ -130,8 +197,8 @@ namespace Eigen
                 Eigen::VectorXd product(bct->expectedNRows() + lhs.getConstraintBlock().rows());
                 product.setZero();
 
-                bct->MultiplyVector3Const(rhs, product, rsurfaces::BCTKernelType::HighOrder, true, lhs.epsilon);
-                bct->MultiplyVector3Const(rhs, product, rsurfaces::BCTKernelType::LowOrder, true, lhs.epsilon);
+                bct->MultiplyVector3(rhs, product, rsurfaces::BCTKernelType::HighOrder, true);
+                bct->MultiplyVector3(rhs, product, rsurfaces::BCTKernelType::LowOrder, true);
                 bct->MultiplyConstraintBlock(rhs, product, lhs.getConstraintBlock(), true);
 
                 dst += product;

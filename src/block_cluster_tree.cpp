@@ -142,7 +142,7 @@ namespace rsurfaces
         }
     }
 
-    void BlockClusterTree::PremultiplyAf1(BCTKernelType kType)
+    void BlockClusterTree::PremultiplyAf1(BCTKernelType kType) const
     {
         switch (kType)
         {

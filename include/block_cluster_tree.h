@@ -72,7 +72,7 @@ namespace rsurfaces
         // Multiplies A * v, where v holds a vector3 at each vertex in a flattened column,
         //  and stores it in b.
         template <typename V3, typename Dest>
-        void MultiplyVector3(const V3 &v, Dest &b, BCTKernelType kType, bool addToResult = false);
+        void MultiplyVector3(const V3 &v, Dest &b, BCTKernelType kType, bool addToResult = false) const;
 
         // Same as the above but const because fuck eigen
         template <typename V3, typename Dest>
@@ -88,7 +88,7 @@ namespace rsurfaces
             exp_s = s_;
         }
 
-        inline void recomputeBarycenters()
+        inline void recomputeBarycenters() const
         {
             for (GCFace f : mesh->faces())
             {
@@ -96,7 +96,7 @@ namespace rsurfaces
             }
         }
 
-        void PremultiplyAf1(BCTKernelType kType);
+        void PremultiplyAf1(BCTKernelType kType) const;
 
     private:
         // Multiplies A * v and stores it in b.
@@ -129,17 +129,17 @@ namespace rsurfaces
         }
 
         // Cached list of face barycenters to avoid recomputation
-        geometrycentral::surface::FaceData<Vector3> faceBarycenters;
+        mutable geometrycentral::surface::FaceData<Vector3> faceBarycenters;
 
         void fillClusterMasses(BVHNode6D *cluster, Eigen::VectorXd &w) const;
         void OrganizePairsByFirst();
 
-        Eigen::VectorXd Af_1_High;
-        bool highInitialized;
-        Eigen::VectorXd Af_1_Frac;
-        bool fracInitialized;
-        Eigen::VectorXd Af_1_Low;
-        bool lowInitialized;
+        mutable Eigen::VectorXd Af_1_High;
+        mutable bool highInitialized;
+        mutable Eigen::VectorXd Af_1_Frac;
+        mutable bool fracInitialized;
+        mutable Eigen::VectorXd Af_1_Low;
+        mutable bool lowInitialized;
 
         const Eigen::VectorXd &getPremultipliedAf1(BCTKernelType kType) const;
 
@@ -398,17 +398,11 @@ namespace rsurfaces
     }
 
     template <typename V3, typename Dest>
-    void BlockClusterTree::MultiplyVector3(const V3 &v, Dest &b, BCTKernelType kType, bool addToResult)
+    void BlockClusterTree::MultiplyVector3(const V3 &v, Dest &b, BCTKernelType kType, bool addToResult) const
     {
         recomputeBarycenters();
         PremultiplyAf1(kType);
 
-        MultiplyVector3Const(v, b, kType, addToResult);
-    }
-
-    template <typename V3, typename Dest>
-    void BlockClusterTree::MultiplyVector3Const(const V3 &v, Dest &b, BCTKernelType kType, bool addToResult, double eps) const
-    {
         size_t nVerts = mesh->nVertices();
         // Slice the input vector to get every x-coordinate
         Eigen::Map<const Eigen::VectorXd, 0, Eigen::InnerStride<3>> v_x(v.data(), nVerts);
@@ -426,13 +420,8 @@ namespace rsurfaces
         Eigen::Map<const Eigen::VectorXd, 0, Eigen::InnerStride<3>> v_z(v.data() + 2, nVerts);
         Eigen::Map<Eigen::VectorXd, 0, Eigen::InnerStride<3>> dest_z(b.data() + 2, nVerts);
         MultiplyVector(v_z, dest_z, kType, addToResult);
-
-        if (eps > 0)
-        {
-            b += eps * v;
-        }
     }
-
+    
     template <typename V, typename Dest, typename Mat>
     void BlockClusterTree::MultiplyConstraintBlock(const V &v, Dest &b, Mat &C, bool addToResult) const
     {

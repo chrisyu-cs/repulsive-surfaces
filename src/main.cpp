@@ -689,8 +689,9 @@ namespace rsurfaces
         std::cout << "Finished in " << (denseEnd - denseStart) << " ms." << std::endl;
 
         std::cout << "Projecting using iterative method..." << std::endl;
+        iterativeRes.setZero();
         long iterStart = currentTimeMilliseconds();
-        Hs::ProjectHsGradientIterative(hs, gVec, iterativeRes);
+        Hs::ProjectUnconstrainedHsIterative(hs, gVec, iterativeRes);
         long iterEnd = currentTimeMilliseconds();
         std::cout << "Finished in " << (iterEnd - iterStart) << " ms." << std::endl;
 
