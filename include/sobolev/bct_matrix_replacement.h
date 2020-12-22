@@ -83,7 +83,7 @@ public:
         return bct;
     }
 
-    const rsurfaces::Hs::HsMetric *getHs()
+    const rsurfaces::Hs::HsMetric *getHs() const
     {
         return hs;
     }

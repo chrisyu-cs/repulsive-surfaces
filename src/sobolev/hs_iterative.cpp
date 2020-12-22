@@ -13,14 +13,25 @@ namespace rsurfaces
   */
         class SparseHsPreconditioner
         {
+            typedef Eigen::Matrix<double, Eigen::Dynamic, 1> Vector;
+
         public:
+            typedef typename Vector::StorageIndex StorageIndex;
+            enum
+            {
+                ColsAtCompileTime = Eigen::Dynamic,
+                MaxColsAtCompileTime = Eigen::Dynamic
+            };
             SparseHsPreconditioner() {}
 
             template <typename MatrixType>
             explicit SparseHsPreconditioner(const MatrixType &fracL)
             {
-                hs = fracL.getHs();
+                compute(fracL);
             }
+
+            Eigen::Index rows() const { return hs->getNumRows(schurConstraints); }
+            Eigen::Index cols() const { return hs->getNumRows(schurConstraints); }
 
             template <typename MatrixType>
             SparseHsPreconditioner &analyzePattern(const MatrixType &) { return *this; }
@@ -29,15 +40,31 @@ namespace rsurfaces
             SparseHsPreconditioner &factorize(const MatrixType &) { return *this; }
 
             template <typename MatrixType>
-            SparseHsPreconditioner &compute(const MatrixType &) { return *this; }
-
-            template <typename Rhs>
-            inline const Rhs &solve(const Rhs &b) const
+            SparseHsPreconditioner &compute(const MatrixType &fracL)
             {
-                return b;
+                hs = fracL.getHs();
+                std::cout << "Set Hs (" << hs->getNumRows(schurConstraints) << " rows)" << std::endl;
+                return *this;
             }
 
-            const Hs::HsMetric* hs;
+            /** \internal */
+            template <typename Rhs, typename Dest>
+            void _solve_impl(const Rhs &b, Dest &x) const
+            {
+                x = hs->InvertMetricTemplated(b);
+                std::cout << "Solution norm = " << x.norm() << std::endl;
+            }
+
+            template <typename Rhs>
+            inline const Eigen::Solve<SparseHsPreconditioner, Rhs>
+            solve(const Eigen::MatrixBase<Rhs> &b) const
+            {
+                eigen_assert(m_invdiag.size() == b.rows() && "DiagonalPreconditioner::solve(): invalid number of rows of the right hand side matrix b");
+                return Eigen::Solve<SparseHsPreconditioner, Rhs>(*this, b.derived());
+            }
+
+            const Hs::HsMetric *hs;
+            const std::vector<ConstraintPack> schurConstraints;
 
             Eigen::ComputationInfo info() { return Eigen::Success; }
         };
@@ -57,7 +84,7 @@ namespace rsurfaces
             bct->PremultiplyAf1(BCTKernelType::HighOrder);
             bct->PremultiplyAf1(BCTKernelType::LowOrder);
 
-            Eigen::ConjugateGradient<BCTMatrixReplacement, Eigen::Lower | Eigen::Upper, Eigen::IdentityPreconditioner> cg;
+            Eigen::ConjugateGradient<BCTMatrixReplacement, Eigen::Lower | Eigen::Upper, SparseHsPreconditioner> cg;
             cg.compute(fracL);
 
             dest.setZero();
@@ -65,7 +92,8 @@ namespace rsurfaces
             hs.InvertMetric(gradient, initialGuess);
 
             dest.setZero();
-            dest = cg.solveWithGuess(gradient, dest);
+            cg.setTolerance(1e-2);
+            dest = cg.solveWithGuess(gradient, initialGuess);
             std::cout << "CG num iterations: " << cg.iterations() << ", estimated error: " << cg.error() << std::endl;
 
             delete bct;

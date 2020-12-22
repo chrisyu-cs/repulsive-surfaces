@@ -87,6 +87,14 @@ namespace rsurfaces
             void ProjectSimpleConstraints();
             void ProjectSimpleConstraintsWithSaddle();
 
+            template <typename Rhs>
+            inline Rhs InvertMetricTemplated(const Rhs &gradient) const
+            {
+                Eigen::VectorXd temp = gradient;
+                ProjectSparse(temp, temp);
+                return Rhs(temp);
+            }
+
             inline void InvertMetric(const Eigen::VectorXd &gradient, Eigen::VectorXd &dest) const
             {
                 ProjectSparse(gradient, dest);
@@ -111,7 +119,7 @@ namespace rsurfaces
                 return get_s(exps.x, exps.y);
             }
 
-            inline size_t getNumConstraints(std::vector<ConstraintPack> &schurConstraints) const
+            inline size_t getNumConstraints(const std::vector<ConstraintPack> &schurConstraints) const
             {
                 size_t nConstraints = 0;
 
@@ -120,7 +128,7 @@ namespace rsurfaces
                     nConstraints += cons->nRows();
                 }
 
-                for (ConstraintPack &schur : schurConstraints)
+                for (const ConstraintPack &schur : schurConstraints)
                 {
                     nConstraints += schur.constraint->nRows();
                 }
@@ -128,7 +136,7 @@ namespace rsurfaces
                 return nConstraints;
             }
 
-            inline size_t getNumRows(std::vector<ConstraintPack> &schurConstraints) const
+            inline size_t getNumRows(const std::vector<ConstraintPack> &schurConstraints) const
             {
                 return 3 * mesh->nVertices() + getNumConstraints(schurConstraints);
             }
@@ -165,6 +173,7 @@ namespace rsurfaces
 
             SurfaceEnergy *energy;
             std::vector<Constraints::SimpleProjectorConstraint *> simpleConstraints;
+            std::vector<ConstraintPack> harderConstraints;
             bool usedDefaultConstraint;
             mutable SparseFactorization factorizedLaplacian;
             mutable BlockClusterTree *bct;
