@@ -42,7 +42,7 @@ namespace rsurfaces
         static long wellSepTime;
         static long traversalTime;
 
-        BlockClusterTree(MeshPtr &mesh, GeomPtr &geom, BVHNode6D *root, double sepCoeff, double s_, double e = 0.0);
+        BlockClusterTree(const MeshPtr &mesh, const GeomPtr &geom, BVHNode6D *root, double sepCoeff, double s_, double e = 0.0);
         ~BlockClusterTree();
         // Loop over all currently inadmissible cluster pairs
         // and subdivide them to their children.
@@ -145,8 +145,8 @@ namespace rsurfaces
 
         double exp_s, separationCoeff;
         double epsilon;
-        MeshPtr mesh;
-        GeomPtr geom;
+        const MeshPtr mesh;
+        const GeomPtr geom;
         BVHNode6D *tree_root;
         std::vector<ClusterPair> admissiblePairs;
         std::vector<std::vector<ClusterPair>> admissibleByCluster;

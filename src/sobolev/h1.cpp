@@ -6,7 +6,7 @@ namespace rsurfaces
 {
     namespace H1
     {
-        void getTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, double epsilon, bool premultiplyMass)
+        void getTriplets(std::vector<Triplet> &triplets, const MeshPtr &mesh, const GeomPtr &geom, double epsilon, bool premultiplyMass)
         {
             geom->requireEdgeCotanWeights();
             VertexIndices indices = mesh->getVertexIndices();

@@ -57,7 +57,7 @@ namespace rsurfaces
             bct->PremultiplyAf1(BCTKernelType::HighOrder);
             bct->PremultiplyAf1(BCTKernelType::LowOrder);
 
-            Eigen::ConjugateGradient<BCTMatrixReplacement, Eigen::Lower | Eigen::Upper, SparseHsPreconditioner> cg;
+            Eigen::ConjugateGradient<BCTMatrixReplacement, Eigen::Lower | Eigen::Upper, Eigen::IdentityPreconditioner> cg;
             cg.compute(fracL);
 
             dest.setZero();

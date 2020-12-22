@@ -87,12 +87,20 @@ namespace rsurfaces
             void ProjectSimpleConstraints();
             void ProjectSimpleConstraintsWithSaddle();
 
-            inline void InvertMetric(const Eigen::VectorXd &gradient, Eigen::VectorXd &dest)
+            inline void InvertMetric(const Eigen::VectorXd &gradient, Eigen::VectorXd &dest) const
             {
                 ProjectSparse(gradient, dest);
             }
+            
+            inline Eigen::VectorXd InvertMetric(const Eigen::VectorXd &gradient) const
+            {
+                Eigen::VectorXd dest;
+                dest.setZero(gradient.rows());
+                ProjectSparse(gradient, dest);
+                return dest;
+            }
 
-            inline void InvertMetricMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest)
+            inline void InvertMetricMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest) const
             {
                 ProjectSparseMat(gradient, dest);
             }
@@ -140,14 +148,14 @@ namespace rsurfaces
             GeomPtr geom;
 
         private:
-            void addSimpleConstraintEntries(Eigen::MatrixXd &M);
-            void addSimpleConstraintTriplets(std::vector<Triplet> &triplets);
+            void addSimpleConstraintEntries(Eigen::MatrixXd &M) const;
+            void addSimpleConstraintTriplets(std::vector<Triplet> &triplets) const;
             void initFromEnergy(SurfaceEnergy *energy_);
 
             // Project the gradient into Hs by using the L^{-1} M L^{-1} factorization
-            void ProjectSparse(const Eigen::VectorXd &gradient, Eigen::VectorXd &dest);
+            void ProjectSparse(const Eigen::VectorXd &gradient, Eigen::VectorXd &dest) const;
             // Same as above but with the input/output being matrices
-            void ProjectSparseMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest);
+            void ProjectSparseMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest) const;
 
             void ProjectSparseWithR1Update(const Eigen::VectorXd &gradient, Eigen::VectorXd &dest);
             void ProjectSparseWithR1UpdateMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest);
@@ -158,8 +166,8 @@ namespace rsurfaces
             SurfaceEnergy *energy;
             std::vector<Constraints::SimpleProjectorConstraint *> simpleConstraints;
             bool usedDefaultConstraint;
-            SparseFactorization factorizedLaplacian;
-            BlockClusterTree *bct;
+            mutable SparseFactorization factorizedLaplacian;
+            mutable BlockClusterTree *bct;
         };
 
     } // namespace Hs

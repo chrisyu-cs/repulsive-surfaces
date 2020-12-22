@@ -13,11 +13,9 @@ namespace rsurfaces
     long BlockClusterTree::wellSepTime = 0;
     long BlockClusterTree::traversalTime = 0;
 
-    BlockClusterTree::BlockClusterTree(MeshPtr &mesh_, GeomPtr &geom_, BVHNode6D *root, double sepCoeff, double s_, double e)
-        : faceBarycenters(*mesh_)
+    BlockClusterTree::BlockClusterTree(const MeshPtr &mesh_, const GeomPtr &geom_, BVHNode6D *root, double sepCoeff, double s_, double e)
+        : faceBarycenters(*mesh_), mesh(mesh_), geom(geom_)
     {
-        mesh = mesh_;
-        geom = geom_;
         exp_s = s_;
         separationCoeff = sepCoeff;
         epsilon = e;

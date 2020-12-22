@@ -236,7 +236,7 @@ namespace rsurfaces
             return 3 * mesh->nVertices() + nConstraints;
         }
 
-        void HsMetric::addSimpleConstraintEntries(Eigen::MatrixXd &M)
+        void HsMetric::addSimpleConstraintEntries(Eigen::MatrixXd &M) const
         {
             size_t curRow = 3 * mesh->nVertices();
             for (SimpleProjectorConstraint *spc : simpleConstraints)
@@ -246,7 +246,7 @@ namespace rsurfaces
             }
         }
 
-        void HsMetric::addSimpleConstraintTriplets(std::vector<Triplet> &triplets)
+        void HsMetric::addSimpleConstraintTriplets(std::vector<Triplet> &triplets) const
         {
             size_t curRow = 3 * mesh->nVertices();
             for (SimpleProjectorConstraint *spc : simpleConstraints)
@@ -324,7 +324,7 @@ namespace rsurfaces
             MatrixUtils::ColumnIntoMatrix(gradientCol, dest);
         }
 
-        void HsMetric::ProjectSparseMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest)
+        void HsMetric::ProjectSparseMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest) const
         {
             // Reshape the gradient N x 3 matrix into a 3N-vector.
             Eigen::VectorXd gradientCol, gradientColProj;
@@ -337,7 +337,7 @@ namespace rsurfaces
             MatrixUtils::ColumnIntoMatrix(gradientCol, dest);
         }
 
-        void HsMetric::ProjectSparse(const Eigen::VectorXd &gradientCol, Eigen::VectorXd &dest)
+        void HsMetric::ProjectSparse(const Eigen::VectorXd &gradientCol, Eigen::VectorXd &dest) const
         {
             size_t nRows = topLeftNumRows();
 

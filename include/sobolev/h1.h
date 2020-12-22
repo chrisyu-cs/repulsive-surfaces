@@ -8,7 +8,7 @@ namespace rsurfaces
 {
     namespace H1
     {
-        void getTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, double epsilon, bool premultiplyMass = false);
+        void getTriplets(std::vector<Triplet> &triplets, const MeshPtr &mesh, const GeomPtr &geom, double epsilon, bool premultiplyMass = false);
         void ProjectGradient(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, MeshPtr &mesh, GeomPtr &geom, bool useMass = true);
         void ProjectConstraints(MeshPtr &mesh, GeomPtr &geom, std::vector<ConstraintPack> &constraints,
             std::vector<Constraints::SimpleProjectorConstraint*> simpleConstraints, int newtonIterations);
