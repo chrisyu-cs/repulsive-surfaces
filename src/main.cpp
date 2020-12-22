@@ -20,6 +20,7 @@
 
 #include "sobolev/all_constraints.h"
 #include "sobolev/hs.h"
+#include "sobolev/hs_iterative.h"
 #include "sobolev/h1.h"
 #include "spatial/convolution.h"
 #include "spatial/convolution_kernel.h"
@@ -616,7 +617,7 @@ namespace rsurfaces
         std::cout << "Dense assembly took " << (lowEnd - lowStart) << " ms, hierarchical product took " << (lowEnd2 - lowEnd) << " ms" << std::endl;
 
         std::vector<ConstraintPack> schurConstraints;
-        Constraints::TotalAreaConstraint* c = new Constraints::TotalAreaConstraint(mesh, geom);
+        Constraints::TotalAreaConstraint *c = new Constraints::TotalAreaConstraint(mesh, geom);
         schurConstraints.push_back(ConstraintPack{c, 0, 0});
         Eigen::SparseMatrix<double> C = hs.GetConstraintBlock(schurConstraints);
         size_t fullSize = 3 * mesh->nVertices() + C.rows();
@@ -634,7 +635,7 @@ namespace rsurfaces
         bctRes.setZero(fullSize);
 
         denseRes = dense * gVecFull;
-        
+
         bct->MultiplyVector3(gVecFull, bctRes, BCTKernelType::HighOrder, true);
         bct->MultiplyVector3(gVecFull, bctRes, BCTKernelType::LowOrder, true);
         bct->MultiplyConstraintBlock(gVecFull, bctRes, C, true);
@@ -648,6 +649,62 @@ namespace rsurfaces
 
         delete c;
         delete bct;
+    }
+
+    void MainApp::TestIterative()
+    {
+        geom->refreshQuantities();
+
+        std::vector<ConstraintPack> schurConstraints;
+        // Constraints::TotalAreaConstraint *c = new Constraints::TotalAreaConstraint(mesh, geom);
+        // schurConstraints.push_back(ConstraintPack{c, 0, 0});
+
+        long gradientStartTime = currentTimeMilliseconds();
+        // Use the differential of the energy as the test case
+        SurfaceEnergy *energy = flow->BaseEnergy();
+        energy->Update();
+        Eigen::MatrixXd gradient(mesh->nVertices(), 3);
+        energy->Differential(gradient);
+        long gradientEndTime = currentTimeMilliseconds();
+
+        Hs::HsMetric hs(energy);
+        Eigen::VectorXd gVec;
+        gVec.setZero(hs.getNumRows(schurConstraints));
+        MatrixUtils::MatrixIntoColumn(gradient, gVec);
+
+        std::cout << "Expected size is " << gVec.rows() << " rows" << std::endl;
+
+        Eigen::VectorXd denseRes = gVec;
+        denseRes.setZero();
+        Eigen::VectorXd iterativeRes = denseRes;
+
+        std::cout << "Projecting using dense system..." << std::endl;
+        long denseStart = currentTimeMilliseconds();
+        Eigen::MatrixXd dense = hs.GetHsMatrixConstrained(schurConstraints);
+        MatrixUtils::SolveDenseSystem(dense, gVec, denseRes);
+        long denseEnd = currentTimeMilliseconds();
+        std::cout << "Finished in " << (denseEnd - denseStart) << " ms." << std::endl;
+
+        std::cout << "Projecting using iterative method..." << std::endl;
+        long iterStart = currentTimeMilliseconds();
+        Hs::ProjectHsGradientIterative(hs, gVec, iterativeRes, schurConstraints);
+        long iterEnd = currentTimeMilliseconds();
+        std::cout << "Finished in " << (iterEnd - iterStart) << " ms." << std::endl;
+
+        Eigen::VectorXd diff = iterativeRes - denseRes;
+        double error = diff.norm() / denseRes.norm() * 100;
+
+        std::cout << "Dense norm = " << denseRes.norm() << std::endl;
+        std::cout << "Iterative norm = " << iterativeRes.norm() << std::endl;
+        std::cout << "Relative error = " << error << " percent" << std::endl;
+        std::cout << "Dot product of directions = " << denseRes.dot(iterativeRes) / (denseRes.norm() * iterativeRes.norm()) << std::endl;
+
+        std::cout << "Computed gradient in " << (gradientEndTime - gradientStartTime) << " ms" << std::endl;
+
+        for (ConstraintPack &c : schurConstraints)
+        {
+            delete c.constraint;
+        }
     }
 
     class VectorInit
@@ -920,6 +977,11 @@ void customCallback()
     if (ImGui::Button("Test MV product", ImVec2{ITEM_WIDTH, 0}))
     {
         MainApp::instance->TestMVProduct();
+    }
+    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
+    if (ImGui::Button("Test iterative", ImVec2{ITEM_WIDTH, 0}))
+    {
+        MainApp::instance->TestIterative();
     }
 
     if (ImGui::Button("Test B-H", ImVec2{ITEM_WIDTH, 0}))

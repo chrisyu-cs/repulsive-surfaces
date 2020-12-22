@@ -11,15 +11,15 @@ namespace rsurfaces
         {
         public:
             virtual ~ConstraintBase() {}
-            virtual void ResetFunction(MeshPtr &mesh, GeomPtr &geom) = 0;
-            virtual void addTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow) = 0;
-            virtual void addEntries(Eigen::MatrixXd &M, MeshPtr &mesh, GeomPtr &geom, int baseRow) = 0;
-            virtual void addErrorValues(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow) = 0;
+            virtual void ResetFunction(const MeshPtr &mesh, const GeomPtr &geom) = 0;
+            virtual void addTriplets(std::vector<Triplet> &triplets, const MeshPtr &mesh, const GeomPtr &geom, int baseRow) = 0;
+            virtual void addEntries(Eigen::MatrixXd &M, const MeshPtr &mesh, const GeomPtr &geom, int baseRow) = 0;
+            virtual void addErrorValues(Eigen::VectorXd &V, const MeshPtr &mesh, const GeomPtr &geom, int baseRow) = 0;
             virtual size_t nRows() = 0;
         };
 
-        void addEntriesToSymmetric(ConstraintBase &cs, Eigen::MatrixXd &M, MeshPtr &mesh, GeomPtr &geom, int baseRow);
-        void addTripletsToSymmetric(ConstraintBase &cs, std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow);
+        void addEntriesToSymmetric(ConstraintBase &cs, Eigen::MatrixXd &M, const MeshPtr &mesh, const GeomPtr &geom, int baseRow);
+        void addTripletsToSymmetric(ConstraintBase &cs, std::vector<Triplet> &triplets, const MeshPtr &mesh, const GeomPtr &geom, int baseRow);
 
         class SaddleMatrixConstraint : public ConstraintBase
         {

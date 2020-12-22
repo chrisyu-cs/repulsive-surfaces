@@ -9,15 +9,15 @@ namespace rsurfaces
         class VertexPinConstraint : public SimpleProjectorConstraint
         {
         public:
-            VertexPinConstraint(MeshPtr &mesh, GeomPtr &geom);
-            virtual void ResetFunction(MeshPtr &mesh, GeomPtr &geom);
-            virtual void addTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow);
-            virtual void addEntries(Eigen::MatrixXd &M, MeshPtr &mesh, GeomPtr &geom, int baseRow);
-            virtual void addErrorValues(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow);
+            VertexPinConstraint(const MeshPtr &mesh, const GeomPtr &geom);
+            virtual void ResetFunction(const MeshPtr &mesh, const GeomPtr &geom);
+            virtual void addTriplets(std::vector<Triplet> &triplets, const MeshPtr &mesh, const GeomPtr &geom, int baseRow);
+            virtual void addEntries(Eigen::MatrixXd &M, const MeshPtr &mesh, const GeomPtr &geom, int baseRow);
+            virtual void addErrorValues(Eigen::VectorXd &V, const MeshPtr &mesh, const GeomPtr &geom, int baseRow);
             virtual size_t nRows();
             virtual void ProjectConstraint(MeshPtr &mesh, GeomPtr &geom);
         
-            void pinVertices(MeshPtr &mesh, GeomPtr &geom, std::vector<size_t> &indices_);
+            void pinVertices(const MeshPtr &mesh, const GeomPtr &geom, std::vector<size_t> &indices_);
 
         private:
             std::vector<size_t> indices;

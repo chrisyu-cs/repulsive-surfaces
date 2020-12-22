@@ -4,9 +4,9 @@ namespace rsurfaces
 {
     namespace Constraints
     {
-        VertexPinConstraint::VertexPinConstraint(MeshPtr &mesh, GeomPtr &geom) {}
+        VertexPinConstraint::VertexPinConstraint(const MeshPtr &mesh, const GeomPtr &geom) {}
 
-        void VertexPinConstraint::pinVertices(MeshPtr &mesh, GeomPtr &geom, std::vector<size_t> &indices_)
+        void VertexPinConstraint::pinVertices(const MeshPtr &mesh, const GeomPtr &geom, std::vector<size_t> &indices_)
         {
             for (size_t i = 0; i < indices_.size(); i++)
             {
@@ -15,7 +15,7 @@ namespace rsurfaces
             }
         }
 
-        void VertexPinConstraint::ResetFunction(MeshPtr &mesh, GeomPtr &geom)
+        void VertexPinConstraint::ResetFunction(const MeshPtr &mesh, const GeomPtr &geom)
         {
             for (size_t i = 0; i < indices.size(); i++)
             {
@@ -24,7 +24,7 @@ namespace rsurfaces
         }
 
 
-        void VertexPinConstraint::addTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        void VertexPinConstraint::addTriplets(std::vector<Triplet> &triplets, const MeshPtr &mesh, const GeomPtr &geom, int baseRow)
         {
             // All we do is put a 1 in the index for all pinned vertices
             for (size_t i = 0; i < indices.size(); i++)
@@ -35,7 +35,7 @@ namespace rsurfaces
             }
         }
 
-        void VertexPinConstraint::addEntries(Eigen::MatrixXd &M, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        void VertexPinConstraint::addEntries(Eigen::MatrixXd &M, const MeshPtr &mesh, const GeomPtr &geom, int baseRow)
         {
             // All we do is put a 1 in the index for all pinned vertices
             for (size_t i = 0; i < indices.size(); i++)
@@ -46,7 +46,7 @@ namespace rsurfaces
             }
         }
 
-        void VertexPinConstraint::addErrorValues(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        void VertexPinConstraint::addErrorValues(Eigen::VectorXd &V, const MeshPtr &mesh, const GeomPtr &geom, int baseRow)
         {
             for (size_t i = 0; i < indices.size(); i++)
             {

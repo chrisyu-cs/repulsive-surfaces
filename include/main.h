@@ -28,6 +28,7 @@ namespace rsurfaces
         MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow *flow_, polyscope::SurfaceMesh *psMesh_, std::string meshName_);
 
         void TestMVProduct();
+        void TestIterative();
         void BenchmarkBH();
         void TestBarnesHut();
         void PlotGradients();

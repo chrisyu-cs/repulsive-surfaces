@@ -39,6 +39,16 @@ public:
         return bct->expectedNRows() + C->rows();
     }
 
+    Eigen::Index outerSize() const
+    {
+        return bct->expectedNRows() + C->rows();
+    }
+
+    Eigen::Index innerSize() const
+    {
+        return bct->expectedNRows() + C->rows();
+    }
+
     Eigen::Index cols() const
     {
         return bct->expectedNCols() + C->rows();
@@ -63,9 +73,19 @@ public:
         C = &C_;
     }
 
+    void addMetric(rsurfaces::Hs::HsMetric* hs_)
+    {
+        hs = hs_;
+    }
+
     const rsurfaces::BlockClusterTree *getTree() const
     {
         return bct;
+    }
+
+    const rsurfaces::Hs::HsMetric *getHs()
+    {
+        return hs;
     }
 
     const Eigen::SparseMatrix<double> &getConstraintBlock() const
@@ -73,9 +93,17 @@ public:
         return *C;
     }
 
+    void setEpsilon(double e)
+    {
+        epsilon = e;
+    }
+
+    double epsilon;
+
 private:
     const rsurfaces::BlockClusterTree *bct;
     const Eigen::SparseMatrix<double> *C;
+    const rsurfaces::Hs::HsMetric *hs;
 };
 
 namespace Eigen
@@ -99,9 +127,14 @@ namespace Eigen
 
                 const rsurfaces::BlockClusterTree *bct = lhs.getTree();
 
-                bct->MultiplyVector3Const(rhs, dst, rsurfaces::BCTKernelType::HighOrder, true);
-                bct->MultiplyVector3Const(rhs, dst, rsurfaces::BCTKernelType::LowOrder, true);
-                bct->MultiplyConstraintBlock(rhs, dst, lhs.getConstraintBlock(), true);
+                Eigen::VectorXd product(bct->expectedNRows() + lhs.getConstraintBlock().rows());
+                product.setZero();
+
+                bct->MultiplyVector3Const(rhs, product, rsurfaces::BCTKernelType::HighOrder, true, lhs.epsilon);
+                bct->MultiplyVector3Const(rhs, product, rsurfaces::BCTKernelType::LowOrder, true, lhs.epsilon);
+                bct->MultiplyConstraintBlock(rhs, product, lhs.getConstraintBlock(), true);
+
+                dst += product;
             }
         };
 

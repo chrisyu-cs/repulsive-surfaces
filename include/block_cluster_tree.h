@@ -76,17 +76,27 @@ namespace rsurfaces
 
         // Same as the above but const because fuck eigen
         template <typename V3, typename Dest>
-        void MultiplyVector3Const(const V3 &v, Dest &b, BCTKernelType kType, bool addToResult = false) const;
+        void MultiplyVector3Const(const V3 &v, Dest &b, BCTKernelType kType, bool addToResult = false, double eps = 0) const;
 
         // Multiplies C * v and C^T * lambda as though these were the constraint
         // rows of a saddle matrix, and adds the result to b.
         template <typename V, typename Dest, typename Mat>
-        void MultiplyConstraintBlock(const V &v, Dest &b, Mat &C, bool addToResult = true);
+        void MultiplyConstraintBlock(const V &v, Dest &b, Mat &C, bool addToResult = true) const;
 
         inline void SetExponent(double s_)
         {
             exp_s = s_;
         }
+
+        inline void recomputeBarycenters()
+        {
+            for (GCFace f : mesh->faces())
+            {
+                faceBarycenters[f] = faceBarycenter(geom, f);
+            }
+        }
+
+        void PremultiplyAf1(BCTKernelType kType);
 
     private:
         // Multiplies A * v and stores it in b.
@@ -118,18 +128,11 @@ namespace rsurfaces
             }
         }
 
-        void fillClusterMasses(BVHNode6D *cluster, Eigen::VectorXd &w) const;
-        void OrganizePairsByFirst();
-
         // Cached list of face barycenters to avoid recomputation
         geometrycentral::surface::FaceData<Vector3> faceBarycenters;
-        inline void recomputeBarycenters()
-        {
-            for (GCFace f : mesh->faces())
-            {
-                faceBarycenters[f] = faceBarycenter(geom, f);
-            }
-        }
+
+        void fillClusterMasses(BVHNode6D *cluster, Eigen::VectorXd &w) const;
+        void OrganizePairsByFirst();
 
         Eigen::VectorXd Af_1_High;
         bool highInitialized;
@@ -138,8 +141,7 @@ namespace rsurfaces
         Eigen::VectorXd Af_1_Low;
         bool lowInitialized;
 
-        void PremultiplyAf1(BCTKernelType kType);
-        const Eigen::VectorXd& getPremultipliedAf1(BCTKernelType kType) const;
+        const Eigen::VectorXd &getPremultipliedAf1(BCTKernelType kType) const;
 
         double exp_s, separationCoeff;
         double epsilon;
@@ -210,10 +212,10 @@ namespace rsurfaces
         // Percolate W^T * v upward through the tree
         percolateWtDot(treeContainer->tree, v, mesh, geom);
 
-        // For each cluster I, we need to sum over all clusters J that are
-        // admissible with it. Since we already have a list of all admissible
-        // pairs, we can just do this for all clusters at once.
-        #pragma omp parallel for shared(admissibleByCluster, treeContainer)
+// For each cluster I, we need to sum over all clusters J that are
+// admissible with it. Since we already have a list of all admissible
+// pairs, we can just do this for all clusters at once.
+#pragma omp parallel for shared(admissibleByCluster, treeContainer)
         for (size_t i = 0; i < admissibleByCluster.size(); i++)
         {
             for (ClusterPair const &pair : admissibleByCluster[i])
@@ -240,15 +242,15 @@ namespace rsurfaces
         Eigen::VectorXd result;
         result.setZero(b_hat.rows());
 
-        #pragma omp parallel firstprivate(result) shared(b_hat)
+#pragma omp parallel firstprivate(result) shared(b_hat)
         {
-            #pragma omp for
+#pragma omp for
             for (size_t i = 0; i < inadmissiblePairs.size(); i++)
             {
                 AfFullProduct(inadmissiblePairs[i], v_hat, result, kType);
             }
 
-            #pragma omp critical
+#pragma omp critical
             {
                 b_hat += result;
             }
@@ -405,7 +407,7 @@ namespace rsurfaces
     }
 
     template <typename V3, typename Dest>
-    void BlockClusterTree::MultiplyVector3Const(const V3 &v, Dest &b, BCTKernelType kType, bool addToResult) const
+    void BlockClusterTree::MultiplyVector3Const(const V3 &v, Dest &b, BCTKernelType kType, bool addToResult, double eps) const
     {
         size_t nVerts = mesh->nVertices();
         // Slice the input vector to get every x-coordinate
@@ -424,10 +426,15 @@ namespace rsurfaces
         Eigen::Map<const Eigen::VectorXd, 0, Eigen::InnerStride<3>> v_z(v.data() + 2, nVerts);
         Eigen::Map<Eigen::VectorXd, 0, Eigen::InnerStride<3>> dest_z(b.data() + 2, nVerts);
         MultiplyVector(v_z, dest_z, kType, addToResult);
+
+        if (eps > 0)
+        {
+            b += eps * v;
+        }
     }
 
     template <typename V, typename Dest, typename Mat>
-    void BlockClusterTree::MultiplyConstraintBlock(const V &v, Dest &b, Mat &C, bool addToResult)
+    void BlockClusterTree::MultiplyConstraintBlock(const V &v, Dest &b, Mat &C, bool addToResult) const
     {
         size_t nConstraints = C.rows();
         size_t nV3 = 3 * mesh->nVertices();

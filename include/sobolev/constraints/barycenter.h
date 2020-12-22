@@ -9,11 +9,11 @@ namespace rsurfaces
         class BarycenterConstraint3X : public SimpleProjectorConstraint
         {
         public:
-            BarycenterConstraint3X(MeshPtr &mesh, GeomPtr &geom);
-            virtual void ResetFunction(MeshPtr &mesh, GeomPtr &geom);
-            virtual void addTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow);
-            virtual void addEntries(Eigen::MatrixXd &M, MeshPtr &mesh, GeomPtr &geom, int baseRow);
-            virtual void addErrorValues(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow);
+            BarycenterConstraint3X(const MeshPtr &mesh, const GeomPtr &geom);
+            virtual void ResetFunction(const MeshPtr &mesh, const GeomPtr &geom);
+            virtual void addTriplets(std::vector<Triplet> &triplets, const MeshPtr &mesh, const GeomPtr &geom, int baseRow);
+            virtual void addEntries(Eigen::MatrixXd &M, const MeshPtr &mesh, const GeomPtr &geom, int baseRow);
+            virtual void addErrorValues(Eigen::VectorXd &V, const MeshPtr &mesh, const GeomPtr &geom, int baseRow);
             virtual size_t nRows();
             virtual void ProjectConstraint(MeshPtr &mesh, GeomPtr &geom);
 

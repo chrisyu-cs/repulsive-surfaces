@@ -11,7 +11,7 @@ namespace rsurfaces
     {
         using Constraints::SimpleProjectorConstraint;
 
-        inline Vector3 HatGradientOnTriangle(GCFace face, GCVertex vert, GeomPtr &geom)
+        inline Vector3 HatGradientOnTriangle(const GCFace face, const GCVertex vert, const GeomPtr &geom)
         {
             // Find the half-edge starting at vert in face
             GCHalfedge he = face.halfedge();
@@ -47,7 +47,7 @@ namespace rsurfaces
             return altitude / (length * length);
         }
 
-        inline double HatAtTriangleCenter(GCFace face, GCVertex vert)
+        inline double HatAtTriangleCenter(const GCFace face, const GCVertex vert)
         {
             // If vert is adjacent to face, the value at the barycenter is 1/3
             for (GCVertex v : face.adjacentVertices())
@@ -61,7 +61,7 @@ namespace rsurfaces
             return 0;
         }
 
-        inline void AddTriangleGradientTerm(Eigen::MatrixXd &M, double s, GCFace f1, GCFace f2, GeomPtr &geom, VertexIndices &indices)
+        inline void AddTriangleGradientTerm(Eigen::MatrixXd &M, double s, GCFace f1, GCFace f2, const GeomPtr &geom, VertexIndices &indices)
         {
             std::vector<GCVertex> verts;
             GetVerticesWithoutDuplicates(f1, f2, verts);
@@ -89,7 +89,7 @@ namespace rsurfaces
             }
         }
 
-        inline void AddTriangleCenterTerm(Eigen::MatrixXd &M, double s, GCFace f1, GCFace f2, GeomPtr &geom, VertexIndices &indices, bool lowOrder)
+        inline void AddTriangleCenterTerm(Eigen::MatrixXd &M, double s, GCFace f1, GCFace f2, const GeomPtr &geom, VertexIndices &indices, bool lowOrder)
         {
             std::vector<GCVertex> verts;
             GetVerticesWithoutDuplicates(f1, f2, verts);
@@ -160,10 +160,8 @@ namespace rsurfaces
 
         void HsMetric::initFromEnergy(SurfaceEnergy *energy_)
         {
-            Vector2 ab = energy_->GetExponents();
             mesh = energy_->GetMesh();
             geom = energy_->GetGeom();
-            order_s = get_s(ab.x, ab.y);
             bvh = energy_->GetBVH();
             bh_theta = energy_->GetTheta();
             bct = 0;
@@ -184,7 +182,7 @@ namespace rsurfaces
             }
         }
 
-        void HsMetric::FillMatrixHigh(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom)
+        void HsMetric::FillMatrixHigh(Eigen::MatrixXd &M, double s, const MeshPtr &mesh, const GeomPtr &geom) const
         {
             VertexIndices indices = mesh->getVertexIndices();
             for (GCFace f1 : mesh->faces())
@@ -198,7 +196,7 @@ namespace rsurfaces
             }
         }
 
-        void HsMetric::FillMatrixLow(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom)
+        void HsMetric::FillMatrixLow(Eigen::MatrixXd &M, double s, const MeshPtr &mesh, const GeomPtr &geom) const
         {
             VertexIndices indices = mesh->getVertexIndices();
 
@@ -213,7 +211,7 @@ namespace rsurfaces
             }
         }
 
-        void HsMetric::FillMatrixFracOnly(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom)
+        void HsMetric::FillMatrixFracOnly(Eigen::MatrixXd &M, double s, const MeshPtr &mesh, const GeomPtr &geom) const
         {
             VertexIndices indices = mesh->getVertexIndices();
 
@@ -228,46 +226,7 @@ namespace rsurfaces
             }
         }
 
-        void HsMetric::FillMatrixVertsFirst(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom)
-        {
-            VertexIndices indices = mesh->getVertexIndices();
-            std::vector<GCFace> faces;
-
-            for (GCVertex u : mesh->vertices())
-            {
-                for (GCVertex v : mesh->vertices())
-                {
-                    faces.clear();
-                    GetFacesWithoutDuplicates(u, v, faces);
-                    double A_uv = 0;
-
-                    for (GCFace f1 : faces)
-                    {
-                        for (GCFace f2 : faces)
-                        {
-                            if (f1 == f2)
-                            {
-                                continue;
-                            }
-                            double u_hat_f1 = HatAtTriangleCenter(f1, u);
-                            double u_hat_f2 = HatAtTriangleCenter(f2, u);
-                            double v_hat_f1 = HatAtTriangleCenter(f1, v);
-                            double v_hat_f2 = HatAtTriangleCenter(f2, v);
-                            double dist_term = MetricDistanceTermFrac(s, faceBarycenter(geom, f1), faceBarycenter(geom, f2));
-
-                            double area1 = geom->faceAreas[f1];
-                            double area2 = geom->faceAreas[f2];
-
-                            double numer = (u_hat_f1 - u_hat_f2) * (v_hat_f1 - v_hat_f2);
-                            A_uv += numer * dist_term * area1 * area2;
-                        }
-                    }
-                    M(indices[u], indices[v]) = A_uv;
-                }
-            }
-        }
-
-        size_t HsMetric::topLeftNumRows()
+        size_t HsMetric::topLeftNumRows() const
         {
             size_t nConstraints = 0;
             for (SimpleProjectorConstraint *spc : simpleConstraints)
@@ -297,26 +256,17 @@ namespace rsurfaces
             }
         }
 
-        Eigen::MatrixXd HsMetric::GetHsMatrixConstrained(std::vector<ConstraintPack> &schurConstraints)
+        Eigen::MatrixXd HsMetric::GetHsMatrixConstrained(std::vector<ConstraintPack> &schurConstraints) const
         {
             Eigen::MatrixXd M_small, M;
             int nVerts = mesh->nVertices();
             M_small.setZero(nVerts, nVerts);
-            int dims = 3 * nVerts;
-
-            for (SimpleProjectorConstraint *cons : simpleConstraints)
-            {
-                dims += cons->nRows();
-            }
-
-            for (ConstraintPack &schur : schurConstraints)
-            {
-                dims += schur.constraint->nRows();
-            }
+            int dims = getNumRows(schurConstraints);
 
             M.setZero(dims, dims);
-            FillMatrixHigh(M_small, order_s, mesh, geom);
-            FillMatrixLow(M_small, order_s, mesh, geom);
+            double s = getHsOrder();
+            FillMatrixHigh(M_small, s, mesh, geom);
+            FillMatrixLow(M_small, s, mesh, geom);
             // Reduplicate entries 3x along diagonals; barycenter row gets tripled
             MatrixUtils::TripleMatrix(M_small, M);
 
@@ -337,7 +287,7 @@ namespace rsurfaces
             return M;
         }
 
-        Eigen::SparseMatrix<double> HsMetric::GetConstraintBlock(std::vector<ConstraintPack> &schurConstraints)
+        Eigen::SparseMatrix<double> HsMetric::GetConstraintBlock(std::vector<ConstraintPack> &schurConstraints) const
         {
             std::vector<Triplet> triplets;
             size_t curRow = 0;
@@ -361,7 +311,7 @@ namespace rsurfaces
         }
 
 
-        void HsMetric::ProjectGradientExact(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, std::vector<ConstraintPack> &schurConstraints)
+        void HsMetric::ProjectGradientExact(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, std::vector<ConstraintPack> &schurConstraints) const
         {
             Eigen::MatrixXd M = GetHsMatrixConstrained(schurConstraints);
 
@@ -374,7 +324,7 @@ namespace rsurfaces
             MatrixUtils::ColumnIntoMatrix(gradientCol, dest);
         }
 
-        void HsMetric::ProjectSparseMat(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest)
+        void HsMetric::ProjectSparseMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest)
         {
             // Reshape the gradient N x 3 matrix into a 3N-vector.
             Eigen::VectorXd gradientCol, gradientColProj;
@@ -387,7 +337,7 @@ namespace rsurfaces
             MatrixUtils::ColumnIntoMatrix(gradientCol, dest);
         }
 
-        void HsMetric::ProjectSparse(Eigen::VectorXd &gradientCol, Eigen::VectorXd &dest)
+        void HsMetric::ProjectSparse(const Eigen::VectorXd &gradientCol, Eigen::VectorXd &dest)
         {
             size_t nRows = topLeftNumRows();
 
@@ -414,41 +364,34 @@ namespace rsurfaces
             }
 
             // Multiply by L^{-1} once by solving Lx = b
-            gradientCol = factorizedLaplacian.Solve(gradientCol);
+            Eigen::VectorXd mid = factorizedLaplacian.Solve(gradientCol);
 
             if (!bvh)
             {
-                std::cout << "  * Assembling dense matrix to multiply" << std::endl;
-                // Multiply by L^{2 - s}, a fractional Laplacian; this has order 4 - 2s
-                Eigen::MatrixXd M, M3;
-                M.setZero(mesh->nVertices(), mesh->nVertices());
-                M3.setZero(nRows, nRows);
-                FillMatrixFracOnly(M, 4 - 2 * order_s, mesh, geom);
-                MatrixUtils::TripleMatrix(M, M3);
-                gradientCol = M3 * gradientCol;
+                throw std::runtime_error("Must have a BVH to use sparse approximation");
             }
 
             else
             {
                 if (!bct)
                 {
-                    bct = new BlockClusterTree(mesh, geom, bvh, bh_theta, 4 - 2 * order_s);
+                    bct = new BlockClusterTree(mesh, geom, bvh, bh_theta, 4 - 2 * getHsOrder());
                 }
-                bct->MultiplyVector3(gradientCol, gradientCol, BCTKernelType::FractionalOnly);
+                bct->MultiplyVector3(mid, mid, BCTKernelType::FractionalOnly);
             }
 
             // Re-zero out Lagrange multipliers, since the first solve
             // will have left some junk in them
             for (size_t i = 3 * mesh->nVertices(); i < nRows; i++)
             {
-                gradientCol(i) = 0;
+                mid(i) = 0;
             }
 
             // Multiply by L^{-1} again by solving Lx = b
-            dest = factorizedLaplacian.Solve(gradientCol);
+            dest = factorizedLaplacian.Solve(mid);
         }
 
-        void HsMetric::ProjectSparseWithR1Update(Eigen::VectorXd &DE, Eigen::VectorXd &dest)
+        void HsMetric::ProjectSparseWithR1Update(const Eigen::VectorXd &DE, Eigen::VectorXd &dest)
         {
             // We want to add a rank-1 update for DE * DE^T
             // First just compute A^{-1} x
@@ -476,7 +419,7 @@ namespace rsurfaces
             dest = Ainv_x - (numer / denom);
         }
 
-        void HsMetric::ProjectSparseWithR1UpdateMat(Eigen::MatrixXd &DE, Eigen::MatrixXd &dest)
+        void HsMetric::ProjectSparseWithR1UpdateMat(const Eigen::MatrixXd &DE, Eigen::MatrixXd &dest)
         {
             // We want to add a rank-1 update for DE * DE^T
             // First just compute A^{-1} x

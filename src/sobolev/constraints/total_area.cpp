@@ -6,12 +6,12 @@ namespace rsurfaces
 {
     namespace Constraints
     {
-        TotalAreaConstraint::TotalAreaConstraint(MeshPtr &mesh, GeomPtr &geom)
+        TotalAreaConstraint::TotalAreaConstraint(const MeshPtr &mesh, const GeomPtr &geom)
         {
             ResetFunction(mesh, geom);
         }
 
-        void TotalAreaConstraint::ResetFunction(MeshPtr &mesh, GeomPtr &geom)
+        void TotalAreaConstraint::ResetFunction(const MeshPtr &mesh, const GeomPtr &geom)
         {
             initValue = totalArea(geom, mesh);
         }
@@ -22,7 +22,7 @@ namespace rsurfaces
         }
 
         // Derivative of total volume is the mean curvature normal at each vertex.
-        void TotalAreaConstraint::addTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        void TotalAreaConstraint::addTriplets(std::vector<Triplet> &triplets, const MeshPtr &mesh, const GeomPtr &geom, int baseRow)
         {
             VertexIndices indices = mesh->getVertexIndices();
             for (GCVertex v : mesh->vertices())
@@ -36,7 +36,7 @@ namespace rsurfaces
             }
         }
 
-        void TotalAreaConstraint::addEntries(Eigen::MatrixXd &M, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        void TotalAreaConstraint::addEntries(Eigen::MatrixXd &M, const MeshPtr &mesh, const GeomPtr &geom, int baseRow)
         {
             VertexIndices indices = mesh->getVertexIndices();
             for (GCVertex v : mesh->vertices())
@@ -50,7 +50,7 @@ namespace rsurfaces
             }
         }
 
-        void TotalAreaConstraint::addErrorValues(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        void TotalAreaConstraint::addErrorValues(Eigen::VectorXd &V, const MeshPtr &mesh, const GeomPtr &geom, int baseRow)
         {
             double current = totalArea(geom, mesh);
             V(baseRow) = (current - initValue);

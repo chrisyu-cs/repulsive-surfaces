@@ -5,11 +5,11 @@ namespace rsurfaces
 {
     namespace Constraints
     {
-        void ScalingConstraint::ResetFunction(MeshPtr &mesh, GeomPtr &geom)
+        void ScalingConstraint::ResetFunction(const MeshPtr &mesh, const GeomPtr &geom)
         {
         }
 
-        void ScalingConstraint::addTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        void ScalingConstraint::addTriplets(std::vector<Triplet> &triplets, const MeshPtr &mesh, const GeomPtr &geom, int baseRow)
         {
 
             VertexIndices indices = mesh->getVertexIndices();
@@ -23,7 +23,7 @@ namespace rsurfaces
             }
         }
 
-        void ScalingConstraint::addEntries(Eigen::MatrixXd &M, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        void ScalingConstraint::addEntries(Eigen::MatrixXd &M, const MeshPtr &mesh, const GeomPtr &geom, int baseRow)
         {
             geom->requireEdgeDihedralAngles();
             Vector3 center = meshBarycenter(geom, mesh);
@@ -46,7 +46,7 @@ namespace rsurfaces
             geom->unrequireEdgeDihedralAngles();
         }
 
-        void ScalingConstraint::addValue(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        void ScalingConstraint::addValue(Eigen::VectorXd &V, const MeshPtr &mesh, const GeomPtr &geom, int baseRow)
         {
             std::cerr << "Backprojecting scale not supported" << std::endl;
             throw 1;

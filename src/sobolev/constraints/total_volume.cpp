@@ -6,12 +6,12 @@ namespace rsurfaces
     namespace Constraints
     {
 
-        TotalVolumeConstraint::TotalVolumeConstraint(MeshPtr &mesh, GeomPtr &geom)
+        TotalVolumeConstraint::TotalVolumeConstraint(const MeshPtr &mesh, const GeomPtr &geom)
         {
             ResetFunction(mesh, geom);
         }
 
-        void TotalVolumeConstraint::ResetFunction(MeshPtr &mesh, GeomPtr &geom)
+        void TotalVolumeConstraint::ResetFunction(const MeshPtr &mesh, const GeomPtr &geom)
         {
             initValue = totalVolume(geom, mesh);
         }
@@ -22,7 +22,7 @@ namespace rsurfaces
         }
 
         // Derivative of total volume is the area-weighted normal at each vertex.
-        void TotalVolumeConstraint::addTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        void TotalVolumeConstraint::addTriplets(std::vector<Triplet> &triplets, const MeshPtr &mesh, const GeomPtr &geom, int baseRow)
         {
             VertexIndices indices = mesh->getVertexIndices();
             for (GCVertex v : mesh->vertices())
@@ -36,7 +36,7 @@ namespace rsurfaces
             }
         }
 
-        void TotalVolumeConstraint::addEntries(Eigen::MatrixXd &M, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        void TotalVolumeConstraint::addEntries(Eigen::MatrixXd &M, const MeshPtr &mesh, const GeomPtr &geom, int baseRow)
         {
             VertexIndices indices = mesh->getVertexIndices();
             for (GCVertex v : mesh->vertices())
@@ -50,7 +50,7 @@ namespace rsurfaces
             }
         }
 
-        void TotalVolumeConstraint::addErrorValues(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        void TotalVolumeConstraint::addErrorValues(Eigen::VectorXd &V, const MeshPtr &mesh, const GeomPtr &geom, int baseRow)
         {
             double current = totalVolume(geom, mesh);
             V(baseRow) = (current - initValue);

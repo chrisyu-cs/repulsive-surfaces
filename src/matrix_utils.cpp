@@ -6,9 +6,9 @@ namespace rsurfaces
 {
     namespace MatrixUtils
     {
-        void TripleTriplets(std::vector<Triplet> &orig, std::vector<Triplet> &output)
+        void TripleTriplets(const std::vector<Triplet> &orig, std::vector<Triplet> &output)
         {
-            for (Triplet &t : orig)
+            for (const Triplet &t : orig)
             {
                 output.push_back(Triplet(3 * t.row(), 3 * t.col(), t.value()));
                 output.push_back(Triplet(3 * t.row() + 1, 3 * t.col() + 1, t.value()));
@@ -16,7 +16,7 @@ namespace rsurfaces
             }
         }
 
-        void TripleMatrix(Eigen::MatrixXd &M, Eigen::MatrixXd &out)
+        void TripleMatrix(const Eigen::MatrixXd &M, Eigen::MatrixXd &out)
         {
             for (int i = 0; i < M.rows(); i++)
             {
@@ -29,7 +29,7 @@ namespace rsurfaces
             }
         }
 
-        void MatrixIntoColumn(Eigen::MatrixXd &M, Eigen::VectorXd &out)
+        void MatrixIntoColumn(const Eigen::MatrixXd &M, Eigen::VectorXd &out)
         {
             int rows = M.rows();
             int cols = M.cols();
@@ -44,7 +44,7 @@ namespace rsurfaces
             }
         }
 
-        void ColumnIntoMatrix(Eigen::VectorXd &v, Eigen::MatrixXd &out)
+        void ColumnIntoMatrix(const Eigen::VectorXd &v, Eigen::MatrixXd &out)
         {
             int rows = out.rows();
             int cols = out.cols();
@@ -59,7 +59,7 @@ namespace rsurfaces
             }
         }
 
-        void SolveSparseSystem(Eigen::SparseMatrix<double> &M, Eigen::VectorXd &rhs, Eigen::VectorXd &output)
+        void SolveSparseSystem(const Eigen::SparseMatrix<double> &M, Eigen::VectorXd &rhs, Eigen::VectorXd &output)
         {
             Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
             solver.compute(M);
@@ -79,7 +79,7 @@ namespace rsurfaces
             output = x;
         }
 
-        void SolveDenseSystem(Eigen::MatrixXd &M, Eigen::VectorXd &rhs, Eigen::VectorXd &output)
+        void SolveDenseSystem(const Eigen::MatrixXd &M, Eigen::VectorXd &rhs, Eigen::VectorXd &output)
         {
             Eigen::PartialPivLU<Eigen::MatrixXd> solver = M.partialPivLu();
             output = solver.solve(rhs);

@@ -5,7 +5,7 @@ namespace rsurfaces
     namespace Constraints
     {
 
-        void addEntriesToSymmetric(ConstraintBase &cs, Eigen::MatrixXd &M, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        void addEntriesToSymmetric(ConstraintBase &cs, Eigen::MatrixXd &M, const MeshPtr &mesh, const GeomPtr &geom, int baseRow)
         {
             Eigen::MatrixXd block;
             block.setZero(cs.nRows(), M.cols());
@@ -21,7 +21,7 @@ namespace rsurfaces
             }
         }
 
-        void addTripletsToSymmetric(ConstraintBase &cs, std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        void addTripletsToSymmetric(ConstraintBase &cs, std::vector<Triplet> &triplets, const MeshPtr &mesh, const GeomPtr &geom, int baseRow)
         {
             std::vector<Triplet> block;
             cs.addTriplets(block, mesh, geom, 0);

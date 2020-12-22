@@ -6,9 +6,9 @@ namespace rsurfaces
 {
     namespace Constraints
     {
-        VertexNormalConstraint::VertexNormalConstraint(MeshPtr &mesh, GeomPtr &geom) {}
+        VertexNormalConstraint::VertexNormalConstraint(const MeshPtr &mesh, const GeomPtr &geom) {}
 
-        void VertexNormalConstraint::pinVertices(MeshPtr &mesh, GeomPtr &geom, std::vector<size_t> &indices_)
+        void VertexNormalConstraint::pinVertices(const MeshPtr &mesh, const GeomPtr &geom, std::vector<size_t> &indices_)
         {
             for (size_t i = 0; i < indices_.size(); i++)
             {
@@ -17,7 +17,7 @@ namespace rsurfaces
             }
         }
 
-        void VertexNormalConstraint::ResetFunction(MeshPtr &mesh, GeomPtr &geom)
+        void VertexNormalConstraint::ResetFunction(const MeshPtr &mesh, const GeomPtr &geom)
         {
             for (size_t i = 0; i < indices.size(); i++)
             {
@@ -25,7 +25,7 @@ namespace rsurfaces
             }
         }
 
-        void VertexNormalConstraint::addTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        void VertexNormalConstraint::addTriplets(std::vector<Triplet> &triplets, const MeshPtr &mesh, const GeomPtr &geom, int baseRow)
         {
             VertexIndices allInds = mesh->getVertexIndices();
             // All we do is put a 1 in the index for all pinned vertices
@@ -49,7 +49,7 @@ namespace rsurfaces
             }
         }
 
-        void VertexNormalConstraint::addEntries(Eigen::MatrixXd &M, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        void VertexNormalConstraint::addEntries(Eigen::MatrixXd &M, const MeshPtr &mesh, const GeomPtr &geom, int baseRow)
         {
             VertexIndices allInds = mesh->getVertexIndices();
             // All we do is put a 1 in the index for all pinned vertices
@@ -73,7 +73,7 @@ namespace rsurfaces
             }
         }
 
-        void VertexNormalConstraint::addErrorValues(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        void VertexNormalConstraint::addErrorValues(Eigen::VectorXd &V, const MeshPtr &mesh, const GeomPtr &geom, int baseRow)
         {
             for (size_t i = 0; i < indices.size(); i++)
             {

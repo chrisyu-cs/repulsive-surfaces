@@ -33,7 +33,7 @@ namespace rsurfaces
                 factor.compute(M);
             }
 
-            inline Eigen::VectorXd Solve(Eigen::VectorXd &v)
+            inline Eigen::VectorXd Solve(const Eigen::VectorXd &v)
             {
                 if (!initialized)
                 {
@@ -42,15 +42,15 @@ namespace rsurfaces
                 }
                 return factor.solve(v);
             }
-            
-            inline Eigen::VectorXd SolveWithMasses(Eigen::VectorXd &v, Eigen::VectorXd &mass)
+
+            inline Eigen::VectorXd SolveWithMasses(const Eigen::VectorXd &v, Eigen::VectorXd &mass)
             {
                 if (!initialized)
                 {
                     std::cerr << "Sparse factorization was not initialized before attempting to solve." << std::endl;
                     throw 1;
                 }
-                // Eigen::VectorXd 
+                // Eigen::VectorXd
                 return factor.solve(v);
             }
         };
@@ -70,37 +70,72 @@ namespace rsurfaces
             ~HsMetric();
 
             // Build the "high order" fractional Laplacian of order 2s.
-            void FillMatrixHigh(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom);
+            void FillMatrixHigh(Eigen::MatrixXd &M, double s, const MeshPtr &mesh, const GeomPtr &geom) const;
             // Add the regularizing "low order" term.
-            void FillMatrixLow(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom);
-            
+            void FillMatrixLow(Eigen::MatrixXd &M, double s, const MeshPtr &mesh, const GeomPtr &geom) const;
+
             // Build the base fractional Laplacian of order s.
-            void FillMatrixFracOnly(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom);
-            // Build the base fractional Laplacian of order s.
-            void FillMatrixVertsFirst(Eigen::MatrixXd &M, double s, MeshPtr &mesh, GeomPtr &geom);
-            
+            void FillMatrixFracOnly(Eigen::MatrixXd &M, double s, const MeshPtr &mesh, const GeomPtr &geom) const;
             // Build an exact Hs preconditioner with high- and low-order terms.
-            Eigen::MatrixXd GetHsMatrixConstrained(std::vector<ConstraintPack> &schurConstraints);
+            Eigen::MatrixXd GetHsMatrixConstrained(std::vector<ConstraintPack> &schurConstraints) const;
 
             // Build just the constraint block of the saddle matrix.
-            Eigen::SparseMatrix<double> GetConstraintBlock(std::vector<ConstraintPack> &schurConstraints);
+            Eigen::SparseMatrix<double> GetConstraintBlock(std::vector<ConstraintPack> &schurConstraints) const;
 
-            void ProjectGradientExact(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, std::vector<ConstraintPack> &schurConstraints);
+            void ProjectGradientExact(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, std::vector<ConstraintPack> &schurConstraints) const;
 
             void ProjectSimpleConstraints();
             void ProjectSimpleConstraintsWithSaddle();
 
-            inline void InvertMetric(Eigen::VectorXd &gradient, Eigen::VectorXd &dest)
+            inline void InvertMetric(const Eigen::VectorXd &gradient, Eigen::VectorXd &dest)
             {
                 ProjectSparse(gradient, dest);
             }
 
-            inline void InvertMetricMat(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest)
+            inline void InvertMetricMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest)
             {
                 ProjectSparseMat(gradient, dest);
             }
 
-            size_t topLeftNumRows();
+            inline double getHsOrder() const
+            {
+                Vector2 exps = energy->GetExponents();
+                return get_s(exps.x, exps.y);
+            }
+
+            inline size_t getNumConstraints(std::vector<ConstraintPack> &schurConstraints) const
+            {
+                size_t nConstraints = 0;
+
+                for (Constraints::SimpleProjectorConstraint *cons : simpleConstraints)
+                {
+                    nConstraints += cons->nRows();
+                }
+
+                for (ConstraintPack &schur : schurConstraints)
+                {
+                    nConstraints += schur.constraint->nRows();
+                }
+
+                return nConstraints;
+            }
+
+            inline size_t getNumRows(std::vector<ConstraintPack> &schurConstraints) const
+            {
+                return 3 * mesh->nVertices() + getNumConstraints(schurConstraints);
+            }
+
+            inline BVHNode6D *GetBVH() const
+            {
+                return bvh;
+            }
+
+            inline double getBHTheta() const
+            {
+                return bh_theta;
+            }
+
+            size_t topLeftNumRows() const;
             MeshPtr mesh;
             GeomPtr geom;
 
@@ -110,15 +145,14 @@ namespace rsurfaces
             void initFromEnergy(SurfaceEnergy *energy_);
 
             // Project the gradient into Hs by using the L^{-1} M L^{-1} factorization
-            void ProjectSparse(Eigen::VectorXd &gradient, Eigen::VectorXd &dest);
+            void ProjectSparse(const Eigen::VectorXd &gradient, Eigen::VectorXd &dest);
             // Same as above but with the input/output being matrices
-            void ProjectSparseMat(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest);
+            void ProjectSparseMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest);
 
-            void ProjectSparseWithR1Update(Eigen::VectorXd &gradient, Eigen::VectorXd &dest);
-            void ProjectSparseWithR1UpdateMat(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest);
+            void ProjectSparseWithR1Update(const Eigen::VectorXd &gradient, Eigen::VectorXd &dest);
+            void ProjectSparseWithR1UpdateMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest);
 
             BVHNode6D *bvh;
-            double order_s;
             double bh_theta;
 
             SurfaceEnergy *energy;

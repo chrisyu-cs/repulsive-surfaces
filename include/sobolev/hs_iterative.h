@@ -7,15 +7,6 @@ namespace rsurfaces
 {
     namespace Hs
     {
-        class HsIterative
-        {
-        public:
-            HsIterative(SurfaceEnergy *energy_, std::vector<Constraints::SimpleProjectorConstraint *> &spcs_);
-            void ProjectGradientIterative(Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, std::vector<ConstraintPack> &schurConstraints);
-
-        private:
-            SurfaceEnergy *energy;
-            std::vector<Constraints::SimpleProjectorConstraint *> &spcs;
-        };
+        void ProjectHsGradientIterative(Hs::HsMetric &hs, Eigen::VectorXd &gradient, Eigen::VectorXd &dest, std::vector<ConstraintPack> &schurConstraints);
     } // namespace Hs
 } // namespace rsurfaces

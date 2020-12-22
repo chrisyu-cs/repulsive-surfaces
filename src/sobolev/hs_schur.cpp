@@ -68,19 +68,27 @@ namespace rsurfaces
         void ProjectViaSchur(HsMetric &hs, Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, SchurComplement &comp)
         {
             size_t nVerts = hs.mesh->nVertices();
+
+            Eigen::VectorXd temp;
+            temp.setZero(comp.C.cols());
+            MatrixUtils::MatrixIntoColumn(gradient, temp);
+            
+            ProjectViaSchurV(hs, temp, temp, comp);
+
+            MatrixUtils::ColumnIntoMatrix(temp, dest);
+        }
+
+        void ProjectViaSchurV(HsMetric &hs, Eigen::VectorXd &curCol, Eigen::VectorXd &dest, SchurComplement &comp)
+        {
+            size_t nVerts = hs.mesh->nVertices();
             // Invert the "saddle matrix" now:
             // the block of M^{-1} we want is A^{-1} + A^{-1} C^T (M/A)^{-1} C A^{-1}
-
-            // Reuse curCol to store A^{-1} x
-            // First allocate some space for a single column
-            Eigen::VectorXd curCol;
-            curCol.setZero(comp.C.cols());
-            MatrixUtils::MatrixIntoColumn(gradient, curCol);
-            hs.InvertMetric(curCol, curCol);
+            Eigen::VectorXd tempCol = curCol;
+            hs.InvertMetric(tempCol, tempCol);
 
             // Now we compute the correction.
             // Again we already have A^{-1} once, so no need to recompute it
-            Eigen::VectorXd C_Ai_x = comp.C * curCol;
+            Eigen::VectorXd C_Ai_x = comp.C * tempCol;
             Eigen::VectorXd MAi_C_Ai_x;
             MAi_C_Ai_x.setZero(C_Ai_x.rows());
             MatrixUtils::SolveDenseSystem(comp.M_A, C_Ai_x, MAi_C_Ai_x);
@@ -88,8 +96,7 @@ namespace rsurfaces
             // Apply A^{-1} from scratch one more time
             hs.InvertMetric(B_MAi_C_Ai_x, B_MAi_C_Ai_x);
 
-            curCol = curCol + B_MAi_C_Ai_x;
-            MatrixUtils::ColumnIntoMatrix(curCol, dest);
+            dest = tempCol + B_MAi_C_Ai_x;
         }
 
         void ProjectSchurConstraints(HsMetric &hs, std::vector<ConstraintPack> &constraints, SchurComplement &comp, int newtonSteps)

@@ -135,7 +135,7 @@ namespace rsurfaces
         }
     }
 
-    inline double MeanCurvature(GCVertex v, MeshPtr &mesh, GeomPtr &geom)
+    inline double MeanCurvature(GCVertex v, const MeshPtr &mesh, const GeomPtr &geom)
     {
         double sum = 0;
         for (GCEdge e : v.adjacentEdges())

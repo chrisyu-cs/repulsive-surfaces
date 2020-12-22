@@ -5,7 +5,7 @@ namespace rsurfaces
 {
     namespace Constraints
     {
-        void addSingleTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        void addSingleTriplets(std::vector<Triplet> &triplets, const MeshPtr &mesh, const GeomPtr &geom, int baseRow)
         {
             // Just want to place normalized dual weights in the entry for each vertex
             geom->requireVertexDualAreas();
@@ -23,17 +23,17 @@ namespace rsurfaces
             }
         }
 
-        BarycenterConstraint3X::BarycenterConstraint3X(MeshPtr &mesh, GeomPtr &geom)
+        BarycenterConstraint3X::BarycenterConstraint3X(const MeshPtr &mesh, const GeomPtr &geom)
         {
             ResetFunction(mesh, geom);
         }
 
-        void BarycenterConstraint3X::ResetFunction(MeshPtr &mesh, GeomPtr &geom)
+        void BarycenterConstraint3X::ResetFunction(const MeshPtr &mesh, const GeomPtr &geom)
         {
             initValue = meshBarycenter(geom, mesh);
         }
 
-        void BarycenterConstraint3X::addTriplets(std::vector<Triplet> &triplets, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        void BarycenterConstraint3X::addTriplets(std::vector<Triplet> &triplets, const MeshPtr &mesh, const GeomPtr &geom, int baseRow)
         {
             // Take the same weights from the non-3X version of this constraint,
             // and duplicate them 3 times on each 3x3 diagonal block.
@@ -48,7 +48,7 @@ namespace rsurfaces
             }
         }
 
-        void BarycenterConstraint3X::addEntries(Eigen::MatrixXd &M, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        void BarycenterConstraint3X::addEntries(Eigen::MatrixXd &M, const MeshPtr &mesh, const GeomPtr &geom, int baseRow)
         {
             std::vector<Triplet> singleTriplets;
             addSingleTriplets(singleTriplets, mesh, geom, 0);
@@ -61,7 +61,7 @@ namespace rsurfaces
             }
         }
 
-        void BarycenterConstraint3X::addErrorValues(Eigen::VectorXd &V, MeshPtr &mesh, GeomPtr &geom, int baseRow)
+        void BarycenterConstraint3X::addErrorValues(Eigen::VectorXd &V, const MeshPtr &mesh, const GeomPtr &geom, int baseRow)
         {
             Vector3 current = meshBarycenter(geom, mesh);
             V(baseRow    ) = current.x - initValue.x;
