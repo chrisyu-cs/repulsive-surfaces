@@ -1,3 +1,4 @@
-repel_mesh BrokenFigureEightTubeMesh_11740F.obj 6 12
+repel_mesh figure-eight-smoothed.obj 6 12
 constrain barycenter
-minimize area_deviation 1
+constrain area
+iteration_limit 500

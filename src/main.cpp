@@ -65,6 +65,9 @@ namespace rsurfaces
         case GradientMethod::HsProjected:
             flow->StepProjectedGradient();
             break;
+        case GradientMethod::HsProjectedIterative:
+            flow->StepProjectedGradientIterative();
+            break;
         case GradientMethod::HsNCG:
             flow->StepNCG();
             break;
@@ -78,8 +81,7 @@ namespace rsurfaces
         if (remeshAfter)
         {
             bool doCollapse = (numSteps % 1 == 0);
-            if (doCollapse)
-                std::cout << numSteps << ": Doing edge collapses this iteration..." << std::endl;
+            std::cout << "Applying remeshing..." << std::endl;
             remesher.Remesh(5, doCollapse);
             mesh->compress();
             MainApp::instance->reregisterMesh();
@@ -667,9 +669,6 @@ namespace rsurfaces
         long gradientEndTime = currentTimeMilliseconds();
 
         Hs::HsMetric hs(energy);
-        Constraints::TotalAreaConstraint* areaConstraint = new Constraints::TotalAreaConstraint(mesh, geom);
-        ConstraintPack pack{areaConstraint, 0, 0};
-        // hs.newtonConstraints.push_back(pack);
 
         Eigen::VectorXd gVec;
         gVec.setZero(hs.getNumRows());
@@ -704,8 +703,6 @@ namespace rsurfaces
         std::cout << "Dot product of directions = " << denseRes.dot(iterativeRes) / (denseRes.norm() * iterativeRes.norm()) << std::endl;
 
         std::cout << "Computed gradient in " << (gradientEndTime - gradientStartTime) << " ms" << std::endl;
-
-        delete areaConstraint;
     }
 
     class VectorInit
@@ -914,6 +911,7 @@ void customCallback()
     }
 
     const GradientMethod methods[] = {GradientMethod::HsProjected,
+                                      GradientMethod::HsProjectedIterative,
                                       GradientMethod::HsNCG,
                                       GradientMethod::HsExactProjected};
 

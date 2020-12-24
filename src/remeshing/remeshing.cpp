@@ -611,7 +611,6 @@ namespace rsurfaces
         void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry, double flatLength, double epsilon, double minLength, bool curvatureAdaptive)
         {
             // queues of edges to CHECK to change
-            std::cout<<"start"<<std::endl;
             std::vector<Edge> toSplit;
             std::vector<Edge> toCollapse;
             
@@ -621,7 +620,6 @@ namespace rsurfaces
             }
             
             // actually do it
-            std::cout<<"split"<<std::endl;
             while(!toSplit.empty())
             {
                 Edge e = toSplit.back();
@@ -641,7 +639,6 @@ namespace rsurfaces
                 }                
                 
             }
-            std::cout<<"collapse"<<std::endl;
             while(!toCollapse.empty())
             {
                 Edge e = toCollapse.back();

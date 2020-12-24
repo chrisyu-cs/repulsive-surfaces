@@ -319,8 +319,7 @@ namespace rsurfaces
                 {
                     curCol(i) = dest.C(r, i);
                 }
-                Inverse inv;
-                inv.Apply(*hs, curCol, curCol);
+                Inverse::Apply(*hs, curCol, curCol);
                 // Copy the column into the column of A^{-1} C^T
                 for (size_t i = 0; i < bigNRows; i++)
                 {
@@ -336,7 +335,7 @@ namespace rsurfaces
         {
             public:
             template <typename V, typename Dest>
-            void Apply(const HsMetric &hs, const V &gradient, Dest &dest) const
+            static void Apply(const HsMetric &hs, const V &gradient, Dest &dest)
             {
                 hs.InvertMetric(gradient, dest);
             }

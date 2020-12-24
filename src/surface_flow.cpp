@@ -5,6 +5,7 @@
 #include "sobolev/h1.h"
 #include "sobolev/hs.h"
 #include "sobolev/hs_schur.h"
+#include "sobolev/hs_iterative.h"
 #include "sobolev/constraints.h"
 #include "spatial/convolution.h"
 #include "energy/barnes_hut_tpe_6d.h"
@@ -185,6 +186,19 @@ namespace rsurfaces
         std::cout << "  Total time for gradient step = " << (timeEnd - timeStart) << " ms" << std::endl;
     }
 
+    inline void printSolveInfo(size_t numNewton)
+    {
+        if (numNewton > 0)
+        {
+            std::cout << "  * With " << numNewton << " Newton constraint(s), Hs projection will require "
+                      << (numNewton + 2) << " linear solves" << std::endl;
+        }
+        else
+        {
+            std::cout << "  * With no Newton constraints, Hs projection will require 1 linear solve" << std::endl;
+        }
+    }
+
     void SurfaceFlow::StepProjectedGradient()
     {
         long timeStart = currentTimeMilliseconds();
@@ -203,16 +217,9 @@ namespace rsurfaces
         double gNorm = l2diff.norm();
 
         std::unique_ptr<Hs::HsMetric> hs = GetMetric();
+        printSolveInfo(hs->newtonConstraints.size());
 
-        // Schur complement will be reused in multiple steps
-        if (schurConstraints.size() > 0)
-        {
-            Hs::ProjectViaSchur<Hs::SparseInverse>(*hs, l2diff, gradientProj);
-        }
-        else
-        {
-            hs->InvertMetricMat(l2diff, gradientProj);
-        }
+        Hs::ProjectViaSchur<Hs::SparseInverse>(*hs, l2diff, gradientProj);
 
         VertexIndices inds = mesh->getVertexIndices();
 
@@ -244,6 +251,53 @@ namespace rsurfaces
                 c.constraint->incrementTargetValue(c.stepSize);
             }
         }
+
+        std::cout << "  Mesh total volume = " << totalVolume(geom, mesh) << std::endl;
+        std::cout << "  Mesh total area = " << totalArea(geom, mesh) << std::endl;
+        geom->refreshQuantities();
+
+        long timeEnd = currentTimeMilliseconds();
+        std::cout << "  Total time for gradient step = " << (timeEnd - timeStart) << " ms" << std::endl;
+    }
+
+    void SurfaceFlow::StepProjectedGradientIterative()
+    {
+        long timeStart = currentTimeMilliseconds();
+        stepCount++;
+        std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
+        std::cout << "Using iterative Hs projected gradient method..." << std::endl;
+        UpdateEnergies();
+
+        // Assemble sum of L2 differentials of all energies involved
+        // (including tangent-point energy)
+        Eigen::MatrixXd l2diff, gradientProj;
+        l2diff.setZero(mesh->nVertices(), 3);
+        gradientProj.setZero(mesh->nVertices(), 3);
+        AssembleGradients(l2diff);
+        double gNorm = l2diff.norm();
+
+        std::unique_ptr<Hs::HsMetric> hs = GetMetric();
+        printSolveInfo(hs->newtonConstraints.size());
+
+        Hs::ProjectConstrainedHsIterativeMat(*hs, l2diff, gradientProj);
+
+        VertexIndices inds = mesh->getVertexIndices();
+
+        double gProjNorm = gradientProj.norm();
+        // Measure dot product of search direction with original gradient direction
+        double gradDot = (l2diff.transpose() * gradientProj).trace() / (gNorm * gProjNorm);
+
+        // Guess a step size
+        // double initGuess = prevStep * 1.25;
+        double initGuess = guessStepSize(gProjNorm);
+
+        std::cout << "  * Initial step size guess = " << initGuess << std::endl;
+
+        // Take the step using line search
+        LineSearch search(mesh, geom, energies);
+        search.BacktrackingLineSearch(gradientProj, initGuess, gradDot);
+
+        // TODO: constraint projection
 
         std::cout << "  Mesh total volume = " << totalVolume(geom, mesh) << std::endl;
         std::cout << "  Mesh total area = " << totalArea(geom, mesh) << std::endl;

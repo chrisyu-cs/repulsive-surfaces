@@ -33,6 +33,7 @@ namespace rsurfaces
     enum class GradientMethod
     {
         HsProjected,
+        HsProjectedIterative,
         HsExactProjected,
         HsNCG
     };

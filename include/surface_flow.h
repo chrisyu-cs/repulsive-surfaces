@@ -19,6 +19,7 @@ namespace rsurfaces
         void StepNaive(double t);
         void StepProjectedGradientExact();
         void StepProjectedGradient();
+        void StepProjectedGradientIterative();
         void StepNCG();
 
         SurfaceEnergy *BaseEnergy();

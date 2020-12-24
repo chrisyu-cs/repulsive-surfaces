@@ -20,6 +20,8 @@ namespace rsurfaces
             return "Hs-NCG";
         case GradientMethod::HsProjected:
             return "Hs-Projected";
+        case GradientMethod::HsProjectedIterative:
+            return "Hs-Projected (iterative)";
         case GradientMethod::HsExactProjected:
             return "Hs-ExactProjected";
         default:

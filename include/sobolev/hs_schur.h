@@ -38,13 +38,13 @@ namespace rsurfaces
             // Invert the "saddle matrix" now:
             // the block of M^{-1} we want is A^{-1} + A^{-1} C^T (M/A)^{-1} C A^{-1}
             Eigen::VectorXd tempCol = curCol;
-            hs.InvertMetric(tempCol, tempCol);
+            Inverse::Apply(hs, tempCol, tempCol);
 
             // Now we compute the correction
             Eigen::VectorXd B_MAi_C_Ai_x;
             UnprojectedSchurCorrection<Inverse>(hs, tempCol, B_MAi_C_Ai_x);
             // Apply A^{-1} from scratch one more time
-            hs.InvertMetric(B_MAi_C_Ai_x, B_MAi_C_Ai_x);
+            Inverse::Apply(hs, B_MAi_C_Ai_x, B_MAi_C_Ai_x);
 
             dest = tempCol + B_MAi_C_Ai_x;
         }
@@ -54,13 +54,20 @@ namespace rsurfaces
         {
             size_t nVerts = hs.mesh->nVertices();
 
-            Eigen::VectorXd temp;
-            temp.setZero(hs.Schur<Inverse>().C.cols());
-            MatrixUtils::MatrixIntoColumn(gradient, temp);
+            if (hs.newtonConstraints.size() > 0)
+            {
+                Eigen::VectorXd temp;
+                temp.setZero(hs.Schur<Inverse>().C.cols());
+                MatrixUtils::MatrixIntoColumn(gradient, temp);
 
-            ProjectViaSchurV<Inverse>(hs, temp, temp);
+                ProjectViaSchurV<Inverse>(hs, temp, temp);
 
-            MatrixUtils::ColumnIntoMatrix(temp, dest);
+                MatrixUtils::ColumnIntoMatrix(temp, dest);
+            }
+            else
+            {
+                hs.InvertMetricMat(gradient, dest);
+            }
         }
 
         template <typename Inverse>
@@ -97,7 +104,7 @@ namespace rsurfaces
                 // Apply C^T
                 Eigen::VectorXd correction = hs.Schur<Inverse>().C.transpose() * vals;
                 // Apply A^{-1}
-                hs.InvertMetric(correction, correction);
+                Inverse::Apply(hs, correction, correction);
 
                 // Apply the correction to the vertex positions
                 VertexIndices verts = hs.mesh->getVertexIndices();

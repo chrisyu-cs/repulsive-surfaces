@@ -124,8 +124,8 @@ namespace rsurfaces
                 compute(fracL);
             }
 
-            Eigen::Index rows() const { return hs->getNumRows(); }
-            Eigen::Index cols() const { return hs->getNumRows(); }
+            Eigen::Index rows() const { return hs->topLeftNumRows(); }
+            Eigen::Index cols() const { return hs->topLeftNumRows(); }
 
             template <typename MatrixType>
             SparseHsPreconditioner &analyzePattern(const MatrixType &) { return *this; }
@@ -137,8 +137,6 @@ namespace rsurfaces
             SparseHsPreconditioner &compute(const MatrixType &fracL)
             {
                 hs = fracL.getHs();
-                std::cout << "Set Hs (" << hs->getNumRows() << " rows)" << std::endl;
-
                 return *this;
             }
 
@@ -153,7 +151,6 @@ namespace rsurfaces
             inline const Eigen::Solve<SparseHsPreconditioner, Rhs>
             solve(const Eigen::MatrixBase<Rhs> &b) const
             {
-                eigen_assert(m_invdiag.size() == b.rows() && "DiagonalPreconditioner::solve(): invalid number of rows of the right hand side matrix b");
                 return Eigen::Solve<SparseHsPreconditioner, Rhs>(*this, b.derived());
             }
 

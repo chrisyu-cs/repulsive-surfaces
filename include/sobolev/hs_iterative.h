@@ -7,6 +7,7 @@ namespace rsurfaces
 {
     namespace Hs
     {
+        void ProjectConstrainedHsIterativeMat(Hs::HsMetric &hs, Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest);
         void ProjectConstrainedHsIterative(Hs::HsMetric &hs, Eigen::VectorXd &gradient, Eigen::VectorXd &dest);
 
         template <typename V, typename Dest>
@@ -20,8 +21,6 @@ namespace rsurfaces
             fracL.addConstraintBlock(constraintBlock);
             fracL.addMetric(&hs);
 
-            std::cout << "Matrix-vector product expects " << fracL.rows() << " rows" << std::endl;
-
             bct->recomputeBarycenters();
             bct->PremultiplyAf1(BCTKernelType::HighOrder);
             bct->PremultiplyAf1(BCTKernelType::LowOrder);
@@ -29,18 +28,13 @@ namespace rsurfaces
             Eigen::ConjugateGradient<BCTMatrixReplacement, Eigen::Lower | Eigen::Upper, SparseHsPreconditioner> cg;
             cg.compute(fracL);
 
-            dest.setZero();
-            Eigen::VectorXd initialGuess = dest;
-
-            size_t nRows = hs.topLeftNumRows();
-            std::cout << "Using sparse metric only for initial guess" << std::endl;
-
-            hs.InvertMetric(gradient, dest);
-
-            dest.setZero();
+            Eigen::VectorXd temp;
+            temp.setZero(gradient.rows());
             cg.setTolerance(1e-2);
-            dest = cg.solveWithGuess(gradient, dest);
-            std::cout << "CG num iterations: " << cg.iterations() << ", estimated error: " << cg.error() << std::endl;
+            temp = cg.solveWithGuess(gradient, temp);
+            std::cout << "  * CG converged in " << cg.iterations() << " iterations, final residual = " << cg.error() << std::endl;
+
+            dest = temp;
 
             delete bct;
         }
@@ -49,7 +43,6 @@ namespace rsurfaces
         void ProjectUnconstrainedHsIterative(const Hs::HsMetric &hs, const V &gradient, Dest &dest)
         {
             Eigen::SparseMatrix<double> constraintBlock = hs.GetConstraintBlock(false);
-            std::cout << "Constraint block has " << constraintBlock.rows() << " rows" << std::endl;
             ProjectUnconstrainedHsIterative(hs, gradient, dest, constraintBlock);
         }
 
@@ -57,7 +50,7 @@ namespace rsurfaces
         {
         public:
             template <typename V, typename Dest>
-            void Apply(const HsMetric &hs, const V &gradient, Dest &dest) const
+            static void Apply(const HsMetric &hs, const V &gradient, Dest &dest)
             {
                 ProjectUnconstrainedHsIterative(hs, gradient, dest);
             }

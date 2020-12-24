@@ -7,21 +7,25 @@ namespace rsurfaces
     {
         void ProjectConstrainedHsIterative(Hs::HsMetric &hs, Eigen::VectorXd &gradient, Eigen::VectorXd &dest)
         {
-            Eigen::SparseMatrix<double> constraintBlock = hs.GetConstraintBlock(false);
-            
-            size_t nRows = hs.topLeftNumRows();
-            Eigen::VectorXd correction;
-            correction.setZero(nRows);
+            if (hs.newtonConstraints.size() > 0)
+            {
+                ProjectViaSchurV<IterativeInverse>(hs, gradient, dest);
+            }
+            else
+            {
+                ProjectUnconstrainedHsIterative(hs, gradient, dest);
+            }
+        }
 
-            // Apply A^{-1} to the differential
-            ProjectUnconstrainedHsIterative(hs, gradient, dest);
+        void ProjectConstrainedHsIterativeMat(Hs::HsMetric &hs, Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest)
+        {
+            Eigen::VectorXd col;
+            col.setZero(hs.topLeftNumRows());
+            MatrixUtils::MatrixIntoColumn(gradient, col);
 
-            // Compute the Schur complement part
-            UnprojectedSchurCorrection<IterativeInverse>(hs, gradient, correction);
-            // Apply A^{-1} from scratch to get the correction
-            hs.InvertMetric(correction, correction);
+            ProjectConstrainedHsIterative(hs, col, col);
 
-            dest = dest + correction;
+            MatrixUtils::ColumnIntoMatrix(col, dest);
         }
 
     } // namespace Hs
