@@ -207,7 +207,7 @@ namespace rsurfaces
         // Schur complement will be reused in multiple steps
         if (schurConstraints.size() > 0)
         {
-            ProjectViaSchur(*hs, l2diff, gradientProj);
+            Hs::ProjectViaSchur<Hs::SparseInverse>(*hs, l2diff, gradientProj);
         }
         else
         {
@@ -232,7 +232,7 @@ namespace rsurfaces
 
         if (schurConstraints.size() > 0)
         {
-            ProjectSchurConstraints(*hs, 1);
+            Hs::ProjectSchurConstraints<Hs::SparseInverse>(*hs, 1);
         }
         hs->ProjectSimpleConstraints();
 

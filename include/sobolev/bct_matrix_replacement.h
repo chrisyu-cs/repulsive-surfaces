@@ -74,7 +74,7 @@ public:
         C = &C_;
     }
 
-    void addMetric(rsurfaces::Hs::HsMetric *hs_)
+    void addMetric(const rsurfaces::Hs::HsMetric *hs_)
     {
         hs = hs_;
     }
@@ -146,14 +146,7 @@ namespace rsurfaces
             template <typename Rhs, typename Dest>
             void _solve_impl(const Rhs &b, Dest &x) const
             {
-                if (hs->newtonConstraints.size() > 0)
-                {
-                    x = hs->InvertMetricSchurTemplated(b);
-                }
-                else
-                {
-                    x = hs->InvertMetricTemplated(b);
-                }
+                x = hs->InvertMetricTemplated(b);
             }
 
             template <typename Rhs>

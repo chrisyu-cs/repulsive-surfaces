@@ -5,6 +5,7 @@
 #include "constraints.h"
 #include "block_cluster_tree.h"
 #include "hs_operators.h"
+#include "sobolev/h1.h"
 
 #include <Eigen/Sparse>
 
@@ -60,7 +61,7 @@ namespace rsurfaces
 
         class HsMetric;
 
-        template <typename HsPtr>
+        template <typename Inverse, typename HsPtr>
         void GetSchurComplement(const HsPtr hs, SchurComplement &dest);
 
         void ProjectViaSchurV(const HsMetric &hs, Eigen::VectorXd &gradient, Eigen::VectorXd &dest);
@@ -111,17 +112,10 @@ namespace rsurfaces
                 return Rhs(temp);
             }
 
-            inline void InvertMetric(const Eigen::VectorXd &gradient, Eigen::VectorXd &dest) const
+            template <typename V, typename Dst>
+            inline void InvertMetric(const V &gradient, Dst &dest) const
             {
                 ProjectSparse(gradient, dest);
-            }
-
-            inline Eigen::VectorXd InvertMetric(const Eigen::VectorXd &gradient) const
-            {
-                Eigen::VectorXd dest;
-                dest.setZero(gradient.rows());
-                ProjectSparse(gradient, dest);
-                return dest;
             }
 
             inline void InvertMetricMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest) const
@@ -186,11 +180,12 @@ namespace rsurfaces
             std::vector<Constraints::SimpleProjectorConstraint *> simpleConstraints;
             std::vector<ConstraintPack> newtonConstraints;
 
+            template <typename Inverse>
             inline SchurComplement &Schur() const
             {
                 if (!schurComplementComputed)
                 {
-                    GetSchurComplement(this, schurComplement);
+                    GetSchurComplement<Inverse>(this, schurComplement);
                     schurComplementComputed = true;
                 }
                 return schurComplement;
@@ -202,12 +197,10 @@ namespace rsurfaces
             void initFromEnergy(SurfaceEnergy *energy_);
 
             // Project the gradient into Hs by using the L^{-1} M L^{-1} factorization
-            void ProjectSparse(const Eigen::VectorXd &gradient, Eigen::VectorXd &dest) const;
+            template <typename V, typename Dst>
+            void ProjectSparse(const V &gradient, Dst &dest) const;
             // Same as above but with the input/output being matrices
             void ProjectSparseMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest) const;
-
-            void ProjectSparseWithR1Update(const Eigen::VectorXd &gradient, Eigen::VectorXd &dest);
-            void ProjectSparseWithR1UpdateMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest);
 
             BVHNode6D *bvh;
             double bh_theta;
@@ -221,8 +214,62 @@ namespace rsurfaces
             mutable SchurComplement schurComplement;
         };
 
+        template <typename V, typename Dst>
+        void HsMetric::ProjectSparse(const V &gradientCol, Dst &dest) const
+        {
+            size_t nRows = topLeftNumRows();
 
-        template <typename HsPtr>
+            double epsilon = 1e-6;
+            if (simpleConstraints.size() > 0)
+            {
+                epsilon = 1e-10;
+            }
+
+            if (!factorizedLaplacian.initialized)
+            {
+                // Assemble the cotan Laplacian
+                std::vector<Triplet> triplets, triplets3x;
+                H1::getTriplets(triplets, mesh, geom, epsilon);
+                // Expand the matrix by 3x
+                MatrixUtils::TripleTriplets(triplets, triplets3x);
+
+                // Add constraint rows / cols for "simple" constraints included in Laplacian
+                addSimpleConstraintTriplets(triplets3x);
+                // Pre-factorize the cotan Laplacian
+                Eigen::SparseMatrix<double> L(nRows, nRows);
+                L.setFromTriplets(triplets3x.begin(), triplets3x.end());
+                factorizedLaplacian.Compute(L);
+            }
+
+            // Multiply by L^{-1} once by solving Lx = b
+            Eigen::VectorXd mid = factorizedLaplacian.Solve(gradientCol);
+
+            if (!bvh)
+            {
+                throw std::runtime_error("Must have a BVH to use sparse approximation");
+            }
+
+            else
+            {
+                if (!bct)
+                {
+                    bct = new BlockClusterTree(mesh, geom, bvh, bh_theta, 4 - 2 * getHsOrder());
+                }
+                bct->MultiplyVector3(mid, mid, BCTKernelType::FractionalOnly);
+            }
+
+            // Re-zero out Lagrange multipliers, since the first solve
+            // will have left some junk in them
+            for (size_t i = 3 * mesh->nVertices(); i < nRows; i++)
+            {
+                mid(i) = 0;
+            }
+
+            // Multiply by L^{-1} again by solving Lx = b
+            dest = factorizedLaplacian.Solve(mid);
+        }
+
+        template <typename Inverse, typename HsPtr>
         void GetSchurComplement(const HsPtr hs, SchurComplement &dest)
         {
             size_t nVerts = hs->mesh->nVertices();
@@ -272,7 +319,8 @@ namespace rsurfaces
                 {
                     curCol(i) = dest.C(r, i);
                 }
-                hs->InvertMetric(curCol, curCol);
+                Inverse inv;
+                inv.Apply(*hs, curCol, curCol);
                 // Copy the column into the column of A^{-1} C^T
                 for (size_t i = 0; i < bigNRows; i++)
                 {
@@ -284,7 +332,15 @@ namespace rsurfaces
             dest.M_A = -dest.C * A_inv_CT;
         }
 
-
+        class SparseInverse
+        {
+            public:
+            template <typename V, typename Dest>
+            void Apply(const HsMetric &hs, const V &gradient, Dest &dest) const
+            {
+                hs.InvertMetric(gradient, dest);
+            }
+        };
     } // namespace Hs
 
 } // namespace rsurfaces

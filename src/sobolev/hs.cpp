@@ -3,7 +3,6 @@
 #include "sobolev/all_constraints.h"
 #include "spatial/convolution.h"
 #include "spatial/convolution_kernel.h"
-#include "sobolev/h1.h"
 
 namespace rsurfaces
 {
@@ -333,117 +332,6 @@ namespace rsurfaces
 
             // Reshape it back into the output N x 3 matrix.
             MatrixUtils::ColumnIntoMatrix(gradientCol, dest);
-        }
-
-        void HsMetric::ProjectSparse(const Eigen::VectorXd &gradientCol, Eigen::VectorXd &dest) const
-        {
-            size_t nRows = topLeftNumRows();
-
-            double epsilon = 1e-6;
-            if (simpleConstraints.size() > 0)
-            {
-                epsilon = 1e-10;
-            }
-
-            if (!factorizedLaplacian.initialized)
-            {
-                // Assemble the cotan Laplacian
-                std::vector<Triplet> triplets, triplets3x;
-                H1::getTriplets(triplets, mesh, geom, epsilon);
-                // Expand the matrix by 3x
-                MatrixUtils::TripleTriplets(triplets, triplets3x);
-
-                // Add constraint rows / cols for "simple" constraints included in Laplacian
-                addSimpleConstraintTriplets(triplets3x);
-                // Pre-factorize the cotan Laplacian
-                Eigen::SparseMatrix<double> L(nRows, nRows);
-                L.setFromTriplets(triplets3x.begin(), triplets3x.end());
-                factorizedLaplacian.Compute(L);
-            }
-
-            // Multiply by L^{-1} once by solving Lx = b
-            Eigen::VectorXd mid = factorizedLaplacian.Solve(gradientCol);
-
-            if (!bvh)
-            {
-                throw std::runtime_error("Must have a BVH to use sparse approximation");
-            }
-
-            else
-            {
-                if (!bct)
-                {
-                    bct = new BlockClusterTree(mesh, geom, bvh, bh_theta, 4 - 2 * getHsOrder());
-                }
-                bct->MultiplyVector3(mid, mid, BCTKernelType::FractionalOnly);
-            }
-
-            // Re-zero out Lagrange multipliers, since the first solve
-            // will have left some junk in them
-            for (size_t i = 3 * mesh->nVertices(); i < nRows; i++)
-            {
-                mid(i) = 0;
-            }
-
-            // Multiply by L^{-1} again by solving Lx = b
-            dest = factorizedLaplacian.Solve(mid);
-        }
-
-        void HsMetric::ProjectSparseWithR1Update(const Eigen::VectorXd &DE, Eigen::VectorXd &dest)
-        {
-            // We want to add a rank-1 update for DE * DE^T
-            // First just compute A^{-1} x
-            Eigen::VectorXd Ainv_x;
-            Ainv_x.setZero(DE.rows());
-            ProjectSparse(DE, Ainv_x);
-
-            double currE = 1; //energy->Value();
-
-            // Now we want to compute the numerator A^{-1} x x^T A^{-1} x
-            // Right now "dest" already holds A^{-1} x, and "DE" holds x
-            // First compute the scalar (x^T * A^{-1} * x)
-            double xT_A_x = (DE.transpose() / currE) * Ainv_x;
-            // Inner part of is x * (x^T * A^{-1} * x)
-            Eigen::VectorXd numer = ((DE / currE) * xT_A_x);
-            // Multiply by A^{-1} to get the whole thing
-            ProjectSparse(numer, numer);
-
-            // Denominator is (1 + x^T A^{-1} x)
-            double denom = (1 + xT_A_x / currE);
-
-            std::cout << "Ainv norm = " << Ainv_x.norm() << std::endl;
-            std::cout << "Update norm = " << (numer / denom).norm() << std::endl;
-
-            dest = Ainv_x - (numer / denom);
-        }
-
-        void HsMetric::ProjectSparseWithR1UpdateMat(const Eigen::MatrixXd &DE, Eigen::MatrixXd &dest)
-        {
-            // We want to add a rank-1 update for DE * DE^T
-            // First just compute A^{-1} x
-            Eigen::MatrixXd Ainv_x;
-            Ainv_x.setZero(DE.rows(), DE.cols());
-            ProjectSparseMat(DE, Ainv_x);
-
-            // Now we want to compute the numerator A^{-1} x x^T A^{-1} x
-            // Right now "Ainv_x" already holds A^{-1} x, and "DE" holds x
-            // First compute the scalar (x^T * A^{-1} * x)
-            double xT_A_x = (DE.transpose() * Ainv_x).trace();
-            std::cout << "xT_A_x = " << xT_A_x << std::endl;
-            // Inner part of is x * (x^T * A^{-1} * x)
-            Eigen::MatrixXd numer = (DE * xT_A_x);
-            // Multiply by A^{-1} to get the whole thing
-            ProjectSparseMat(numer, numer);
-
-            // Denominator is (1 + x^T A^{-1} x)
-            double denom = (1 + xT_A_x);
-
-            std::cout << "R1 update: " << numer.norm() << " / " << denom << std::endl;
-
-            std::cout << "Ainv norm = " << Ainv_x.norm() << std::endl;
-            std::cout << "Update norm = " << (numer / denom).norm() << std::endl;
-            dest = Ainv_x - (numer / denom);
-            std::cout << "Dest norm = " << dest.norm() << std::endl;
         }
 
         void HsMetric::ProjectSimpleConstraints()
