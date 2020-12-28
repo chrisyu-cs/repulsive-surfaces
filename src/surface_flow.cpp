@@ -26,6 +26,7 @@ namespace rsurfaces
         origBarycenter = meshBarycenter(geom, mesh);
         std::cout << "Original barycenter = " << origBarycenter << std::endl;
         RecenterMesh();
+        secretBarycenter = 0;
 
         ncg = 0;
     }
@@ -163,7 +164,18 @@ namespace rsurfaces
         double gNorm = l2diff.norm();
 
         std::unique_ptr<Hs::HsMetric> hs = GetMetric();
-        hs->ProjectGradientExact(l2diff, gradientProj);
+
+        Eigen::MatrixXd M = hs->GetHsMatrixConstrained();
+
+        // Flatten the gradient into a single column
+        Eigen::VectorXd gradientCol;
+        gradientCol.setZero(M.rows());
+
+        // Solve the dense system
+        MatrixUtils::MatrixIntoColumn(l2diff, gradientCol);
+        Eigen::PartialPivLU<Eigen::MatrixXd> solver = M.partialPivLu();
+        gradientCol = solver.solve(gradientCol);
+        MatrixUtils::ColumnIntoMatrix(gradientCol, gradientProj);
 
         VertexIndices inds = mesh->getVertexIndices();
 
@@ -181,6 +193,32 @@ namespace rsurfaces
         LineSearch search(mesh, geom, energies);
         search.BacktrackingLineSearch(gradientProj, initGuess, gradDot);
         geom->refreshQuantities();
+
+        // Reuse factorized matrix for constraint projection
+        gradientCol.setZero();
+        size_t curRow = 0;
+
+        for (Constraints::SimpleProjectorConstraint *cons : simpleConstraints)
+        {
+            cons->addErrorValues(gradientCol, mesh, geom, curRow);
+            curRow += cons->nRows();
+        }
+
+        for (const ConstraintPack &c : schurConstraints)
+        {
+            c.constraint->addErrorValues(gradientCol, mesh, geom, curRow);
+            curRow += c.constraint->nRows();
+        }
+
+        gradientCol = solver.solve(gradientCol);
+
+        VertexIndices verts = mesh->getVertexIndices();
+        for (GCVertex v : mesh->vertices())
+        {
+            int base = 3 * verts[v];
+            Vector3 vertCorr{gradientCol(base), gradientCol(base + 1), gradientCol(base + 2)};
+            geom->inputVertexPositions[v] += vertCorr;
+        }
 
         long timeEnd = currentTimeMilliseconds();
         std::cout << "  Total time for gradient step = " << (timeEnd - timeStart) << " ms" << std::endl;
@@ -297,7 +335,14 @@ namespace rsurfaces
         LineSearch search(mesh, geom, energies);
         search.BacktrackingLineSearch(gradientProj, initGuess, gradDot);
 
-        // TODO: constraint projection
+        // Constraint projection
+        if (schurConstraints.size() > 0)
+        {
+            hs->ResetSchurComplement();
+            std::cout << "  Projecting Newton constraints..." << std::endl;
+            Hs::ProjectSchurConstraints<Hs::SparseInverse>(*hs, 1);
+        }
+        hs->ProjectSimpleConstraints();
 
         std::cout << "  Mesh total volume = " << totalVolume(geom, mesh) << std::endl;
         std::cout << "  Mesh total area = " << totalArea(geom, mesh) << std::endl;

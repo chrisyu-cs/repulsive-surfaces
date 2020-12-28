@@ -38,12 +38,14 @@ namespace rsurfaces
             // Invert the "saddle matrix" now:
             // the block of M^{-1} we want is A^{-1} + A^{-1} C^T (M/A)^{-1} C A^{-1}
             Eigen::VectorXd tempCol = curCol;
+            std::cout << "  Applying metric inverse for gradient..." << std::endl;
             Inverse::Apply(hs, tempCol, tempCol);
 
             // Now we compute the correction
             Eigen::VectorXd B_MAi_C_Ai_x;
             UnprojectedSchurCorrection<Inverse>(hs, tempCol, B_MAi_C_Ai_x);
             // Apply A^{-1} from scratch one more time
+            std::cout << "  Applying metric inverse for Schur complement orthogonalization..." << std::endl;
             Inverse::Apply(hs, B_MAi_C_Ai_x, B_MAi_C_Ai_x);
 
             dest = tempCol + B_MAi_C_Ai_x;
@@ -108,7 +110,6 @@ namespace rsurfaces
 
                 // Apply the correction to the vertex positions
                 VertexIndices verts = hs.mesh->getVertexIndices();
-                size_t nVerts = hs.mesh->nVertices();
                 for (GCVertex v : hs.mesh->vertices())
                 {
                     int base = 3 * verts[v];

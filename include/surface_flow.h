@@ -4,6 +4,7 @@
 
 #include "rsurface_types.h"
 #include "sobolev/constraints.h"
+#include "sobolev/all_constraints.h"
 #include "surface_energy.h"
 #include "line_search.h"
 #include "sobolev/hs_ncg.h"
@@ -27,14 +28,14 @@ namespace rsurfaces
         void RecenterMesh();
         void ResetAllConstraints();
         void ResetAllPotentials();
-        
+
         void AssembleGradients(Eigen::MatrixXd &dest);
         std::unique_ptr<Hs::HsMetric> GetMetric();
 
         void UpdateEnergies();
 
         template <typename Constraint>
-        Constraint* addSchurConstraint(MeshPtr &mesh, GeomPtr &geom, double multiplier, long iterations)
+        Constraint *addSchurConstraint(MeshPtr &mesh, GeomPtr &geom, double multiplier, long iterations)
         {
             Constraint *c = new Constraint(mesh, geom);
             double stepSize = 0;
@@ -49,13 +50,12 @@ namespace rsurfaces
         }
 
         template <typename Constraint>
-        Constraint* addSimpleConstraint(MeshPtr &mesh, GeomPtr &geom)
+        Constraint *addSimpleConstraint(MeshPtr &mesh, GeomPtr &geom)
         {
             Constraint *c = new Constraint(mesh, geom);
             simpleConstraints.push_back(c);
             return c;
         }
-
 
     private:
         std::vector<SurfaceEnergy *> energies;
@@ -64,9 +64,10 @@ namespace rsurfaces
         Eigen::MatrixXd origPositions;
         unsigned int stepCount;
         std::vector<ConstraintPack> schurConstraints;
-        std::vector<Constraints::SimpleProjectorConstraint*> simpleConstraints;
+        std::vector<Constraints::SimpleProjectorConstraint *> simpleConstraints;
         Vector3 origBarycenter;
-        Hs::HsNCG* ncg;
+        Hs::HsNCG *ncg;
+        Constraints::BarycenterComponentsConstraint *secretBarycenter;
 
         double evaluateEnergy();
 

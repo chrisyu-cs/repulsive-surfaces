@@ -85,5 +85,11 @@ namespace rsurfaces
             output = solver.solve(rhs);
         }
 
+        void SolveDenseSystem(Eigen::PartialPivLU<Eigen::MatrixXd> &solver, const Eigen::MatrixXd &M, Eigen::VectorXd &rhs, Eigen::VectorXd &output)
+        {
+            solver.compute(M);
+            output = solver.solve(rhs);
+        }
+
     } // namespace MatrixUtils
 } // namespace rsurfaces

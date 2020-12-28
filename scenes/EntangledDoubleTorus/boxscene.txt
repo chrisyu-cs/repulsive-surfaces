@@ -1,0 +1,7 @@
+repel_mesh doubletorus1.6k.obj 6 12
+constrain barycenter
+constrain area
+obstacle box.obj 0.1
+# minimize area_deviation 1
+iteration_limit 600
+

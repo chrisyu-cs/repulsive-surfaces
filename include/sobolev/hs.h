@@ -6,6 +6,7 @@
 #include "block_cluster_tree.h"
 #include "hs_operators.h"
 #include "sobolev/h1.h"
+#include "sobolev/all_constraints.h"
 
 #include <Eigen/Sparse>
 
@@ -91,16 +92,17 @@ namespace rsurfaces
             // Build just the constraint block of the saddle matrix.
             Eigen::SparseMatrix<double> GetConstraintBlock(bool includeNewton = true) const;
 
-            void ProjectGradientExact(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest) const;
+            void ProjectGradientExact(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, Eigen::PartialPivLU<Eigen::MatrixXd> &solver) const;
 
             void ProjectSimpleConstraints();
             void ProjectSimpleConstraintsWithSaddle();
 
             template <typename Rhs>
-            inline Rhs InvertMetricTemplated(const Rhs &gradient) const
+            inline Rhs InvertSparseForIterative(const Rhs &gradient) const
             {
+                double epsilon = (mesh->nConnectedComponents() > 1) ? 1e-5 : 1e-10;
                 Eigen::VectorXd temp = gradient;
-                ProjectSparse(temp, temp);
+                ProjectSparse(temp, temp, epsilon);
                 return Rhs(temp);
             }
 
@@ -131,19 +133,7 @@ namespace rsurfaces
 
             inline size_t getNumConstraints() const
             {
-                size_t nConstraints = 0;
-
-                for (Constraints::SimpleProjectorConstraint *cons : simpleConstraints)
-                {
-                    nConstraints += cons->nRows();
-                }
-
-                for (const ConstraintPack &schur : newtonConstraints)
-                {
-                    nConstraints += schur.constraint->nRows();
-                }
-
-                return nConstraints;
+                return simpleRows + newtonRows;
             }
 
             inline size_t getNumRows() const
@@ -173,12 +163,24 @@ namespace rsurfaces
                 simpleConstraints = simples;
             }
 
-            size_t topLeftNumRows() const;
+            inline size_t topLeftNumRows(bool subComponentBarycenters = true) const
+            {
+                return 3 * mesh->nVertices() + simpleRows;
+            }
+
             MeshPtr mesh;
             GeomPtr geom;
 
             std::vector<Constraints::SimpleProjectorConstraint *> simpleConstraints;
             std::vector<ConstraintPack> newtonConstraints;
+
+            inline void ResetSchurComplement()
+            {
+                if (schurComplementComputed)
+                {
+                    schurComplementComputed = false;
+                }
+            }
 
             template <typename Inverse>
             inline SchurComplement &Schur() const
@@ -198,12 +200,16 @@ namespace rsurfaces
 
             // Project the gradient into Hs by using the L^{-1} M L^{-1} factorization
             template <typename V, typename Dst>
-            void ProjectSparse(const V &gradient, Dst &dest) const;
+            void ProjectSparse(const V &gradient, Dst &dest, double epsilon = 1e-10) const;
             // Same as above but with the input/output being matrices
-            void ProjectSparseMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest) const;
+            void ProjectSparseMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double epsilon = 1e-10) const;
 
             BVHNode6D *bvh;
             double bh_theta;
+            double bct_theta;
+
+            size_t simpleRows;
+            size_t newtonRows;
 
             SurfaceEnergy *energy;
             bool usedDefaultConstraint;
@@ -215,15 +221,9 @@ namespace rsurfaces
         };
 
         template <typename V, typename Dst>
-        void HsMetric::ProjectSparse(const V &gradientCol, Dst &dest) const
+        void HsMetric::ProjectSparse(const V &gradientCol, Dst &dest, double epsilon) const
         {
             size_t nRows = topLeftNumRows();
-
-            double epsilon = 1e-6;
-            if (simpleConstraints.size() > 0)
-            {
-                epsilon = 1e-10;
-            }
 
             if (!factorizedLaplacian.initialized)
             {
@@ -283,8 +283,7 @@ namespace rsurfaces
             }
             if (compNRows == 0)
             {
-                std::cout << "No constraints provided to Schur complement." << std::endl;
-                throw 1;
+                throw std::runtime_error("No constraints provided to Schur complement.");
             }
 
             dest.C.setZero(compNRows, bigNRows);
@@ -300,8 +299,8 @@ namespace rsurfaces
 
             // https://en.wikipedia.org/wiki/Schur_complement
             // We want to compute (M/A) = D - C A^{-1} B.
-            // In our case, D = 0, and B = C^T, so this is C A^{-1} C^T.
-            // Unfortunately this means we have to apply A^{-1} once for each column of C^T,
+            // In our case, D = 0, and B = C^T, so this is -C A^{-1} C^T.
+            // Unfortunately this means we have to apply A^{-1} once to each column of C^T,
             // which could get expensive if we have too many constraints.
 
             // First allocate some space for a single column
@@ -319,6 +318,7 @@ namespace rsurfaces
                 {
                     curCol(i) = dest.C(r, i);
                 }
+                std::cout << "  Applying metric inverse to compute Schur complement row " << (r + 1) << "..." << std::endl;
                 Inverse::Apply(*hs, curCol, curCol);
                 // Copy the column into the column of A^{-1} C^T
                 for (size_t i = 0; i < bigNRows; i++)
@@ -333,7 +333,7 @@ namespace rsurfaces
 
         class SparseInverse
         {
-            public:
+        public:
             template <typename V, typename Dest>
             static void Apply(const HsMetric &hs, const V &gradient, Dest &dest)
             {

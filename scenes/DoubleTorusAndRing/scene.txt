@@ -1,3 +1,4 @@
-repel_mesh DoubleTorusAndRingMesh_14464F.obj 6 12
+repel_mesh remeshed.obj 6 12
 constrain barycenter
+constrain area
 iteration_limit 200

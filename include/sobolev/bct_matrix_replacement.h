@@ -144,7 +144,8 @@ namespace rsurfaces
             template <typename Rhs, typename Dest>
             void _solve_impl(const Rhs &b, Dest &x) const
             {
-                x = hs->InvertMetricTemplated(b);
+                std::cout << "  * CG iteration " << (count++) << "...\r" << std::flush;
+                x = hs->InvertSparseForIterative(b);
             }
 
             template <typename Rhs>
@@ -157,6 +158,8 @@ namespace rsurfaces
             const Hs::HsMetric *hs;
             const std::vector<ConstraintPack> schurConstraints;
             SchurComplement schur;
+
+            mutable size_t count = 0;
 
             Eigen::ComputationInfo info() { return Eigen::Success; }
         };

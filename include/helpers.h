@@ -135,6 +135,14 @@ namespace rsurfaces
         }
     }
 
+    inline void translatePoints(GeomPtr &geom, MeshPtr &mesh, Vector3 offset, std::vector<GCVertex> &points)
+    {
+        for (GCVertex v : points)
+        {
+            geom->inputVertexPositions[v] += offset;
+        }
+    }
+
     inline double MeanCurvature(GCVertex v, const MeshPtr &mesh, const GeomPtr &geom)
     {
         double sum = 0;
@@ -152,6 +160,19 @@ namespace rsurfaces
         Vector3 center{0, 0, 0};
         double sumWeight = 0;
         for (GCVertex v : mesh->vertices())
+        {
+            center += geom->inputVertexPositions[v] * geom->vertexDualAreas[v];
+            sumWeight += geom->vertexDualAreas[v];
+        }
+        return center / sumWeight;
+    }
+
+    template <typename GPtr, typename MPtr>
+    inline Vector3 barycenterOfPoints(GPtr const &geom, MPtr const &mesh, std::vector<GCVertex> &points)
+    {
+        Vector3 center{0, 0, 0};
+        double sumWeight = 0;
+        for (GCVertex v : points)
         {
             center += geom->inputVertexPositions[v] * geom->vertexDualAreas[v];
             sumWeight += geom->vertexDualAreas[v];

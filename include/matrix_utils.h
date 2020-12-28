@@ -48,5 +48,7 @@ namespace rsurfaces
 
         void SolveSparseSystem(const Eigen::SparseMatrix<double> &M, Eigen::VectorXd &rhs, Eigen::VectorXd &output);
         void SolveDenseSystem(const Eigen::MatrixXd &M, Eigen::VectorXd &rhs, Eigen::VectorXd &output);
+        void SolveDenseSystem(Eigen::PartialPivLU<Eigen::MatrixXd> &solver, const Eigen::MatrixXd &M, Eigen::VectorXd &rhs, Eigen::VectorXd &output);
+
     } // namespace MatrixUtils
 } // namespace rsurfaces

@@ -1,6 +1,5 @@
 #include "sobolev/hs.h"
 #include "helpers.h"
-#include "sobolev/all_constraints.h"
 #include "spatial/convolution.h"
 #include "spatial/convolution_kernel.h"
 
@@ -160,6 +159,22 @@ namespace rsurfaces
             bvh = energy_->GetBVH();
             bh_theta = energy_->GetTheta();
             bct = 0;
+
+            simpleRows = 0;
+            for (Constraints::SimpleProjectorConstraint *spc : simpleConstraints)
+            {
+                simpleRows += spc->nRows();
+                if (dynamic_cast<Constraints::BarycenterConstraint3X *>(spc))
+                {
+                    std::cout << "TODO: swap barycenter for component version?" << std::endl;
+                }
+            }
+
+            newtonRows = 0;
+            for (const ConstraintPack &schur : newtonConstraints)
+            {
+                newtonRows += schur.constraint->nRows();
+            }
         }
 
         HsMetric::~HsMetric()
@@ -219,16 +234,6 @@ namespace rsurfaces
                     AddTriangleCenterTerm(M, s, f1, f2, geom, indices, false);
                 }
             }
-        }
-
-        size_t HsMetric::topLeftNumRows() const
-        {
-            size_t nConstraints = 0;
-            for (SimpleProjectorConstraint *spc : simpleConstraints)
-            {
-                nConstraints += spc->nRows();
-            }
-            return 3 * mesh->nVertices() + nConstraints;
         }
 
         void HsMetric::addSimpleConstraintEntries(Eigen::MatrixXd &M) const
@@ -308,7 +313,7 @@ namespace rsurfaces
             return C;
         }
 
-        void HsMetric::ProjectGradientExact(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest) const
+        void HsMetric::ProjectGradientExact(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, Eigen::PartialPivLU<Eigen::MatrixXd> &solver) const
         {
             Eigen::MatrixXd M = GetHsMatrixConstrained();
 
@@ -321,14 +326,14 @@ namespace rsurfaces
             MatrixUtils::ColumnIntoMatrix(gradientCol, dest);
         }
 
-        void HsMetric::ProjectSparseMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest) const
+        void HsMetric::ProjectSparseMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double epsilon) const
         {
             // Reshape the gradient N x 3 matrix into a 3N-vector.
             Eigen::VectorXd gradientCol, gradientColProj;
             gradientCol.setZero(topLeftNumRows());
             MatrixUtils::MatrixIntoColumn(gradient, gradientCol);
 
-            ProjectSparse(gradientCol, gradientCol);
+            ProjectSparse(gradientCol, gradientCol, epsilon);
 
             // Reshape it back into the output N x 3 matrix.
             MatrixUtils::ColumnIntoMatrix(gradientCol, dest);

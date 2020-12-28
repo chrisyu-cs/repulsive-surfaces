@@ -1336,6 +1336,8 @@ int main(int argc, char **argv)
     std::cout << "OMP autodetected " << default_threads << " threads." << std::endl;
     omp_set_num_threads(default_threads / 2 + 2);
 
+    polyscope::options::programName = "Repulsive Surfaces";
+
     // Parse args
     try
     {
@@ -1360,7 +1362,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    double theta = 1;
+    double theta = 0.75;
     if (!thetaFlag)
     {
         std::cout << "Barnes-Hut theta value not specified; defaulting to theta = " << theta << std::endl;

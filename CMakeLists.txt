@@ -87,6 +87,7 @@ set(SRCS
   src/sobolev/hs_schur.cpp
   src/sobolev/constraints.cpp
   src/sobolev/constraints/barycenter.cpp
+  src/sobolev/constraints/barycenter_components.cpp
   src/sobolev/constraints/scaling.cpp
   src/sobolev/constraints/total_area.cpp
   src/sobolev/constraints/total_volume.cpp
