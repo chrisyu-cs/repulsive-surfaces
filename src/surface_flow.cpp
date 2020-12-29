@@ -338,9 +338,9 @@ namespace rsurfaces
         // Constraint projection
         if (schurConstraints.size() > 0)
         {
-            hs->ResetSchurComplement();
+            // hs->ResetSchurComplement();
             std::cout << "  Projecting Newton constraints..." << std::endl;
-            Hs::ProjectSchurConstraints<Hs::SparseInverse>(*hs, 1);
+            Hs::ProjectSchurConstraints<Hs::IterativeInverse>(*hs, 1);
         }
         hs->ProjectSimpleConstraints();
 

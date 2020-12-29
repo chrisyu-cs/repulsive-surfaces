@@ -683,6 +683,7 @@ namespace rsurfaces
         std::cout << "Projecting using dense system..." << std::endl;
         long denseStart = currentTimeMilliseconds();
         Eigen::MatrixXd dense = hs.GetHsMatrixConstrained();
+        std::cout << "Computed dense matrix" << std::endl;
         MatrixUtils::SolveDenseSystem(dense, gVec, denseRes);
         long denseEnd = currentTimeMilliseconds();
         std::cout << "Finished in " << (denseEnd - denseStart) << " ms." << std::endl;
@@ -1338,6 +1339,8 @@ int main(int argc, char **argv)
 
     polyscope::options::programName = "Repulsive Surfaces";
 
+    std::cout << "Using Eigen version " << EIGEN_WORLD_VERSION << "." << EIGEN_MAJOR_VERSION << "." << EIGEN_MINOR_VERSION << std::endl;
+
     // Parse args
     try
     {
@@ -1362,7 +1365,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    double theta = 0.75;
+    double theta = 0.5;
     if (!thetaFlag)
     {
         std::cout << "Barnes-Hut theta value not specified; defaulting to theta = " << theta << std::endl;

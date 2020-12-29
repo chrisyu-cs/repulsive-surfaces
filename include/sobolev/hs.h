@@ -197,6 +197,7 @@ namespace rsurfaces
             void addSimpleConstraintEntries(Eigen::MatrixXd &M) const;
             void addSimpleConstraintTriplets(std::vector<Triplet> &triplets) const;
             void initFromEnergy(SurfaceEnergy *energy_);
+            void precomputeSizes();
 
             // Project the gradient into Hs by using the L^{-1} M L^{-1} factorization
             template <typename V, typename Dst>

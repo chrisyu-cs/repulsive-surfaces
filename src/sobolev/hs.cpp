@@ -141,6 +141,7 @@ namespace rsurfaces
             // Remember to delete our constraint if we made our own
             usedDefaultConstraint = true;
             schurComplementComputed = false;
+            precomputeSizes();
         }
 
         HsMetric::HsMetric(SurfaceEnergy *energy_, std::vector<SimpleProjectorConstraint *> &spcs, std::vector<ConstraintPack> &schurs)
@@ -150,6 +151,7 @@ namespace rsurfaces
             energy = energy_;
             usedDefaultConstraint = false;
             schurComplementComputed = false;
+            precomputeSizes();
         }
 
         void HsMetric::initFromEnergy(SurfaceEnergy *energy_)
@@ -159,7 +161,10 @@ namespace rsurfaces
             bvh = energy_->GetBVH();
             bh_theta = energy_->GetTheta();
             bct = 0;
+        }
 
+        void HsMetric::precomputeSizes()
+        {
             simpleRows = 0;
             for (Constraints::SimpleProjectorConstraint *spc : simpleConstraints)
             {
