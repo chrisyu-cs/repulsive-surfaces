@@ -180,6 +180,58 @@ namespace rsurfaces
         return center / sumWeight;
     }
 
+    template <typename GPtr, typename MPtr, typename Src>
+    inline Vector3 averageOfVectors(GPtr const &geom, MPtr const &mesh, Src const &vec)
+    {
+        Vector3 sum{0, 0, 0};
+        double sumWeight = 0;
+        for (size_t i = 0; i < mesh->nVertices(); i++)
+        {
+            Vector3 val = Vector3{vec(3 * i), vec(3 * i + 1), vec(3 * i + 2)};
+            GCVertex v = mesh->vertex(i);
+            sum += val * geom->vertexDualAreas[v];
+            sumWeight += geom->vertexDualAreas[v];
+        }
+        return sum / sumWeight;
+    }
+
+    template <typename GPtr, typename MPtr>
+    inline Vector3 averageOfMatrixRows(GPtr const &geom, MPtr const &mesh, Eigen::MatrixXd const &mat)
+    {
+        Vector3 sum{0, 0, 0};
+        double sumWeight = 0;
+
+        for (size_t i = 0; i < mesh->nVertices(); i++)
+        {
+            GCVertex v = mesh->vertex(i);
+            Vector3 val = Vector3{mat(i, 0), mat(i, 1), mat(i, 2)};
+            sum += val * geom->vertexDualAreas[v];
+            sumWeight += geom->vertexDualAreas[v];
+        }
+        return sum / sumWeight;
+    }
+
+    template <typename Dst>
+    inline void addShiftToVectors(Dst &vec, size_t nTriples, Vector3 shift)
+    {
+        for (size_t i = 0; i < nTriples; i++)
+        {
+            vec(3 * i) += shift.x;
+            vec(3 * i + 1) += shift.y;
+            vec(3 * i + 2) += shift.z;
+        }
+    }
+
+    inline void addShiftToMatrixRows(Eigen::MatrixXd &mat, size_t nRows, Vector3 shift)
+    {
+        for (size_t i = 0; i < nRows; i++)
+        {
+            mat(i, 0) += shift.x;
+            mat(i, 1) += shift.y;
+            mat(i, 2) += shift.z;
+        }
+    }
+
     inline Vector3 faceNormal(GeomPtr const &geom, GCFace f)
     {
         return geom->faceNormals[f];

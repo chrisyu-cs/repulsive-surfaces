@@ -17,6 +17,11 @@ namespace rsurfaces
             virtual size_t nRows();
             virtual void ProjectConstraint(MeshPtr &mesh, GeomPtr &geom);
 
+            inline void addShiftToCenter(Vector3 shift)
+            {
+                initValue += shift;
+            }
+
         private:
             Vector3 initValue;
         };

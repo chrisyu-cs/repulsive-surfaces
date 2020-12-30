@@ -1208,6 +1208,7 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::sce
 
     SurfaceFlow *flow = new SurfaceFlow(energy);
     bool kernelRemoved = false;
+    flow->allowBarycenterShift = scene.allowBarycenterShift;
     // Set these up here, so that we can aggregate all vertex pins into the same constraint
     Constraints::VertexPinConstraint *pinC = 0;
     Constraints::VertexNormalConstraint *normC = 0;

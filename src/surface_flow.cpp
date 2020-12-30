@@ -143,7 +143,8 @@ namespace rsurfaces
     std::unique_ptr<Hs::HsMetric> SurfaceFlow::GetMetric()
     {
         BarnesHutTPEnergy6D *bhEnergy = dynamic_cast<BarnesHutTPEnergy6D *>(energies[0]);
-        return std::unique_ptr<Hs::HsMetric>(new Hs::HsMetric(bhEnergy, simpleConstraints, schurConstraints));
+        std::unique_ptr<Hs::HsMetric> hs(new Hs::HsMetric(bhEnergy, simpleConstraints, schurConstraints));
+        return hs;
     }
 
     void SurfaceFlow::StepProjectedGradientExact()
@@ -255,9 +256,22 @@ namespace rsurfaces
         double gNorm = l2diff.norm();
 
         std::unique_ptr<Hs::HsMetric> hs = GetMetric();
+        hs->allowBarycenterShift = allowBarycenterShift;
         printSolveInfo(hs->newtonConstraints.size());
 
+        Vector3 shift{0, 0, 0};
+        if (allowBarycenterShift)
+        {
+            shift = averageOfMatrixRows(geom, mesh, l2diff);
+            std::cout << "Average shift of L2 diff = " << shift << std::endl;
+        }
+
         Hs::ProjectViaSchur<Hs::SparseInverse>(*hs, l2diff, gradientProj);
+
+        if (allowBarycenterShift)
+        {
+            addShiftToMatrixRows(gradientProj, mesh->nVertices(), shift);
+        }
 
         VertexIndices inds = mesh->getVertexIndices();
 
@@ -273,22 +287,21 @@ namespace rsurfaces
 
         // Take the step using line search
         LineSearch search(mesh, geom, energies);
-        search.BacktrackingLineSearch(gradientProj, initGuess, gradDot);
+        double delta = search.BacktrackingLineSearch(gradientProj, initGuess, gradDot);
 
         if (schurConstraints.size() > 0)
         {
             Hs::ProjectSchurConstraints<Hs::SparseInverse>(*hs, 1);
         }
+
+        if (allowBarycenterShift)
+        {
+            std::cout << "Shifting barycenter by " << shift * delta << std::endl;
+            hs->shiftBarycenterConstraint(-delta * shift);
+        }
         hs->ProjectSimpleConstraints();
 
-        for (ConstraintPack &c : schurConstraints)
-        {
-            if (c.iterationsLeft > 0)
-            {
-                c.iterationsLeft--;
-                c.constraint->incrementTargetValue(c.stepSize);
-            }
-        }
+        incrementSchurConstraints();
 
         std::cout << "  Mesh total volume = " << totalVolume(geom, mesh) << std::endl;
         std::cout << "  Mesh total area = " << totalArea(geom, mesh) << std::endl;
@@ -317,7 +330,19 @@ namespace rsurfaces
         std::unique_ptr<Hs::HsMetric> hs = GetMetric();
         printSolveInfo(hs->newtonConstraints.size());
 
+        Vector3 shift{0, 0, 0};
+        if (allowBarycenterShift)
+        {
+            shift = averageOfMatrixRows(geom, mesh, l2diff);
+            std::cout << "Average shift of L2 diff = " << shift << std::endl;
+        }
+
         Hs::ProjectConstrainedHsIterativeMat(*hs, l2diff, gradientProj);
+
+        if (allowBarycenterShift)
+        {
+            addShiftToMatrixRows(gradientProj, mesh->nVertices(), shift);
+        }
 
         VertexIndices inds = mesh->getVertexIndices();
 
@@ -333,7 +358,7 @@ namespace rsurfaces
 
         // Take the step using line search
         LineSearch search(mesh, geom, energies);
-        search.BacktrackingLineSearch(gradientProj, initGuess, gradDot);
+        double delta = search.BacktrackingLineSearch(gradientProj, initGuess, gradDot);
 
         // Constraint projection
         if (schurConstraints.size() > 0)
@@ -342,7 +367,14 @@ namespace rsurfaces
             std::cout << "  Projecting Newton constraints..." << std::endl;
             Hs::ProjectSchurConstraints<Hs::IterativeInverse>(*hs, 1);
         }
+        if (allowBarycenterShift)
+        {
+            std::cout << "Shifting barycenter by " << shift * delta << std::endl;
+            hs->shiftBarycenterConstraint(-delta * shift);
+        }
         hs->ProjectSimpleConstraints();
+
+        incrementSchurConstraints();
 
         std::cout << "  Mesh total volume = " << totalVolume(geom, mesh) << std::endl;
         std::cout << "  Mesh total area = " << totalArea(geom, mesh) << std::endl;

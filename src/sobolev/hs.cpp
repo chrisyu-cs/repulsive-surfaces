@@ -141,6 +141,7 @@ namespace rsurfaces
             // Remember to delete our constraint if we made our own
             usedDefaultConstraint = true;
             schurComplementComputed = false;
+            allowBarycenterShift = false;
             precomputeSizes();
         }
 
@@ -342,6 +343,18 @@ namespace rsurfaces
 
             // Reshape it back into the output N x 3 matrix.
             MatrixUtils::ColumnIntoMatrix(gradientCol, dest);
+        }
+
+        void HsMetric::shiftBarycenterConstraint(Vector3 shift)
+        {
+            for (SimpleProjectorConstraint *spc : simpleConstraints)
+            {
+                Constraints::BarycenterConstraint3X *bcenter = dynamic_cast<Constraints::BarycenterConstraint3X *>(spc);
+                if (bcenter)
+                {
+                    bcenter->addShiftToCenter(shift);
+                }
+            }
         }
 
         void HsMetric::ProjectSimpleConstraints()

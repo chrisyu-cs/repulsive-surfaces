@@ -1,6 +1,7 @@
 repel_mesh largesphere.obj 6 12
-constrain volume 0.15 400
+constrain volume 0.2 300
 constrain barycenter
 obstacle bunny.obj 0.1 centered
-iteration_limit 500
+iteration_limit 350
+allow_barycenter_shift
 

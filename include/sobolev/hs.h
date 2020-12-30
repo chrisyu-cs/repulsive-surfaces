@@ -170,6 +170,7 @@ namespace rsurfaces
 
             MeshPtr mesh;
             GeomPtr geom;
+            bool allowBarycenterShift;
 
             std::vector<Constraints::SimpleProjectorConstraint *> simpleConstraints;
             std::vector<ConstraintPack> newtonConstraints;
@@ -192,6 +193,7 @@ namespace rsurfaces
                 }
                 return schurComplement;
             }
+            void shiftBarycenterConstraint(Vector3 shift);
 
         private:
             void addSimpleConstraintEntries(Eigen::MatrixXd &M) const;

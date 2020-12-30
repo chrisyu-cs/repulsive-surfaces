@@ -57,6 +57,8 @@ namespace rsurfaces
             return c;
         }
 
+        bool allowBarycenterShift;
+
     private:
         std::vector<SurfaceEnergy *> energies;
         MeshPtr mesh;
@@ -69,6 +71,19 @@ namespace rsurfaces
         Hs::HsNCG *ncg;
         Constraints::BarycenterComponentsConstraint *secretBarycenter;
 
+
+        inline void incrementSchurConstraints()
+        {
+            for (ConstraintPack &c : schurConstraints)
+            {
+                if (c.iterationsLeft > 0)
+                {
+                    c.iterationsLeft--;
+                    c.constraint->incrementTargetValue(c.stepSize);
+                }
+            }
+        }
+        
         double evaluateEnergy();
 
         double prevStep;

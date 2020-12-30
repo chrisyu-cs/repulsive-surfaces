@@ -153,6 +153,10 @@ namespace rsurfaces
             {
                 data.iterationLimit = stoi(parts[1]);
             }
+            else if (parts[0] == "allow_barycenter_shift")
+            {
+                data.allowBarycenterShift = true;
+            }
             else if (parts[0] == "constrain")
             {
                 ConstraintData consData{getConstraintType(parts[1]), 1, 0};

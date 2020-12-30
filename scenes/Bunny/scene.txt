@@ -2,6 +2,7 @@ repel_mesh bunny.obj 6 12
 constrain area
 constrain volume
 constrain barycenter
+allow_barycenter_shift
 # minimize volume_deviation 100
 # minimize area_deviation 100
 # minimize squared_error 0.2

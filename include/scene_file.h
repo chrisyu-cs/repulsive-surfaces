@@ -55,6 +55,7 @@ namespace rsurfaces
             std::string meshName;
             double alpha;
             double beta;
+            bool allowBarycenterShift = false;
             std::vector<ObstacleData> obstacles;
             std::vector<ConstraintData> constraints;
             std::vector<PotentialData> potentials;
