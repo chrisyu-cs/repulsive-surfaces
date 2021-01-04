@@ -305,7 +305,7 @@ namespace rsurfaces
             // Add the "symmetric" term m Q^T Q b
             w += QTQ_weight * barycenterQ.transpose() * barycenterQ * gradientCol;
 
-            return Rhs(gradientCol);
+            return Rhs(w);
         }
 
         template <typename V, typename Dst>

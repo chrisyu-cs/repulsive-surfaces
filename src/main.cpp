@@ -653,6 +653,57 @@ namespace rsurfaces
         delete bct;
     }
 
+    void MainApp::TestCGMetric()
+    {
+        SurfaceEnergy *energy = flow->BaseEnergy();
+        energy->Update();
+        std::vector<ConstraintPack> noSchur;
+        Hs::HsMetric hs(energy, flow->getSimpleConstraints(), noSchur);
+        Eigen::VectorXd b1;
+        b1.setRandom(hs.getNumRows());
+        Eigen::VectorXd b2;
+        b2.setRandom(hs.getNumRows());
+
+        Eigen::VectorXd Pb1 = hs.InvertSparseBarycenterMode(b1);
+        Eigen::VectorXd Pb2 = hs.InvertSparseBarycenterMode(b2);
+
+        std::cout << "b1^T P b2 = " << b1.dot(Pb2) << std::endl;
+        std::cout << "b2^T P b1 = " << b2.dot(Pb1) << std::endl;
+
+        Eigen::VectorXd M, M_inv;
+        M.setZero(hs.getNumRows());
+        M_inv.setZero(hs.getNumRows());
+        VertexIndices inds = mesh->getVertexIndices();
+
+        for (GCVertex v : mesh->vertices())
+        {
+            size_t baserow = 3 * inds[v];
+            double wt = geom->vertexDualAreas[v];
+            M(baserow) = wt;
+            M(baserow + 1) = wt;
+            M(baserow + 2) = wt;
+            M_inv(baserow) = 1.0 / wt;
+            M_inv(baserow + 1) = 1.0 / wt;
+            M_inv(baserow + 2) = 1.0 / wt;
+        }
+
+        Eigen::SparseMatrix<double> B = hs.BarycenterQ() * M.asDiagonal();
+        Eigen::VectorXd Qb1 = hs.BarycenterQ() * b1;
+        Eigen::VectorXd BMinvb1 = B * M_inv.asDiagonal() * b1;
+        Eigen::VectorXd BPb1 = B * Pb1;
+
+        std::cout << "Rows: " << Qb1.rows() << ", " << BMinvb1.rows() << ", " << BPb1.rows() << std::endl;
+
+        Eigen::MatrixXd comparison(3, 3);
+        comparison.col(0) = Qb1;
+        comparison.col(1) = BMinvb1;
+        comparison.col(2) = BPb1;
+
+        std::cout << "Comparison of Qb, B M_inv b, BPb:\n" << comparison << std::endl;
+
+
+    }
+
     void MainApp::TestIterative()
     {
         geom->refreshQuantities();
@@ -983,6 +1034,10 @@ void customCallback()
     if (ImGui::Button("Test iterative", ImVec2{ITEM_WIDTH, 0}))
     {
         MainApp::instance->TestIterative();
+    }
+    if (ImGui::Button("Test CG preconditioner", ImVec2{ITEM_WIDTH, 0}))
+    {
+        MainApp::instance->TestCGMetric();
     }
 
     if (ImGui::Button("Test B-H", ImVec2{ITEM_WIDTH, 0}))

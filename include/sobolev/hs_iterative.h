@@ -27,8 +27,8 @@ namespace rsurfaces
             bct->PremultiplyAf1(BCTKernelType::HighOrder);
             bct->PremultiplyAf1(BCTKernelType::LowOrder);
 
-            Eigen::ConjugateGradient<BCTMatrixReplacement, Eigen::Lower | Eigen::Upper, SparseHsPreconditioner> cg;
-            // Eigen::GMRES<BCTMatrixReplacement, SparseHsPreconditioner> cg;
+            // Eigen::ConjugateGradient<BCTMatrixReplacement, Eigen::Lower | Eigen::Upper, SparseHsPreconditioner> cg;
+            Eigen::GMRES<BCTMatrixReplacement, SparseHsPreconditioner> cg;
             cg.compute(fracL);
             
 

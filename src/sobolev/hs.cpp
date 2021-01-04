@@ -414,10 +414,11 @@ namespace rsurfaces
             {
                 // For Q we don't need to do anything
                 Triplet q_v = qTripletList[inds[v]];
-
-                size_t laplaceBaseRow = mesh->nVertices();
-                size_t lr = laplaceBaseRow + q_v.row();
+                // B goes in the Laplacian, so we offset the rows by V
+                size_t lr = mesh->nVertices() + q_v.row();
                 size_t lc = q_v.col();
+                // B = QM, where M is just the masses; this is equivalent
+                // to multiplying each row by the vertex mass
                 double lval = q_v.value() * geom->vertexDualAreas[v];
                 // Add symmetrically
                 laplaceTriplets.push_back(Triplet(lr, lc, lval));
