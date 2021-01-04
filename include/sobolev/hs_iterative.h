@@ -22,6 +22,7 @@ namespace rsurfaces
             fracL.addTree(bct);
             fracL.addConstraintBlock(constraintBlock);
             fracL.addMetric(&hs);
+            fracL.useBarycenterTrick = true;
 
             bct->recomputeBarycenters();
             bct->PremultiplyAf1(BCTKernelType::HighOrder);
@@ -36,7 +37,7 @@ namespace rsurfaces
             cg.setTolerance(1e-1);
             cg.setMaxIterations(20);
             temp = cg.solveWithGuess(gradient, temp);
-            std::cout << "  * Converged in " << cg.iterations() << " iterations, final residual = " << cg.error() << std::endl;
+            std::cout << "  * CG converged in " << cg.iterations() << " iterations, final residual = " << cg.error() << std::endl;
 
             dest = temp;
 
@@ -53,6 +54,7 @@ namespace rsurfaces
             fracL.addTree(bct);
             fracL.addConstraintBlock(constraintBlock);
             fracL.addMetric(&hs);
+            fracL.useBarycenterTrick = false;
 
             bct->recomputeBarycenters();
             bct->PremultiplyAf1(BCTKernelType::HighOrder);
@@ -66,7 +68,7 @@ namespace rsurfaces
             cg.setTolerance(1e-4);
             cg.setMaxIterations(20);
             temp = cg.solveWithGuess(gradient, temp);
-            std::cout << "  * Converged in " << cg.iterations() << " iterations, final residual = " << cg.error() << std::endl;
+            std::cout << "  * GMRES converged in " << cg.iterations() << " iterations, final residual = " << cg.error() << std::endl;
 
             dest = temp;
 
@@ -78,32 +80,7 @@ namespace rsurfaces
         void ProjectUnconstrainedHsIterative(const Hs::HsMetric &hs, const V &gradient, Dest &dest,
                                              Eigen::SparseMatrix<double> &constraintBlock)
         {
-            BlockClusterTree *bct = new BlockClusterTree(hs.mesh, hs.geom, hs.GetBVH(), hs.getBHTheta(), hs.getHsOrder());
-
-            BCTMatrixReplacement fracL;
-            fracL.addTree(bct);
-            fracL.addConstraintBlock(constraintBlock);
-            fracL.addMetric(&hs);
-
-            bct->recomputeBarycenters();
-            bct->PremultiplyAf1(BCTKernelType::HighOrder);
-            bct->PremultiplyAf1(BCTKernelType::LowOrder);
-
-            // Eigen::ConjugateGradient<BCTMatrixReplacement, Eigen::Lower | Eigen::Upper, SparseHsPreconditioner> cg;
-            Eigen::GMRES<BCTMatrixReplacement, SparseHsPreconditioner> cg;
-            cg.compute(fracL);
-            
-
-            Eigen::VectorXd temp;
-            temp.setZero(gradient.rows());
-            cg.setTolerance(1e-4);
-            cg.setMaxIterations(20);
-            temp = cg.solveWithGuess(gradient, temp);
-            std::cout << "  * Converged in " << cg.iterations() << " iterations, final residual = " << cg.error() << std::endl;
-
-            dest = temp;
-
-            delete bct;
+            ProjectUnconstrainedHsIterativeGMRES(hs, gradient, dest, constraintBlock);
         }
 
         template <typename V, typename Dest>

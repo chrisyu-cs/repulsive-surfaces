@@ -219,9 +219,9 @@ namespace rsurfaces
 
             inline Eigen::SparseMatrix<double> &BarycenterQ() const
             {
-                if (!factorizedLaplacian.initialized)
+                if (!baryQInitialized)
                 {
-                    initLaplacianBarycenterMode();
+                    initBarycenterQ();
                 }
                 return barycenterQ;
             }
@@ -231,6 +231,7 @@ namespace rsurfaces
                 return get_s(energy->GetExponents());
             }
 
+            void initBarycenterQ() const;
             void initLaplacianBarycenterMode() const;
 
         private:
@@ -252,6 +253,7 @@ namespace rsurfaces
             size_t simpleRows;
             size_t newtonRows;
 
+            mutable bool baryQInitialized = false;
             mutable Eigen::SparseMatrix<double> barycenterQ;
             mutable double QTQ_weight;
 
@@ -267,6 +269,7 @@ namespace rsurfaces
         template <typename Rhs>
         Rhs HsMetric::InvertSparseBarycenterMode(const Rhs &gradient) const
         {
+            std::cout << "InvertSparseBarycenterMode" << std::endl;
             Eigen::VectorXd gradientCol = gradient;
             if (simpleConstraints.size() != 1)
             {
@@ -303,7 +306,7 @@ namespace rsurfaces
             // Multiply by L^{-1} again by solving Lx = b
             w = factorizedLaplacian.Solve(w);
             // Add the "symmetric" term m Q^T Q b
-            w += QTQ_weight * barycenterQ.transpose() * barycenterQ * gradientCol;
+            w += QTQ_weight * (BarycenterQ().transpose() * (BarycenterQ() * gradientCol));
 
             return Rhs(w);
         }

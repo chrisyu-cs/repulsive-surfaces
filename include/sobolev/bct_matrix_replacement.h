@@ -109,6 +109,7 @@ public:
         return *C;
     }
 
+    bool useBarycenterTrick = false;
     double gamma;
     Eigen::VectorXd masses;
 
@@ -154,6 +155,7 @@ namespace rsurfaces
             template <typename MatrixType>
             SparseHsPreconditioner &compute(const MatrixType &fracL)
             {
+                useBarycenterTrick = fracL.useBarycenterTrick;
                 hs = fracL.getHs();
                 return *this;
             }
@@ -163,7 +165,7 @@ namespace rsurfaces
             void _solve_impl(const Rhs &b, Dest &x) const
             {
                 std::cout << "  * Iteration " << (count++) << "...\r" << std::flush;
-                if (hs->usesOnlyBarycenter())
+                if (useBarycenterTrick && hs->usesOnlyBarycenter())
                 {
                     x = hs->InvertSparseBarycenterMode(b);
                 }
@@ -182,6 +184,7 @@ namespace rsurfaces
 
             const Hs::HsMetric *hs;
             const std::vector<ConstraintPack> schurConstraints;
+            bool useBarycenterTrick;
             SchurComplement schur;
 
             mutable size_t count = 0;
@@ -219,8 +222,11 @@ namespace Eigen
                 bct->MultiplyVector3(rhs, product, rsurfaces::BCTKernelType::LowOrder, true);
                 bct->MultiplyConstraintBlock(rhs, product, lhs.getConstraintBlock(), true);
 
-                // B^T B = M^T Q^T Q M
-                product += lhs.gamma * (lhs.masses.asDiagonal() * (lhs.getHs()->BarycenterQ().transpose() * (lhs.getHs()->BarycenterQ() * (lhs.masses.asDiagonal() * rhs))));
+                if (lhs.useBarycenterTrick && lhs.getHs()->usesOnlyBarycenter())
+                {
+                    // B^T B = M^T Q^T Q M
+                    product += lhs.gamma * (lhs.masses.asDiagonal() * (lhs.getHs()->BarycenterQ().transpose() * (lhs.getHs()->BarycenterQ() * (lhs.masses.asDiagonal() * rhs))));
+                }
 
                 dst += product;
             }
