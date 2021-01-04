@@ -7,8 +7,10 @@ namespace rsurfaces
 {
     namespace Constraints
     {
-        void fillComponents(const MeshPtr mesh, const GeomPtr geom, std::vector<std::vector<GCVertex>> &components)
+        void BarycenterComponentsConstraint::fillComponents(const MeshPtr &mesh, const GeomPtr &geom)
         {
+            components.clear();
+
             surface::VertexData<bool> grouped(*mesh, false);
             VertexIndices componentIndices(*mesh);
 
@@ -78,13 +80,27 @@ namespace rsurfaces
             }
         }
 
+        void BarycenterComponentsConstraint::computeMasses(const MeshPtr &mesh, const GeomPtr &geom)
+        {
+            componentMasses.clear();
+
+            for (std::vector<GCVertex> &component : components)
+            {
+                double mass = 0;
+                for (GCVertex v : component)
+                {
+                    mass += geom->vertexDualAreas[v];
+                }
+                componentMasses.push_back(mass);
+            }
+        }
+
         BarycenterComponentsConstraint::BarycenterComponentsConstraint(const MeshPtr &mesh, const GeomPtr &geom)
         {
-            fillComponents(mesh, geom, components);
             ResetFunction(mesh, geom);
         }
 
-        void BarycenterComponentsConstraint::ResetFunction(const MeshPtr &mesh, const GeomPtr &geom)
+        void BarycenterComponentsConstraint::computeTargets(const MeshPtr &mesh, const GeomPtr &geom)
         {
             componentValues.clear();
             for (std::vector<GCVertex> &comp : components)
@@ -92,6 +108,13 @@ namespace rsurfaces
                 Vector3 center = barycenterOfPoints(geom, mesh, comp);
                 componentValues.push_back(center);
             }
+        }
+
+        void BarycenterComponentsConstraint::ResetFunction(const MeshPtr &mesh, const GeomPtr &geom)
+        {
+            fillComponents(mesh, geom);
+            computeMasses(mesh, geom);
+            computeTargets(mesh, geom);
         }
 
         void BarycenterComponentsConstraint::addTriplets(std::vector<Triplet> &triplets, const MeshPtr &mesh, const GeomPtr &geom, int baseRow)
@@ -110,6 +133,20 @@ namespace rsurfaces
                 triplets.push_back(Triplet(baseRow + 3 * t.row(), 3 * t.col(), t.value()));
                 triplets.push_back(Triplet(baseRow + 3 * t.row() + 1, 3 * t.col() + 1, t.value()));
                 triplets.push_back(Triplet(baseRow + 3 * t.row() + 2, 3 * t.col() + 2, t.value()));
+            }
+        }
+
+        void BarycenterComponentsConstraint::getInnerLaplacianTriplets1X(std::vector<Triplet> &triplets, const MeshPtr &mesh, const GeomPtr &geom,
+                                                                         VertexIndices &inds, int baseRow)
+        {
+            for (size_t i = 0; i < components.size(); i++)
+            {
+                double compWt = 1.0 / sqrt(componentMasses[i]);
+
+                for (GCVertex v : components[i])
+                {
+                    triplets[inds[v]] = (Triplet(baseRow + i, inds[v], compWt));
+                }
             }
         }
 

@@ -57,6 +57,11 @@ namespace rsurfaces
             return c;
         }
 
+        inline std::vector<Constraints::SimpleProjectorConstraint *> &getSimpleConstraints()
+        {
+            return simpleConstraints;
+        }
+
         bool allowBarycenterShift;
 
     private:
@@ -71,7 +76,6 @@ namespace rsurfaces
         Hs::HsNCG *ncg;
         Constraints::BarycenterComponentsConstraint *secretBarycenter;
 
-
         inline void incrementSchurConstraints()
         {
             for (ConstraintPack &c : schurConstraints)
@@ -83,7 +87,7 @@ namespace rsurfaces
                 }
             }
         }
-        
+
         double evaluateEnergy();
 
         double prevStep;

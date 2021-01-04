@@ -126,11 +126,6 @@ namespace rsurfaces
             }
         }
 
-        double get_s(double alpha, double beta)
-        {
-            return (beta - 2.0) / alpha;
-        }
-
         HsMetric::HsMetric(SurfaceEnergy *energy_)
         {
             initFromEnergy(energy_);
@@ -393,6 +388,63 @@ namespace rsurfaces
                 Vector3 vertCorr{corr(base), corr(base + 1), corr(base + 2)};
                 geom->inputVertexPositions[v] -= vertCorr;
             }
+        }
+
+        void HsMetric::initLaplacianBarycenterMode() const
+        {
+            std::cout << "Initializing Laplacian for barycenter-only mode" << std::endl;
+            size_t nRows = topLeftNumRows();
+            Constraints::BarycenterComponentsConstraint *bCons = dynamic_cast<Constraints::BarycenterComponentsConstraint *>(simpleConstraints[0]);
+            VertexIndices inds = mesh->getVertexIndices();
+
+            // Assemble the cotan Laplacian
+            std::vector<Triplet> laplaceTriplets, laplaceTriplets3x;
+            H1::getTriplets(laplaceTriplets, mesh, geom, 1e-10);
+
+            // Add the special barycenter triplets
+            std::vector<Triplet> qTripletList(mesh->nVertices());
+            bCons->getInnerLaplacianTriplets1X(qTripletList, mesh, geom, inds, 0);
+
+            std::vector<Triplet> qTriplets3x;
+
+            // The triplets now need to go into two places: the Laplacian itself
+            // (weighted by mass, starting from row 3V),
+            // and the matrix Q (unweighted, starting from row 0)
+            for (GCVertex v : mesh->vertices())
+            {
+                // For Q we don't need to do anything
+                Triplet q_v = qTripletList[inds[v]];
+
+                size_t laplaceBaseRow = mesh->nVertices();
+                size_t lr = laplaceBaseRow + q_v.row();
+                size_t lc = q_v.col();
+                double lval = q_v.value() * geom->vertexDualAreas[v];
+                // Add symmetrically
+                laplaceTriplets.push_back(Triplet(lr, lc, lval));
+                laplaceTriplets.push_back(Triplet(lc, lr, lval));
+            }
+
+            // Expand the matrix by 3x
+            MatrixUtils::TripleTriplets(laplaceTriplets, laplaceTriplets3x);
+            MatrixUtils::TripleTriplets(qTripletList, qTriplets3x);
+
+            // Pre-factorize the cotan Laplacian
+            Eigen::SparseMatrix<double> L(nRows, nRows);
+            L.setFromTriplets(laplaceTriplets3x.begin(), laplaceTriplets3x.end());
+            std::cout << "Created Laplacian (" << L.rows() << " x " << L.cols() << ")" << std::endl;
+            factorizedLaplacian.Compute(L);
+
+            // No need to factorize Q, but we will apply it later
+            barycenterQ.resize(bCons->nRows(), nRows);
+            barycenterQ.setFromTriplets(qTriplets3x.begin(), qTriplets3x.end());
+            std::cout << "Created Q matrix (" << barycenterQ.rows() << " x " << barycenterQ.cols() << ")" << std::endl;
+
+            // Compute the weight for the Q^T Q term later
+            double meshArea = totalArea(geom, mesh);
+            double s = get_s(energy->GetExponents());
+            // Exponent is 2s / n, but since n = 2, this is just s
+            QTQ_weight = pow(meshArea, s);
+            std::cout << "Computed weight = " << QTQ_weight << std::endl;
         }
     } // namespace Hs
 } // namespace rsurfaces

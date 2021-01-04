@@ -16,9 +16,15 @@ namespace rsurfaces
             virtual void addErrorValues(Eigen::VectorXd &V, const MeshPtr &mesh, const GeomPtr &geom, int baseRow);
             virtual size_t nRows();
             virtual void ProjectConstraint(MeshPtr &mesh, GeomPtr &geom);
+            
+            void getInnerLaplacianTriplets1X(std::vector<Triplet> &triplets, const MeshPtr &mesh, const GeomPtr &geom, VertexIndices &inds, int baseRow);
 
         private:
+            void fillComponents(const MeshPtr &mesh, const GeomPtr &geom);
+            void computeMasses(const MeshPtr &mesh, const GeomPtr &geom);
+            void computeTargets(const MeshPtr &mesh, const GeomPtr &geom);
             std::vector<std::vector<GCVertex>> components;
+            std::vector<double> componentMasses;
             std::vector<Vector3> componentValues;
         };
     } // namespace Constraints

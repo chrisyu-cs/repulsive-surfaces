@@ -27,16 +27,17 @@ namespace rsurfaces
             bct->PremultiplyAf1(BCTKernelType::HighOrder);
             bct->PremultiplyAf1(BCTKernelType::LowOrder);
 
-            // Eigen::ConjugateGradient<BCTMatrixReplacement, Eigen::Lower | Eigen::Upper, SparseHsPreconditioner> cg;
-            Eigen::GMRES<BCTMatrixReplacement, SparseHsPreconditioner> cg;
+            Eigen::ConjugateGradient<BCTMatrixReplacement, Eigen::Lower | Eigen::Upper, SparseHsPreconditioner> cg;
+            // Eigen::GMRES<BCTMatrixReplacement, SparseHsPreconditioner> cg;
             cg.compute(fracL);
             
 
             Eigen::VectorXd temp;
             temp.setZero(gradient.rows());
             cg.setTolerance(1e-4);
+            cg.setMaxIterations(20);
             temp = cg.solveWithGuess(gradient, temp);
-            std::cout << "  * GMRES converged in " << cg.iterations() << " iterations, final residual = " << cg.error() << std::endl;
+            std::cout << "  * Converged in " << cg.iterations() << " iterations, final residual = " << cg.error() << std::endl;
 
             dest = temp;
 

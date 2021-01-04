@@ -668,7 +668,8 @@ namespace rsurfaces
         energy->Differential(gradient);
         long gradientEndTime = currentTimeMilliseconds();
 
-        Hs::HsMetric hs(energy);
+        std::vector<ConstraintPack> noSchur;
+        Hs::HsMetric hs(energy, flow->getSimpleConstraints(), noSchur);
 
         Eigen::VectorXd gVec;
         gVec.setZero(hs.getNumRows());
@@ -1219,7 +1220,8 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::sce
         {
         case scene::ConstraintType::Barycenter:
             kernelRemoved = true;
-            flow->addSimpleConstraint<Constraints::BarycenterConstraint3X>(m.mesh, m.geom);
+            flow->addSimpleConstraint<Constraints::BarycenterComponentsConstraint>(m.mesh, m.geom);
+            std::cout << "Added a barycenter constraint to the flow" << std::endl;
             break;
         case scene::ConstraintType::TotalArea:
             flow->addSchurConstraint<Constraints::TotalAreaConstraint>(m.mesh, m.geom, data.targetMultiplier, data.numIterations);

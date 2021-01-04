@@ -77,6 +77,21 @@ public:
     void addMetric(const rsurfaces::Hs::HsMetric *hs_)
     {
         hs = hs_;
+        setMasses();
+    }
+
+    void setMasses()
+    {
+        double meshTotalArea = rsurfaces::totalArea(hs->geom, hs->mesh);
+        masses.setZero(hs->topLeftNumRows());
+        for (size_t i = 0; i < hs->mesh->nVertices(); i++)
+        {
+            double area = hs->geom->vertexDualAreas[hs->mesh->vertex(i)];
+            masses(3 * i) = area;
+            masses(3 * i + 1) = area;
+            masses(3 * i + 2) = area;
+        }
+        gamma = pow(meshTotalArea, hs->getExpS());
     }
 
     const rsurfaces::BlockClusterTree *getTree() const
@@ -93,6 +108,9 @@ public:
     {
         return *C;
     }
+
+    double gamma;
+    Eigen::VectorXd masses;
 
 private:
     const rsurfaces::BlockClusterTree *bct;
@@ -144,8 +162,15 @@ namespace rsurfaces
             template <typename Rhs, typename Dest>
             void _solve_impl(const Rhs &b, Dest &x) const
             {
-                std::cout << "  * GMRES iteration " << (count++) << "...\r" << std::flush;
-                x = hs->InvertSparseForIterative(b);
+                std::cout << "  * Iteration " << (count++) << "...\r" << std::flush;
+                if (hs->usesOnlyBarycenter())
+                {
+                    x = hs->InvertSparseBarycenterMode(b);
+                }
+                else
+                {
+                    x = hs->InvertSparseIterativeFallback(b);
+                }
             }
 
             template <typename Rhs>
@@ -193,6 +218,9 @@ namespace Eigen
                 bct->MultiplyVector3(rhs, product, rsurfaces::BCTKernelType::HighOrder, true);
                 bct->MultiplyVector3(rhs, product, rsurfaces::BCTKernelType::LowOrder, true);
                 bct->MultiplyConstraintBlock(rhs, product, lhs.getConstraintBlock(), true);
+
+                // B^T B = M^T Q^T Q M
+                product += lhs.gamma * (lhs.masses.asDiagonal() * (lhs.getHs()->BarycenterQ().transpose() * (lhs.getHs()->BarycenterQ() * (lhs.masses.asDiagonal() * rhs))));
 
                 dst += product;
             }

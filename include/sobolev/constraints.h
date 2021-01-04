@@ -18,6 +18,7 @@ namespace rsurfaces
             virtual size_t nRows() = 0;
         };
 
+        void addExistingTripletsToSymmetric(std::vector<Triplet> &existing, std::vector<Triplet> &triplets, int baseRow);
         void addEntriesToSymmetric(ConstraintBase &cs, Eigen::MatrixXd &M, const MeshPtr &mesh, const GeomPtr &geom, int baseRow);
         void addTripletsToSymmetric(ConstraintBase &cs, std::vector<Triplet> &triplets, const MeshPtr &mesh, const GeomPtr &geom, int baseRow);
 

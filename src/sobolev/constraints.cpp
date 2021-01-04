@@ -4,6 +4,14 @@ namespace rsurfaces
 {
     namespace Constraints
     {
+        void addExistingTripletsToSymmetric(std::vector<Triplet> &existing, std::vector<Triplet> &triplets, int baseRow)
+        {
+            for (Triplet t : existing)
+            {
+                triplets.push_back(Triplet(baseRow + t.row(), t.col(), t.value()));
+                triplets.push_back(Triplet(t.col(), baseRow + t.row(), t.value()));
+            }
+        }
 
         void addEntriesToSymmetric(ConstraintBase &cs, Eigen::MatrixXd &M, const MeshPtr &mesh, const GeomPtr &geom, int baseRow)
         {
@@ -25,12 +33,7 @@ namespace rsurfaces
         {
             std::vector<Triplet> block;
             cs.addTriplets(block, mesh, geom, 0);
-
-            for (Triplet t : block)
-            {
-                triplets.push_back(Triplet(baseRow + t.row(), t.col(), t.value()));
-                triplets.push_back(Triplet(t.col(), baseRow + t.row(), t.value()));
-            }
+            addExistingTripletsToSymmetric(block, triplets, baseRow);
         }
 
     } // namespace Constraints

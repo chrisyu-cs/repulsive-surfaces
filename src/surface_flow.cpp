@@ -373,8 +373,12 @@ namespace rsurfaces
             hs->shiftBarycenterConstraint(-delta * shift);
         }
         hs->ProjectSimpleConstraints();
-
         incrementSchurConstraints();
+
+        for (Constraints::SimpleProjectorConstraint *c : simpleConstraints)
+        {
+            c->ResetFunction(mesh, geom);
+        }
 
         std::cout << "  Mesh total volume = " << totalVolume(geom, mesh) << std::endl;
         std::cout << "  Mesh total area = " << totalArea(geom, mesh) << std::endl;

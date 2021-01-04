@@ -58,7 +58,16 @@ namespace rsurfaces
         };
 
         Vector3 HatGradientOnTriangle(GCFace face, GCVertex vert, GeomPtr &geom);
-        double get_s(double alpha, double beta);
+
+        inline double get_s(double alpha, double beta)
+        {
+            return (beta - 2.0) / alpha;
+        }
+
+        inline double get_s(Vector2 exps)
+        {
+            return get_s(exps.x, exps.y);
+        }
 
         class HsMetric;
 
@@ -84,7 +93,7 @@ namespace rsurfaces
             // Add the regularizing "low order" term.
             void FillMatrixLow(Eigen::MatrixXd &M, double s, const MeshPtr &mesh, const GeomPtr &geom) const;
 
-            // Build the base fractional Laplacian of order s.
+            // Build the base fractional Laplacian of order 2s.
             void FillMatrixFracOnly(Eigen::MatrixXd &M, double s, const MeshPtr &mesh, const GeomPtr &geom) const;
             // Build an exact Hs preconditioner with high- and low-order terms.
             Eigen::MatrixXd GetHsMatrixConstrained() const;
@@ -97,8 +106,21 @@ namespace rsurfaces
             void ProjectSimpleConstraints();
             void ProjectSimpleConstraintsWithSaddle();
 
+            inline bool usesOnlyBarycenter() const
+            {
+                if (simpleConstraints.size() != 1)
+                    return false;
+                Constraints::BarycenterComponentsConstraint *bcc = dynamic_cast<Constraints::BarycenterComponentsConstraint *>(simpleConstraints[0]);
+                if (!bcc)
+                    return false;
+                return true;
+            }
+
             template <typename Rhs>
-            inline Rhs InvertSparseForIterative(const Rhs &gradient) const
+            Rhs InvertSparseBarycenterMode(const Rhs &gradient) const;
+
+            template <typename Rhs>
+            inline Rhs InvertSparseIterativeFallback(const Rhs &gradient) const
             {
                 double epsilon = (mesh->nConnectedComponents() > 1) ? 1e-5 : 1e-10;
                 Eigen::VectorXd temp = gradient;
@@ -195,6 +217,22 @@ namespace rsurfaces
             }
             void shiftBarycenterConstraint(Vector3 shift);
 
+            inline Eigen::SparseMatrix<double> &BarycenterQ() const
+            {
+                if (!factorizedLaplacian.initialized)
+                {
+                    initLaplacianBarycenterMode();
+                }
+                return barycenterQ;
+            }
+
+            inline double getExpS() const
+            {
+                return get_s(energy->GetExponents());
+            }
+
+            void initLaplacianBarycenterMode() const;
+
         private:
             void addSimpleConstraintEntries(Eigen::MatrixXd &M) const;
             void addSimpleConstraintTriplets(std::vector<Triplet> &triplets) const;
@@ -203,7 +241,7 @@ namespace rsurfaces
 
             // Project the gradient into Hs by using the L^{-1} M L^{-1} factorization
             template <typename V, typename Dst>
-            void ProjectSparse(const V &gradient, Dst &dest, double epsilon = 1e-10) const;
+            void ProjectSparse(const V &gradient, Dst &dest, double multiplyMiddle = true, double epsilon = 1e-10) const;
             // Same as above but with the input/output being matrices
             void ProjectSparseMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double epsilon = 1e-10) const;
 
@@ -214,6 +252,9 @@ namespace rsurfaces
             size_t simpleRows;
             size_t newtonRows;
 
+            mutable Eigen::SparseMatrix<double> barycenterQ;
+            mutable double QTQ_weight;
+
             SurfaceEnergy *energy;
             bool usedDefaultConstraint;
 
@@ -223,8 +264,52 @@ namespace rsurfaces
             mutable SchurComplement schurComplement;
         };
 
+        template <typename Rhs>
+        Rhs HsMetric::InvertSparseBarycenterMode(const Rhs &gradient) const
+        {
+            Eigen::VectorXd gradientCol = gradient;
+            if (simpleConstraints.size() != 1)
+            {
+                throw std::runtime_error("InvertSparseBarycenterMode only works with a single BarycenterComponentsConstraint.");
+            }
+            Constraints::BarycenterComponentsConstraint *bCons = dynamic_cast<Constraints::BarycenterComponentsConstraint *>(simpleConstraints[0]);
+            if (!bCons)
+            {
+                throw std::runtime_error("InvertSparseBarycenterMode only works with a single BarycenterComponentsConstraint.");
+            }
+            size_t nRows = topLeftNumRows();
+
+            if (!factorizedLaplacian.initialized)
+            {
+                initLaplacianBarycenterMode();
+            }
+
+            // Multiply by L^{-1} once by solving Lx = b
+            Eigen::VectorXd w = factorizedLaplacian.Solve(gradientCol);
+
+            if (!bct)
+            {
+                bct = new BlockClusterTree(mesh, geom, bvh, bh_theta, 2 - getHsOrder());
+            }
+            bct->MultiplyVector3(gradientCol, gradientCol, BCTKernelType::FractionalOnly);
+
+            // Re-zero out Lagrange multipliers, since the first solve
+            // will have left some junk in them
+            for (size_t i = 3 * mesh->nVertices(); i < nRows; i++)
+            {
+                w(i) = 0;
+            }
+
+            // Multiply by L^{-1} again by solving Lx = b
+            w = factorizedLaplacian.Solve(w);
+            // Add the "symmetric" term m Q^T Q b
+            w += QTQ_weight * barycenterQ.transpose() * barycenterQ * gradientCol;
+
+            return Rhs(gradientCol);
+        }
+
         template <typename V, typename Dst>
-        void HsMetric::ProjectSparse(const V &gradientCol, Dst &dest, double epsilon) const
+        void HsMetric::ProjectSparse(const V &gradientCol, Dst &dest, double multiplyMiddle, double epsilon) const
         {
             size_t nRows = topLeftNumRows();
 
@@ -247,18 +332,21 @@ namespace rsurfaces
             // Multiply by L^{-1} once by solving Lx = b
             Eigen::VectorXd mid = factorizedLaplacian.Solve(gradientCol);
 
-            if (!bvh)
+            if (multiplyMiddle)
             {
-                throw std::runtime_error("Must have a BVH to use sparse approximation");
-            }
-
-            else
-            {
-                if (!bct)
+                if (!bvh)
                 {
-                    bct = new BlockClusterTree(mesh, geom, bvh, bh_theta, 4 - 2 * getHsOrder());
+                    throw std::runtime_error("Must have a BVH to use sparse approximation");
                 }
-                bct->MultiplyVector3(mid, mid, BCTKernelType::FractionalOnly);
+
+                else
+                {
+                    if (!bct)
+                    {
+                        bct = new BlockClusterTree(mesh, geom, bvh, bh_theta, 2 - getHsOrder());
+                    }
+                    bct->MultiplyVector3(mid, mid, BCTKernelType::FractionalOnly);
+                }
             }
 
             // Re-zero out Lagrange multipliers, since the first solve
