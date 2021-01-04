@@ -269,7 +269,6 @@ namespace rsurfaces
         template <typename Rhs>
         Rhs HsMetric::InvertSparseBarycenterMode(const Rhs &gradient) const
         {
-            std::cout << "InvertSparseBarycenterMode" << std::endl;
             Eigen::VectorXd gradientCol = gradient;
             if (simpleConstraints.size() != 1)
             {
