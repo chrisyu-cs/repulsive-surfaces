@@ -694,17 +694,16 @@ namespace rsurfaces
 
         std::cout << "Rows: " << Qb1.rows() << ", " << BMinvb1.rows() << ", " << BPb1.rows() << std::endl;
 
-        Eigen::MatrixXd comparison(3, 3);
+        Eigen::MatrixXd comparison(Qb1.rows(), 3);
         comparison.col(0) = Qb1;
         comparison.col(1) = BMinvb1;
         comparison.col(2) = BPb1;
 
-        std::cout << "Comparison of Qb, B M_inv b, BPb:\n" << comparison << std::endl;
-
-
+        std::cout << "Comparison of Qb, B M_inv b, BPb:\n"
+                  << comparison << std::endl;
     }
 
-    void MainApp::TestIterative()
+    void MainApp::TestIterative(bool useCG)
     {
         geom->refreshQuantities();
 
@@ -743,9 +742,27 @@ namespace rsurfaces
         std::cout << "Projecting using iterative method..." << std::endl;
         iterativeRes.setZero();
         long iterStart = currentTimeMilliseconds();
-        Hs::ProjectUnconstrainedHsIterative(hs, gVec, iterativeRes);
+        Eigen::SparseMatrix<double> constraintBlock = hs.GetConstraintBlock(false);
+        if (useCG)
+        {
+            Hs::ProjectUnconstrainedHsIterativeCG(hs, gVec, iterativeRes, constraintBlock);
+        }
+        else
+        {
+            Hs::ProjectUnconstrainedHsIterativeGMRES(hs, gVec, iterativeRes, constraintBlock);
+        }
         long iterEnd = currentTimeMilliseconds();
         std::cout << "Finished in " << (iterEnd - iterStart) << " ms." << std::endl;
+
+        PlotVector(denseRes, mesh->nVertices(), psMesh, "Dense Hs");
+        if (useCG)
+        {
+            PlotVector(iterativeRes, mesh->nVertices(), psMesh, "Iterative Hs (CG)");
+        }
+        else
+        {
+            PlotVector(iterativeRes, mesh->nVertices(), psMesh, "Iterative Hs (GMRES)");
+        }
 
         Eigen::VectorXd diff = iterativeRes - denseRes;
         double error = diff.norm() / denseRes.norm() * 100;
@@ -1031,13 +1048,18 @@ void customCallback()
         MainApp::instance->TestMVProduct();
     }
     ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
-    if (ImGui::Button("Test iterative", ImVec2{ITEM_WIDTH, 0}))
+    if (ImGui::Button("Test iter. (CG)", ImVec2{ITEM_WIDTH, 0}))
     {
-        MainApp::instance->TestIterative();
+        MainApp::instance->TestIterative(true);
     }
     if (ImGui::Button("Test CG preconditioner", ImVec2{ITEM_WIDTH, 0}))
     {
         MainApp::instance->TestCGMetric();
+    }
+    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
+    if (ImGui::Button("Test iter. (GMRES)", ImVec2{ITEM_WIDTH, 0}))
+    {
+        MainApp::instance->TestIterative(false);
     }
 
     if (ImGui::Button("Test B-H", ImVec2{ITEM_WIDTH, 0}))

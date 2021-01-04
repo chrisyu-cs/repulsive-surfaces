@@ -29,7 +29,7 @@ namespace rsurfaces
 
         void TestMVProduct();
         void TestCGMetric();
-        void TestIterative();
+        void TestIterative(bool useCG);
         void BenchmarkBH();
         void TestBarnesHut();
         void PlotGradients();

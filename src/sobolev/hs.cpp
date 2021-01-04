@@ -264,6 +264,8 @@ namespace rsurfaces
             M_small.setZero(nVerts, nVerts);
             int dims = getNumRows();
 
+            VertexIndices inds = mesh->getVertexIndices();
+
             M.setZero(dims, dims);
             double s = getHsOrder();
             FillMatrixHigh(M_small, s, mesh, geom);
@@ -277,6 +279,28 @@ namespace rsurfaces
             {
                 Constraints::addEntriesToSymmetric(*cons, M, mesh, geom, curRow);
                 curRow += cons->nRows();
+            }
+
+            if (usesOnlyBarycenter())
+            {
+                Eigen::VectorXd masses;
+                masses.setZero(topLeftNumRows());
+
+                for (GCVertex v : mesh->vertices())
+                {
+                    size_t baserow = 3 * inds[v];
+                    double wt = geom->vertexDualAreas[v];
+                    masses(baserow) = wt;
+                    masses(baserow + 1) = wt;
+                    masses(baserow + 2) = wt;
+                }
+
+                Eigen::SparseMatrix<double> B = BarycenterQ() * masses.asDiagonal();
+
+                double totalA = totalArea(geom, mesh);
+                double gamma = pow(totalA, -getExpS());
+
+                M.block(0, 0, B.cols(), B.cols()) += gamma * (B.transpose() * B);
             }
 
             for (const ConstraintPack &pack : newtonConstraints)
