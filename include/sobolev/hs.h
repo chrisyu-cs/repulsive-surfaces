@@ -100,7 +100,7 @@ namespace rsurfaces
             template <typename Rhs>
             inline Rhs InvertSparseForIterative(const Rhs &gradient) const
             {
-                double epsilon = (mesh->nConnectedComponents() > 1) ? 1e-5 : 1e-10;
+                double epsilon = (mesh->nConnectedComponents() > 1) ? 1e-2 : 1e-8;
                 Eigen::VectorXd temp = gradient;
                 ProjectSparse(temp, temp, epsilon);
                 return Rhs(temp);

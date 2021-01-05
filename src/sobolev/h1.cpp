@@ -23,7 +23,7 @@ namespace rsurfaces
                     rowSum += wt;
                     triplets.push_back(Triplet(indices[v], indices[opp], -wt / mass));
                 }
-                triplets.push_back(Triplet(indices[v], indices[v], rowSum / mass + epsilon));
+                triplets.push_back(Triplet(indices[v], indices[v], rowSum / mass + epsilon * geom->vertexDualAreas[v]));
             }
             geom->unrequireEdgeCotanWeights();
         }
