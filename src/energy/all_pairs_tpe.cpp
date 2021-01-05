@@ -14,8 +14,11 @@ namespace rsurfaces
     double AllPairsTPEnergy::Value()
     {
         double total = 0;
-        for (GCFace f1 : kernel->mesh->faces())
+        std::cout << "Computing all-pairs energy..." << std::endl;
+        #pragma omp parallel for reduction(+ : total) 
+        for (size_t i = 0; i < kernel->mesh->nFaces(); i++)
         {
+            GCFace f1 = kernel->mesh->face(i);
             for (GCFace f2 : kernel->mesh->faces())
             {
                 if (f1 == f2)

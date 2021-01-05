@@ -68,9 +68,15 @@ namespace rsurfaces
     inline double guessStepSize(double gProjNorm)
     {
 
-        double initGuess = (gProjNorm < 1) ? 1.0 / sqrt(gProjNorm) : 1.0 / gProjNorm;
+        // double initGuess = (gProjNorm < 1) ? 1.0 / sqrt(gProjNorm) : 1.0 / gProjNorm;
+        double initGuess = 1.0 / gProjNorm;
         initGuess *= 2;
         return initGuess;
+    }
+
+    double SurfaceFlow::evaluateEnergy()
+    {
+        return GetEnergyValue(energies);
     }
 
     void SurfaceFlow::StepNCG()

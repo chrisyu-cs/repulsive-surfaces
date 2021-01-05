@@ -51,6 +51,10 @@ namespace rsurfaces
         hasPickedVertex = false;
         numSteps = 0;
         methodChoice = GradientMethod::HsProjected;
+        timeSpentSoFar = 0;
+        realTimeLimit = 0;
+        logPerformance = false;
+        referenceEnergy = 0;
     }
 
     void MainApp::TakeNaiveStep(double t)
@@ -58,8 +62,9 @@ namespace rsurfaces
         flow->StepNaive(t);
     }
 
-    void MainApp::TakeFractionalSobolevStep(bool remeshAfter)
+    void MainApp::TakeOptimizationStep(bool remeshAfter)
     {
+        long beforeStep = currentTimeMilliseconds();
         switch (methodChoice)
         {
         case GradientMethod::HsProjected:
@@ -89,6 +94,25 @@ namespace rsurfaces
         else
         {
             MainApp::instance->updateMeshPositions();
+        }
+        long afterStep = currentTimeMilliseconds();
+        long timeForStep = afterStep - beforeStep;
+        timeSpentSoFar += timeForStep;
+        numSteps++;
+
+        if (logPerformance)
+        {
+            if (!referenceEnergy)
+            {
+                referenceEnergy = new AllPairsTPEnergy(kernel);
+            }
+
+            std::ofstream outfile;
+            outfile.open("performance.csv", std::ios_base::app);
+            double currentEnergy = referenceEnergy->Value();
+            std::cout << numSteps << ", " << timeSpentSoFar << ", " << currentEnergy << std::endl;
+            outfile << numSteps << ", " << timeSpentSoFar << ", " << currentEnergy << std::endl;
+            outfile.close();
         }
     }
 
@@ -910,6 +934,7 @@ void customCallback()
     {
         saveOBJ(MainApp::instance->mesh, MainApp::instance->geom, objNum++);
     }
+    ImGui::Checkbox("Log performance", &MainApp::instance->logPerformance);
 
     const GradientMethod methods[] = {GradientMethod::HsProjected,
                                       GradientMethod::HsProjectedIterative,
@@ -940,6 +965,8 @@ void customCallback()
 
     ImGui::Text("Iteration limit");
     ImGui::InputInt("", &MainApp::instance->stepLimit);
+    ImGui::Text("Real time limit (ms)");
+    ImGui::InputInt("", &MainApp::instance->realTimeLimit);
 
     if (uiNormalizeView != MainApp::instance->normalizeView)
     {
@@ -950,7 +977,7 @@ void customCallback()
     ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
     if (ImGui::Button("Take 1 step", ImVec2{ITEM_WIDTH, 0}) || run)
     {
-        MainApp::instance->TakeFractionalSobolevStep(remesh);
+        MainApp::instance->TakeOptimizationStep(remesh);
 
         if (takeScreenshots)
         {
@@ -960,8 +987,8 @@ void customCallback()
         {
             saveOBJ(MainApp::instance->mesh, MainApp::instance->geom, objNum++);
         }
-        MainApp::instance->numSteps++;
-        if (MainApp::instance->stepLimit > 0 && MainApp::instance->numSteps >= MainApp::instance->stepLimit)
+        if ((MainApp::instance->stepLimit > 0 && MainApp::instance->numSteps >= MainApp::instance->stepLimit) ||
+            (MainApp::instance->realTimeLimit > 0 && MainApp::instance->timeSpentSoFar >= MainApp::instance->realTimeLimit))
         {
             run = false;
         }

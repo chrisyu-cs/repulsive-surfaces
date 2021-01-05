@@ -40,7 +40,7 @@ namespace rsurfaces
         void HandlePicking();
 
         void TakeNaiveStep(double t);
-        void TakeFractionalSobolevStep(bool remeshAfter);
+        void TakeOptimizationStep(bool remeshAfter);
         void AddObstacle(std::string filename, double weight, bool recenter);
         void AddPotential(scene::PotentialType pType, double weight);
 
@@ -48,10 +48,13 @@ namespace rsurfaces
         GeomPtr geom;
         SurfaceFlow *flow;
         TPEKernel *kernel;
+        AllPairsTPEnergy *referenceEnergy;
+        
         polyscope::SurfaceMesh *psMesh;
         std::vector<polyscope::SurfaceMesh *> obstacles;
         std::string meshName;
         int stepLimit;
+        int realTimeLimit;
         GradientMethod methodChoice;
 
         inline void reregisterMesh()
@@ -66,6 +69,8 @@ namespace rsurfaces
         double bh_theta;
         remeshing::DynamicRemesher remesher;
         int numSteps;
+        bool logPerformance;
+        long timeSpentSoFar;
 
     private:
         GCVertex pickedVertex;

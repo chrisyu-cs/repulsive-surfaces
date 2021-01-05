@@ -33,6 +33,7 @@ namespace rsurfaces
         std::unique_ptr<Hs::HsMetric> GetMetric();
 
         void UpdateEnergies();
+        double evaluateEnergy();
 
         template <typename Constraint>
         Constraint *addSchurConstraint(MeshPtr &mesh, GeomPtr &geom, double multiplier, long iterations)
@@ -84,7 +85,6 @@ namespace rsurfaces
             }
         }
         
-        double evaluateEnergy();
 
         double prevStep;
     };
