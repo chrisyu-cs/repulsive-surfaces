@@ -13,6 +13,8 @@ namespace rsurfaces
 
     double AllPairsTPEnergy::Value()
     {
+        kernel->recomputeBarycenters();
+        
         double total = 0;
         std::cout << "Computing all-pairs energy..." << std::endl;
         #pragma omp parallel for reduction(+ : total) 
@@ -31,6 +33,8 @@ namespace rsurfaces
 
     void AllPairsTPEnergy::Differential(Eigen::MatrixXd &output)
     {
+        kernel->recomputeBarycenters();
+
         output.setZero();
         surface::VertexData<size_t> indices = kernel->mesh->getVertexIndices();
         for (GCFace f1 : kernel->mesh->faces())

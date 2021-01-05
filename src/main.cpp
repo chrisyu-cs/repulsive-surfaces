@@ -107,11 +107,12 @@ namespace rsurfaces
                 referenceEnergy = new AllPairsTPEnergy(kernel);
             }
 
+            geom->refreshQuantities();
             std::ofstream outfile;
             outfile.open("performance.csv", std::ios_base::app);
             double currentEnergy = referenceEnergy->Value();
-            std::cout << numSteps << ", " << timeSpentSoFar << ", " << currentEnergy << std::endl;
-            outfile << numSteps << ", " << timeSpentSoFar << ", " << currentEnergy << std::endl;
+            std::cout << numSteps << ", " << timeSpentSoFar << ", " << currentEnergy << ", " << mesh->nFaces() << std::endl;
+            outfile << numSteps << ", " << timeSpentSoFar << ", " << currentEnergy << ", " << mesh->nFaces() << std::endl;
             outfile.close();
         }
     }
@@ -1366,6 +1367,7 @@ int main(int argc, char **argv)
     omp_set_num_threads(default_threads / 2 + 2);
 
     polyscope::options::programName = "Repulsive Surfaces";
+    polyscope::options::groundPlaneEnabled = false;
 
     std::cout << "Using Eigen version " << EIGEN_WORLD_VERSION << "." << EIGEN_MAJOR_VERSION << "." << EIGEN_MINOR_VERSION << std::endl;
 
