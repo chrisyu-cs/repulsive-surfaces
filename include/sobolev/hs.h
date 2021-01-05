@@ -122,7 +122,7 @@ namespace rsurfaces
             template <typename Rhs>
             inline Rhs InvertSparseIterativeFallback(const Rhs &gradient) const
             {
-                double epsilon = (mesh->nConnectedComponents() > 1) ? 1e-5 : 1e-10;
+                double epsilon = (mesh->nConnectedComponents() > 1) ? 1e-3 : 1e-10;
                 Eigen::VectorXd temp = gradient;
                 ProjectSparse(temp, temp, epsilon);
                 return Rhs(temp);
@@ -293,7 +293,7 @@ namespace rsurfaces
             {
                 bct = new BlockClusterTree(mesh, geom, bvh, bh_theta, 2 - getHsOrder());
             }
-            bct->MultiplyVector3(gradientCol, gradientCol, BCTKernelType::FractionalOnly);
+            bct->MultiplyVector3(w, w, BCTKernelType::FractionalOnly);
 
             // Re-zero out Lagrange multipliers, since the first solve
             // will have left some junk in them

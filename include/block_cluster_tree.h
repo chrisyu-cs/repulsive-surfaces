@@ -124,7 +124,9 @@ namespace rsurfaces
             case BCTKernelType::HighOrder:
                 return Hs::MetricDistanceTerm(exp_s, v1, v2);
             case BCTKernelType::LowOrder:
-                return Hs::MetricDistanceTermLowPure(exp_s, v1, v2, n1, n2);
+                double half1 = Hs::MetricDistanceTermLowPure(exp_s, v1, v2, n1, n2);
+                double half2 = Hs::MetricDistanceTermLowPure(exp_s, v2, v1, n2, n1);
+                return (half1 + half2) / 2;
             }
         }
 

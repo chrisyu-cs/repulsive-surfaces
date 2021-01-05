@@ -514,6 +514,30 @@ namespace rsurfaces
         numericalNormalDeriv(geom, vert, vert).Print();
     }
 
+    void MainApp::TestMVSymmetric()
+    {
+        geom->refreshQuantities();
+        SurfaceEnergy *energy = flow->BaseEnergy();
+        energy->Update();
+        Hs::HsMetric hs(energy);
+        // Block cluster tree multiplication
+        BVHNode6D *bvh = energy->GetBVH();
+        BlockClusterTree *bct = new BlockClusterTree(mesh, geom, bvh, bh_theta, hs.getExpS());
+
+        Eigen::VectorXd v1, Mv1;
+        Eigen::VectorXd v2, Mv2;
+        v1.setRandom(3 * mesh->nVertices());
+        v2.setRandom(3 * mesh->nVertices());
+        Mv1.setZero(3 * mesh->nVertices());
+        Mv2.setZero(3 * mesh->nVertices());
+
+        bct->MultiplyVector3(v1, Mv1, BCTKernelType::FractionalOnly);
+        bct->MultiplyVector3(v2, Mv2, BCTKernelType::FractionalOnly);
+
+        std::cout << "v1^T M v2 = " << v1.dot(Mv2) << std::endl;
+        std::cout << "v2^T M v1 = " << v2.dot(Mv1) << std::endl;
+    }
+
     void MainApp::TestMVProduct()
     {
         geom->refreshQuantities();
@@ -660,9 +684,17 @@ namespace rsurfaces
         std::vector<ConstraintPack> noSchur;
         Hs::HsMetric hs(energy, flow->getSimpleConstraints(), noSchur);
         Eigen::VectorXd b1;
-        b1.setRandom(hs.getNumRows());
+        size_t nRows = hs.getNumRows();
+        b1.setRandom(nRows);
         Eigen::VectorXd b2;
-        b2.setRandom(hs.getNumRows());
+        b2.setRandom(nRows);
+        int vertEnd = 3 * mesh->nVertices();
+
+        for (int i = vertEnd; i < b1.rows(); i++)
+        {
+            b1(i) = 0;
+            b2(i) = 0;
+        }
 
         Eigen::VectorXd Pb1 = hs.InvertSparseBarycenterMode(b1);
         Eigen::VectorXd Pb2 = hs.InvertSparseBarycenterMode(b2);
@@ -1060,6 +1092,11 @@ void customCallback()
     if (ImGui::Button("Test iter. (GMRES)", ImVec2{ITEM_WIDTH, 0}))
     {
         MainApp::instance->TestIterative(false);
+    }
+
+    if (ImGui::Button("Test MV symmetric", ImVec2{ITEM_WIDTH, 0}))
+    {
+        MainApp::instance->TestMVSymmetric();
     }
 
     if (ImGui::Button("Test B-H", ImVec2{ITEM_WIDTH, 0}))
