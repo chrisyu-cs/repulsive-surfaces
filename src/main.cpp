@@ -50,7 +50,7 @@ namespace rsurfaces
         ctrlMouseDown = false;
         hasPickedVertex = false;
         numSteps = 0;
-        methodChoice = GradientMethod::HsProjected;
+        methodChoice = GradientMethod::HsProjectedIterative;
         timeSpentSoFar = 0;
         realTimeLimit = 0;
         logPerformance = false;
@@ -78,6 +78,9 @@ namespace rsurfaces
             break;
         case GradientMethod::HsExactProjected:
             flow->StepProjectedGradientExact();
+            break;
+        case GradientMethod::H1Projected:
+            flow->StepH1ProjGrad();
             break;
         default:
             throw std::runtime_error("Unknown gradient method type.");
@@ -175,7 +178,7 @@ namespace rsurfaces
         long diffTimeEnd = currentTimeMilliseconds();
         std::cout << "Differential took " << (diffTimeEnd - diffTimeStart) << " ms" << std::endl;
 
-        std::unique_ptr<Hs::HsMetric> hs = flow->GetMetric();
+        std::unique_ptr<Hs::HsMetric> hs = flow->GetHsMetric();
 
         std::cout << "Inverting \"sparse\" metric..." << std::endl;
         long sparseTimeStart = currentTimeMilliseconds();
@@ -937,10 +940,10 @@ void customCallback()
     }
     ImGui::Checkbox("Log performance", &MainApp::instance->logPerformance);
 
-    const GradientMethod methods[] = {GradientMethod::HsProjected,
-                                      GradientMethod::HsProjectedIterative,
-                                      GradientMethod::HsNCG,
-                                      GradientMethod::HsExactProjected};
+    const GradientMethod methods[] = {GradientMethod::HsProjectedIterative,
+                                      GradientMethod::HsProjected,
+                                      GradientMethod::HsExactProjected,
+                                      GradientMethod::H1Projected};
 
     selectFromDropdown("Method", methods, IM_ARRAYSIZE(methods), MainApp::instance->methodChoice);
 
@@ -964,10 +967,8 @@ void customCallback()
 
     rsurfaces::MainApp::instance->HandlePicking();
 
-    ImGui::Text("Iteration limit");
-    ImGui::InputInt("", &MainApp::instance->stepLimit);
-    ImGui::Text("Real time limit (ms)");
-    ImGui::InputInt("", &MainApp::instance->realTimeLimit);
+    ImGui::InputInt("Iteration limit", &MainApp::instance->stepLimit);
+    ImGui::InputInt("Real time limit (ms)", &MainApp::instance->realTimeLimit);
 
     if (uiNormalizeView != MainApp::instance->normalizeView)
     {
@@ -975,7 +976,6 @@ void customCallback()
         rsurfaces::MainApp::instance->updateMeshPositions();
     }
     ImGui::PopItemWidth();
-    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
     if (ImGui::Button("Take 1 step", ImVec2{ITEM_WIDTH, 0}) || run)
     {
         MainApp::instance->TakeOptimizationStep(remesh);

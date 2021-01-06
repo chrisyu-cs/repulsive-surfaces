@@ -73,5 +73,26 @@ On a practical level, Sobolev preconditioning means using an operator $G$ to obt
 
 $$\Delta^{-s} = (\Delta^{-1}) (\Delta^{2-s}) (\Delta^{-1})$$
 
+$$
+\left[
+\begin{array}{lcc}
+\left[\begin{array}{ccc}
+\Delta & B_{\text{center}}^\top \\
+B_{\text{center}} & 0
+\end{array}\right] &
+\left[\begin{array}{c}
+B_{\text{Schur}^\top} \\
+0 
+\end{array}\right] \\
+\ &\ & \\
+\left[
+\begin{array}{cc}
+B_{\text{Schur}}\phantom{mk} & 0 \phantom{mi}
+\end{array}
+\right] & 0 
+\end{array}
+\right]
+$$
+
 \end{document}
 

@@ -35,7 +35,8 @@ namespace rsurfaces
         HsProjected,
         HsProjectedIterative,
         HsExactProjected,
-        HsNCG
+        HsNCG,
+        H1Projected
     };
 
     struct MassNormalPoint

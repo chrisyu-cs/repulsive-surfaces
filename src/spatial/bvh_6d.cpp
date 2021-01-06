@@ -91,7 +91,7 @@ namespace rsurfaces
             int firstAxis = axis;
             // If we failed to find a split point because all of the points
             // are aligned on this axis, then try again with the next one
-            while (isinff(splitPoint))
+            while (std::isinf(splitPoint))
             {
                 axis = NextAxis(axis);
                 if (axis == firstAxis)

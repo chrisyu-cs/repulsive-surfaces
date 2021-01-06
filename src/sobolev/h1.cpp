@@ -56,73 +56,29 @@ namespace rsurfaces
             MatrixUtils::ColumnIntoMatrix(gradientCol, dest);
         }
 
-        void ProjectConstraints(MeshPtr &mesh, GeomPtr &geom, std::vector<ConstraintPack> &constraints,
-                                std::vector<Constraints::SimpleProjectorConstraint *> simpleConstraints,
-                                int newtonIterations)
+        void ProjectConstraints(MeshPtr &mesh, GeomPtr &geom, std::vector<Constraints::SimpleProjectorConstraint *> simpleConstraints,
+                                std::vector<ConstraintPack> &newtonConstraints, SparseFactorization &factoredL, int newtonIterations)
         {
-            std::vector<Triplet> triplets, triplets3x;
-
-            // Count number of rows
-            size_t nConstraintRows = 0;
-            for (ConstraintPack &pack : constraints)
-            {
-                nConstraintRows += pack.constraint->nRows();
-            }
-            for (Constraints::SimpleProjectorConstraint *spc : simpleConstraints)
-            {
-                nConstraintRows += spc->nRows();
-            }
-            size_t totalNRows = 3 * mesh->nVertices() + nConstraintRows;
-            Eigen::VectorXd errors(totalNRows);
+            size_t nRows = factoredL.nRows;
+            Eigen::VectorXd errors(nRows);
 
             int nIters = 0;
 
             while (nIters < newtonIterations)
             {
-                // Rebuild the Laplacian
-                triplets.clear();
-                triplets3x.clear();
-                H1::getTriplets(triplets, mesh, geom, false);
-
-                /*
-                Eigen::SparseMatrix<double> L(mesh->nVertices(), mesh->nVertices());
-                // Construct the small Laplacian
-                L.setFromTriplets(triplets.begin(), triplets.end());
-                // Multiply the bi-Laplacian
-                L = L * L;
-                triplets.clear();
-                MatrixUtils::GetTripletsFromSparse(L, triplets);
-                */
-
-                MatrixUtils::TripleTriplets(triplets, triplets3x);
-                size_t curRow = 3 * mesh->nVertices();
-                
-
-                // Add constraint rows
-                for (ConstraintPack &pack : constraints)
-                {
-                    Constraints::addTripletsToSymmetric(*pack.constraint, triplets3x, mesh, geom, curRow);
-                    curRow += pack.constraint->nRows();
-                }
-                for (Constraints::SimpleProjectorConstraint *spc : simpleConstraints)
-                {
-                    Constraints::addTripletsToSymmetric(*spc, triplets3x, mesh, geom, curRow);
-                    curRow += spc->nRows();
-                }
-
                 // Fill right-hand side with error values
                 errors.setZero();
 
-                curRow = 3 * mesh->nVertices();
-                for (ConstraintPack &c : constraints)
-                {
-                    c.constraint->addErrorValues(errors, mesh, geom, curRow);
-                    curRow += c.constraint->nRows();
-                }
+                size_t curRow = 3 * mesh->nVertices();
                 for (Constraints::SimpleProjectorConstraint *spc : simpleConstraints)
                 {
                     spc->addErrorValues(errors, mesh, geom, curRow);
                     curRow += spc->nRows();
+                }
+                for (ConstraintPack &c : newtonConstraints)
+                {
+                    c.constraint->addErrorValues(errors, mesh, geom, curRow);
+                    curRow += c.constraint->nRows();
                 }
 
                 double maxError = errors.lpNorm<Eigen::Infinity>();
@@ -133,10 +89,7 @@ namespace rsurfaces
                 }
                 nIters++;
 
-                // Solve the saddle matrix for the correction
-                Eigen::SparseMatrix<double> metric(totalNRows, totalNRows);
-                metric.setFromTriplets(triplets3x.begin(), triplets3x.end());
-                MatrixUtils::SolveSparseSystem(metric, errors, errors);
+                errors = factoredL.Solve(errors);
 
                 // Apply the correction
                 for (size_t i = 0; i < mesh->nVertices(); i++)

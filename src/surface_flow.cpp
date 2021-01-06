@@ -105,7 +105,7 @@ namespace rsurfaces
             ncg = new Hs::HsNCG(bhEnergy, simpleConstraints);
         }
 
-        std::unique_ptr<Hs::HsMetric> hs = GetMetric();
+        std::unique_ptr<Hs::HsMetric> hs = GetHsMetric();
 
         double hsGradNormBefore = ncg->UpdateConjugateDir(l2diff, *hs);
         double gProjNorm = ncg->direction().norm();
@@ -146,7 +146,7 @@ namespace rsurfaces
         AddGradientsToMatrix(energies, dest);
     }
 
-    std::unique_ptr<Hs::HsMetric> SurfaceFlow::GetMetric()
+    std::unique_ptr<Hs::HsMetric> SurfaceFlow::GetHsMetric()
     {
         BarnesHutTPEnergy6D *bhEnergy = dynamic_cast<BarnesHutTPEnergy6D *>(energies[0]);
         std::unique_ptr<Hs::HsMetric> hs(new Hs::HsMetric(bhEnergy, simpleConstraints, schurConstraints));
@@ -170,7 +170,7 @@ namespace rsurfaces
         AssembleGradients(l2diff);
         double gNorm = l2diff.norm();
 
-        std::unique_ptr<Hs::HsMetric> hs = GetMetric();
+        std::unique_ptr<Hs::HsMetric> hs = GetHsMetric();
 
         Eigen::MatrixXd M = hs->GetHsMatrixConstrained();
 
@@ -261,7 +261,7 @@ namespace rsurfaces
         AssembleGradients(l2diff);
         double gNorm = l2diff.norm();
 
-        std::unique_ptr<Hs::HsMetric> hs = GetMetric();
+        std::unique_ptr<Hs::HsMetric> hs = GetHsMetric();
         hs->allowBarycenterShift = allowBarycenterShift;
         printSolveInfo(hs->newtonConstraints.size());
 
@@ -333,7 +333,7 @@ namespace rsurfaces
         AssembleGradients(l2diff);
         double gNorm = l2diff.norm();
 
-        std::unique_ptr<Hs::HsMetric> hs = GetMetric();
+        std::unique_ptr<Hs::HsMetric> hs = GetHsMetric();
         printSolveInfo(hs->newtonConstraints.size());
 
         Vector3 shift{0, 0, 0};
@@ -379,6 +379,108 @@ namespace rsurfaces
             hs->shiftBarycenterConstraint(-delta * shift);
         }
         hs->ProjectSimpleConstraints();
+
+        incrementSchurConstraints();
+
+        std::cout << "  Mesh total volume = " << totalVolume(geom, mesh) << std::endl;
+        std::cout << "  Mesh total area = " << totalArea(geom, mesh) << std::endl;
+        geom->refreshQuantities();
+
+        long timeEnd = currentTimeMilliseconds();
+        std::cout << "  Total time for gradient step = " << (timeEnd - timeStart) << " ms" << std::endl;
+    }
+
+    size_t SurfaceFlow::addConstraintTriplets(std::vector<Triplet> &triplets)
+    {
+        size_t curRow = 3 * mesh->nVertices();
+        size_t nConstraintRows = 0;
+        for (Constraints::SimpleProjectorConstraint *spc : simpleConstraints)
+        {
+            Constraints::addTripletsToSymmetric(*spc, triplets, mesh, geom, curRow);
+            size_t nr = spc->nRows();
+            curRow += nr;
+            nConstraintRows += nr;
+        }
+
+        for (ConstraintPack &c : schurConstraints)
+        {
+            Constraints::addTripletsToSymmetric(*c.constraint, triplets, mesh, geom, curRow);
+            size_t nr = c.constraint->nRows();
+            curRow += nr;
+            nConstraintRows += nr;
+        }
+        return nConstraintRows;
+    }
+
+    void SurfaceFlow::StepH1ProjGrad()
+    {
+        long timeStart = currentTimeMilliseconds();
+        stepCount++;
+        std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
+        std::cout << "Using H1 projected gradient method..." << std::endl;
+        UpdateEnergies();
+
+        // Assemble sum of L2 differentials of all energies involved
+        // (including tangent-point energy)
+        Eigen::MatrixXd l2diff;
+        l2diff.setZero(mesh->nVertices(), 3);
+        AssembleGradients(l2diff);
+        double gNorm = l2diff.norm();
+
+        Vector3 shift{0, 0, 0};
+        if (allowBarycenterShift)
+        {
+            shift = averageOfMatrixRows(geom, mesh, l2diff);
+            std::cout << "Average shift of L2 diff = " << shift << std::endl;
+        }
+
+        // Assemble triplets for the Laplacian
+        std::vector<Triplet> h1Triplets, h1Triplets3x;
+        H1::getTriplets(h1Triplets, mesh, geom, 1e-10);
+        MatrixUtils::TripleTriplets(h1Triplets, h1Triplets3x);
+        // Add constraint rows at bottom
+        size_t nConstraintRows = addConstraintTriplets(h1Triplets3x);
+        size_t dims = 3 * mesh->nVertices() + nConstraintRows;
+
+        // Builds and factorize the Laplacian
+        Eigen::SparseMatrix<double> L(dims, dims);
+        L.setFromTriplets(h1Triplets3x.begin(), h1Triplets3x.end());
+        SparseFactorization factorizedL;
+        factorizedL.Compute(L);
+
+        // Project the H1 gradient
+        Eigen::VectorXd gradientVec;
+        gradientVec.setZero(dims);
+        MatrixUtils::MatrixIntoColumn(l2diff, gradientVec);
+
+        gradientVec = factorizedL.Solve(gradientVec);
+        Eigen::MatrixXd gradientProj;
+        gradientProj.setZero(l2diff.rows(), l2diff.cols());
+        MatrixUtils::ColumnIntoMatrix(gradientVec, gradientProj);
+
+        if (allowBarycenterShift)
+        {
+            addShiftToMatrixRows(gradientProj, mesh->nVertices(), shift);
+        }
+
+        VertexIndices inds = mesh->getVertexIndices();
+
+        double gProjNorm = gradientProj.norm();
+        // Measure dot product of search direction with original gradient direction
+        double gradDot = (l2diff.transpose() * gradientProj).trace() / (gNorm * gProjNorm);
+
+        // Guess a step size
+        // double initGuess = prevStep * 1.25;
+        double initGuess = guessStepSize(gProjNorm);
+
+        std::cout << "  * Initial step size guess = " << initGuess << std::endl;
+
+        // Take the step using line search
+        LineSearch search(mesh, geom, energies);
+        double delta = search.BacktrackingLineSearch(gradientProj, initGuess, gradDot);
+
+        // Do corrective constraint projection by reusing the H1 metric
+        H1::ProjectConstraints(mesh, geom, simpleConstraints, schurConstraints, factorizedL, 1);
 
         incrementSchurConstraints();
 

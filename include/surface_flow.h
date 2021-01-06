@@ -23,6 +23,8 @@ namespace rsurfaces
         void StepProjectedGradientIterative();
         void StepNCG();
 
+        void StepH1ProjGrad();
+
         SurfaceEnergy *BaseEnergy();
 
         void RecenterMesh();
@@ -30,7 +32,7 @@ namespace rsurfaces
         void ResetAllPotentials();
 
         void AssembleGradients(Eigen::MatrixXd &dest);
-        std::unique_ptr<Hs::HsMetric> GetMetric();
+        std::unique_ptr<Hs::HsMetric> GetHsMetric();
 
         void UpdateEnergies();
         double evaluateEnergy();
@@ -72,6 +74,7 @@ namespace rsurfaces
         Hs::HsNCG *ncg;
         Constraints::BarycenterComponentsConstraint *secretBarycenter;
 
+        size_t addConstraintTriplets(std::vector<Triplet> &triplets);
 
         inline void incrementSchurConstraints()
         {
@@ -84,7 +87,6 @@ namespace rsurfaces
                 }
             }
         }
-        
 
         double prevStep;
     };
