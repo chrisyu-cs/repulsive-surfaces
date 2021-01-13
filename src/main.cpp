@@ -57,11 +57,6 @@ namespace rsurfaces
         referenceEnergy = 0;
     }
 
-    void MainApp::TakeNaiveStep(double t)
-    {
-        flow->StepNaive(t);
-    }
-
     void MainApp::TakeOptimizationStep(bool remeshAfter)
     {
         long beforeStep = currentTimeMilliseconds();
@@ -82,6 +77,15 @@ namespace rsurfaces
         case GradientMethod::H1Projected:
             flow->StepH1ProjGrad();
             break;
+        case GradientMethod::L2Unconstrained:
+            flow->StepL2Unconstrained();
+            break;
+        case GradientMethod::AQP:
+        {
+            double kappa = 100;
+            flow->StepAQP(1 / kappa);
+        }
+        break;
         default:
             throw std::runtime_error("Unknown gradient method type.");
         }
@@ -102,6 +106,8 @@ namespace rsurfaces
         long timeForStep = afterStep - beforeStep;
         timeSpentSoFar += timeForStep;
         numSteps++;
+        std::cout << "  Mesh total volume = " << totalVolume(geom, mesh) << std::endl;
+        std::cout << "  Mesh total area = " << totalArea(geom, mesh) << std::endl;
 
         if (logPerformance)
         {
@@ -943,7 +949,9 @@ void customCallback()
     const GradientMethod methods[] = {GradientMethod::HsProjectedIterative,
                                       GradientMethod::HsProjected,
                                       GradientMethod::HsExactProjected,
-                                      GradientMethod::H1Projected};
+                                      GradientMethod::H1Projected,
+                                      GradientMethod::L2Unconstrained,
+                                      GradientMethod::AQP};
 
     selectFromDropdown("Method", methods, IM_ARRAYSIZE(methods), MainApp::instance->methodChoice);
 
@@ -1001,7 +1009,7 @@ void customCallback()
 
     ImGui::BeginGroup();
     ImGui::Indent(INDENT);
-
+    
     if (ImGui::Button("Test MV product", ImVec2{ITEM_WIDTH, 0}))
     {
         MainApp::instance->TestMVProduct();

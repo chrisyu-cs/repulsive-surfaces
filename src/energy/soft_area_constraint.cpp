@@ -24,27 +24,24 @@ namespace rsurfaces
     // respect to the corresponding vertex.
     void SoftAreaConstraint::Differential(Eigen::MatrixXd &output)
     {
-        double currentValue = Value();
+        double areaDev = totalArea(geom, mesh) - initialArea;
 
         VertexIndices inds = mesh->getVertexIndices();
-        #pragma omp parallel shared(output)
+        for (size_t i = 0; i < mesh->nVertices(); i++)
         {
-            #pragma omp parallel for
-            for (size_t i = 0; i < mesh->nVertices(); i++)
-            {
-                GCVertex v_i = mesh->vertex(i);
-                Vector3 sumDerivs{0, 0, 0};
+            GCVertex v_i = mesh->vertex(i);
+            Vector3 sumDerivs{0, 0, 0};
 
-                // Each vertex produces a derivative wrt its surrounding faces
-                for (GCFace f : v_i.adjacentFaces())
-                {
-                    if (f.isBoundaryLoop()) continue;
-                    sumDerivs += SurfaceDerivs::triangleAreaWrtVertex(geom, f, v_i);
-                }
-                // Differential of A^2 = 2 A (dA/dx)
-                sumDerivs = 2 * currentValue * sumDerivs;
-                MatrixUtils::addToRow(output, inds[v_i], weight * sumDerivs);
+            // Each vertex produces a derivative wrt its surrounding faces
+            for (GCFace f : v_i.adjacentFaces())
+            {
+                if (f.isBoundaryLoop())
+                    continue;
+                sumDerivs += SurfaceDerivs::triangleAreaWrtVertex(geom, f, v_i);
             }
+            // Differential of A^2 = 2 A (dA/dx)
+            sumDerivs = 2 * areaDev * sumDerivs;
+            MatrixUtils::addToRow(output, inds[v_i], weight * geom->vertexDualAreas[v_i] * sumDerivs);
         }
     }
 
@@ -75,14 +72,15 @@ namespace rsurfaces
 
     // Get a pointer to the current BVH for this energy.
     // Return 0 if the energy doesn't use a BVH.
-    BVHNode6D* SoftAreaConstraint::GetBVH()
+    BVHNode6D *SoftAreaConstraint::GetBVH()
     {
         return 0;
     }
 
     // Return the separation parameter for this energy.
     // Return 0 if this energy doesn't do hierarchical approximation.
-    double SoftAreaConstraint::GetTheta() {
+    double SoftAreaConstraint::GetTheta()
+    {
         return 0;
     }
 

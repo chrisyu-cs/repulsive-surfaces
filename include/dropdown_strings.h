@@ -26,6 +26,10 @@ namespace rsurfaces
             return "Hs-ExactProjected";
         case GradientMethod::H1Projected:
             return "H1-Projected";
+        case GradientMethod::L2Unconstrained:
+            return "L2-Unconstrained";
+        case GradientMethod::AQP:
+            return "AQP-Unconstrained";
         default:
             throw std::runtime_error("Unknown method type.");
         }

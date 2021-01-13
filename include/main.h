@@ -39,7 +39,6 @@ namespace rsurfaces
         void GetFalloffWindow(GCVertex v, double radius, std::vector<PriorityVertex> &verts);
         void HandlePicking();
 
-        void TakeNaiveStep(double t);
         void TakeOptimizationStep(bool remeshAfter);
         void AddObstacle(std::string filename, double weight, bool recenter);
         void AddPotential(scene::PotentialType pType, double weight);

@@ -23,16 +23,12 @@ namespace rsurfaces
     void TotalVolumePotential::Differential(Eigen::MatrixXd &output)
     {
         VertexIndices inds = mesh->getVertexIndices();
-        #pragma omp parallel shared(output)
+        for (size_t i = 0; i < mesh->nVertices(); i++)
         {
-            #pragma omp parallel for
-            for (size_t i = 0; i < mesh->nVertices(); i++)
-            {
-                GCVertex v_i = mesh->vertex(i);
-                // Derivative of local volume is just the area weighted normal
-                Vector3 deriv_v = areaWeightedNormal(geom, v_i);
-                MatrixUtils::addToRow(output, inds[v_i], weight * deriv_v);
-            }
+            GCVertex v_i = mesh->vertex(i);
+            // Derivative of local volume is just the area weighted normal
+            Vector3 deriv_v = areaWeightedNormal(geom, v_i);
+            MatrixUtils::addToRow(output, inds[v_i], weight * deriv_v);
         }
     }
 
@@ -63,14 +59,15 @@ namespace rsurfaces
 
     // Get a pointer to the current BVH for this energy.
     // Return 0 if the energy doesn't use a BVH.
-    BVHNode6D* TotalVolumePotential::GetBVH()
+    BVHNode6D *TotalVolumePotential::GetBVH()
     {
         return 0;
     }
 
     // Return the separation parameter for this energy.
     // Return 0 if this energy doesn't do hierarchical approximation.
-    double TotalVolumePotential::GetTheta() {
+    double TotalVolumePotential::GetTheta()
+    {
         return 0;
     }
 

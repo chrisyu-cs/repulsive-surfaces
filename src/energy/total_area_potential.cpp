@@ -23,21 +23,17 @@ namespace rsurfaces
     void TotalAreaPotential::Differential(Eigen::MatrixXd &output)
     {
         VertexIndices inds = mesh->getVertexIndices();
-        #pragma omp parallel shared(output)
+        for (size_t i = 0; i < mesh->nVertices(); i++)
         {
-            #pragma omp parallel for
-            for (size_t i = 0; i < mesh->nVertices(); i++)
-            {
-                GCVertex v_i = mesh->vertex(i);
-                Vector3 sumDerivs{0, 0, 0};
+            GCVertex v_i = mesh->vertex(i);
+            Vector3 sumDerivs{0, 0, 0};
 
-                // Each vertex produces a derivative wrt its surrounding faces
-                for (GCFace f : v_i.adjacentFaces())
-                {
-                    sumDerivs += SurfaceDerivs::triangleAreaWrtVertex(geom, f, v_i);
-                }
-                MatrixUtils::addToRow(output, inds[v_i], weight * sumDerivs);
+            // Each vertex produces a derivative wrt its surrounding faces
+            for (GCFace f : v_i.adjacentFaces())
+            {
+                sumDerivs += SurfaceDerivs::triangleAreaWrtVertex(geom, f, v_i);
             }
+            MatrixUtils::addToRow(output, inds[v_i], weight * sumDerivs);
         }
     }
 
@@ -68,14 +64,15 @@ namespace rsurfaces
 
     // Get a pointer to the current BVH for this energy.
     // Return 0 if the energy doesn't use a BVH.
-    BVHNode6D* TotalAreaPotential::GetBVH()
+    BVHNode6D *TotalAreaPotential::GetBVH()
     {
         return 0;
     }
 
     // Return the separation parameter for this energy.
     // Return 0 if this energy doesn't do hierarchical approximation.
-    double TotalAreaPotential::GetTheta() {
+    double TotalAreaPotential::GetTheta()
+    {
         return 0;
     }
 

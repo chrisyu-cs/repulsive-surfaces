@@ -36,27 +36,6 @@ namespace rsurfaces
         energies.push_back(extraEnergy);
     }
 
-    void SurfaceFlow::StepNaive(double t)
-    {
-        stepCount++;
-        double energyBefore = GetEnergyValue(energies);
-
-        Eigen::MatrixXd gradient;
-        gradient.setZero(mesh->nVertices(), 3);
-        AddGradientsToMatrix(energies, gradient);
-        surface::VertexData<size_t> indices = mesh->getVertexIndices();
-
-        for (GCVertex v : mesh->vertices())
-        {
-            Vector3 grad_v = GetRow(gradient, indices[v]);
-            geom->inputVertexPositions[v] -= grad_v * t;
-        }
-
-        double energyAfter = GetEnergyValue(energies);
-
-        std::cout << "Energy: " << energyBefore << " -> " << energyAfter << std::endl;
-    }
-
     void SurfaceFlow::UpdateEnergies()
     {
         for (SurfaceEnergy *energy : energies)
@@ -67,12 +46,26 @@ namespace rsurfaces
 
     inline double guessStepSize(double gProjNorm)
     {
-
         // double initGuess = (gProjNorm < 1) ? 1.0 / sqrt(gProjNorm) : 1.0 / gProjNorm;
         double initGuess = 1.0 / gProjNorm;
         initGuess *= 2;
         return initGuess;
     }
+
+    void SurfaceFlow::StepL2Unconstrained()
+    {
+        stepCount++;
+        UpdateEnergies();
+
+        Eigen::MatrixXd l2diff;
+        l2diff.setZero(mesh->nVertices(), 3);
+        AssembleGradients(l2diff);
+
+        double initGuess = guessStepSize(l2diff.norm());
+        LineSearch search(mesh, geom, energies);
+        search.BacktrackingLineSearch(l2diff, initGuess, 1);
+    }
+
 
     double SurfaceFlow::evaluateEnergy()
     {
@@ -132,9 +125,6 @@ namespace rsurfaces
             ncg->ResetMemory();
         }
         */
-
-        std::cout << "  Mesh total volume = " << totalVolume(geom, mesh) << std::endl;
-        std::cout << "  Mesh total area = " << totalArea(geom, mesh) << std::endl;
         geom->refreshQuantities();
 
         long timeEnd = currentTimeMilliseconds();
@@ -308,9 +298,6 @@ namespace rsurfaces
         hs->ProjectSimpleConstraints();
 
         incrementSchurConstraints();
-
-        std::cout << "  Mesh total volume = " << totalVolume(geom, mesh) << std::endl;
-        std::cout << "  Mesh total area = " << totalArea(geom, mesh) << std::endl;
         geom->refreshQuantities();
 
         long timeEnd = currentTimeMilliseconds();
@@ -381,16 +368,13 @@ namespace rsurfaces
         hs->ProjectSimpleConstraints();
 
         incrementSchurConstraints();
-
-        std::cout << "  Mesh total volume = " << totalVolume(geom, mesh) << std::endl;
-        std::cout << "  Mesh total area = " << totalArea(geom, mesh) << std::endl;
         geom->refreshQuantities();
 
         long timeEnd = currentTimeMilliseconds();
         std::cout << "  Total time for gradient step = " << (timeEnd - timeStart) << " ms" << std::endl;
     }
 
-    size_t SurfaceFlow::addConstraintTriplets(std::vector<Triplet> &triplets)
+    size_t SurfaceFlow::addConstraintTriplets(std::vector<Triplet> &triplets, bool includeSchur)
     {
         size_t curRow = 3 * mesh->nVertices();
         size_t nConstraintRows = 0;
@@ -402,14 +386,33 @@ namespace rsurfaces
             nConstraintRows += nr;
         }
 
-        for (ConstraintPack &c : schurConstraints)
+        if (includeSchur)
         {
-            Constraints::addTripletsToSymmetric(*c.constraint, triplets, mesh, geom, curRow);
-            size_t nr = c.constraint->nRows();
-            curRow += nr;
-            nConstraintRows += nr;
+            for (ConstraintPack &c : schurConstraints)
+            {
+                Constraints::addTripletsToSymmetric(*c.constraint, triplets, mesh, geom, curRow);
+                size_t nr = c.constraint->nRows();
+                curRow += nr;
+                nConstraintRows += nr;
+            }
         }
         return nConstraintRows;
+    }
+
+    void SurfaceFlow::prefactorConstrainedLaplacian(SparseFactorization &factored, bool includeSchur)
+    {
+        // Assemble triplets for the Laplacian
+        std::vector<Triplet> h1Triplets, h1Triplets3x;
+        H1::getTriplets(h1Triplets, mesh, geom, 1e-10);
+        MatrixUtils::TripleTriplets(h1Triplets, h1Triplets3x);
+        // Add constraint rows at bottom
+        size_t nConstraintRows = addConstraintTriplets(h1Triplets3x, includeSchur);
+        size_t dims = 3 * mesh->nVertices() + nConstraintRows;
+
+        // Builds and factorize the Laplacian
+        Eigen::SparseMatrix<double> L(dims, dims);
+        L.setFromTriplets(h1Triplets3x.begin(), h1Triplets3x.end());
+        factored.Compute(L);
     }
 
     void SurfaceFlow::StepH1ProjGrad()
@@ -434,19 +437,10 @@ namespace rsurfaces
             std::cout << "Average shift of L2 diff = " << shift << std::endl;
         }
 
-        // Assemble triplets for the Laplacian
-        std::vector<Triplet> h1Triplets, h1Triplets3x;
-        H1::getTriplets(h1Triplets, mesh, geom, 1e-10);
-        MatrixUtils::TripleTriplets(h1Triplets, h1Triplets3x);
-        // Add constraint rows at bottom
-        size_t nConstraintRows = addConstraintTriplets(h1Triplets3x);
-        size_t dims = 3 * mesh->nVertices() + nConstraintRows;
-
-        // Builds and factorize the Laplacian
-        Eigen::SparseMatrix<double> L(dims, dims);
-        L.setFromTriplets(h1Triplets3x.begin(), h1Triplets3x.end());
         SparseFactorization factorizedL;
-        factorizedL.Compute(L);
+        prefactorConstrainedLaplacian(factorizedL, true);
+        size_t dims = factorizedL.nRows;
+        std::cout << "Prefactorized" << std::endl;
 
         // Project the H1 gradient
         Eigen::VectorXd gradientVec;
@@ -463,18 +457,12 @@ namespace rsurfaces
             addShiftToMatrixRows(gradientProj, mesh->nVertices(), shift);
         }
 
-        VertexIndices inds = mesh->getVertexIndices();
-
         double gProjNorm = gradientProj.norm();
         // Measure dot product of search direction with original gradient direction
         double gradDot = (l2diff.transpose() * gradientProj).trace() / (gNorm * gProjNorm);
-
         // Guess a step size
-        // double initGuess = prevStep * 1.25;
         double initGuess = guessStepSize(gProjNorm);
-
         std::cout << "  * Initial step size guess = " << initGuess << std::endl;
-
         // Take the step using line search
         LineSearch search(mesh, geom, energies);
         double delta = search.BacktrackingLineSearch(gradientProj, initGuess, gradDot);
@@ -483,9 +471,100 @@ namespace rsurfaces
         H1::ProjectConstraints(mesh, geom, simpleConstraints, schurConstraints, factorizedL, 1);
 
         incrementSchurConstraints();
+        geom->refreshQuantities();
 
-        std::cout << "  Mesh total volume = " << totalVolume(geom, mesh) << std::endl;
-        std::cout << "  Mesh total area = " << totalArea(geom, mesh) << std::endl;
+        long timeEnd = currentTimeMilliseconds();
+        std::cout << "  Total time for gradient step = " << (timeEnd - timeStart) << " ms" << std::endl;
+    }
+
+    void savePositions(MeshPtr &mesh, GeomPtr &geom, Eigen::MatrixXd &positions)
+    {
+        positions.setZero(mesh->nVertices(), 3);
+
+        VertexIndices inds = mesh->getVertexIndices();
+
+        for (GCVertex v : mesh->vertices())
+        {
+            Vector3 pos = geom->inputVertexPositions[v];
+            size_t i = inds[v];
+            positions(i, 0) = pos.x;
+            positions(i, 1) = pos.y;
+            positions(i, 2) = pos.z;
+        }
+    }
+
+    void SurfaceFlow::StepAQP(double invKappa)
+    {
+        long timeStart = currentTimeMilliseconds();
+        if (stepCount == 0)
+        {
+            savePositions(mesh, geom, prevPositions1);
+            savePositions(mesh, geom, prevPositions2);
+        }
+        stepCount++;
+
+        double theta = (1 - sqrt(invKappa)) / (1 + sqrt(invKappa));
+        // 1. Nesterov step
+        Eigen::MatrixXd y_n = (1 + theta) * prevPositions1 - theta * prevPositions2;
+
+        // 2. H1 gradient step following the Nesterov step
+        std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
+        std::cout << "Using H1 projected gradient method..." << std::endl;
+        UpdateEnergies();
+
+        // Assemble sum of L2 differentials of all energies involved
+        // (including tangent-point energy)
+        Eigen::MatrixXd l2diff;
+        l2diff.setZero(mesh->nVertices(), 3);
+        AssembleGradients(l2diff);
+        double gNorm = l2diff.norm();
+
+        Vector3 shift{0, 0, 0};
+        if (allowBarycenterShift)
+        {
+            shift = averageOfMatrixRows(geom, mesh, l2diff);
+            std::cout << "Average shift of L2 diff = " << shift << std::endl;
+        }
+
+        SparseFactorization factorizedL;
+        // Only use "simple" positional constraints (Nesterov would break hard constraints anyway)
+        prefactorConstrainedLaplacian(factorizedL, false);
+        size_t dims = factorizedL.nRows;
+        std::cout << "Prefactorized" << std::endl;
+
+        // Project the H1 gradient
+        Eigen::VectorXd gradientVec;
+        gradientVec.setZero(dims);
+        MatrixUtils::MatrixIntoColumn(l2diff, gradientVec);
+
+        gradientVec = factorizedL.Solve(gradientVec);
+        Eigen::MatrixXd gradientProj;
+        gradientProj.setZero(l2diff.rows(), l2diff.cols());
+        MatrixUtils::ColumnIntoMatrix(gradientVec, gradientProj);
+
+        if (allowBarycenterShift)
+        {
+            addShiftToMatrixRows(gradientProj, mesh->nVertices(), shift);
+        }
+
+        double gProjNorm = gradientProj.norm();
+        // Measure dot product of search direction with original gradient direction
+        double gradDot = (l2diff.transpose() * gradientProj).trace() / (gNorm * gProjNorm);
+        // Guess a step size
+        double initGuess = guessStepSize(gProjNorm);
+        std::cout << "  * Initial step size guess = " << initGuess << std::endl;
+        // Take the step using line search
+        LineSearch search(mesh, geom, energies);
+        double delta = search.BacktrackingLineSearch(gradientProj, initGuess, gradDot);
+
+        // Make sure pins don't drift
+        for (Constraints::SimpleProjectorConstraint *spc : simpleConstraints)
+        {
+            spc->ProjectConstraint(mesh, geom);
+        }
+        // Save previous positions
+        prevPositions2 = prevPositions1;
+        savePositions(mesh, geom, prevPositions1);
         geom->refreshQuantities();
 
         long timeEnd = currentTimeMilliseconds();

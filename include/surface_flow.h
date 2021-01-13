@@ -17,13 +17,14 @@ namespace rsurfaces
         SurfaceFlow(SurfaceEnergy *energy_);
         void AddAdditionalEnergy(SurfaceEnergy *extraEnergy);
 
-        void StepNaive(double t);
+        void StepL2Unconstrained();
         void StepProjectedGradientExact();
         void StepProjectedGradient();
         void StepProjectedGradientIterative();
         void StepNCG();
 
         void StepH1ProjGrad();
+        void StepAQP(double invKappa);
 
         SurfaceEnergy *BaseEnergy();
 
@@ -66,7 +67,8 @@ namespace rsurfaces
         std::vector<SurfaceEnergy *> energies;
         MeshPtr mesh;
         GeomPtr geom;
-        Eigen::MatrixXd origPositions;
+        Eigen::MatrixXd prevPositions1;
+        Eigen::MatrixXd prevPositions2;
         unsigned int stepCount;
         std::vector<ConstraintPack> schurConstraints;
         std::vector<Constraints::SimpleProjectorConstraint *> simpleConstraints;
@@ -74,7 +76,8 @@ namespace rsurfaces
         Hs::HsNCG *ncg;
         Constraints::BarycenterComponentsConstraint *secretBarycenter;
 
-        size_t addConstraintTriplets(std::vector<Triplet> &triplets);
+        size_t addConstraintTriplets(std::vector<Triplet> &triplets, bool includeSchur);
+        void prefactorConstrainedLaplacian(SparseFactorization &factored, bool includeSchur);
 
         inline void incrementSchurConstraints()
         {

@@ -24,22 +24,18 @@ namespace rsurfaces
     // respect to the corresponding vertex.
     void SoftVolumeConstraint::Differential(Eigen::MatrixXd &output)
     {
-        double currentValue = Value();
+        double volDev = totalVolume(geom, mesh) - initialVolume;
 
         VertexIndices inds = mesh->getVertexIndices();
-        #pragma omp parallel shared(output)
+        for (size_t i = 0; i < mesh->nVertices(); i++)
         {
-            #pragma omp parallel for
-            for (size_t i = 0; i < mesh->nVertices(); i++)
-            {
-                GCVertex v_i = mesh->vertex(i);
-                // Derivative of local volume is just the area weighted normal
-                Vector3 deriv_v = areaWeightedNormal(geom, v_i);
-                // Derivative of V^2 = 2 V (dV/dx)
-                deriv_v = 2 * currentValue * deriv_v;
+            GCVertex v_i = mesh->vertex(i);
+            // Derivative of local volume is just the area weighted normal
+            Vector3 deriv_v = areaWeightedNormal(geom, v_i);
+            // Derivative of V^2 = 2 V (dV/dx)
+            deriv_v = 2 * volDev * deriv_v;
 
-                MatrixUtils::addToRow(output, inds[v_i], weight * deriv_v);
-            }
+            MatrixUtils::addToRow(output, inds[v_i], weight * deriv_v);
         }
     }
 
@@ -70,14 +66,15 @@ namespace rsurfaces
 
     // Get a pointer to the current BVH for this energy.
     // Return 0 if the energy doesn't use a BVH.
-    BVHNode6D* SoftVolumeConstraint::GetBVH()
+    BVHNode6D *SoftVolumeConstraint::GetBVH()
     {
         return 0;
     }
 
     // Return the separation parameter for this energy.
     // Return 0 if this energy doesn't do hierarchical approximation.
-    double SoftVolumeConstraint::GetTheta() {
+    double SoftVolumeConstraint::GetTheta()
+    {
         return 0;
     }
 
