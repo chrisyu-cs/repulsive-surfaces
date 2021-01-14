@@ -12,10 +12,15 @@ namespace rsurfaces
         initialArea = totalArea(geom, mesh);
     }
 
+    inline double areaDeviation(MeshPtr mesh, GeomPtr geom, double initialArea)
+    {
+        return (totalArea(geom, mesh) - initialArea) / initialArea;
+    }
+
     // Returns the current value of the energy.
     double SoftAreaConstraint::Value()
     {
-        double areaDev = totalArea(geom, mesh) - initialArea;
+        double areaDev = areaDeviation(mesh, geom, initialArea);
         return weight * (areaDev * areaDev);
     }
 
@@ -24,7 +29,7 @@ namespace rsurfaces
     // respect to the corresponding vertex.
     void SoftAreaConstraint::Differential(Eigen::MatrixXd &output)
     {
-        double areaDev = totalArea(geom, mesh) - initialArea;
+        double areaDev = areaDeviation(mesh, geom, initialArea);
 
         VertexIndices inds = mesh->getVertexIndices();
         for (size_t i = 0; i < mesh->nVertices(); i++)
@@ -40,7 +45,7 @@ namespace rsurfaces
                 sumDerivs += SurfaceDerivs::triangleAreaWrtVertex(geom, f, v_i);
             }
             // Differential of A^2 = 2 A (dA/dx)
-            sumDerivs = 2 * areaDev * sumDerivs;
+            sumDerivs = 2 * areaDev * sumDerivs / initialArea;
             MatrixUtils::addToRow(output, inds[v_i], weight * geom->vertexDualAreas[v_i] * sumDerivs);
         }
     }

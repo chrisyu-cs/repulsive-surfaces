@@ -548,6 +548,11 @@ namespace rsurfaces
         numericalNormalDeriv(geom, vert, vert).Print();
     }
 
+    void MainApp::TestGC()
+    {
+
+    }
+
     void MainApp::TestMVProduct()
     {
         geom->refreshQuantities();
@@ -1009,6 +1014,11 @@ void customCallback()
 
     ImGui::BeginGroup();
     ImGui::Indent(INDENT);
+    
+    if (ImGui::Button("Test MV product", ImVec2{ITEM_WIDTH, 0}))
+    {
+        MainApp::instance->TestGC();
+    }
     
     if (ImGui::Button("Test MV product", ImVec2{ITEM_WIDTH, 0}))
     {

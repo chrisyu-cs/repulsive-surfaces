@@ -1,0 +1,4 @@
+repel_mesh figure-eight-smoothed.obj 6 12
+constrain barycenter
+minimize area_deviation 100
+iteration_limit 500

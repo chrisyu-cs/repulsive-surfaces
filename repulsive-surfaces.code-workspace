@@ -70,7 +70,9 @@
 			"hash_map": "cpp",
 			"future": "cpp",
 			"mutex": "cpp",
-			"variant": "cpp"
+			"variant": "cpp",
+			"bitset": "cpp",
+			"shared_mutex": "cpp"
 		}
 	}
 }

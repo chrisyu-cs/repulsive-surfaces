@@ -1,6 +1,6 @@
-repel_mesh bunny-25p.obj 6 12
+repel_mesh bunny-50p.obj 6 12
 constrain barycenter
 # minimize volume_deviation 10
-# minimize area_deviation 10
-minimize squared_error 0.2
+# minimize area_deviation 100
+# minimize squared_error 0.2
 iteration_limit 200

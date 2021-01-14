@@ -27,6 +27,7 @@ namespace rsurfaces
         static MainApp *instance;
         MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow *flow_, polyscope::SurfaceMesh *psMesh_, std::string meshName_);
 
+        void TestGC();
         void TestMVProduct();
         void TestIterative();
         void BenchmarkBH();
