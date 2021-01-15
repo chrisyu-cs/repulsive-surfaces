@@ -62,6 +62,7 @@ namespace rsurfaces
         }
 
         bool allowBarycenterShift;
+        bool verticesMutated;
 
     private:
         std::vector<SurfaceEnergy *> energies;

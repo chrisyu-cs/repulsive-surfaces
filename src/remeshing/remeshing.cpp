@@ -608,8 +608,9 @@ namespace rsurfaces
             // return flatLength;
         }
         
-        void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry, double flatLength, double epsilon, double minLength, bool curvatureAdaptive)
+        bool adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry, double flatLength, double epsilon, double minLength, bool curvatureAdaptive)
         {
+            bool didSplitOrCollapse = false;
             // queues of edges to CHECK to change
             std::vector<Edge> toSplit;
             std::vector<Edge> toCollapse;
@@ -630,6 +631,7 @@ namespace rsurfaces
                 {
                     Vector3 newPos = edgeMidpoint(mesh, geometry, e);
                     Halfedge he = mesh->splitEdgeTriangular(e);
+                    didSplitOrCollapse = true;
                     Vertex newV = he.vertex();
                     geometry->inputVertexPositions[newV] = newPos;
                 }
@@ -649,8 +651,9 @@ namespace rsurfaces
                     if(geometry->edgeLength(e) < threshold * 0.5)
                     {
                         Vector3 newPos = edgeMidpoint(mesh, geometry, e);
-                        if(shouldCollapse(mesh, geometry, e)){
-                        Vertex v = mesh->collapseEdgeTriangular(e);
+                        if(shouldCollapse(mesh, geometry, e)) {
+                            Vertex v = mesh->collapseEdgeTriangular(e);
+                            didSplitOrCollapse = true;
                             if (v != Vertex()) {
                                 if(!v.isBoundary()) {
                                     geometry->inputVertexPositions[v] = newPos;
@@ -664,6 +667,7 @@ namespace rsurfaces
             mesh->validateConnectivity();
             mesh->compress();
             geometry->refreshQuantities();
+            return didSplitOrCollapse;
         }
 
         void remesh(MeshPtr const &mesh, GeomPtr const &geometry){

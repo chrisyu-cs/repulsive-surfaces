@@ -35,7 +35,7 @@ namespace rsurfaces
         public:
             DynamicRemesher(MeshPtr mesh_, GeomPtr geom_);
             void SetModes(RemeshingMode rMode, SmoothingMode sMode, FlippingMode fMode);
-            void Remesh(int numIters, bool changeTopology);
+            bool Remesh(int numIters, bool changeTopology);
             void KeepVertexDataUpdated(VertexDataWrapper *data);
             bool curvatureAdaptive;
 

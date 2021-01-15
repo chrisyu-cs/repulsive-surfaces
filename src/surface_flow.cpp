@@ -28,6 +28,7 @@ namespace rsurfaces
         RecenterMesh();
         secretBarycenter = 0;
 
+        verticesMutated = false;
         ncg = 0;
     }
 
@@ -496,7 +497,7 @@ namespace rsurfaces
     void SurfaceFlow::StepAQP(double invKappa)
     {
         long timeStart = currentTimeMilliseconds();
-        if (stepCount == 0)
+        if (stepCount == 0 || verticesMutated)
         {
             savePositions(mesh, geom, prevPositions1);
             savePositions(mesh, geom, prevPositions2);

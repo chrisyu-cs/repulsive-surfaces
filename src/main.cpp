@@ -94,12 +94,22 @@ namespace rsurfaces
         {
             bool doCollapse = (numSteps % 1 == 0);
             std::cout << "Applying remeshing..." << std::endl;
-            remesher.Remesh(5, doCollapse);
+            flow->verticesMutated = remesher.Remesh(5, doCollapse);
+            if (flow->verticesMutated)
+            {
+                std::cout << "Vertices were mutated this step -- memory vectors are now invalid." << std::endl;
+            }
+            else
+            {
+                std::cout << "Vertices were not mutated this step." << std::endl;
+            }
+
             mesh->compress();
             MainApp::instance->reregisterMesh();
         }
         else
         {
+            flow->verticesMutated = false;
             MainApp::instance->updateMeshPositions();
         }
         long afterStep = currentTimeMilliseconds();
@@ -548,7 +558,7 @@ namespace rsurfaces
         numericalNormalDeriv(geom, vert, vert).Print();
     }
 
-    void MainApp::TestGC()
+    void MainApp::TestNewMVProduct()
     {
 
     }
@@ -1014,12 +1024,7 @@ void customCallback()
 
     ImGui::BeginGroup();
     ImGui::Indent(INDENT);
-    
-    if (ImGui::Button("Test MV product", ImVec2{ITEM_WIDTH, 0}))
-    {
-        MainApp::instance->TestGC();
-    }
-    
+
     if (ImGui::Button("Test MV product", ImVec2{ITEM_WIDTH, 0}))
     {
         MainApp::instance->TestMVProduct();
