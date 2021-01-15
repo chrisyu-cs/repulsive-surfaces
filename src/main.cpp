@@ -560,7 +560,7 @@ namespace rsurfaces
 
     void MainApp::TestNewMVProduct()
     {
-
+        std::cout << "TODO: Implement and test new matrix-vector product." << std::endl;
     }
 
     void MainApp::TestMVProduct()
@@ -581,15 +581,15 @@ namespace rsurfaces
         long gradientEndTime = currentTimeMilliseconds();
         Hs::HsMetric hs(energy);
 
-        // Dense multiplication
         std::cout << "Dense fractional Laplacian (s = " << s << "):" << std::endl;
         Eigen::MatrixXd dense, dense_small;
         dense_small.setZero(mesh->nVertices(), mesh->nVertices());
         dense.setZero(3 * mesh->nVertices(), 3 * mesh->nVertices());
-
+        // Build dense fractional Laplacian
         long fracStart = currentTimeMilliseconds();
         hs.FillMatrixFracOnly(dense_small, s, mesh, geom);
         MatrixUtils::TripleMatrix(dense_small, dense);
+        // Multiply it
         Eigen::VectorXd denseRes = dense * gVec;
         long fracEnd = currentTimeMilliseconds();
 
@@ -623,12 +623,15 @@ namespace rsurfaces
 
         std::cout << "High-order term (s = " << s << "):" << std::endl;
 
+        // Build dense matrix for high-order term
         long hiStart = currentTimeMilliseconds();
         hs.FillMatrixHigh(dense_small, s, mesh, geom);
         MatrixUtils::TripleMatrix(dense_small, dense);
+        // Multiply it
         denseRes = dense * gVec;
         long hiEnd = currentTimeMilliseconds();
 
+        // Use BCT to multiply high-order term
         bct->MultiplyVector3(gVec, bctRes, BCTKernelType::HighOrder);
         long hiEnd2 = currentTimeMilliseconds();
 
@@ -650,12 +653,15 @@ namespace rsurfaces
 
         std::cout << "Low-order term (s = " << s << "):" << std::endl;
 
+        // Build dense matrix for low-order term
         long lowStart = currentTimeMilliseconds();
         hs.FillMatrixLow(dense_small, s, mesh, geom);
         MatrixUtils::TripleMatrix(dense_small, dense);
+        // Multiply it
         denseRes = dense * gVec;
         long lowEnd = currentTimeMilliseconds();
 
+        // Use BCT to multiply low-order term
         bct->MultiplyVector3(gVec, bctRes, BCTKernelType::LowOrder);
         long lowEnd2 = currentTimeMilliseconds();
 
@@ -667,9 +673,7 @@ namespace rsurfaces
         std::cout << "Dot product of directions = " << denseRes.dot(bctRes) / (denseRes.norm() * bctRes.norm()) << std::endl;
         std::cout << "Dense assembly took " << (lowEnd - lowStart) << " ms, hierarchical product took " << (lowEnd2 - lowEnd) << " ms" << std::endl;
 
-        std::vector<ConstraintPack> schurConstraints;
-        Constraints::TotalAreaConstraint *c = new Constraints::TotalAreaConstraint(mesh, geom);
-        schurConstraints.push_back(ConstraintPack{c, 0, 0});
+        // Test multiplying a full saddle matrix: high order + low order + constraint blocks
         Eigen::SparseMatrix<double> C = hs.GetConstraintBlock();
         size_t fullSize = 3 * mesh->nVertices() + C.rows();
 
@@ -678,6 +682,7 @@ namespace rsurfaces
         gVecFull.setZero(fullSize);
         gVecFull.block(0, 0, 3 * mesh->nVertices(), 1) = gVec;
 
+        // Get saddle matrix with constraints
         dense = hs.GetHsMatrixConstrained();
         std::cout << "Dense matrix has " << dense.rows() << " x " << dense.cols() << std::endl;
         std::cout << "(Expected " << fullSize << ")" << std::endl;
@@ -698,7 +703,6 @@ namespace rsurfaces
         std::cout << "Relative error = " << error << " percent" << std::endl;
         std::cout << "Dot product of directions = " << denseRes.dot(bctRes) / (denseRes.norm() * bctRes.norm()) << std::endl;
 
-        delete c;
         delete bct;
     }
 
@@ -1024,6 +1028,11 @@ void customCallback()
 
     ImGui::BeginGroup();
     ImGui::Indent(INDENT);
+
+    if (ImGui::Button("Test new MV product", ImVec2{ITEM_WIDTH, 0}))
+    {
+        MainApp::instance->TestNewMVProduct();
+    }
 
     if (ImGui::Button("Test MV product", ImVec2{ITEM_WIDTH, 0}))
     {
