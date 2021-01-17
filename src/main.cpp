@@ -42,7 +42,6 @@ namespace rsurfaces
     MainApp::MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow *flow_, polyscope::SurfaceMesh *psMesh_, std::string meshName_)
         : mesh(std::move(mesh_)), geom(std::move(geom_)), geomOrig(geom->copy()), remesher(mesh, geom, geomOrig)
     {
-        //geomOrig = geom->copy();
         flow = flow_;
         psMesh = psMesh_;
         meshName = meshName_;
