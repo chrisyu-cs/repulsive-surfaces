@@ -12,6 +12,11 @@
 
 #include "energy/squared_error.h"
 
+#include <mkl.h>
+#include "block_cluster_tree2.h"
+
+#define EIGEN_NO_DEBUG
+
 namespace rsurfaces
 {
     struct PriorityVertex

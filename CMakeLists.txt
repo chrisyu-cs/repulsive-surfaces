@@ -7,6 +7,8 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules" ${CMAKE_MODULE_PATH})
+
 # Print the build type
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release" FORCE)
@@ -20,8 +22,8 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STR
 
   # using Clang (linux or apple) or GCC
   message("Using clang/gcc compiler flags")
-  SET(BASE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Werror -fopenmp")
-  SET(DISABLED_WARNINGS " -Wno-unknown-warning-option -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-copy -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field")
+  SET(BASE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Werror -Xpreprocessor -fopenmp")
+  SET(DISABLED_WARNINGS " -Wno-unknown-warning-option -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-copy -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field -Wno-range-loop-analysis")
   SET(TRACE_INCLUDES " -H -Wno-error=unused-command-line-argument")
 
   if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
@@ -114,10 +116,26 @@ set(SRCS
 
 find_package(OpenMP REQUIRED)
 
+find_package(MKL REQUIRED)
+if(MKL_FOUND)
+    message("Intel MKL libraries found: ${MKL_LIBRARY}")
+    message("Include directories: ${MKL_INCLUDE_DIR}")
+    message("Intel library directories: ${MKL_LIBRARY_DIR}")
+    include_directories(${MKL_INCLUDE_DIR})
+    #  add_compile_definitions(EIGEN_USE_MKL_ALL)
+    link_directories(${MKL_LIBRARY_DIR})
+else()
+    message(WARNING "Intel MKL libraries not found")
+endif()
+
 # To change the name of your executable, change "gc_project" in the lines below to whatever you want
 add_executable(rsurfaces "${SRCS}")
 target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 target_link_libraries(rsurfaces geometry-central polyscope OpenMP::OpenMP_CXX)
+
+if(MKL_FOUND)
+    target_link_libraries(rsurfaces "-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lpthread -lm -ldl")
+endif()
 
 target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include")
 
