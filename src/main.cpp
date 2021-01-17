@@ -583,7 +583,6 @@ namespace rsurfaces
         std::vector<int> outer ( nFaces + 1 );
         outer[ nFaces ] = 3 * nFaces;
         std::vector<int> inner ( nnz );
-        std::vector<int> triangles ( nnz );
         std::vector<double> values ( 3 * nFaces , 1./3. );
 
         std::vector<int> ordering ( nFaces );
@@ -614,7 +613,6 @@ namespace rsurfaces
             P_coords[ 3 * i + 1 ] = athird * (p1.y + p2.y + p3.y);
             P_coords[ 3 * i + 2 ] = athird * (p1.z + p2.z + p3.z);
             
-            
             P_data[ 7 * i + 0 ] = geom->faceAreas[face];
             P_data[ 7 * i + 1 ] = P_coords[ 3 * i + 0 ];
             P_data[ 7 * i + 2 ] = P_coords[ 3 * i + 1 ];
@@ -633,10 +631,9 @@ namespace rsurfaces
             P_hull_coords[ 9 * i + 7 ] = p3.y;
             P_hull_coords[ 9 * i + 8 ] = p3.z;
             
-            
-            triangles[ 3 * i + 0 ] = inner[ 3 * i + 0 ] = i0;
-            triangles[ 3 * i + 1 ] = inner[ 3 * i + 1 ] = i1;
-            triangles[ 3 * i + 2 ] = inner[ 3 * i + 2 ] = i2;
+            inner[ 3 * i + 0 ] = i0;
+            inner[ 3 * i + 1 ] = i1;
+            inner[ 3 * i + 2 ] = i2;
             
             std::sort( inner.begin() + 3 * i, inner.begin() + 3 * (i+1) );
         }
@@ -675,109 +672,90 @@ namespace rsurfaces
         
         toc("Building phase");
         
+        
         Eigen::VectorXd V = Eigen::Map<Eigen::VectorXd> ( &P_coords[0], nVertices * 3 );
         Eigen::VectorXd U ( nVertices * 3 );
         
-        
         int repeat = 20;
         tic( std::to_string(repeat) + " x multiply of highest order term against a V3");
-        for( int i = 0; i < repeat; ++i )
         {
-            bct->Multiply( V, U, BCTKernelType::HighOrder );
-        }
-        toc( std::to_string(repeat) + " x multiply of highest order term against a V3");
-        std::ofstream outfile;
-        outfile.open("AV.txt");
-        if (outfile.is_open())
-        {
-            outfile << U;
-        }
-        else
-        {
-            std::cout << "Unable to open file";
-        }
-        outfile.close();
-        
-        std::vector<double> pts ( 3 * nVertices );
-        for( auto vertex : mesh->vertices() )
-        {
-            int i = vInds[vertex];
-            pts[3 * i + 0] = geom->inputVertexPositions[i].x;
-            pts[3 * i + 1] = geom->inputVertexPositions[i].y;
-            pts[3 * i + 2] = geom->inputVertexPositions[i].z;
-        }
-        
-        outfile = std::ofstream("VertexPositions.txt");
-        outfile.precision(std::numeric_limits<double>::max_digits10);
-        for (const auto &e : pts){outfile << e << "\n";}
-        
-        outfile = std::ofstream("Triangles.txt");
-        for (const auto &e : triangles){outfile << e << "\n";}
-        
-        outfile = std::ofstream("Av_outer.txt");
-        for (const auto &e : outer){outfile << e << "\n";}
-        
-        outfile = std::ofstream("Av_inner.txt");
-        for (const auto &e : inner){outfile << e << "\n";}
-        
-        outfile = std::ofstream("Av_values.txt");
-        outfile.precision(std::numeric_limits<double>::max_digits10);
-        for (const auto &e : values){outfile << e << "\n";}
-        
-        
-//        std::ofstream outfile ("DiffOp_outer.txt");
-//        for (const auto &e : outer){outFile << e << ", "};
-//
-//        std::ofstream outfile ("DiffOp_inner.txt");
-//        for (const auto &e : inner){outFile << e << ", "};
-//
-//        std::ofstream outfile ("DiffOp_values.txt");
-//        for (const auto &e : values){outFile << e << ", "};
-//
-//        outfile.open("AvOp.txt");
-//        if (outfile.is_open())
-//        {
-//            outfile << EigenMatrixRM( AvOp );
-//        }
-//        else
-//        {
-//            std::cout << "Unable to open file";
-//        }
-//        outfile.close();
-        
-//        outfile.open("ordering.txt");
-//        if (outfile.is_open())
-//        {
-//            outfile << Eigen::Map<Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> ( &ordering[0], nFaces, 1 );
-//        }
-//        else
-//        {
-//            std::cout << "Unable to open file";
-//        }
-//        outfile.close();
-        
-        if( nVertices < 10000)
-        {
-            tic("multiply high and low order term with identity matrix on vertices");
-                Eigen::MatrixXd id = Eigen::MatrixXd::Identity(nVertices, nVertices);
-                Eigen::MatrixXd Atimesid (nVertices, nVertices);
-                bct->Multiply( id, Atimesid, BCTKernelType::HighOrder );
-                bct->Multiply( id, Atimesid, BCTKernelType::LowOrder, true );
-            toc("multiply high and low order term with identity matrix on vertices");
-            
-            std::ofstream outfile ("Aid.txt");
-            outfile.precision(std::numeric_limits<double>::max_digits10);
-            for( int i = 0; i < nVertices; ++i )
+            for( int i = 0; i < repeat; ++i )
             {
-                for( int j = 0; j < nVertices; ++j )
-                {
-                    outfile << Atimesid(i,j) <<"\n";
-                }
+                bct->Multiply( V, U, BCTKernelType::HighOrder );
             }
         }
+        toc( std::to_string(repeat) + " x multiply of highest order term against a V3");
 
-        
-        std::cout << "Done." << std::endl;
+
+//        std::ofstream outfile ("AV.txt");
+//        outfile << U;
+//
+//        std::vector<double> pts ( 3 * nVertices );
+//        for( auto vertex : mesh->vertices() )
+//        {
+//            int i = vInds[vertex];
+//            pts[3 * i + 0] = geom->inputVertexPositions[i].x;
+//            pts[3 * i + 1] = geom->inputVertexPositions[i].y;
+//            pts[3 * i + 2] = geom->inputVertexPositions[i].z;
+//        }
+//
+//        std::vector<int> triangles ( nnz );
+//        for( auto face : mesh->faces() )      // when I have to use a "." to reference into members of face then there is a lot of copying going on
+//        {
+//            int i = fInds[face];
+//
+//            GCHalfedge he = face.halfedge();
+//
+//            int i0 = vInds[he.vertex()];
+//            int i1 = vInds[he.next().vertex()];
+//            int i2 = vInds[he.next().next().vertex()];
+//
+//
+//            triangles[ 3 * i + 0 ] = i0;
+//            triangles[ 3 * i + 1 ] = i1;
+//            triangles[ 3 * i + 2 ] = i2;
+//
+//            std::sort( inner.begin() + 3 * i, inner.begin() + 3 * (i+1) );
+//        }
+//        outfile = std::ofstream("VertexPositions.txt");
+//        outfile.precision(std::numeric_limits<double>::max_digits10);
+//        for (const auto &e : pts){outfile << e << "\n";}
+//
+//        outfile = std::ofstream("Triangles.txt");
+//        for (const auto &e : triangles){outfile << e << "\n";}
+//
+//        outfile = std::ofstream("Av_outer.txt");
+//        for (const auto &e : outer){outfile << e << "\n";}
+//
+//        outfile = std::ofstream("Av_inner.txt");
+//        for (const auto &e : inner){outfile << e << "\n";}
+//
+//        outfile = std::ofstream("Av_values.txt");
+//        outfile.precision(std::numeric_limits<double>::max_digits10);
+//        for (const auto &e : values){outfile << e << "\n";}
+//
+//        if( nVertices < 10000)
+//        {
+//            tic("multiply high and low order term with identity matrix on vertices");
+//                Eigen::MatrixXd id = Eigen::MatrixXd::Identity(nVertices, nVertices);
+//                Eigen::MatrixXd Atimesid (nVertices, nVertices);
+//                bct->Multiply( id, Atimesid, BCTKernelType::HighOrder );
+//                bct->Multiply( id, Atimesid, BCTKernelType::LowOrder, true );
+//            toc("multiply high and low order term with identity matrix on vertices");
+//
+//            std::ofstream outfile ("Aid.txt");
+//            outfile.precision(std::numeric_limits<double>::max_digits10);
+//            for( int i = 0; i < nVertices; ++i )
+//            {
+//                for( int j = 0; j < nVertices; ++j )
+//                {
+//                    outfile << Atimesid(i,j) <<"\n";
+//                }
+//            }
+//        }
+//
+//
+//        std::cout << "Done." << std::endl;
     } // TestNewMVProduct
 
     void MainApp::TestMVProduct()
