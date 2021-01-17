@@ -772,16 +772,16 @@ void BlockClusterTree2::Multiply( Eigen::VectorXd &input, Eigen::VectorXd &outpu
         InternalMultiply( type );
         S->Post( output.data(), k, type, addToResult );
         
-        // Just copy to /add into the remaining entries.
-        mint nRemainingEntries = std::min(input.size() , output.size() ) - k * n;
-        if(addToResult)
-        {
-            output.segment(k * n, nRemainingEntries) += input.segment(k * n, nRemainingEntries);
-        }
-        else
-        {
-            output.segment(k * n, nRemainingEntries)  = input.segment(k * n, nRemainingEntries);
-        }
+//        // Just copy to /add into the remaining entries.
+//        mint nRemainingEntries = std::min(input.size() , output.size() ) - k * n;
+//        if(addToResult)
+//        {
+//            output.segment(k * n, nRemainingEntries) += input.segment(k * n, nRemainingEntries);
+//        }
+//        else
+//        {
+//            output.segment(k * n, nRemainingEntries)  = input.segment(k * n, nRemainingEntries);
+//        }
     }
     else
     {
