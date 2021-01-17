@@ -27,9 +27,11 @@ namespace rsurfaces
         case GradientMethod::H1Projected:
             return "H1-Projected";
         case GradientMethod::L2Unconstrained:
-            return "L2-Unconstrained";
+            return "L2 (unconstrained)";
         case GradientMethod::AQP:
-            return "AQP-Unconstrained";
+            return "AQP (unconstrained)";
+        case GradientMethod::L2LBFGS:
+            return "L2-LBFGS (unconstrained)";
         default:
             throw std::runtime_error("Unknown method type.");
         }

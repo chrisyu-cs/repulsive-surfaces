@@ -38,7 +38,8 @@ namespace rsurfaces
         HsNCG,
         H1Projected,
         L2Unconstrained,
-        AQP
+        AQP,
+        L2LBFGS
     };
 
     struct MassNormalPoint

@@ -8,6 +8,7 @@
 #include "surface_energy.h"
 #include "line_search.h"
 #include "sobolev/hs_ncg.h"
+#include "sobolev/lbfgs.h"
 
 namespace rsurfaces
 {
@@ -22,6 +23,7 @@ namespace rsurfaces
         void StepProjectedGradient();
         void StepProjectedGradientIterative();
         void StepNCG();
+        void StepLBFGS();
 
         void StepH1ProjGrad();
         void StepAQP(double invKappa);
@@ -76,6 +78,7 @@ namespace rsurfaces
         Vector3 origBarycenter;
         Hs::HsNCG *ncg;
         Constraints::BarycenterComponentsConstraint *secretBarycenter;
+        LBFGSOptimizer* lbfgs;
 
         size_t addConstraintTriplets(std::vector<Triplet> &triplets, bool includeSchur);
         void prefactorConstrainedLaplacian(SparseFactorization &factored, bool includeSchur);

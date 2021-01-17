@@ -3,6 +3,7 @@
 #include "helpers.h"
 
 #include "sobolev/h1.h"
+#include "sobolev/h1_lbfgs.h"
 #include "sobolev/hs.h"
 #include "sobolev/hs_schur.h"
 #include "sobolev/hs_iterative.h"
@@ -30,6 +31,7 @@ namespace rsurfaces
 
         verticesMutated = false;
         ncg = 0;
+        lbfgs = 0;
     }
 
     void SurfaceFlow::AddAdditionalEnergy(SurfaceEnergy *extraEnergy)
@@ -566,6 +568,60 @@ namespace rsurfaces
         // Save previous positions
         prevPositions2 = prevPositions1;
         savePositions(mesh, geom, prevPositions1);
+        geom->refreshQuantities();
+
+        long timeEnd = currentTimeMilliseconds();
+        std::cout << "  Total time for gradient step = " << (timeEnd - timeStart) << " ms" << std::endl;
+    }
+
+    void SurfaceFlow::StepLBFGS()
+    {
+        long timeStart = currentTimeMilliseconds();
+
+        if (!lbfgs)
+        {
+            lbfgs = new LBFGSOptimizer(10);
+        }
+
+        stepCount++;
+        std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
+        std::cout << "Using normal L-BFGS..." << std::endl;
+
+        UpdateEnergies();
+        // Assemble sum of L2 differentials of all energies involved
+        // (including tangent-point energy)
+        Eigen::MatrixXd l2diff, projected, positions;
+        l2diff.setZero(mesh->nVertices(), 3);
+        positions.setZero(mesh->nVertices(), 3);
+        projected.setZero(mesh->nVertices(), 3);
+        AssembleGradients(l2diff);
+        double gNorm = l2diff.norm();
+
+        Eigen::VectorXd l2diffvec(3 * mesh->nVertices());
+        MatrixUtils::MatrixIntoColumn(l2diff, l2diffvec);
+
+        savePositions(mesh, geom, positions);
+        Eigen::VectorXd posvec(3 * mesh->nVertices());
+        MatrixUtils::MatrixIntoColumn(positions, posvec);
+
+        lbfgs->SetUpInnerProduct(mesh, geom);
+        lbfgs->UpdateDirection(posvec, l2diffvec);
+        double gProjNorm = lbfgs->direction().norm();
+        std::cout << "L-BFGS step size guess = " << gProjNorm << std::endl;
+
+        MatrixUtils::ColumnIntoMatrix(lbfgs->direction(), projected);
+        double gradDot = (l2diffvec.dot(lbfgs->direction())) / (gNorm * gProjNorm);
+        std::cout << "Dot product = " << gradDot << std::endl;
+
+        LineSearch search(mesh, geom, energies);
+        // Take the step using line search
+        double delta = search.BacktrackingLineSearch(l2diff, 1, gradDot);
+
+        // Make sure pins don't drift
+        for (Constraints::SimpleProjectorConstraint *spc : simpleConstraints)
+        {
+            spc->ProjectConstraint(mesh, geom);
+        }
         geom->refreshQuantities();
 
         long timeEnd = currentTimeMilliseconds();
