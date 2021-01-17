@@ -26,6 +26,9 @@ if (NOT MKLROOT_PATH)
 
 endif (NOT MKLROOT_PATH)
 
+if (EXISTS "/opt/intel/oneapi/tbb/latest")
+	set(TBBROOT_PATH "/opt/intel/oneapi/tbb/latest")
+endif (EXISTS "/opt/intel/oneapi/tbb/latest")
 
 # Stage 2: find include path and libraries
 	
