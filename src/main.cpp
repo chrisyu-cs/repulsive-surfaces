@@ -86,8 +86,11 @@ namespace rsurfaces
             flow->StepAQP(1 / kappa);
         }
         break;
-        case GradientMethod::L2LBFGS:
-            flow->StepLBFGS();
+        case GradientMethod::H1_LBFGS:
+            flow->StepH1LBFGS();
+            break;
+        case GradientMethod::BQN_LBFGS:
+            flow->StepBQN();
             break;
         default:
             throw std::runtime_error("Unknown gradient method type.");
@@ -974,7 +977,8 @@ void customCallback()
                                       GradientMethod::H1Projected,
                                       GradientMethod::L2Unconstrained,
                                       GradientMethod::AQP,
-                                      GradientMethod::L2LBFGS};
+                                      GradientMethod::H1_LBFGS,
+                                      GradientMethod::BQN_LBFGS};
 
     selectFromDropdown("Method", methods, IM_ARRAYSIZE(methods), MainApp::instance->methodChoice);
 

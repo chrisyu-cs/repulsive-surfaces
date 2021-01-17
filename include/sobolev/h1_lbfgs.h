@@ -16,9 +16,8 @@ namespace rsurfaces
         virtual void ApplyInverseInnerProduct(Eigen::VectorXd &input, Eigen::VectorXd &output);
         virtual void SetUpInnerProduct(MeshPtr &mesh, GeomPtr &geom);
 
-        private:
+        protected:
         Eigen::SparseMatrix<double> L;
-        SparseFactorization factorizedL;
         Eigen::VectorXd tempVector;
         std::vector<Constraints::SimpleProjectorConstraint *> simpleConstraints;
     };

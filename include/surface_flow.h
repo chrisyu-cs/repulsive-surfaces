@@ -23,7 +23,8 @@ namespace rsurfaces
         void StepProjectedGradient();
         void StepProjectedGradientIterative();
         void StepNCG();
-        void StepLBFGS();
+        void StepH1LBFGS();
+        void StepBQN();
 
         void StepH1ProjGrad();
         void StepAQP(double invKappa);
@@ -81,7 +82,9 @@ namespace rsurfaces
         LBFGSOptimizer* lbfgs;
 
         size_t addConstraintTriplets(std::vector<Triplet> &triplets, bool includeSchur);
+        
         void prefactorConstrainedLaplacian(SparseFactorization &factored, bool includeSchur);
+        void prefactorConstrainedLaplacian(Eigen::SparseMatrix<double> &L, SparseFactorization &factored, bool includeSchur);
 
         inline void incrementSchurConstraints()
         {
@@ -94,6 +97,8 @@ namespace rsurfaces
                 }
             }
         }
+
+        double bqn_B;
 
         double prevStep;
     };

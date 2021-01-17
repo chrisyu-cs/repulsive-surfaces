@@ -8,21 +8,6 @@ namespace rsurfaces
         firstStep = true;
     }
 
-    void LBFGSOptimizer::ApplyInnerProduct(Eigen::VectorXd &input, Eigen::VectorXd &output)
-    {
-        output = input;
-    }
-
-    void LBFGSOptimizer::ApplyInverseInnerProduct(Eigen::VectorXd &input, Eigen::VectorXd &output)
-    {
-        output = input;
-    }
-
-    void LBFGSOptimizer::SetUpInnerProduct(MeshPtr &mesh, GeomPtr &geom)
-    {
-        // Nothing done here
-    }
-
     Eigen::VectorXd &LBFGSOptimizer::direction()
     {
         return z;
@@ -35,31 +20,38 @@ namespace rsurfaces
         firstStep = true;
     }
 
+    void LBFGSOptimizer::UpdateHistory(Eigen::VectorXd &currentPosition, Eigen::VectorXd &currentGradient)
+    {
+        // Update memory vectors based on current position and gradient
+        Eigen::VectorXd y_current = currentGradient - lastGradient;
+        Eigen::VectorXd s_current = currentPosition - lastPosition;
+        s_list.push_back(s_current);
+        y_list.push_back(y_current);
+
+        // Evict oldest vectors if at size limit
+        if (s_list.size() > memSize)
+        {
+            s_list.pop_front();
+            y_list.pop_front();
+        }
+        lastGradient = currentGradient;
+        lastPosition = currentPosition;
+    }
+
     void LBFGSOptimizer::UpdateDirection(Eigen::VectorXd &currentPosition, Eigen::VectorXd &currentGradient)
     {
         if (!firstStep)
         {
-            // Update memory vectors based on current position and gradient
-            Eigen::VectorXd y_current = currentGradient - lastGradient;
-            Eigen::VectorXd s_current = currentPosition - lastPosition;
-            s_list.push_back(s_current);
-            y_list.push_back(y_current);
-
-            // Evict oldest vectors if at size limit
-            if (s_list.size() > memSize)
-            {
-                s_list.pop_front();
-                y_list.pop_front();
-            }
-            lastGradient = currentGradient;
-            lastPosition = currentPosition;
+            UpdateHistory(currentPosition, currentGradient);
         }
         else
         {
             firstStep = false;
             lastGradient = currentGradient;
             lastPosition = currentPosition;
-            z = lastGradient / lastGradient.norm();
+            z.setZero(lastGradient.rows());
+            ApplyInverseInnerProduct(lastGradient, z);
+            std::cout << "  * Using just H1 inverse" << std::endl;
             return;
         }
 
@@ -120,7 +112,7 @@ namespace rsurfaces
         while (s_i_for != s_list.end())
         {
             ApplyInnerProduct(z, temp);
-            double beta_i = rhos[i] * (*y_i_for).dot(z);
+            double beta_i = rhos[i] * (*y_i_for).dot(temp);
             z = z + (*s_i_for) * (alphas[i] - beta_i);
 
             s_i_for++;

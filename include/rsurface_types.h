@@ -39,7 +39,8 @@ namespace rsurfaces
         H1Projected,
         L2Unconstrained,
         AQP,
-        L2LBFGS
+        H1_LBFGS,
+        BQN_LBFGS
     };
 
     struct MassNormalPoint

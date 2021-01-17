@@ -10,25 +10,27 @@ namespace rsurfaces
     void H1_LBFGS::SetUpInnerProduct(MeshPtr &mesh, GeomPtr &geom)
     {
         size_t nRows = mesh->nVertices() * 3;
-        std::vector<Triplet> triplets;
+        std::vector<Triplet> triplets, triplets3x;
         
         H1::getTriplets(triplets, mesh, geom, 1e-10);
 
+        MatrixUtils::TripleTriplets(triplets, triplets3x);
+
         for (Constraints::SimpleProjectorConstraint* spc : simpleConstraints)
         {
-            Constraints::addTripletsToSymmetric(*spc, triplets, mesh, geom, nRows);
+            Constraints::addTripletsToSymmetric(*spc, triplets3x, mesh, geom, nRows);
             nRows += spc->nRows();
         }
 
         L.resize(nRows, nRows);
-        L.setFromTriplets(triplets.begin(), triplets.end());
-
-        factorizedL.Compute(L);
+        L.setFromTriplets(triplets3x.begin(), triplets3x.end());
+        
         tempVector.setZero(nRows);
     }
 
     void H1_LBFGS::ApplyInnerProduct(Eigen::VectorXd &input, Eigen::VectorXd &output)
     {
+        tempVector.setZero();
         tempVector.block(0, 0, input.rows(), 1) = input;
         tempVector = L * tempVector;
         output = tempVector.block(0, 0, output.rows(), 1);
@@ -36,8 +38,9 @@ namespace rsurfaces
 
     void H1_LBFGS::ApplyInverseInnerProduct(Eigen::VectorXd &input, Eigen::VectorXd &output)
     {
+        tempVector.setZero();
         tempVector.block(0, 0, input.rows(), 1) = input;
-        tempVector = factorizedL.Solve(tempVector);
+        MatrixUtils::SolveSparseSystem(L, tempVector, tempVector);
         output = tempVector.block(0, 0, output.rows(), 1);
-    }    
+    }
 }
