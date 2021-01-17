@@ -3,6 +3,9 @@
 #include "helpers.h"
 
 #include "sobolev/h1.h"
+#include "sobolev/h1_lbfgs.h"
+#include "sobolev/l2_lbfgs.h"
+#include "sobolev/bqn_lbfgs.h"
 #include "sobolev/hs.h"
 #include "sobolev/hs_schur.h"
 #include "sobolev/hs_iterative.h"
@@ -28,7 +31,10 @@ namespace rsurfaces
         RecenterMesh();
         secretBarycenter = 0;
 
+        verticesMutated = false;
         ncg = 0;
+        lbfgs = 0;
+        bqn_B = 0;
     }
 
     void SurfaceFlow::AddAdditionalEnergy(SurfaceEnergy *extraEnergy)
@@ -65,7 +71,6 @@ namespace rsurfaces
         LineSearch search(mesh, geom, energies);
         search.BacktrackingLineSearch(l2diff, initGuess, 1);
     }
-
 
     double SurfaceFlow::evaluateEnergy()
     {
@@ -401,6 +406,12 @@ namespace rsurfaces
 
     void SurfaceFlow::prefactorConstrainedLaplacian(SparseFactorization &factored, bool includeSchur)
     {
+        Eigen::SparseMatrix<double> L;
+        prefactorConstrainedLaplacian(L, factored, includeSchur);
+    }
+
+    void SurfaceFlow::prefactorConstrainedLaplacian(Eigen::SparseMatrix<double> &L, SparseFactorization &factored, bool includeSchur)
+    {
         // Assemble triplets for the Laplacian
         std::vector<Triplet> h1Triplets, h1Triplets3x;
         H1::getTriplets(h1Triplets, mesh, geom, 1e-10);
@@ -410,7 +421,7 @@ namespace rsurfaces
         size_t dims = 3 * mesh->nVertices() + nConstraintRows;
 
         // Builds and factorize the Laplacian
-        Eigen::SparseMatrix<double> L(dims, dims);
+        L.resize(dims, dims);
         L.setFromTriplets(h1Triplets3x.begin(), h1Triplets3x.end());
         factored.Compute(L);
     }
@@ -496,16 +507,25 @@ namespace rsurfaces
     void SurfaceFlow::StepAQP(double invKappa)
     {
         long timeStart = currentTimeMilliseconds();
-        if (stepCount == 0)
+        if (stepCount == 0 || verticesMutated)
         {
+            // Reset Nesterov memory of previous step
             savePositions(mesh, geom, prevPositions1);
             savePositions(mesh, geom, prevPositions2);
         }
+        else
+        {
+            double theta = (1 - sqrt(invKappa)) / (1 + sqrt(invKappa));
+            // 1. Nesterov step
+            Eigen::MatrixXd y_n = (1 + theta) * prevPositions1 - theta * prevPositions2;
+            for (GCVertex v : mesh->vertices())
+            {
+                Vector3 pos = MatrixUtils::GetRowAsVector3(y_n, v.getIndex());
+                geom->inputVertexPositions[v] = pos;
+            }
+            geom->refreshQuantities();
+        }
         stepCount++;
-
-        double theta = (1 - sqrt(invKappa)) / (1 + sqrt(invKappa));
-        // 1. Nesterov step
-        Eigen::MatrixXd y_n = (1 + theta) * prevPositions1 - theta * prevPositions2;
 
         // 2. H1 gradient step following the Nesterov step
         std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
@@ -530,7 +550,6 @@ namespace rsurfaces
         // Only use "simple" positional constraints (Nesterov would break hard constraints anyway)
         prefactorConstrainedLaplacian(factorizedL, false);
         size_t dims = factorizedL.nRows;
-        std::cout << "Prefactorized" << std::endl;
 
         // Project the H1 gradient
         Eigen::VectorXd gradientVec;
@@ -565,6 +584,143 @@ namespace rsurfaces
         // Save previous positions
         prevPositions2 = prevPositions1;
         savePositions(mesh, geom, prevPositions1);
+        geom->refreshQuantities();
+
+        long timeEnd = currentTimeMilliseconds();
+        std::cout << "  Total time for gradient step = " << (timeEnd - timeStart) << " ms" << std::endl;
+    }
+
+    void SurfaceFlow::StepH1LBFGS()
+    {
+        long timeStart = currentTimeMilliseconds();
+
+        stepCount++;
+        std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
+        std::cout << "Using normal L-BFGS..." << std::endl;
+
+        if (!lbfgs)
+        {
+            lbfgs = new H1_LBFGS(20, simpleConstraints);
+        }
+
+        if (verticesMutated)
+        {
+            std::cout << "  * Vertices were mutated; resetting memory" << std::endl;
+            lbfgs->ResetMemory();
+        }
+
+        UpdateEnergies();
+        // Assemble sum of L2 differentials of all energies involved
+        // (including tangent-point energy)
+        Eigen::MatrixXd l2diff, projected, positions;
+        l2diff.setZero(mesh->nVertices(), 3);
+        positions.setZero(mesh->nVertices(), 3);
+        projected.setZero(mesh->nVertices(), 3);
+        AssembleGradients(l2diff);
+        double gNorm = l2diff.norm();
+
+        Eigen::VectorXd l2diffvec(3 * mesh->nVertices());
+        MatrixUtils::MatrixIntoColumn(l2diff, l2diffvec);
+
+        savePositions(mesh, geom, positions);
+        Eigen::VectorXd posvec(3 * mesh->nVertices());
+        MatrixUtils::MatrixIntoColumn(positions, posvec);
+
+        // Do the L-BFGS update with current position and gradient
+        lbfgs->SetUpInnerProduct(mesh, geom);
+        lbfgs->UpdateDirection(posvec, l2diffvec);
+        double gProjNorm = lbfgs->direction().norm();
+
+        MatrixUtils::ColumnIntoMatrix(lbfgs->direction(), projected);
+        double gradDot = (l2diffvec.dot(lbfgs->direction())) / (gNorm * gProjNorm);
+        std::cout << "  * Dot product = " << gradDot << std::endl;
+
+        LineSearch search(mesh, geom, energies);
+        // Take the step using line search
+        double initGuess = guessStepSize(gProjNorm);
+        double delta = search.BacktrackingLineSearch(projected, initGuess, fmax(0, gradDot));
+
+        if (gradDot < 0)
+        {
+            std::cout << "  * Negative dot product; resetting memory" << std::endl;
+            lbfgs->ResetMemory();
+        }
+
+        // Make sure pins don't drift
+        for (Constraints::SimpleProjectorConstraint *spc : simpleConstraints)
+        {
+            spc->ProjectConstraint(mesh, geom);
+        }
+        geom->refreshQuantities();
+
+        long timeEnd = currentTimeMilliseconds();
+        std::cout << "  Total time for gradient step = " << (timeEnd - timeStart) << " ms" << std::endl;
+    }
+
+    void SurfaceFlow::StepBQN()
+    {
+        long timeStart = currentTimeMilliseconds();
+
+        stepCount++;
+        std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
+        std::cout << "Using normal L-BFGS..." << std::endl;
+
+        if (!lbfgs)
+        {
+            // B = (total area) ^ (2(d-1) / d) for d = 3
+            // (equation 13 of BCQN / Zhu et al.)
+            double b = pow(totalArea(geom, mesh), 4.0 / 3.0);
+            lbfgs = new BQN_LBFGS(20, simpleConstraints, b);
+        }
+
+        if (verticesMutated)
+        {
+            std::cout << "  * Vertices were mutated; resetting memory" << std::endl;
+            lbfgs->ResetMemory();
+        }
+
+        UpdateEnergies();
+        // Assemble sum of L2 differentials of all energies involved
+        // (including tangent-point energy)
+        Eigen::MatrixXd l2diff, projected, positions;
+        l2diff.setZero(mesh->nVertices(), 3);
+        positions.setZero(mesh->nVertices(), 3);
+        projected.setZero(mesh->nVertices(), 3);
+        AssembleGradients(l2diff);
+        double gNorm = l2diff.norm();
+
+        Eigen::VectorXd l2diffvec(3 * mesh->nVertices());
+        MatrixUtils::MatrixIntoColumn(l2diff, l2diffvec);
+
+        savePositions(mesh, geom, positions);
+        Eigen::VectorXd posvec(3 * mesh->nVertices());
+        MatrixUtils::MatrixIntoColumn(positions, posvec);
+
+        // Do the L-BFGS update with current position and gradient
+        lbfgs->SetUpInnerProduct(mesh, geom);
+        lbfgs->UpdateDirection(posvec, l2diffvec);
+        double gProjNorm = lbfgs->direction().norm();
+
+        MatrixUtils::ColumnIntoMatrix(lbfgs->direction(), projected);
+        double gradDot = (l2diffvec.dot(lbfgs->direction())) / (gNorm * gProjNorm);
+        std::cout << "  * Dot product = " << gradDot << std::endl;
+
+        LineSearch search(mesh, geom, energies);
+        // Take the step using line search
+        double initGuess = guessStepSize(gProjNorm);
+        double delta = search.BacktrackingLineSearch(projected, initGuess, fmax(0, gradDot));
+
+        if (gradDot < 0)
+        {
+            std::cout << "  * Negative dot product; resetting memory" << std::endl;
+            lbfgs->ResetMemory();
+        }
+
+        // Make sure pins don't drift
+        for (Constraints::SimpleProjectorConstraint *spc : simpleConstraints)
+        {
+            spc->ProjectConstraint(mesh, geom);
+        }
         geom->refreshQuantities();
 
         long timeEnd = currentTimeMilliseconds();

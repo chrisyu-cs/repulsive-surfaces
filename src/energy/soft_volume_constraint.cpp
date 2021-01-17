@@ -12,10 +12,15 @@ namespace rsurfaces
         initialVolume = totalVolume(geom, mesh);
     }
 
+    inline double volumeDeviation(MeshPtr mesh, GeomPtr geom, double initialValue)
+    {
+        return (totalVolume(geom, mesh) - initialValue) / initialValue;
+    }
+
     // Returns the current value of the energy.
     double SoftVolumeConstraint::Value()
     {
-        double volDev = totalVolume(geom, mesh) - initialVolume;
+        double volDev = volumeDeviation(mesh, geom, initialVolume);
         return weight * (volDev * volDev);
     }
 
@@ -24,7 +29,7 @@ namespace rsurfaces
     // respect to the corresponding vertex.
     void SoftVolumeConstraint::Differential(Eigen::MatrixXd &output)
     {
-        double volDev = totalVolume(geom, mesh) - initialVolume;
+        double volDev = volumeDeviation(mesh, geom, initialVolume);
 
         VertexIndices inds = mesh->getVertexIndices();
         for (size_t i = 0; i < mesh->nVertices(); i++)
@@ -33,7 +38,7 @@ namespace rsurfaces
             // Derivative of local volume is just the area weighted normal
             Vector3 deriv_v = areaWeightedNormal(geom, v_i);
             // Derivative of V^2 = 2 V (dV/dx)
-            deriv_v = 2 * volDev * deriv_v;
+            deriv_v = 2 * volDev * deriv_v / initialVolume;
 
             MatrixUtils::addToRow(output, inds[v_i], weight * deriv_v);
         }

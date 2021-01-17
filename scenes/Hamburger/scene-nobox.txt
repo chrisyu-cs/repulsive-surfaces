@@ -1,4 +1,5 @@
-repel_mesh hamburger.obj
-constrain area 2 100
-constrain volume
+repel_mesh hamburger.obj 6 12
+constrain barycenter
+# constrain area 2 100
+# constrain volume
 

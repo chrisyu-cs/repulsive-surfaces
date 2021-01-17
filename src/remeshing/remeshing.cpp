@@ -606,15 +606,9 @@ namespace rsurfaces
             // return flatLength;
         }
         
-        void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry, GeomPtr const &geometryOriginal, double flatLength, double epsilon, double minLength, bool curvatureAdaptive)
+        bool adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry, GeomPtr const &geometryOriginal, double flatLength, double epsilon, double minLength, bool curvatureAdaptive)
         {
-        	// sanity checks for geometryOriginal
-        	
-        	/*for(Vertex v : mesh->vertices())
-            {
-                std::cerr<<v.getIndex()<<": "<<geometry->inputVertexPositions[v]<<"/"<<geometryOriginal->inputVertexPositions[v]<<std::endl;
-            }*/
-        	
+            bool didSplitOrCollapse = false;
             // queues of edges to CHECK to change
             std::vector<Edge> toSplit;
             std::vector<Edge> toCollapse;
@@ -625,7 +619,7 @@ namespace rsurfaces
             }
             
             // actually do it
-            std::cerr<<"spliting..."<<std::endl;
+            std::cerr<<"Spliting..."<<std::endl;
             while(!toSplit.empty())
             {
                 Edge e = toSplit.back();
@@ -637,6 +631,7 @@ namespace rsurfaces
                     Vector3 newPos = edgeMidpoint(mesh, geometry, e);
                     Vector3 newPosOrig = edgeMidpoint(mesh, geometryOriginal, e);
                     Halfedge he = mesh->splitEdgeTriangular(e);
+                    didSplitOrCollapse = true;
                     Vertex newV = he.vertex();
                     geometry->inputVertexPositions[newV] = newPos;
                     geometryOriginal->inputVertexPositions[newV] = newPosOrig;
@@ -647,7 +642,7 @@ namespace rsurfaces
                 }                
                 
             }
-            std::cerr<<"collapsing..."<<std::endl;
+            std::cerr<<"Collapsing..."<<std::endl;
             while(!toCollapse.empty())
             {
                 Edge e = toCollapse.back();
@@ -659,8 +654,9 @@ namespace rsurfaces
                     {
                         Vector3 newPos = edgeMidpoint(mesh, geometry, e);
                         Vector3 newPosOrig = edgeMidpoint(mesh, geometryOriginal, e);
-                        if(shouldCollapse(mesh, geometry, e)){
-                        	Vertex v = mesh->collapseEdgeTriangular(e);
+                        if(shouldCollapse(mesh, geometry, e)) {
+                            Vertex v = mesh->collapseEdgeTriangular(e);
+                            didSplitOrCollapse = true;
                             if (v != Vertex()) {
                                 if(!v.isBoundary()) {
                                     geometry->inputVertexPositions[v] = newPos;
@@ -676,6 +672,7 @@ namespace rsurfaces
             //std::cerr<<"hereeee"<<std::endl;
             mesh->compress();
             geometry->refreshQuantities();
+            return didSplitOrCollapse;
         }
 
         void remesh(MeshPtr const &mesh, GeomPtr const &geometry, GeomPtr const &geometryOriginal){

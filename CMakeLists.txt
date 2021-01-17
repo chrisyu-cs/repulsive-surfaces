@@ -85,6 +85,9 @@ set(SRCS
   src/sobolev/hs_iterative.cpp
   src/sobolev/hs_ncg.cpp
   src/sobolev/hs_schur.cpp
+  src/sobolev/h1_lbfgs.cpp
+  src/sobolev/bqn_lbfgs.cpp
+  src/sobolev/lbfgs.cpp
   src/sobolev/constraints.cpp
   src/sobolev/constraints/barycenter.cpp
   src/sobolev/constraints/barycenter_components.cpp

@@ -17,7 +17,7 @@ namespace rsurfaces
         : faceBarycenters(*mesh_), mesh(mesh_), geom(geom_)
     {
         exp_s = s_;
-        separationCoeff = sepCoeff;
+        separationCoeff = 2 * sepCoeff;
         epsilon = e;
 
         // std::cout << "Using " << nThreads << " threads." << std::endl;

@@ -53,8 +53,9 @@ namespace rsurfaces
             vectorData.push_back(data);
         }
 
-        void DynamicRemesher::Remesh(int numIters, bool changeTopology)
+        bool DynamicRemesher::Remesh(int numIters, bool changeTopology)
         {
+            bool didSplitOrCollapse = false;
             switch (remeshingMode)
             {
             case RemeshingMode::FlipOnly:
@@ -63,6 +64,7 @@ namespace rsurfaces
                 {
                     flipEdges();
                 }
+                didSplitOrCollapse = false;
                 break;
             }
             case RemeshingMode::SmoothAndFlip:
@@ -72,6 +74,7 @@ namespace rsurfaces
                     smoothVertices();
                     flipEdges();
                 }
+                didSplitOrCollapse = false;
                 break;
             }
             case RemeshingMode::SmoothFlipAndCollapse:
@@ -81,7 +84,8 @@ namespace rsurfaces
                 {
                     double l = (curvatureAdaptive) ? initialHWeightedLength : initialAverageLength;
                     double l_min = (curvatureAdaptive) ? initialAverageLength * 0.9 : initialAverageLength * 0.5;
-                    adjustEdgeLengths(mesh, geom, geomOrig, l, epsilon, l_min, curvatureAdaptive);
+
+                    didSplitOrCollapse = adjustEdgeLengths(mesh, geom, geomOrig, l, epsilon, l_min, curvatureAdaptive);
                 }
                 geom->refreshQuantities();
 
@@ -96,8 +100,8 @@ namespace rsurfaces
                 throw std::runtime_error("Unknown remeshing mode.");
                 break;
             }
-
             geom->refreshQuantities();
+            return didSplitOrCollapse;
         }
 
         void DynamicRemesher::flipEdges()
