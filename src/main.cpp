@@ -1486,7 +1486,7 @@ int main(int argc, char **argv)
     }
 
     MainApp::instance->updateMeshPositions();
-
+	
     // Give control to the polyscope gui
     polyscope::show();
 
