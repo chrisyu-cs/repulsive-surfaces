@@ -299,10 +299,10 @@ namespace rsurfaces
             
         }
         
-        void testStuff2(MeshPtr const &mesh, GeomPtr const &geometry)
+        void testStuff2(MeshPtr const &mesh, GeomPtr const &geometry, GeomPtr const & geometryOriginal)
         {
             int i = 0;
-            geometry->requireVertexAngleSums();
+            /*geometry->requireVertexAngleSums();
             geometry->requireVertexGaussianCurvatures();
             for(Vertex v : mesh->vertices())
             {
@@ -311,13 +311,11 @@ namespace rsurfaces
                 //std::cerr<<geometry->vertexAngleSums[v]<<"  "<<vertexAngleSum(geometry, v)<<std::endl;
                 //std::cerr<<geometry->vertexGaussianCurvatures[v]<<"  "<<vertexGaussianCurvature(geometry, v)<<std::endl;
                 i++;
-            }
+            }*/
             
             for(Face f : mesh->faces())
             {
-                if(geometry->faceArea(f) == 0){
-                    std::cerr<<f.getIndex()<<std::endl;
-                }
+                std::cerr<<f.getIndex()<<": "<<geometry->faceArea(f)<<"/"<<geometryOriginal->faceArea(f)<<std::endl;
                 i++;
             }
         }
@@ -608,8 +606,15 @@ namespace rsurfaces
             // return flatLength;
         }
         
-        void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry, double flatLength, double epsilon, double minLength, bool curvatureAdaptive)
+        void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry, GeomPtr const &geometryOriginal, double flatLength, double epsilon, double minLength, bool curvatureAdaptive)
         {
+        	// sanity checks for geometryOriginal
+        	
+        	/*for(Vertex v : mesh->vertices())
+            {
+                std::cerr<<v.getIndex()<<": "<<geometry->inputVertexPositions[v]<<"/"<<geometryOriginal->inputVertexPositions[v]<<std::endl;
+            }*/
+        	
             // queues of edges to CHECK to change
             std::vector<Edge> toSplit;
             std::vector<Edge> toCollapse;
@@ -620,6 +625,7 @@ namespace rsurfaces
             }
             
             // actually do it
+            std::cerr<<"spliting..."<<std::endl;
             while(!toSplit.empty())
             {
                 Edge e = toSplit.back();
@@ -629,9 +635,11 @@ namespace rsurfaces
                 if(length_e > minLength && length_e > threshold * 1.5)
                 {
                     Vector3 newPos = edgeMidpoint(mesh, geometry, e);
+                    Vector3 newPosOrig = edgeMidpoint(mesh, geometryOriginal, e);
                     Halfedge he = mesh->splitEdgeTriangular(e);
                     Vertex newV = he.vertex();
                     geometry->inputVertexPositions[newV] = newPos;
+                    geometryOriginal->inputVertexPositions[newV] = newPosOrig;
                 }
                 else
                 {
@@ -639,6 +647,7 @@ namespace rsurfaces
                 }                
                 
             }
+            std::cerr<<"collapsing..."<<std::endl;
             while(!toCollapse.empty())
             {
                 Edge e = toCollapse.back();
@@ -649,11 +658,13 @@ namespace rsurfaces
                     if(geometry->edgeLength(e) < threshold * 0.5)
                     {
                         Vector3 newPos = edgeMidpoint(mesh, geometry, e);
+                        Vector3 newPosOrig = edgeMidpoint(mesh, geometryOriginal, e);
                         if(shouldCollapse(mesh, geometry, e)){
-                        Vertex v = mesh->collapseEdgeTriangular(e);
+                        	Vertex v = mesh->collapseEdgeTriangular(e);
                             if (v != Vertex()) {
                                 if(!v.isBoundary()) {
                                     geometry->inputVertexPositions[v] = newPos;
+                                    geometryOriginal->inputVertexPositions[v] = newPosOrig;
                                 }
                             }
                         }
@@ -662,14 +673,15 @@ namespace rsurfaces
             }
             
             mesh->validateConnectivity();
+            //std::cerr<<"hereeee"<<std::endl;
             mesh->compress();
             geometry->refreshQuantities();
         }
 
-        void remesh(MeshPtr const &mesh, GeomPtr const &geometry){
+        void remesh(MeshPtr const &mesh, GeomPtr const &geometry, GeomPtr const &geometryOriginal){
             for(int i = 0; i < 1; i++){
                 std::cout<<"fixing edges"<<std::endl;
-                adjustEdgeLengths(mesh, geometry, 1, 0.1, 0.05); 
+                adjustEdgeLengths(mesh, geometry, geometryOriginal, 1, 0.1, 0.05); 
                 std::cout<<"flipping"<<std::endl;
                 fixDelaunay(mesh, geometry);
                 for(int j = 0; j < 10; j++){

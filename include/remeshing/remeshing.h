@@ -18,7 +18,7 @@ namespace rsurfaces
         
         void testCollapseEdge(MeshPtr const &mesh, GeomPtr const &geometry, int index);
         void testStuff(MeshPtr const &mesh, GeomPtr const &geometry, int index);
-        void testStuff2(MeshPtr const &mesh, GeomPtr const &geometry);
+        void testStuff2(MeshPtr const &mesh, GeomPtr const &geometry, GeomPtr const &geometryOriginal);
         void showEdge(MeshPtr const &mesh, GeomPtr const &geometry, int index);
         void testVertex(MeshPtr const &mesh, GeomPtr const &geometry, int index);
         void testEdge(MeshPtr const &mesh, GeomPtr const &geometry, int index);
@@ -40,7 +40,7 @@ namespace rsurfaces
 
         void smoothByCircumcenter(MeshPtr const &mesh, GeomPtr const &geometry);
         
-        void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry, double flatLength, double epsilon, double minLength, bool curvatureAdaptive = true);
+        void adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry, GeomPtr const &geometryOriginal, double flatLength, double epsilon, double minLength, bool curvatureAdaptive = true);
         
         Vector3 findBarycenter(Vector3 p1, Vector3 p2, Vector3 p3);
 
@@ -49,6 +49,6 @@ namespace rsurfaces
         void smoothByFaceWeight(MeshPtr const &mesh, GeomPtr const &geometry, FaceData<double> faceWeight);
         
         
-        void remesh(MeshPtr const &mesh, GeomPtr const &geometry);
+        void remesh(MeshPtr const &mesh, GeomPtr const &geometry, GeomPtr const &geometryOriginal);
     } // namespace remeshing
 } // namespace rsurfaces

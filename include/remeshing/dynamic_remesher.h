@@ -33,7 +33,7 @@ namespace rsurfaces
         class DynamicRemesher
         {
         public:
-            DynamicRemesher(MeshPtr mesh_, GeomPtr geom_);
+            DynamicRemesher(MeshPtr mesh_, GeomPtr geom_, GeomPtr geomOrig_);
             void SetModes(RemeshingMode rMode, SmoothingMode sMode, FlippingMode fMode);
             void Remesh(int numIters, bool changeTopology);
             void KeepVertexDataUpdated(VertexDataWrapper *data);
@@ -49,6 +49,7 @@ namespace rsurfaces
 
             MeshPtr mesh;
             GeomPtr geom;
+            GeomPtr geomOrig;
             double initialAverageLength;
             double initialHWeightedLength;
             double epsilon;

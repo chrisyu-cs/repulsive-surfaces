@@ -4,10 +4,11 @@ namespace rsurfaces
 {
     namespace remeshing
     {
-        DynamicRemesher::DynamicRemesher(MeshPtr mesh_, GeomPtr geom_)
+        DynamicRemesher::DynamicRemesher(MeshPtr mesh_, GeomPtr geom_, GeomPtr geomOrig_)
         {
             mesh = mesh_;
             geom = geom_;
+            geomOrig = geomOrig_;
             epsilon = 0.1;
 
             double sumLength = 0;
@@ -80,7 +81,7 @@ namespace rsurfaces
                 {
                     double l = (curvatureAdaptive) ? initialHWeightedLength : initialAverageLength;
                     double l_min = (curvatureAdaptive) ? initialAverageLength * 0.9 : initialAverageLength * 0.5;
-                    adjustEdgeLengths(mesh, geom, l, epsilon, l_min, curvatureAdaptive);
+                    adjustEdgeLengths(mesh, geom, geomOrig, l, epsilon, l_min, curvatureAdaptive);
                 }
                 geom->refreshQuantities();
 

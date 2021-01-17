@@ -5,7 +5,7 @@
 #include "geometrycentral/surface/meshio.h"
 #include "geometrycentral/surface/vertex_position_geometry.h"
 
-#include "args/args.hxx"
+#include "../deps/polyscope/deps/args/args/args.hxx"
 #include "imgui.h"
 #include "surface_derivatives.h"
 
@@ -40,8 +40,9 @@ namespace rsurfaces
     MainApp *MainApp::instance = 0;
 
     MainApp::MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow *flow_, polyscope::SurfaceMesh *psMesh_, std::string meshName_)
-        : mesh(std::move(mesh_)), geom(std::move(geom_)), remesher(mesh, geom)
+        : mesh(std::move(mesh_)), geom(std::move(geom_)), geomOrig(geom->copy()), remesher(mesh, geom, geomOrig)
     {
+        //geomOrig = geom->copy();
         flow = flow_;
         psMesh = psMesh_;
         meshName = meshName_;
@@ -1095,7 +1096,7 @@ void customCallback()
     ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
     if (ImGui::Button("Adjust edge lengths"))
     {
-        remeshing::adjustEdgeLengths(MainApp::instance->mesh, MainApp::instance->geom, 0.01, 0.1, 0.001);
+        remeshing::adjustEdgeLengths(MainApp::instance->mesh, MainApp::instance->geom, MainApp::instance->geomOrig, 0.01, 0.1, 0.001);
         MainApp::instance->reregisterMesh();
     }
 
@@ -1122,7 +1123,7 @@ void customCallback()
     }
     if (ImGui::Button("Remesh"))
     {
-        remeshing::remesh(MainApp::instance->mesh, MainApp::instance->geom);
+        remeshing::remesh(MainApp::instance->mesh, MainApp::instance->geom, MainApp::instance->geomOrig);
         MainApp::instance->reregisterMesh();
     }
     ImGui::EndGroup();
@@ -1148,7 +1149,7 @@ void customCallback()
 
     if (ImGui::Button("Test stuff 2"))
     {
-        remeshing::testStuff2(MainApp::instance->mesh, MainApp::instance->geom);
+        remeshing::testStuff2(MainApp::instance->mesh, MainApp::instance->geom, MainApp::instance->geomOrig);
         MainApp::instance->reregisterMesh();
     }
 
