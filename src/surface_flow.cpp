@@ -509,14 +509,23 @@ namespace rsurfaces
         long timeStart = currentTimeMilliseconds();
         if (stepCount == 0 || verticesMutated)
         {
+            // Reset Nesterov memory of previous step
             savePositions(mesh, geom, prevPositions1);
             savePositions(mesh, geom, prevPositions2);
         }
+        else
+        {
+            double theta = (1 - sqrt(invKappa)) / (1 + sqrt(invKappa));
+            // 1. Nesterov step
+            Eigen::MatrixXd y_n = (1 + theta) * prevPositions1 - theta * prevPositions2;
+            for (GCVertex v : mesh->vertices())
+            {
+                Vector3 pos = MatrixUtils::GetRowAsVector3(y_n, v.getIndex());
+                geom->inputVertexPositions[v] = pos;
+            }
+            geom->refreshQuantities();
+        }
         stepCount++;
-
-        double theta = (1 - sqrt(invKappa)) / (1 + sqrt(invKappa));
-        // 1. Nesterov step
-        Eigen::MatrixXd y_n = (1 + theta) * prevPositions1 - theta * prevPositions2;
 
         // 2. H1 gradient step following the Nesterov step
         std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
