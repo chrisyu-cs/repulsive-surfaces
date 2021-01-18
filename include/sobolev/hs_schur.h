@@ -17,12 +17,6 @@ namespace rsurfaces
         void ProjectSchurConstraints(const HsMetric &hs, int newtonSteps);
 
         template <typename Inverse>
-        void UnprojectedSchurCorrection(const HsMetric &hs, Eigen::VectorXd hsGradient, Eigen::VectorXd &dest)
-        {
-            // After the end of this function, need to apply A^{-1} C^T to dest
-        }
-
-        template <typename Inverse>
         void ProjectViaSchurV(const HsMetric &hs, Eigen::VectorXd &curCol, Eigen::VectorXd &dest)
         {
             size_t nVerts = hs.mesh->nVertices();

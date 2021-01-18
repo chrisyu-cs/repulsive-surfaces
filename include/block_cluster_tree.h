@@ -1,5 +1,6 @@
 #pragma once
 
+#include "bct_kernel_type.h"
 #include <omp.h>
 #include "rsurface_types.h"
 #include <Eigen/Core>
@@ -26,13 +27,6 @@ namespace rsurfaces
     {
         BVHNode6D *node = 0;
         std::vector<ClusterPair> list;
-    };
-
-    enum class BCTKernelType
-    {
-        FractionalOnly,
-        HighOrder,
-        LowOrder
     };
 
     class BlockClusterTree

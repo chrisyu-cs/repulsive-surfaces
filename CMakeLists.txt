@@ -103,7 +103,11 @@ set(SRCS
   src/spatial/bvh_flattened.cpp
   src/spatial/convolution_kernel.cpp
   src/block_cluster_tree.cpp
+  src/block_cluster_tree2.cpp
+  src/block_cluster_tree2_types.cpp
+  src/cluster_tree2.cpp
   src/fractional_laplacian.cpp
+  src/interaction_data.cpp
   src/line_search.cpp
   src/main.cpp
   src/matrix_utils.cpp
