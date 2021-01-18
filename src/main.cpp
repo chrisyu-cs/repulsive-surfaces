@@ -1518,7 +1518,7 @@ int main(int argc, char **argv)
     std::string inFile = args::get(inputFilename);
     scene::SceneData data;
 
-    if (endsWith(inFile, ".txt"))
+    if (endsWith(inFile, ".txt") || endsWith(inFile, ".scene"))
     {
         std::cout << "Parsing " << inFile << " as scene file." << std::endl;
         data = scene::parseScene(inFile);
@@ -1528,6 +1528,11 @@ int main(int argc, char **argv)
     {
         std::cout << "Parsing " << inFile << " as OBJ mesh file." << std::endl;
         data = defaultScene(inFile);
+    }
+
+    else
+    {
+        throw std::runtime_error("Unknown file extension for " + inFile + ".");
     }
 
     MeshAndEnergy m = initTPEOnMesh(data.meshName, data.alpha, data.beta);
