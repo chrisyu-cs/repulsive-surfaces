@@ -21,6 +21,7 @@ namespace rsurfaces
         {
             Eigen::MatrixXd C;
             Eigen::MatrixXd M_A;
+            Eigen::MatrixXd Ainv_CT;
         };
 
         Vector3 HatGradientOnTriangle(GCFace face, GCVertex vert, GeomPtr &geom);
@@ -276,8 +277,7 @@ namespace rsurfaces
             Eigen::VectorXd curCol;
             curCol.setZero(bigNRows);
             // And some space for A^{-1} C^T
-            Eigen::MatrixXd A_inv_CT;
-            A_inv_CT.setZero(bigNRows, compNRows);
+            dest.Ainv_CT.setZero(bigNRows, compNRows);
 
             // For each column, copy it into curCol, and do the solve for A^{-1}
             for (size_t r = 0; r < compNRows; r++)
@@ -292,12 +292,12 @@ namespace rsurfaces
                 // Copy the column into the column of A^{-1} C^T
                 for (size_t i = 0; i < bigNRows; i++)
                 {
-                    A_inv_CT(i, r) = curCol(i);
+                    dest.Ainv_CT(i, r) = curCol(i);
                 }
             }
 
             // Now we've multiplied A^{-1} C^T, so just multiply this with C and negate it
-            dest.M_A = -dest.C * A_inv_CT;
+            dest.M_A = -dest.C * dest.Ainv_CT;
         }
 
         class SparseInverse

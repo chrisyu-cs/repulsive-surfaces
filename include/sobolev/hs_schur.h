@@ -8,9 +8,6 @@ namespace rsurfaces
     namespace Hs
     {
         template <typename Inverse>
-        void UnprojectedSchurCorrection(const HsMetric &hs, Eigen::VectorXd hsGradient, Eigen::VectorXd &dest);
-
-        template <typename Inverse>
         void ProjectViaSchurV(const HsMetric &hs, Eigen::VectorXd &curCol, Eigen::VectorXd &dest);
 
         template <typename Inverse>
@@ -22,13 +19,7 @@ namespace rsurfaces
         template <typename Inverse>
         void UnprojectedSchurCorrection(const HsMetric &hs, Eigen::VectorXd hsGradient, Eigen::VectorXd &dest)
         {
-            // Start from hsGradient = A^{-1} x
-            Eigen::VectorXd C_Ai_x = hs.Schur<Inverse>().C * hsGradient;
-            Eigen::VectorXd MAi_C_Ai_x;
-            MAi_C_Ai_x.setZero(C_Ai_x.rows());
-            MatrixUtils::SolveDenseSystem(hs.Schur<Inverse>().M_A, C_Ai_x, MAi_C_Ai_x);
-            dest = hs.Schur<Inverse>().C.transpose() * MAi_C_Ai_x;
-            // After the end of this function, need to apply A^{-1} to dest
+            // After the end of this function, need to apply A^{-1} C^T to dest
         }
 
         template <typename Inverse>
@@ -37,18 +28,19 @@ namespace rsurfaces
             size_t nVerts = hs.mesh->nVertices();
             // Invert the "saddle matrix" now:
             // the block of M^{-1} we want is A^{-1} + A^{-1} C^T (M/A)^{-1} C A^{-1}
-            Eigen::VectorXd tempCol = curCol;
+            Eigen::VectorXd Ainv_g = curCol;
             std::cout << "  Applying metric inverse for gradient..." << std::endl;
-            Inverse::Apply(hs, tempCol, tempCol);
+            Inverse::Apply(hs, Ainv_g, Ainv_g);
 
             // Now we compute the correction
-            Eigen::VectorXd B_MAi_C_Ai_x;
-            UnprojectedSchurCorrection<Inverse>(hs, tempCol, B_MAi_C_Ai_x);
-            // Apply A^{-1} from scratch one more time
+            // Start from hsGradient = A^{-1} x
+            Eigen::VectorXd C_Ai_x = hs.Schur<Inverse>().C * Ainv_g;
+            Eigen::VectorXd MAi_C_Ai_x;
+            MAi_C_Ai_x.setZero(C_Ai_x.rows());
+            MatrixUtils::SolveDenseSystem(hs.Schur<Inverse>().M_A, C_Ai_x, MAi_C_Ai_x);
+            // Use the cached A^{-1} C^T to do this last step
             std::cout << "  Applying metric inverse for Schur complement orthogonalization..." << std::endl;
-            Inverse::Apply(hs, B_MAi_C_Ai_x, B_MAi_C_Ai_x);
-
-            dest = tempCol + B_MAi_C_Ai_x;
+            dest = Ainv_g + hs.Schur<Inverse>().Ainv_CT * MAi_C_Ai_x;
         }
 
         template <typename Inverse>
@@ -103,10 +95,8 @@ namespace rsurfaces
                 // -A^{-1} B (M/A)^{-1}, where B = C^T
                 // Apply (M/A) inverse first
                 MatrixUtils::SolveDenseSystem(hs.Schur<Inverse>().M_A, vals, vals);
-                // Apply C^T
-                Eigen::VectorXd correction = hs.Schur<Inverse>().C.transpose() * vals;
-                // Apply A^{-1}
-                Inverse::Apply(hs, correction, correction);
+                // Apply cached A{^-1} C^T
+                Eigen::VectorXd correction = hs.Schur<Inverse>().Ainv_CT * vals;
 
                 // Apply the correction to the vertex positions
                 VertexIndices verts = hs.mesh->getVertexIndices();
