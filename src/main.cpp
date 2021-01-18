@@ -29,6 +29,8 @@
 #include "obj_writer.h"
 #include "dropdown_strings.h"
 
+#include "bct_constructors.h"
+
 #include "remeshing/remeshing.h"
 
 using namespace geometrycentral;
@@ -566,196 +568,32 @@ namespace rsurfaces
 
     void MainApp::TestNewMVProduct()
     {
-        tic("Building phase");
         auto mesh = rsurfaces::MainApp::instance->mesh;
         auto geom = rsurfaces::MainApp::instance->geom;
         
-        geom->requireFaceAreas();
-        geom->requireFaceNormals();
-        
-        int nVertices = mesh->nVertices() ;
-        int nFaces = mesh->nFaces() ;
-        FaceIndices fInds = mesh->getFaceIndices();
-        VertexIndices vInds = mesh->getVertexIndices();
-        
-        double athird = 1./3.;
-        int nnz = 3 * nFaces;
-        std::vector<int> outer ( nFaces + 1 );
-        outer[ nFaces ] = 3 * nFaces;
-        std::vector<int> inner ( nnz );
-        std::vector<double> values ( 3 * nFaces , 1./3. );
+        long constructStart = currentTimeMilliseconds();
 
-        std::vector<int> ordering ( nFaces );
-        std::vector<double> P_coords ( 3 * nFaces );
-        std::vector<double> P_hull_coords ( 9 * nFaces );
-        std::vector<double> P_data ( 7  * nFaces );
-        
-        int facecounter = 0;
+        BlockClusterTree2* bct = CreateOptimizedBCT(mesh, geom, 6, 0.5);
+        size_t nVertices = mesh->nVertices();
 
-        for( auto face : mesh->faces() )      // when I have to use a "." to reference into members of face then there is a lot of copying going on
+        long constructEnd = currentTimeMilliseconds();
+
+        Eigen::VectorXd V, U;
+        V.setRandom(nVertices * 3);
+        U.setRandom(nVertices * 3);
+        
+        int repeat = 100;
+        for( int i = 0; i < repeat; ++i )
         {
-            int i = fInds[face];
-
-            ordering[i] = i;    // unless we know anything better, let's use the identity permutation.
-            outer[ facecounter ] = 3 * facecounter;
-            facecounter++;
-            
-            GCHalfedge he = face.halfedge();
-            
-            int i0 = vInds[he.vertex()];
-            int i1 = vInds[he.next().vertex()];
-            int i2 = vInds[he.next().next().vertex()];
-            Vector3 p1 = geom->inputVertexPositions[i0];
-            Vector3 p2 = geom->inputVertexPositions[i1];
-            Vector3 p3 = geom->inputVertexPositions[i2];
-            
-            P_coords[ 3 * i + 0 ] = athird * (p1.x + p2.x + p3.x);
-            P_coords[ 3 * i + 1 ] = athird * (p1.y + p2.y + p3.y);
-            P_coords[ 3 * i + 2 ] = athird * (p1.z + p2.z + p3.z);
-            
-            P_data[ 7 * i + 0 ] = geom->faceAreas[face];
-            P_data[ 7 * i + 1 ] = P_coords[ 3 * i + 0 ];
-            P_data[ 7 * i + 2 ] = P_coords[ 3 * i + 1 ];
-            P_data[ 7 * i + 3 ] = P_coords[ 3 * i + 2 ];
-            P_data[ 7 * i + 4 ] = geom->faceNormals[face].x;
-            P_data[ 7 * i + 5 ] = geom->faceNormals[face].y;
-            P_data[ 7 * i + 6 ] = geom->faceNormals[face].z;
-            
-            P_hull_coords[ 9 * i + 0 ] = p1.x;
-            P_hull_coords[ 9 * i + 1 ] = p1.y;
-            P_hull_coords[ 9 * i + 2 ] = p1.z;
-            P_hull_coords[ 9 * i + 3 ] = p2.x;
-            P_hull_coords[ 9 * i + 4 ] = p2.y;
-            P_hull_coords[ 9 * i + 5 ] = p2.z;
-            P_hull_coords[ 9 * i + 6 ] = p3.x;
-            P_hull_coords[ 9 * i + 7 ] = p3.y;
-            P_hull_coords[ 9 * i + 8 ] = p3.z;
-            
-            inner[ 3 * i + 0 ] = i0;
-            inner[ 3 * i + 1 ] = i1;
-            inner[ 3 * i + 2 ] = i2;
-            
-            std::sort( inner.begin() + 3 * i, inner.begin() + 3 * (i+1) );
+            bct->Multiply( V, U, BCTKernelType::HighOrder );
         }
-        
-        EigenMatrixCSR DiffOp = Hs::BuildDfOperator(mesh, geom);           // This is a sparse matrix in CSC!!! format.
-        DiffOp.makeCompressed();
-        EigenMatrixCSR AvOp = Eigen::Map<EigenMatrixCSR>( nFaces, nVertices, nnz, &outer[0], &inner[0], &values[0] ); // This is a sparse matrix in CSR format.
-        AvOp.makeCompressed();
-        // create a cluster tree
-        int split_threashold = 8;
-        std::shared_ptr<ClusterTree2> bvh = std::make_shared<ClusterTree2>(
-            &P_coords[0],               // coordinates used for clustering
-            nFaces,                     // number of primitives
-            3,                          // dimension of ambient space
-            &P_hull_coords[0],          // coordinates of the convex hull of each mesh element
-            3,                          // number of points in the convex hull of each mesh element (3 for triangle meshes, 2 for polylines)
-            &P_data[0],                 // area, barycenter, and normal of mesh element
-            7,                          // number of dofs of P_data per mesh element; it is 7 for plylines and triangle meshes in 3D.
-            3 * 3,                      // some estimate for the buffer size per vertex and cluster (usually the square of the dimension of the embedding space
-            &ordering[0],               // some ordering of triangles
-            split_threashold,           // create clusters only with at most this many mesh elements in it
-            DiffOp,                         // the first-order differential operator belonging to the hi order term of the metric
-            AvOp                        // the zeroth-order differential operator belonging to the lo order term of the metric
-        );
-        
-        mreal alpha = 6.;
-        mreal beta  = 12.;
-        mreal theta = 0.5;
-        std::shared_ptr<BlockClusterTree2> bct = std::make_shared<BlockClusterTree2>(
-            bvh.get(),                  // gets handed two pointers to instances of ClusterTree2
-            bvh.get(),                  // no problem with handing the same pointer twice; this is actually intended
-            alpha,                      // first parameter of the energy (for the numerator)
-            beta,                       // second parameter of the energy (for the denominator)
-            theta                       // separation parameter; different gauge for thetas as before are the block clustering is performed slightly differently from before
-        );
-        
-        toc("Building phase");
-        
-        
-        Eigen::VectorXd V = Eigen::Map<Eigen::VectorXd> ( &P_coords[0], nVertices * 3 );
-        Eigen::VectorXd U ( nVertices * 3 );
-        
-        int repeat = 20;
-        tic( std::to_string(repeat) + " x multiply of highest order term against a V3");
-        {
-            for( int i = 0; i < repeat; ++i )
-            {
-                bct->Multiply( V, U, BCTKernelType::HighOrder );
-            }
-        }
-        toc( std::to_string(repeat) + " x multiply of highest order term against a V3");
 
+        long multiplyEnd = currentTimeMilliseconds();
 
-//        std::ofstream outfile ("AV.txt");
-//        outfile << U;
-//
-//        std::vector<double> pts ( 3 * nVertices );
-//        for( auto vertex : mesh->vertices() )
-//        {
-//            int i = vInds[vertex];
-//            pts[3 * i + 0] = geom->inputVertexPositions[i].x;
-//            pts[3 * i + 1] = geom->inputVertexPositions[i].y;
-//            pts[3 * i + 2] = geom->inputVertexPositions[i].z;
-//        }
-//
-//        std::vector<int> triangles ( nnz );
-//        for( auto face : mesh->faces() )      // when I have to use a "." to reference into members of face then there is a lot of copying going on
-//        {
-//            int i = fInds[face];
-//
-//            GCHalfedge he = face.halfedge();
-//
-//            int i0 = vInds[he.vertex()];
-//            int i1 = vInds[he.next().vertex()];
-//            int i2 = vInds[he.next().next().vertex()];
-//
-//
-//            triangles[ 3 * i + 0 ] = i0;
-//            triangles[ 3 * i + 1 ] = i1;
-//            triangles[ 3 * i + 2 ] = i2;
-//
-//            std::sort( inner.begin() + 3 * i, inner.begin() + 3 * (i+1) );
-//        }
-//        outfile = std::ofstream("VertexPositions.txt");
-//        outfile.precision(std::numeric_limits<double>::max_digits10);
-//        for (const auto &e : pts){outfile << e << "\n";}
-//
-//        outfile = std::ofstream("Triangles.txt");
-//        for (const auto &e : triangles){outfile << e << "\n";}
-//
-//        outfile = std::ofstream("Av_outer.txt");
-//        for (const auto &e : outer){outfile << e << "\n";}
-//
-//        outfile = std::ofstream("Av_inner.txt");
-//        for (const auto &e : inner){outfile << e << "\n";}
-//
-//        outfile = std::ofstream("Av_values.txt");
-//        outfile.precision(std::numeric_limits<double>::max_digits10);
-//        for (const auto &e : values){outfile << e << "\n";}
-//
-//        if( nVertices < 10000)
-//        {
-//            tic("multiply high and low order term with identity matrix on vertices");
-//                Eigen::MatrixXd id = Eigen::MatrixXd::Identity(nVertices, nVertices);
-//                Eigen::MatrixXd Atimesid (nVertices, nVertices);
-//                bct->Multiply( id, Atimesid, BCTKernelType::HighOrder );
-//                bct->Multiply( id, Atimesid, BCTKernelType::LowOrder, true );
-//            toc("multiply high and low order term with identity matrix on vertices");
-//
-//            std::ofstream outfile ("Aid.txt");
-//            outfile.precision(std::numeric_limits<double>::max_digits10);
-//            for( int i = 0; i < nVertices; ++i )
-//            {
-//                for( int j = 0; j < nVertices; ++j )
-//                {
-//                    outfile << Atimesid(i,j) <<"\n";
-//                }
-//            }
-//        }
-//
-//
-//        std::cout << "Done." << std::endl;
+        std::cout << "Construction time = " << (constructEnd - constructStart) << " ms" << std::endl;
+        std::cout << "Multiplication (x100) time = " << (multiplyEnd - constructEnd) << " ms" << std::endl;
+
+        delete bct;
     } // TestNewMVProduct
 
     void MainApp::TestMVProduct()
