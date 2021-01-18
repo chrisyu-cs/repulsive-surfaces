@@ -1,7 +1,7 @@
 #pragma once
 
 #include "rsurface_types.h"
-#include "block_cluster_tree.h"
+#include "block_cluster_tree2.h"
 #include "sobolev/hs.h"
 
 class BCTMatrixReplacement;
@@ -37,22 +37,22 @@ public:
 
     Eigen::Index rows() const
     {
-        return bct->expectedNRows() + C->rows();
+        return 3 * hs->mesh->nVertices() + C->rows();
     }
 
     Eigen::Index outerSize() const
     {
-        return bct->expectedNRows() + C->rows();
+        return 3 * hs->mesh->nVertices() + C->rows();
     }
 
     Eigen::Index innerSize() const
     {
-        return bct->expectedNRows() + C->rows();
+        return 3 * hs->mesh->nVertices() + C->rows();
     }
 
     Eigen::Index cols() const
     {
-        return bct->expectedNCols() + C->rows();
+        return 3 * hs->mesh->nVertices() + C->rows();
     }
 
     template <typename Rhs>
@@ -64,7 +64,7 @@ public:
     // Custom API:
     BCTMatrixReplacement() {}
 
-    void addTree(const rsurfaces::BlockClusterTree *bct_)
+    void addTree(rsurfaces::BlockClusterTree2 *bct_)
     {
         bct = bct_;
     }
@@ -79,7 +79,7 @@ public:
         hs = hs_;
     }
 
-    const rsurfaces::BlockClusterTree *getTree() const
+    const rsurfaces::BlockClusterTree2 *getTree() const
     {
         return bct;
     }
@@ -95,7 +95,7 @@ public:
     }
 
 private:
-    const rsurfaces::BlockClusterTree *bct;
+    mutable rsurfaces::BlockClusterTree2 *bct;
     const Eigen::SparseMatrix<double> *C;
     const rsurfaces::Hs::HsMetric *hs;
 };
@@ -185,14 +185,14 @@ namespace Eigen
                 assert(alpha == Scalar(1) && "scaling is not implemented");
                 EIGEN_ONLY_USED_FOR_DEBUG(alpha);
 
-                const rsurfaces::BlockClusterTree *bct = lhs.getTree();
+                const rsurfaces::BlockClusterTree2 *bct = lhs.getTree();
 
-                Eigen::VectorXd product(bct->expectedNRows() + lhs.getConstraintBlock().rows());
+                Eigen::VectorXd product(3 * lhs.getHs()->mesh->nVertices() + lhs.getConstraintBlock().rows());
                 product.setZero();
 
-                bct->MultiplyVector3(rhs, product, rsurfaces::BCTKernelType::HighOrder, true);
-                bct->MultiplyVector3(rhs, product, rsurfaces::BCTKernelType::LowOrder, true);
-                bct->MultiplyConstraintBlock(rhs, product, lhs.getConstraintBlock(), true);
+                bct->MultiplyV3(rhs, product, rsurfaces::BCTKernelType::HighOrder, true);
+                bct->MultiplyV3(rhs, product, rsurfaces::BCTKernelType::LowOrder, true);
+                rsurfaces::MultiplyConstraintBlock(lhs.getHs()->mesh, rhs, product, lhs.getConstraintBlock(), true);
 
                 dst += product;
             }

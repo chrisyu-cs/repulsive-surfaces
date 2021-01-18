@@ -704,12 +704,12 @@ namespace rsurfaces
     //      Vector multiplication
     //######################################################################################################################################
 
-    void BlockClusterTree2::Multiply(Eigen::VectorXd &input, Eigen::VectorXd &output, BCTKernelType type, bool addToResult)
+    void BlockClusterTree2::Multiply(Eigen::VectorXd &input, Eigen::VectorXd &output, BCTKernelType type, bool addToResult) const
     {
         Multiply(input, output, 1, type, addToResult);
     }
 
-    void BlockClusterTree2::Multiply(Eigen::VectorXd &input, Eigen::VectorXd &output, const mint k, BCTKernelType type, bool addToResult)
+    void BlockClusterTree2::Multiply(Eigen::VectorXd &input, Eigen::VectorXd &output, const mint k, BCTKernelType type, bool addToResult) const
     {
         // Version for vectors of k-dimensional vectors. Input and out are assumed to be stored in interleave format.
         // E.g., for a list {v1, v2, v3,...} of  k = 3-vectors, we expect { v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z, ... }
@@ -756,7 +756,7 @@ namespace rsurfaces
     //      Matrix multiplication
     //######################################################################################################################################
 
-    void BlockClusterTree2::Multiply(Eigen::MatrixXd &input, Eigen::MatrixXd &output, BCTKernelType type, bool addToResult)
+    void BlockClusterTree2::Multiply(Eigen::MatrixXd &input, Eigen::MatrixXd &output, BCTKernelType type, bool addToResult) const
     {
         // Top level routine for the user.
         // Optimized for in and output in row major order.
@@ -778,7 +778,7 @@ namespace rsurfaces
         //    toc("Multiply");
     }; // Multiply
 
-    void BlockClusterTree2::InternalMultiply(BCTKernelType type)
+    void BlockClusterTree2::InternalMultiply(BCTKernelType type) const
     {
 
         mreal *diag = NULL;

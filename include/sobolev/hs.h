@@ -3,11 +3,12 @@
 #include "rsurface_types.h"
 #include "matrix_utils.h"
 #include "constraints.h"
-#include "block_cluster_tree.h"
+#include "block_cluster_tree2.h"
 #include "hs_operators.h"
 #include "sobolev/h1.h"
 #include "sobolev/all_constraints.h"
 #include "sobolev/sparse_factorization.h"
+#include "bct_constructors.h"
 
 #include <Eigen/Sparse>
 
@@ -54,7 +55,7 @@ namespace rsurfaces
             // Build the base fractional Laplacian of order s.
             void FillMatrixFracOnly(Eigen::MatrixXd &M, double s, const MeshPtr &mesh, const GeomPtr &geom) const;
             // Build an exact Hs preconditioner with high- and low-order terms.
-            Eigen::MatrixXd GetHsMatrixConstrained() const;
+            Eigen::MatrixXd GetHsMatrixConstrained(bool includeNewton = true) const;
 
             // Build just the constraint block of the saddle matrix.
             Eigen::SparseMatrix<double> GetConstraintBlock(bool includeNewton = true) const;
@@ -103,9 +104,16 @@ namespace rsurfaces
                 return simpleRows + newtonRows;
             }
 
-            inline size_t getNumRows() const
+            inline size_t getNumRows(bool includeNewton = true) const
             {
-                return 3 * mesh->nVertices() + getNumConstraints();
+                if (includeNewton)
+                {
+                    return 3 * mesh->nVertices() + getNumConstraints();
+                }
+                else
+                {
+                    return 3 * mesh->nVertices() + simpleRows;
+                }
             }
 
             inline BVHNode6D *GetBVH() const
@@ -135,8 +143,8 @@ namespace rsurfaces
                 return 3 * mesh->nVertices() + simpleRows;
             }
 
-            MeshPtr mesh;
-            GeomPtr geom;
+            mutable MeshPtr mesh;
+            mutable GeomPtr geom;
             bool allowBarycenterShift;
 
             std::vector<Constraints::SimpleProjectorConstraint *> simpleConstraints;
@@ -162,6 +170,16 @@ namespace rsurfaces
             }
             void shiftBarycenterConstraint(Vector3 shift);
 
+            inline BlockClusterTree2 *getBlockClusterTree() const
+            {
+                if (!optBCT)
+                {
+                    Vector2 exps = energy->GetExponents();
+                    optBCT = CreateOptimizedBCT(mesh, geom, exps.x, exps.y, bh_theta);
+                }
+                return optBCT;
+            }
+
         private:
             void addSimpleConstraintEntries(Eigen::MatrixXd &M) const;
             void addSimpleConstraintTriplets(std::vector<Triplet> &triplets) const;
@@ -185,7 +203,7 @@ namespace rsurfaces
             bool usedDefaultConstraint;
 
             mutable SparseFactorization factorizedLaplacian;
-            mutable BlockClusterTree *bct;
+            mutable BlockClusterTree2 *optBCT;
             mutable bool schurComplementComputed;
             mutable SchurComplement schurComplement;
         };
@@ -221,11 +239,7 @@ namespace rsurfaces
 
             else
             {
-                if (!bct)
-                {
-                    bct = new BlockClusterTree(mesh, geom, bvh, bh_theta, 4 - 2 * getHsOrder());
-                }
-                bct->MultiplyVector3(mid, mid, BCTKernelType::FractionalOnly);
+                getBlockClusterTree()->MultiplyV3(mid, mid, BCTKernelType::FractionalOnly);
             }
 
             // Re-zero out Lagrange multipliers, since the first solve

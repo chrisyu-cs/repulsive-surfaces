@@ -602,12 +602,12 @@ namespace rsurfaces
 
         Eigen::VectorXd fastRes;
         fastRes.setZero(nVertices * 3);
-        bct->Multiply(gVec, fastRes, 3, BCTKernelType::FractionalOnly);
+        bct->MultiplyV3(gVec, fastRes, BCTKernelType::FractionalOnly);
 
         long multiplyEnd = currentTimeMilliseconds();
 
         std::cout << "Construction time = " << (constructEnd - constructStart) << " ms" << std::endl;
-        std::cout << "Multiplication (x100) time = " << (multiplyEnd - constructEnd) << " ms" << std::endl;
+        std::cout << "Multiplication time = " << (multiplyEnd - constructEnd) << " ms" << std::endl;
 
         Eigen::VectorXd diff = denseRes - fastRes;
         double error = 100 * diff.norm() / denseRes.norm();
@@ -615,6 +615,34 @@ namespace rsurfaces
         std::cout << "Hierarchical multiply norm = " << fastRes.norm() << std::endl;
         std::cout << "Relative error = " << error << " percent" << std::endl;
         std::cout << "Dot product of directions = " << denseRes.dot(fastRes) / (denseRes.norm() * fastRes.norm()) << std::endl;
+
+        // Reset for high-order term
+        denseRes.setZero();
+        fastRes.setZero();
+        dense_small.setZero();
+        dense.setZero();
+        s = Hs::get_s(exps.x, exps.y);
+
+        std::cout << "High-order term (s = " << s << "):" << std::endl;
+
+        // Build dense matrix for high-order term
+        long hiStart = currentTimeMilliseconds();
+        hs.FillMatrixHigh(dense_small, s, mesh, geom);
+        MatrixUtils::TripleMatrix(dense_small, dense);
+        // Multiply it
+        denseRes = dense * gVec;
+        long hiEnd = currentTimeMilliseconds();
+
+        bct->MultiplyV3(gVec, fastRes, BCTKernelType::HighOrder);
+        std::cout << "Multiplication time = " << (multiplyEnd - constructEnd) << " ms" << std::endl;
+
+        diff = denseRes - fastRes;
+        error = 100 * diff.norm() / denseRes.norm();
+        std::cout << "Dense multiply norm = " << denseRes.norm() << std::endl;
+        std::cout << "Hierarchical multiply norm = " << fastRes.norm() << std::endl;
+        std::cout << "Relative error = " << error << " percent" << std::endl;
+        std::cout << "Dot product of directions = " << denseRes.dot(fastRes) / (denseRes.norm() * fastRes.norm()) << std::endl;
+
 
         delete bct;
     } // TestNewMVProduct
@@ -729,36 +757,6 @@ namespace rsurfaces
         std::cout << "Dot product of directions = " << denseRes.dot(bctRes) / (denseRes.norm() * bctRes.norm()) << std::endl;
         std::cout << "Dense assembly took " << (lowEnd - lowStart) << " ms, hierarchical product took " << (lowEnd2 - lowEnd) << " ms" << std::endl;
 
-        // Test multiplying a full saddle matrix: high order + low order + constraint blocks
-        Eigen::SparseMatrix<double> C = hs.GetConstraintBlock();
-        size_t fullSize = 3 * mesh->nVertices() + C.rows();
-
-        // Get lengthened gradient vector for combined test
-        Eigen::VectorXd gVecFull;
-        gVecFull.setZero(fullSize);
-        gVecFull.block(0, 0, 3 * mesh->nVertices(), 1) = gVec;
-
-        // Get saddle matrix with constraints
-        dense = hs.GetHsMatrixConstrained();
-        std::cout << "Dense matrix has " << dense.rows() << " x " << dense.cols() << std::endl;
-        std::cout << "(Expected " << fullSize << ")" << std::endl;
-
-        denseRes.setZero(fullSize);
-        bctRes.setZero(fullSize);
-
-        denseRes = dense * gVecFull;
-
-        bct->MultiplyVector3(gVecFull, bctRes, BCTKernelType::HighOrder, true);
-        bct->MultiplyVector3(gVecFull, bctRes, BCTKernelType::LowOrder, true);
-        bct->MultiplyConstraintBlock(gVecFull, bctRes, C, true);
-
-        diff = denseRes - bctRes;
-        error = 100 * diff.norm() / denseRes.norm();
-        std::cout << "Dense multiply norm = " << denseRes.norm() << std::endl;
-        std::cout << "Hierarchical multiply norm = " << bctRes.norm() << std::endl;
-        std::cout << "Relative error = " << error << " percent" << std::endl;
-        std::cout << "Dot product of directions = " << denseRes.dot(bctRes) / (denseRes.norm() * bctRes.norm()) << std::endl;
-
         delete bct;
     }
 
@@ -777,6 +775,8 @@ namespace rsurfaces
         energy->Differential(gradient);
         long gradientEndTime = currentTimeMilliseconds();
 
+        Vector3 avg = averageOfMatrixRows(geom, mesh, gradient);
+
         Hs::HsMetric hs(energy);
 
         Eigen::VectorXd gVec;
@@ -791,7 +791,7 @@ namespace rsurfaces
 
         std::cout << "Projecting using dense system..." << std::endl;
         long denseStart = currentTimeMilliseconds();
-        Eigen::MatrixXd dense = hs.GetHsMatrixConstrained();
+        Eigen::MatrixXd dense = hs.GetHsMatrixConstrained(false);
         std::cout << "Computed dense matrix" << std::endl;
         MatrixUtils::SolveDenseSystem(dense, gVec, denseRes);
         long denseEnd = currentTimeMilliseconds();

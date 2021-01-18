@@ -161,7 +161,7 @@ namespace rsurfaces
             geom = energy_->GetGeom();
             bvh = energy_->GetBVH();
             bh_theta = energy_->GetTheta();
-            bct = 0;
+            optBCT = 0;
         }
 
         void HsMetric::precomputeSizes()
@@ -185,9 +185,9 @@ namespace rsurfaces
 
         HsMetric::~HsMetric()
         {
-            if (bct)
+            if (optBCT)
             {
-                delete bct;
+                delete optBCT;
             }
             if (usedDefaultConstraint)
             {
@@ -262,12 +262,12 @@ namespace rsurfaces
             }
         }
 
-        Eigen::MatrixXd HsMetric::GetHsMatrixConstrained() const
+        Eigen::MatrixXd HsMetric::GetHsMatrixConstrained(bool includeNewton) const
         {
             Eigen::MatrixXd M_small, M;
             int nVerts = mesh->nVertices();
             M_small.setZero(nVerts, nVerts);
-            int dims = getNumRows();
+            int dims = getNumRows(includeNewton);
 
             M.setZero(dims, dims);
             double s = getHsOrder();
@@ -284,10 +284,13 @@ namespace rsurfaces
                 curRow += cons->nRows();
             }
 
-            for (const ConstraintPack &pack : newtonConstraints)
+            if (includeNewton)
             {
-                Constraints::addEntriesToSymmetric(*pack.constraint, M, mesh, geom, curRow);
-                curRow += pack.constraint->nRows();
+                for (const ConstraintPack &pack : newtonConstraints)
+                {
+                    Constraints::addEntriesToSymmetric(*pack.constraint, M, mesh, geom, curRow);
+                    curRow += pack.constraint->nRows();
+                }
             }
 
             return M;

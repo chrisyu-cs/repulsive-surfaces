@@ -72,11 +72,6 @@ namespace rsurfaces
         template <typename V3, typename Dest>
         void MultiplyVector3Const(const V3 &v, Dest &b, BCTKernelType kType, bool addToResult = false, double eps = 0) const;
 
-        // Multiplies C * v and C^T * lambda as though these were the constraint
-        // rows of a saddle matrix, and adds the result to b.
-        template <typename V, typename Dest, typename Mat>
-        void MultiplyConstraintBlock(const V &v, Dest &b, Mat &C, bool addToResult = true) const;
-
         inline void SetExponent(double s_)
         {
             exp_s = s_;
@@ -414,29 +409,6 @@ namespace rsurfaces
         Eigen::Map<const Eigen::VectorXd, 0, Eigen::InnerStride<3>> v_z(v.data() + 2, nVerts);
         Eigen::Map<Eigen::VectorXd, 0, Eigen::InnerStride<3>> dest_z(b.data() + 2, nVerts);
         MultiplyVector(v_z, dest_z, kType, addToResult);
-    }
-    
-    template <typename V, typename Dest, typename Mat>
-    void BlockClusterTree::MultiplyConstraintBlock(const V &v, Dest &b, Mat &C, bool addToResult) const
-    {
-        size_t nConstraints = C.rows();
-        size_t nV3 = 3 * mesh->nVertices();
-
-        // Assume that C is (nConstraints x nV3)
-        if (addToResult)
-        {
-            // C * v goes into the bottom block of b
-            b.block(nV3, 0, nConstraints, 1) += C * v.block(0, 0, nV3, 1);
-            // C^T * lambda goes into the top block of b
-            b.block(0, 0, nV3, 1) += C.transpose() * v.block(nV3, 0, nConstraints, 1);
-        }
-        else
-        {
-            // C * v goes into the bottom block of b
-            b.block(nV3, 0, nConstraints, 1) = C * v.block(0, 0, nV3, 1);
-            // C^T * lambda goes into the top block of b
-            b.block(0, 0, nV3, 1) = C.transpose() * v.block(nV3, 0, nConstraints, 1);
-        }
     }
 
 } // namespace rsurfaces
