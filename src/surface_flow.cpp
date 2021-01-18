@@ -231,7 +231,7 @@ namespace rsurfaces
         if (numNewton > 0)
         {
             std::cout << "  * With " << numNewton << " Newton constraint(s), Hs projection will require "
-                      << (numNewton + 2) << " linear solves" << std::endl;
+                      << (numNewton + 1) << " linear solves" << std::endl;
         }
         else
         {
