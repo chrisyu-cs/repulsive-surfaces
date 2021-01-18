@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <sstream>
+#include "rsurface_types.h"
 
 namespace rsurfaces
 {
@@ -62,6 +63,9 @@ namespace rsurfaces
             std::vector<size_t> vertexPins;
             std::vector<size_t> vertexNormals;
             int iterationLimit = 0;
+            long realTimeLimit = 0;
+            std::string performanceLogFile = "performance.csv";
+            GradientMethod defaultMethod = GradientMethod::HsProjected;
         };
 
         template <class Container>

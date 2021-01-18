@@ -529,7 +529,7 @@ namespace rsurfaces
 
         // 2. H1 gradient step following the Nesterov step
         std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
-        std::cout << "Using H1 projected gradient method..." << std::endl;
+        std::cout << "Using AQP..." << std::endl;
         UpdateEnergies();
 
         // Assemble sum of L2 differentials of all energies involved
@@ -596,7 +596,7 @@ namespace rsurfaces
 
         stepCount++;
         std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
-        std::cout << "Using normal L-BFGS..." << std::endl;
+        std::cout << "Using H1 L-BFGS..." << std::endl;
 
         if (!lbfgs)
         {
@@ -663,7 +663,7 @@ namespace rsurfaces
 
         stepCount++;
         std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
-        std::cout << "Using normal L-BFGS..." << std::endl;
+        std::cout << "Using blended L-BFGS (BQN)..." << std::endl;
 
         if (!lbfgs)
         {

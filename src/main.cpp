@@ -57,10 +57,32 @@ namespace rsurfaces
         realTimeLimit = 0;
         logPerformance = false;
         referenceEnergy = 0;
+        exitWhenDone = false;
+    }
+
+    void MainApp::logPerformanceLine()
+    {
+        if (!referenceEnergy)
+        {
+            referenceEnergy = new AllPairsTPEnergy(kernel);
+        }
+
+        geom->refreshQuantities();
+        std::ofstream outfile;
+        outfile.open(sceneData.performanceLogFile, std::ios_base::app);
+        double currentEnergy = referenceEnergy->Value();
+        std::cout << numSteps << ", " << timeSpentSoFar << ", " << currentEnergy << ", " << mesh->nFaces() << std::endl;
+        outfile << numSteps << ", " << timeSpentSoFar << ", " << currentEnergy << ", " << mesh->nFaces() << std::endl;
+        outfile.close();
     }
 
     void MainApp::TakeOptimizationStep(bool remeshAfter)
     {
+        if (logPerformance && numSteps == 0)
+        {
+            logPerformanceLine();
+        }
+
         long beforeStep = currentTimeMilliseconds();
         switch (methodChoice)
         {
@@ -129,18 +151,7 @@ namespace rsurfaces
 
         if (logPerformance)
         {
-            if (!referenceEnergy)
-            {
-                referenceEnergy = new AllPairsTPEnergy(kernel);
-            }
-
-            geom->refreshQuantities();
-            std::ofstream outfile;
-            outfile.open("performance.csv", std::ios_base::app);
-            double currentEnergy = referenceEnergy->Value();
-            std::cout << numSteps << ", " << timeSpentSoFar << ", " << currentEnergy << ", " << mesh->nFaces() << std::endl;
-            outfile << numSteps << ", " << timeSpentSoFar << ", " << currentEnergy << ", " << mesh->nFaces() << std::endl;
-            outfile.close();
+            logPerformanceLine();
         }
     }
 
@@ -643,7 +654,6 @@ namespace rsurfaces
         std::cout << "Relative error = " << error << " percent" << std::endl;
         std::cout << "Dot product of directions = " << denseRes.dot(fastRes) / (denseRes.norm() * fastRes.norm()) << std::endl;
 
-
         delete bct;
     } // TestNewMVProduct
 
@@ -1077,6 +1087,10 @@ void customCallback()
             (MainApp::instance->realTimeLimit > 0 && MainApp::instance->timeSpentSoFar >= MainApp::instance->realTimeLimit))
         {
             run = false;
+            if (MainApp::instance->exitWhenDone)
+            {
+                std::exit(0);
+            }
         }
     }
 
@@ -1451,6 +1465,7 @@ int main(int argc, char **argv)
     args::Positional<std::string> inputFilename(parser, "mesh", "A mesh file.");
     args::ValueFlag<double> thetaFlag(parser, "Theta", "Theta value for Barnes-Hut approximation; 0 means exact.", args::Matcher{'t', "theta"});
     args::ValueFlagList<std::string> obstacleFiles(parser, "obstacles", "Obstacles to add", {'o'});
+    args::Flag autologFlag(parser, "autolog", "Automatically start the flow, log performance, and exit when done.", {"autolog"});
 
     int default_threads = omp_get_max_threads();
     std::cout << "OMP autodetected " << default_threads << " threads." << std::endl;
@@ -1477,7 +1492,6 @@ int main(int argc, char **argv)
         std::cerr << parser;
         return 1;
     }
-
     // Make sure a mesh name was given
     if (!inputFilename)
     {
@@ -1523,6 +1537,20 @@ int main(int argc, char **argv)
     MainApp::instance->bh_theta = theta;
     MainApp::instance->kernel = m.kernel;
     MainApp::instance->stepLimit = data.iterationLimit;
+    MainApp::instance->realTimeLimit = data.realTimeLimit;
+    MainApp::instance->methodChoice = data.defaultMethod;
+    MainApp::instance->sceneData = data;
+
+    if (autologFlag)
+    {
+        std::cout << "Autolog flag was used; starting flow automatically." << std::endl;
+        MainApp::instance->exitWhenDone = true;
+        MainApp::instance->logPerformance = true;
+        run = true;
+        std::ofstream outfile;
+        outfile.open(data.performanceLogFile, std::ios_base::out);
+        outfile.close();
+    }
 
     for (scene::PotentialData &p : data.potentials)
     {
@@ -1535,7 +1563,7 @@ int main(int argc, char **argv)
     }
 
     MainApp::instance->updateMeshPositions();
-	
+
     // Give control to the polyscope gui
     polyscope::show();
 

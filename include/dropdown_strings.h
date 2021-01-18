@@ -4,7 +4,6 @@
 
 namespace rsurfaces
 {
-
     template <typename Mode>
     inline std::string StringOfMode(Mode mode)
     {

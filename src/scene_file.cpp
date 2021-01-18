@@ -61,6 +61,34 @@ namespace rsurfaces
             }
         }
 
+        GradientMethod methodOfName(std::string name)
+        {
+            if (name == "hs")
+            {
+                return GradientMethod::HsProjectedIterative;
+            }
+            else if (name == "aqp")
+            {
+                return GradientMethod::AQP;
+            }
+            else if (name == "bqn")
+            {
+                return GradientMethod::BQN_LBFGS;
+            }
+            else if (name == "h1")
+            {
+                return GradientMethod::H1Projected;
+            }
+            else if (name == "h1-lbfgs")
+            {
+                return GradientMethod::H1_LBFGS;
+            }
+            else
+            {
+                throw std::runtime_error("Unknown method name " + name);
+            }
+        }
+
         ConstraintType getConstraintType(std::string consType)
         {
 
@@ -102,7 +130,8 @@ namespace rsurfaces
         void processLine(SceneData &data, std::string dir_root, std::vector<std::string> &parts)
         {
             using namespace std;
-            if (parts.size() == 0) {
+            if (parts.size() == 0)
+            {
                 return;
             }
             if (parts[0] == "repel_mesh")
@@ -152,6 +181,12 @@ namespace rsurfaces
             else if (parts[0] == "iteration_limit")
             {
                 data.iterationLimit = stoi(parts[1]);
+                std::cout << "Adding iteration limit of " << data.iterationLimit << std::endl;
+            }
+            else if (parts[0] == "time_limit")
+            {
+                data.realTimeLimit = stol(parts[1]);
+                std::cout << "Adding time limit of " << data.realTimeLimit << " milliseconds" << std::endl;
             }
             else if (parts[0] == "allow_barycenter_shift")
             {
@@ -212,6 +247,21 @@ namespace rsurfaces
                     obsData.weight = 1;
                 }
                 data.obstacles.push_back(obsData);
+            }
+            else if (parts[0] == "method")
+            {
+                data.defaultMethod = methodOfName(parts[1]);
+                std::cout << "Set default method to " << parts[1] << " (" << (int)data.defaultMethod << ")" << std::endl;
+            }
+            else if (parts[0] == "log")
+            {
+                std::string sep = "";
+                if (dir_root[dir_root.size() - 1] != '/')
+                {
+                    sep = "/";
+                }
+                data.performanceLogFile = dir_root + sep + parts[1];
+                std::cout << "Logging to " << data.performanceLogFile << std::endl;
             }
             else
             {

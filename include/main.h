@@ -77,12 +77,15 @@ namespace rsurfaces
         int numSteps;
         bool logPerformance;
         long timeSpentSoFar;
+        scene::SceneData sceneData;
+        bool exitWhenDone;
 
     private:
         GCVertex pickedVertex;
         std::vector<PriorityVertex> dragVertices;
 
         double pickDepth;
+        void logPerformanceLine();
         bool pickNearbyVertex(GCVertex &out);
         SquaredError *vertexPotential;
         bool ctrlMouseDown;
