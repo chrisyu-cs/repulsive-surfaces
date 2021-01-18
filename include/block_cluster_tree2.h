@@ -784,6 +784,11 @@ void BlockClusterTree2::Multiply( Eigen::VectorXd &input, Eigen::VectorXd &outpu
         T->Pre( input.data(), k, type );
         InternalMultiply( type );
         S->Post( output.data(), k, type, addToResult );
+
+        if (type == BCTKernelType::HighOrder || type == BCTKernelType::LowOrder)
+        {
+            output /= 2;
+        }
         
 //        // Just copy to /add into the remaining entries.
 //        mint nRemainingEntries = std::min(input.size() , output.size() ) - k * n;

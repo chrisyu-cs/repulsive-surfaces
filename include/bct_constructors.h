@@ -5,7 +5,7 @@
 
 namespace rsurfaces
 {
-    inline BlockClusterTree2 *CreateOptimizedBCT(MeshPtr &mesh, GeomPtr &geom, double p, double theta)
+    inline BlockClusterTree2 *CreateOptimizedBCT(MeshPtr &mesh, GeomPtr &geom, double alpha, double beta, double theta)
     {
         int nVertices = mesh->nVertices();
         int nFaces = mesh->nFaces();
@@ -93,8 +93,6 @@ namespace rsurfaces
             AvOp               // the zeroth-order differential operator belonging to the lo order term of the metric
         );
 
-        mreal alpha = p;
-        mreal beta = 2 * p;
         BlockClusterTree2 *bct = new BlockClusterTree2(
             bvh,   // gets handed two pointers to instances of ClusterTree2
             bvh,   // no problem with handing the same pointer twice; this is actually intended

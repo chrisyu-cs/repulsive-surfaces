@@ -570,28 +570,51 @@ namespace rsurfaces
     {
         auto mesh = rsurfaces::MainApp::instance->mesh;
         auto geom = rsurfaces::MainApp::instance->geom;
-        
+        size_t nVertices = mesh->nVertices();
+
+        // Use the differential of the energy as the test case
+        SurfaceEnergy *energy = flow->BaseEnergy();
+        energy->Update();
+        Eigen::MatrixXd gradient(nVertices, 3);
+        energy->Differential(gradient);
+        Eigen::VectorXd gVec(3 * nVertices);
+        MatrixUtils::MatrixIntoColumn(gradient, gVec);
+        Vector2 exps = energy->GetExponents();
+        double s = 2 - Hs::get_s(exps.x, exps.y);
+
+        Hs::HsMetric hs(energy);
+        std::cout << "Dense fractional Laplacian (s = " << s << "):" << std::endl;
+        Eigen::MatrixXd dense, dense_small;
+        dense_small.setZero(nVertices, nVertices);
+        dense.setZero(3 * nVertices, 3 * nVertices);
+        // Build dense fractional Laplacian
+        long fracStart = currentTimeMilliseconds();
+        hs.FillMatrixFracOnly(dense_small, s, mesh, geom);
+        MatrixUtils::TripleMatrix(dense_small, dense);
+        // Multiply it
+        Eigen::VectorXd denseRes = dense * gVec;
+
         long constructStart = currentTimeMilliseconds();
 
-        BlockClusterTree2* bct = CreateOptimizedBCT(mesh, geom, 6, 0.5);
-        size_t nVertices = mesh->nVertices();
+        BlockClusterTree2 *bct = CreateOptimizedBCT(mesh, geom, exps.x, exps.y, 0.5);
 
         long constructEnd = currentTimeMilliseconds();
 
-        Eigen::VectorXd V, U;
-        V.setRandom(nVertices * 3);
-        U.setRandom(nVertices * 3);
-        
-        int repeat = 100;
-        for( int i = 0; i < repeat; ++i )
-        {
-            bct->Multiply( V, U, BCTKernelType::HighOrder );
-        }
+        Eigen::VectorXd fastRes;
+        fastRes.setZero(nVertices * 3);
+        bct->Multiply(gVec, fastRes, 3, BCTKernelType::FractionalOnly);
 
         long multiplyEnd = currentTimeMilliseconds();
 
         std::cout << "Construction time = " << (constructEnd - constructStart) << " ms" << std::endl;
         std::cout << "Multiplication (x100) time = " << (multiplyEnd - constructEnd) << " ms" << std::endl;
+
+        Eigen::VectorXd diff = denseRes - fastRes;
+        double error = 100 * diff.norm() / denseRes.norm();
+        std::cout << "Dense multiply norm = " << denseRes.norm() << std::endl;
+        std::cout << "Hierarchical multiply norm = " << fastRes.norm() << std::endl;
+        std::cout << "Relative error = " << error << " percent" << std::endl;
+        std::cout << "Dot product of directions = " << denseRes.dot(fastRes) / (denseRes.norm() * fastRes.norm()) << std::endl;
 
         delete bct;
     } // TestNewMVProduct
@@ -609,7 +632,7 @@ namespace rsurfaces
         Eigen::VectorXd gVec(3 * mesh->nVertices());
         MatrixUtils::MatrixIntoColumn(gradient, gVec);
         Vector2 exps = energy->GetExponents();
-        double s = 4 - 2 * Hs::get_s(exps.x, exps.y);
+        double s = 2 - Hs::get_s(exps.x, exps.y);
 
         long gradientEndTime = currentTimeMilliseconds();
         Hs::HsMetric hs(energy);
