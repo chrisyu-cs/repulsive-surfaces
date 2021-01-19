@@ -308,7 +308,7 @@ namespace rsurfaces
         Vector3 v1 = geom->inputVertexPositions[f.halfedge().vertex()];
         Vector3 v2 = geom->inputVertexPositions[f.halfedge().next().vertex()];
         Vector3 v3 = geom->inputVertexPositions[f.halfedge().next().next().vertex()];
-        return dot(cross(v1, v2), v3);
+        return dot(cross(v1, v2), v3) / 6;
     }
 
     inline double totalVolume(GeomPtr const &geom, MeshPtr const &mesh)
