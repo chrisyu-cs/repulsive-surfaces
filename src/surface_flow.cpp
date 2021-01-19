@@ -297,10 +297,13 @@ namespace rsurfaces
 
         if (allowBarycenterShift)
         {
-            std::cout << "Shifting barycenter by " << shift * delta << std::endl;
-            hs->shiftBarycenterConstraint(-delta * shift);
+            // The barycenter goes wherever it wants.
+            // Assumes no pin constraints; free barycenter isn't meant to be used with pins.
         }
-        hs->ProjectSimpleConstraints();
+        else
+        {
+            hs->ProjectSimpleConstraints();
+        }
 
         incrementSchurConstraints();
         geom->refreshQuantities();

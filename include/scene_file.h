@@ -65,7 +65,7 @@ namespace rsurfaces
             int iterationLimit = 0;
             long realTimeLimit = 0;
             std::string performanceLogFile = "performance.csv";
-            GradientMethod defaultMethod = GradientMethod::HsProjected;
+            GradientMethod defaultMethod = GradientMethod::HsProjectedIterative;
         };
 
         template <class Container>
