@@ -1,3 +1,0 @@
-repel_mesh hshape.obj 6 12
-constrain barycenter
-iteration_limit 200

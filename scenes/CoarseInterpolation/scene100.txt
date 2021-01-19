@@ -1,0 +1,4 @@
+repel_mesh hshape.obj 6 12
+iteration_limit 40
+constrain vertices 18 19 23 22 7 6 31 30 27 26 5 4 1 0 3 2 17 21 16 20 24 28 29 25
+minimize area_deviation 100
