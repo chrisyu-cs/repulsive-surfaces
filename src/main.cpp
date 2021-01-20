@@ -76,7 +76,7 @@ namespace rsurfaces
         outfile.close();
     }
 
-    void MainApp::TakeOptimizationStep(bool remeshAfter)
+    void MainApp::TakeOptimizationStep(bool remeshAfter, bool showAreaRatios)
     {
         if (logPerformance && numSteps == 0)
         {
@@ -152,6 +152,17 @@ namespace rsurfaces
         if (logPerformance)
         {
             logPerformanceLine();
+        }
+        
+        if(showAreaRatios)
+        {
+        	VertexData <double> areaRatio(*mesh);
+        	for(Vertex v : mesh->vertices())
+        	{
+        		areaRatio[v] = geomOrig->vertexDualArea(v) / geom->vertexDualArea(v);
+        	}
+        	
+        	psMesh->addVertexScalarQuantity("Area ratios", areaRatio);
         }
     }
 
@@ -956,6 +967,7 @@ uint objNum = 0;
 bool uiNormalizeView = false;
 bool remesh = true;
 bool changeTopo = false;
+bool areaRatios = false;
 
 int partIndex = 4475;
 
@@ -1030,6 +1042,8 @@ void customCallback()
         saveOBJ(MainApp::instance->mesh, MainApp::instance->geom, objNum++);
     }
     ImGui::Checkbox("Log performance", &MainApp::instance->logPerformance);
+    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
+    ImGui::Checkbox("Show area ratios", &areaRatios);
 
     const GradientMethod methods[] = {GradientMethod::HsProjectedIterative,
                                       GradientMethod::HsProjected,
@@ -1073,7 +1087,7 @@ void customCallback()
     ImGui::PopItemWidth();
     if (ImGui::Button("Take 1 step", ImVec2{ITEM_WIDTH, 0}) || run)
     {
-        MainApp::instance->TakeOptimizationStep(remesh);
+        MainApp::instance->TakeOptimizationStep(remesh, areaRatios);
 
         if (takeScreenshots)
         {
