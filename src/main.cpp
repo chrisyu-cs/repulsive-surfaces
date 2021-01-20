@@ -28,6 +28,7 @@
 #include "surface_derivatives.h"
 #include "obj_writer.h"
 #include "dropdown_strings.h"
+#include "energy/coulomb.h"
 
 #include "bct_constructors.h"
 
@@ -1339,13 +1340,17 @@ MeshAndEnergy initTPEOnMesh(std::string meshFile, double alpha, double beta)
     return MeshAndEnergy{tpe, psMesh, meshShared, geomShared, mesh_name};
 }
 
-rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::scene::SceneData &scene)
+rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::scene::SceneData &scene, bool useCoulomb)
 {
     using namespace rsurfaces;
 
     SurfaceEnergy *energy;
 
-    if (theta <= 0)
+    if (useCoulomb)
+    {
+        energy = new CoulombEnergy(m.kernel, theta);
+    }
+    else if (theta <= 0)
     {
         std::cout << "Theta was zero (or negative); using exact all-pairs energy." << std::endl;
         energy = new AllPairsTPEnergy(m.kernel);
@@ -1484,6 +1489,7 @@ int main(int argc, char **argv)
     args::ValueFlag<double> thetaFlag(parser, "Theta", "Theta value for Barnes-Hut approximation; 0 means exact.", args::Matcher{'t', "theta"});
     args::ValueFlagList<std::string> obstacleFiles(parser, "obstacles", "Obstacles to add", {'o'});
     args::Flag autologFlag(parser, "autolog", "Automatically start the flow, log performance, and exit when done.", {"autolog"});
+    args::Flag coulombFlag(parser, "coulomb", "Use a coulomb energy instead of the tangent-point energy.", {"coulomb"});
 
     int default_threads = omp_get_max_threads();
     std::cout << "OMP autodetected " << default_threads << " threads." << std::endl;
@@ -1553,8 +1559,15 @@ int main(int argc, char **argv)
         throw std::runtime_error("Unknown file extension for " + inFile + ".");
     }
 
+    bool useCoulomb = false;
+    if (coulombFlag)
+    {
+        useCoulomb = true;
+        std::cout << "Using Coulomb energy. (Note: Not expected to work well.)" << std::endl;
+    }
+
     MeshAndEnergy m = initTPEOnMesh(data.meshName, data.alpha, data.beta);
-    SurfaceFlow *flow = setUpFlow(m, theta, data);
+    SurfaceFlow *flow = setUpFlow(m, theta, data, useCoulomb);
 
     MainApp::instance = new MainApp(m.mesh, m.geom, flow, m.psMesh, m.meshName);
     MainApp::instance->bh_theta = theta;

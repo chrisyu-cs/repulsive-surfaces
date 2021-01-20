@@ -72,6 +72,7 @@ set(SRCS
   src/energy/all_pairs_with_bvh.cpp
   src/energy/barnes_hut_newtonian.cpp
   src/energy/barnes_hut_tpe_6d.cpp
+  src/energy/coulomb.cpp
   src/energy/soft_area_constraint.cpp
   src/energy/soft_volume_constraint.cpp
   src/energy/total_area_potential.cpp
