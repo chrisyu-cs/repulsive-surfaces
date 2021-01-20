@@ -27,6 +27,8 @@ namespace rsurfaces
             return "H1-Projected";
         case GradientMethod::L2Unconstrained:
             return "L2 (unconstrained)";
+        case GradientMethod::L2Projected:
+            return "L2-Projected";
         case GradientMethod::AQP:
             return "AQP (unconstrained)";
         case GradientMethod::H1_LBFGS:

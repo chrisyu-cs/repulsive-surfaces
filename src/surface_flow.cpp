@@ -72,6 +72,75 @@ namespace rsurfaces
         search.BacktrackingLineSearch(l2diff, initGuess, 1);
     }
 
+    void SurfaceFlow::StepL2Projected()
+    {
+        stepCount++;
+        UpdateEnergies();
+
+        Eigen::MatrixXd l2diff;
+        l2diff.setZero(mesh->nVertices(), 3);
+        AssembleGradients(l2diff);
+
+        // Make a saddle matrix with just the identity in the corner
+        std::vector<Triplet> triplets;
+        for (size_t i = 0; i < mesh->nVertices(); i++)
+        {
+            size_t i3 = 3 * i;
+            triplets.push_back(Triplet(i3, i3, 1));
+            triplets.push_back(Triplet(i3 + 1, i3 + 1, 1));
+            triplets.push_back(Triplet(i3 + 2, i3 + 2, 1));
+        }
+
+        size_t nConstraintRows = addConstraintTriplets(triplets, true);
+        size_t dims = 3 * mesh->nVertices() + nConstraintRows;
+
+        Eigen::SparseMatrix<double> A(dims, dims);
+        A.setFromTriplets(triplets.begin(), triplets.end());
+
+        Eigen::VectorXd l2col;
+        l2col.setZero(dims);
+        MatrixUtils::MatrixIntoColumn(l2diff, l2col);
+
+        SparseFactorization factorizedA;
+        factorizedA.Compute(A);
+
+        l2col = factorizedA.Solve(l2col);
+        MatrixUtils::ColumnIntoMatrix(l2col, l2diff);
+
+        double initGuess = guessStepSize(l2diff.norm());
+        LineSearch search(mesh, geom, energies);
+        search.BacktrackingLineSearch(l2diff, initGuess, 1);
+        
+        // Constraint projection
+        l2col.setZero();
+        size_t curRow = 3 * mesh->nVertices();
+
+        for (Constraints::SimpleProjectorConstraint* spc : simpleConstraints)
+        {
+            spc->addErrorValues(l2col, mesh, geom, curRow);
+            curRow += spc->nRows();
+        }
+
+        for (ConstraintPack pack : schurConstraints)
+        {
+            pack.constraint->addErrorValues(l2col, mesh, geom, curRow);
+            curRow += pack.constraint->nRows();
+        }
+
+        l2col = factorizedA.Solve(l2col);
+
+        VertexIndices inds = mesh->getVertexIndices();
+        for (GCVertex v : mesh->vertices())
+        {
+            size_t base = inds[v] * 3;
+            Vector3 corr{l2col(base), l2col(base + 1), l2col(base + 2)};
+            geom->inputVertexPositions[v] -= corr;
+        }
+
+        geom->refreshQuantities();
+    }
+
+
     double SurfaceFlow::evaluateEnergy()
     {
         return GetEnergyValue(energies);
@@ -198,7 +267,7 @@ namespace rsurfaces
 
         // Reuse factorized matrix for constraint projection
         gradientCol.setZero();
-        size_t curRow = 0;
+        size_t curRow = 3 * mesh->nVertices();
 
         for (Constraints::SimpleProjectorConstraint *cons : simpleConstraints)
         {
@@ -219,7 +288,7 @@ namespace rsurfaces
         {
             int base = 3 * verts[v];
             Vector3 vertCorr{gradientCol(base), gradientCol(base + 1), gradientCol(base + 2)};
-            geom->inputVertexPositions[v] += vertCorr;
+            geom->inputVertexPositions[v] -= vertCorr;
         }
 
         long timeEnd = currentTimeMilliseconds();

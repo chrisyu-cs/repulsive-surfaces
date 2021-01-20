@@ -104,6 +104,9 @@ namespace rsurfaces
         case GradientMethod::L2Unconstrained:
             flow->StepL2Unconstrained();
             break;
+        case GradientMethod::L2Projected:
+            flow->StepL2Projected();
+            break;
         case GradientMethod::AQP:
         {
             double kappa = 100;
@@ -1050,6 +1053,7 @@ void customCallback()
                                       GradientMethod::HsExactProjected,
                                       GradientMethod::H1Projected,
                                       GradientMethod::L2Unconstrained,
+                                      GradientMethod::L2Projected,
                                       GradientMethod::AQP,
                                       GradientMethod::H1_LBFGS,
                                       GradientMethod::BQN_LBFGS};

@@ -19,6 +19,7 @@ namespace rsurfaces
         void AddAdditionalEnergy(SurfaceEnergy *extraEnergy);
 
         void StepL2Unconstrained();
+        void StepL2Projected();
         void StepProjectedGradientExact();
         void StepProjectedGradient();
         void StepProjectedGradientIterative();

@@ -38,6 +38,7 @@ namespace rsurfaces
         HsNCG,
         H1Projected,
         L2Unconstrained,
+        L2Projected,
         AQP,
         H1_LBFGS,
         BQN_LBFGS
