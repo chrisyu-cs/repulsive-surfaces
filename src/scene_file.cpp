@@ -190,6 +190,7 @@ namespace rsurfaces
             }
             else if (parts[0] == "allow_barycenter_shift")
             {
+                std::cout << "Allowing barycenter shift. Note that this does not work with vertex pins." << std::endl;
                 data.allowBarycenterShift = true;
             }
             else if (parts[0] == "constrain")
@@ -199,6 +200,8 @@ namespace rsurfaces
                 // Get the list of vertices specified to be pinned
                 if (consData.type == ConstraintType::VertexPins)
                 {
+                    std::cout << "WARNING: Vertex pins currently do not work with splits or collapses." << std::endl;
+                    std::cout << "Make sure to change the remeshing mode to \"smooth + flip\"." << std::endl;
                     for (size_t i = 2; i < parts.size(); i++)
                     {
                         size_t pin = stoul(parts[i]);
@@ -209,11 +212,12 @@ namespace rsurfaces
                 // Likewise get the list of normals
                 else if (consData.type == ConstraintType::VertexNormals)
                 {
-                    for (size_t i = 2; i < parts.size(); i++)
-                    {
-                        size_t pin = stoul(parts[i]);
-                        data.vertexNormals.push_back(pin);
-                    }
+                    std::cout << "WARNING: Vertex normal constraints currently not supported." << std::endl;
+                    // for (size_t i = 2; i < parts.size(); i++)
+                    // {
+                    //     size_t pin = stoul(parts[i]);
+                    //     data.vertexNormals.push_back(pin);
+                    // }
                 }
 
                 else if (parts.size() == 4)
