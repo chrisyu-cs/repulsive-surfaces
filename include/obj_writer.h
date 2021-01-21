@@ -4,5 +4,5 @@
 
 namespace rsurfaces
 {
-    void writeMeshToOBJ(MeshPtr mesh, GeomPtr geom, std::string output);
+    void writeMeshToOBJ(MeshPtr mesh, GeomPtr geom, GeomPtr geomOrig, bool writeAreaRatios, std::string output);
 }

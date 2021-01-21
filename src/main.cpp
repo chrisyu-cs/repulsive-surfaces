@@ -984,13 +984,13 @@ void saveScreenshot(uint i)
     std::cout << "Saved screenshot to " << fname << std::endl;
 }
 
-void saveOBJ(rsurfaces::MeshPtr mesh, rsurfaces::GeomPtr geom, uint i)
+void saveOBJ(rsurfaces::MeshPtr mesh, rsurfaces::GeomPtr geom, rsurfaces::GeomPtr geomOrig, uint i)
 {
 
     char buffer[5];
     std::snprintf(buffer, sizeof(buffer), "%04d", i);
     std::string fname = "objs/frame" + std::string(buffer) + ".obj";
-    rsurfaces::writeMeshToOBJ(mesh, geom, fname);
+    rsurfaces::writeMeshToOBJ(mesh, geom, geomOrig, areaRatios, fname);
     std::cout << "Saved OBJ frame to " << fname << std::endl;
 }
 
@@ -1043,7 +1043,7 @@ void customCallback()
     ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
     if ((saveOBJs && objNum == 0) || ImGui::Button("Write OBJ", ImVec2{ITEM_WIDTH, 0}))
     {
-        saveOBJ(MainApp::instance->mesh, MainApp::instance->geom, objNum++);
+        saveOBJ(MainApp::instance->mesh, MainApp::instance->geom, MainApp::instance->geomOrig, objNum++);
     }
     ImGui::Checkbox("Log performance", &MainApp::instance->logPerformance);
     ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
@@ -1100,7 +1100,7 @@ void customCallback()
         }
         if (saveOBJs)
         {
-            saveOBJ(MainApp::instance->mesh, MainApp::instance->geom, objNum++);
+            saveOBJ(MainApp::instance->mesh, MainApp::instance->geom, MainApp::instance->geomOrig, objNum++);
         }
         if ((MainApp::instance->stepLimit > 0 && MainApp::instance->numSteps >= MainApp::instance->stepLimit) ||
             (MainApp::instance->realTimeLimit > 0 && MainApp::instance->timeSpentSoFar >= MainApp::instance->realTimeLimit))
