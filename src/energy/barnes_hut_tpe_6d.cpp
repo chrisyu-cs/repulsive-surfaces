@@ -11,6 +11,7 @@ namespace rsurfaces
         kernel = kernel_;
         theta = theta_;
         root = 0;
+        disableNearField = false;
     }
 
     BarnesHutTPEnergy6D::~BarnesHutTPEnergy6D()
@@ -54,9 +55,17 @@ namespace rsurfaces
         }
         else if (bvhRoot->nodeType == BVHNodeType::Leaf)
         {
-            // Compute the energy exactly for the one face in the cluster
-            GCFace f2 = bvhRoot->getSingleFace(kernel->mesh);
-            return kernel->tpe_pair(face, f2);
+            // If we disable the near field, then these get skipped
+            if (false)
+            {
+                return 0;
+            }
+            else
+            {
+                // Compute the energy exactly for the one face in the cluster
+                GCFace f2 = bvhRoot->getSingleFace(kernel->mesh);
+                return kernel->tpe_pair(face, f2);
+            }
         }
         else if (bvhRoot->isAdmissibleFrom(bcenter, theta))
         {
@@ -116,6 +125,12 @@ namespace rsurfaces
         }
         else if (node->nodeType == BVHNodeType::Leaf)
         {
+            // If near field is disabled, then these get skipped
+            if (false)
+            {
+                return;
+            }
+
             // If this is a leaf, then it only has one face in it, so just use it
             GCFace face2 = node->getSingleFace(kernel->mesh);
             // Skip if the faces are the same

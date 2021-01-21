@@ -193,6 +193,10 @@ namespace rsurfaces
                 std::cout << "Allowing barycenter shift. Note that this does not work with vertex pins." << std::endl;
                 data.allowBarycenterShift = true;
             }
+            else if (parts[0] == "disable_near_field")
+            {
+                data.disableNearField = true;
+            }
             else if (parts[0] == "constrain")
             {
                 ConstraintData consData{getConstraintType(parts[1]), 1, 0};

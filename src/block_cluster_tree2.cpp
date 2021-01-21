@@ -13,6 +13,7 @@ namespace rsurfaces
         theta2 = theta_ * theta_;
         exploit_symmetry = exploit_symmetry_;
         upper_triangular = upper_triangular_;
+        disableNearField = false;
 
         // TODO: Abort and throw error when S->dim != T->dim
         dim = std::min(S->dim, T->dim);
@@ -833,9 +834,12 @@ namespace rsurfaces
         //    near->ApplyKernel_CSR_Eigen( *near_values, &T->P_in[0], &S->P_out[0], cols, -2.0 * factor );
         //     far->ApplyKernel_CSR_Eigen(  *far_values, &T->C_in[0], &S->C_out[0], cols, -2.0 * factor );
 
-        //    tic("near MKL");
-        near->ApplyKernel_CSR_MKL(*near_values, &T->P_in[0], &S->P_out[0], cols, -2.0 * factor);
-        //    toc("near MKL");
+        // if (!disableNearField)
+        // {
+            //    tic("near MKL");
+            near->ApplyKernel_CSR_MKL(*near_values, &T->P_in[0], &S->P_out[0], cols, -2.0 * factor);
+            //    toc("near MKL");
+        // }
 
         //    tic("far MKL");
         far->ApplyKernel_CSR_MKL(*far_values, &T->C_in[0], &S->C_out[0], cols, -2.0 * factor);

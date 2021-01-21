@@ -191,7 +191,10 @@ namespace Eigen
                 product.setZero();
 
                 bct->MultiplyV3(rhs, product, rsurfaces::BCTKernelType::HighOrder, true);
-                bct->MultiplyV3(rhs, product, rsurfaces::BCTKernelType::LowOrder, true);
+                if (!bct->disableNearField)
+                {
+                    bct->MultiplyV3(rhs, product, rsurfaces::BCTKernelType::LowOrder, true);
+                }
                 rsurfaces::MultiplyConstraintBlock(lhs.getHs()->mesh, rhs, product, lhs.getConstraintBlock(), true);
 
                 dst += product;

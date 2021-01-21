@@ -143,6 +143,7 @@ namespace rsurfaces
             schurComplementComputed = false;
             allowBarycenterShift = false;
             precomputeSizes();
+            disableNearField = false;
         }
 
         HsMetric::HsMetric(SurfaceEnergy *energy_, std::vector<SimpleProjectorConstraint *> &spcs, std::vector<ConstraintPack> &schurs)
@@ -153,6 +154,7 @@ namespace rsurfaces
             usedDefaultConstraint = false;
             schurComplementComputed = false;
             precomputeSizes();
+            disableNearField = false;
         }
 
         void HsMetric::initFromEnergy(SurfaceEnergy *energy_)

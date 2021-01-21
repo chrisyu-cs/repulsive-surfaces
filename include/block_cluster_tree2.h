@@ -35,11 +35,9 @@ namespace rsurfaces
             }
         }
 
-        BlockClusterTree2(){};
+        bool disableNearField = false;
 
         BlockClusterTree2(ClusterTree2 *S_, ClusterTree2 *T_, const mreal alpha_, const mreal beta_, const mreal theta_, bool exploit_symmetry_ = true, bool upper_triangular_ = false);
-
-        BlockClusterTree2(ClusterTree2 *T_, const mreal alpha_, const mreal beta_, const mreal theta_, bool exploit_symmetry_ = true, bool upper_triangular_ = false) : BlockClusterTree2(T_, T_, alpha_, beta_, theta_, exploit_symmetry_, upper_triangular_) {}
 
         ~BlockClusterTree2()
         {

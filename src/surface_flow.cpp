@@ -214,6 +214,7 @@ namespace rsurfaces
     {
         BarnesHutTPEnergy6D *bhEnergy = dynamic_cast<BarnesHutTPEnergy6D *>(energies[0]);
         std::unique_ptr<Hs::HsMetric> hs(new Hs::HsMetric(bhEnergy, simpleConstraints, schurConstraints));
+        hs->disableNearField = disableNearField;
         return hs;
     }
 

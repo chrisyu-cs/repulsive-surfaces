@@ -23,6 +23,8 @@ namespace rsurfaces
         virtual double GetTheta();
         geometrycentral::surface::FaceData<double> energyPerFace;
 
+        bool disableNearField;
+
     private:
         TPEKernel *kernel;
         BVHNode6D *root;

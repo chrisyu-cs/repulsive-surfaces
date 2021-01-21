@@ -1358,7 +1358,13 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::sce
     else
     {
         std::cout << "Using Barnes-Hut energy with theta = " << theta << "." << std::endl;
-        energy = new BarnesHutTPEnergy6D(m.kernel, theta);
+        BarnesHutTPEnergy6D* bh = new BarnesHutTPEnergy6D(m.kernel, theta);
+        bh->disableNearField = scene.disableNearField;
+        if (bh->disableNearField)
+        {
+            std::cout << "Near-field interactions are disabled." << std::endl;
+        }
+        energy = bh;
     }
 
     SurfaceFlow *flow = new SurfaceFlow(energy);
@@ -1568,6 +1574,7 @@ int main(int argc, char **argv)
 
     MeshAndEnergy m = initTPEOnMesh(data.meshName, data.alpha, data.beta);
     SurfaceFlow *flow = setUpFlow(m, theta, data, useCoulomb);
+    flow->disableNearField = data.disableNearField;
 
     MainApp::instance = new MainApp(m.mesh, m.geom, flow, m.psMesh, m.meshName);
     MainApp::instance->bh_theta = theta;

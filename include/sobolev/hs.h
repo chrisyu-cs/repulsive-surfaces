@@ -176,9 +176,16 @@ namespace rsurfaces
                 {
                     Vector2 exps = energy->GetExponents();
                     optBCT = CreateOptimizedBCT(mesh, geom, exps.x, exps.y, bh_theta);
+                    optBCT->disableNearField = disableNearField;
+                    if (disableNearField)
+                    {
+                        std::cout << "    * BCT near-field interactions are disabled." << std::endl;
+                    }
                 }
                 return optBCT;
             }
+
+            bool disableNearField = false;
 
         private:
             void addSimpleConstraintEntries(Eigen::MatrixXd &M) const;
