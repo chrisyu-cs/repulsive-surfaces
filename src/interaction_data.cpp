@@ -170,7 +170,7 @@ namespace rsurfaces
 
         nnz = outer[m];
         
-        tic("Allocate nonzero values");
+//        tic("Allocate nonzero values");
         #pragma omp parallel
         {
             #pragma omp single
@@ -212,7 +212,7 @@ namespace rsurfaces
                 #pragma omp taskwait
             }
         }
-        toc("Allocate nonzero values");
+//        toc("Allocate nonzero values");
         
         // Computing inner for CSR format.
         #pragma omp parallel for
@@ -286,7 +286,7 @@ namespace rsurfaces
 
     void InteractionData::ApplyKernel_CSR_MKL( mreal * values, mreal * T_input, mreal * S_output, mint cols, mreal factor ) // sparse matrix-vector multiplication using mkl_sparse_d_mm
     {
-        if( OuterPtrB()[m] > 0 )
+        if( T_input && S_output && OuterPtrB()[m] > 0 && values )
         {
             // Creation of handle for a sparse matrix in CSR format. This has almost no overhead. (Should be similar to Eigen's Map.)
             
@@ -299,23 +299,23 @@ namespace rsurfaces
             
             if( cols > 1 )
             {
-                tic("MKL sparse matrix-matrix multiplication: cols = " + std::to_string(cols) );
+//                tic("MKL sparse matrix-matrix multiplication: cols = " + std::to_string(cols) );
                 stat = mkl_sparse_d_mm ( SPARSE_OPERATION_NON_TRANSPOSE, factor, A, descr, SPARSE_LAYOUT_ROW_MAJOR, &T_input[0], cols, cols, 0., &S_output[0], cols );
                 if (stat)
                 {
                     eprint("mkl_sparse_d_mm returned stat = " + std::to_string(stat) );
                 }
-                toc("MKL sparse matrix-matrix multiplication: cols = " + std::to_string(cols) );
+//                toc("MKL sparse matrix-matrix multiplication: cols = " + std::to_string(cols) );
             }
             else
             {
-                tic("MKL sparse matrix-vector multiplication");
+//                tic("MKL sparse matrix-vector multiplication");
                 stat = mkl_sparse_d_mv( SPARSE_OPERATION_NON_TRANSPOSE, factor, A, descr, &T_input[0], 0, &S_output[0]);
                 if (stat)
                 {
                     eprint("mkl_sparse_d_mv returned stat = " + std::to_string(stat) );
                 }
-                toc("MKL sparse matrix-vector multiplication");
+//                toc("MKL sparse matrix-vector multiplication");
             }
 
             stat = mkl_sparse_destroy(A);
@@ -326,16 +326,16 @@ namespace rsurfaces
         }
         else
         {
-            print("InteractionData::ApplyKernel_CSR_MKL: No nonzeroes found. Doing nothing.");
+            eprint("InteractionData::ApplyKernel_CSR_MKL: No nonzeroes found. Doing nothing.");
         }
     }; // ApplyKernel_CSR_MKL
 
     void InteractionData::ApplyKernel_CSR_Eigen( mreal * values, mreal * T_input, mreal * S_output, mint cols, mreal factor ) // sparse matrix-vector multiplication using Eigen
     {
     //    wprint("InteractionData::ApplyKernel_CSR_Eigen is not thouroughly tested, yet.");
-        Eigen::Map<SparseMatrix> A ( m, n, nnz, OuterPtrB(), InnerPtr(), values );
-        Eigen::Map<DenseMatrix>  B ( &T_input[0],  n, cols );
-        Eigen::Map<DenseMatrix>  C ( &S_output[0], m, cols );
+        Eigen::Map<EigenMatrixCSR> A ( m, n, nnz, OuterPtrB(), InnerPtr(), values );
+        Eigen::Map<EigenMatrixRM>  B ( &T_input[0],  n, cols );
+        Eigen::Map<EigenMatrixRM>  C ( &S_output[0], m, cols );
 
     //    tic("Eigen matrix-matrix multiplication: cols = " + std::to_string(cols) );
         if ( upper_triangular )
