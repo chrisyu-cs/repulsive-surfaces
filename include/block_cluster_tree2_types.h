@@ -17,6 +17,7 @@
 #include "bct_kernel_type.h"
 
 #define restrict __restrict
+#define ALIGN 32
 
 namespace rsurfaces
 {

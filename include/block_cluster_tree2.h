@@ -55,6 +55,10 @@ namespace rsurfaces
                 if (S)
                     delete S;
             }
+            
+            mreal_free(hi_diag);
+            mreal_free(lo_diag);
+            mreal_free(fr_diag);
         };
 
         mutable ClusterTree2 *S; // "left" ClusterTree2 (output side of matrix-vector multiplication)
@@ -82,9 +86,13 @@ namespace rsurfaces
         // Product of the kernel matrix with the constant-1-vector.
         // Need to be updated if hi_factor, lo_factor, or fr_factor are changed!
         // Assumed to be in EXTERNAL ORDERING!
-        mutable A_Vector<mreal> hi_diag;
-        mutable A_Vector<mreal> lo_diag;
-        mutable A_Vector<mreal> fr_diag;
+//        mutable A_Vector<mreal> hi_diag;
+//        mutable A_Vector<mreal> lo_diag;
+//        mutable A_Vector<mreal> fr_diag;
+        mreal * restrict hi_diag = NULL;
+        mreal * restrict lo_diag = NULL;
+        mreal * restrict fr_diag = NULL;
+        
         // TODO: Maybe these "diag" - vectors should become members to S and T?
         // Remark: If S != T, the "diags" are not used.
 
@@ -97,9 +105,14 @@ namespace rsurfaces
         std::shared_ptr<InteractionData> far;  // far and near are data containers for far and near field, respectively.
         std::shared_ptr<InteractionData> near; // They also perform the matrix-vector products.
 
-        mreal FarFieldEnergy(); // Implemented only for debuggin reasons and as warm up for the interaction kernels. I swear. ;o)
+        mreal FarFieldEnergy();
+        mreal DFarFieldEnergyHelper();
         mreal NearFieldEnergy();
-
+        mreal DNearFieldEnergyHelper();
+        
+        mreal BarnesHutEnergy();
+        mreal DBarnesHutEnergyHelper();
+        
         // TODO: Transpose operation
         //    void MultiplyTransposed( const mreal * const restrict P_input, mreal * const restrict P_output, const mint  cols, BCTKernelType type, bool addToResult = false );
         //
