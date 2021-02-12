@@ -73,6 +73,7 @@ set(SRCS
   src/energy/barnes_hut_newtonian.cpp
   src/energy/barnes_hut_tpe_6d.cpp
   src/energy/coulomb.cpp
+  src/energy/implicit_obstacle.cpp
   src/energy/soft_area_constraint.cpp
   src/energy/soft_volume_constraint.cpp
   src/energy/total_area_potential.cpp
@@ -80,6 +81,10 @@ set(SRCS
   src/energy/tpe_kernel.cpp
   src/energy/squared_error.cpp
   src/energy/static_obstacle.cpp
+  src/implicit/implicit_surface.cpp
+  src/implicit/simple_surfaces.cpp
+  src/marchingcubes/CIsoSurface.cpp
+  src/marchingcubes/Vectors.cpp
   src/remeshing/dynamic_remesher.cpp
   src/remeshing/remeshing.cpp
   src/sobolev/h1.cpp

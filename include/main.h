@@ -14,6 +14,8 @@
 
 #include <mkl.h>
 #include "block_cluster_tree2.h"
+#include "implicit/simple_surfaces.h"
+#include "marchingcubes/CIsoSurface.h"
 
 #define EIGEN_NO_DEBUG
 
@@ -41,6 +43,7 @@ namespace rsurfaces
         void PlotEnergyPerFace();
         void Scale2x();
         void TestNormalDeriv();
+        void MeshImplicitSurface(ImplicitSurface *surface);
 
         void GetFalloffWindow(GCVertex v, double radius, std::vector<PriorityVertex> &verts);
         void HandlePicking();

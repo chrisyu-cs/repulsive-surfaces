@@ -284,11 +284,11 @@ namespace rsurfaces
             C->left = std::make_shared<Cluster2>(begin, splitindex, C->depth + 1);
             C->right = std::make_shared<Cluster2>(splitindex, end, C->depth + 1);
 // ... and split them in parallel
-#pragma omp task final(free_thread_count < 1) default(none) shared(C) firstprivate(free_thread_count)
+#pragma omp task final(free_thread_count < 1) default(none) shared(C)
             {
                 SplitCluster(C->left.get(), free_thread_count / 2);
             }
-#pragma omp task final(free_thread_count < 1) default(none) shared(C) firstprivate(free_thread_count)
+#pragma omp task final(free_thread_count < 1) default(none) shared(C)
             {
                 SplitCluster(C->right.get(), free_thread_count - free_thread_count / 2);
             }

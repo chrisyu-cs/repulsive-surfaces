@@ -157,16 +157,16 @@ namespace rsurfaces
         {
             logPerformanceLine();
         }
-        
-        if(showAreaRatios)
+
+        if (showAreaRatios)
         {
-        	VertexData <double> areaRatio(*mesh);
-        	for(Vertex v : mesh->vertices())
-        	{
-        		areaRatio[v] = geomOrig->vertexDualArea(v) / geom->vertexDualArea(v);
-        	}
-        	
-        	psMesh->addVertexScalarQuantity("Area ratios", areaRatio);
+            VertexData<double> areaRatio(*mesh);
+            for (Vertex v : mesh->vertices())
+            {
+                areaRatio[v] = geomOrig->vertexDualArea(v) / geom->vertexDualArea(v);
+            }
+
+            psMesh->addVertexScalarQuantity("Area ratios", areaRatio);
         }
     }
 
@@ -960,6 +960,72 @@ namespace rsurfaces
         }
         }
     }
+
+    void MainApp::MeshImplicitSurface(ImplicitSurface *surface)
+    {
+        CIsoSurface<double> *iso = new CIsoSurface<double>();
+
+        std::cout << "Meshing the supplied implicit surface using marching cubes..." << std::endl;
+
+        const int numCells = 50;
+        Vector3 center = surface->BoundingCenter();
+        double diameter = surface->BoundingDiameter();
+        double cellSize = diameter / numCells;
+        double radius = diameter / 2;
+
+        Vector3 lowerCorner = center - Vector3{radius, radius, radius};
+
+        int numCorners = numCells + 1;
+
+        double field[numCorners * numCorners * numCorners];
+
+        int nSlice = numCorners * numCorners;
+        int nRow = numCorners;
+
+        for (int x = 0; x < numCorners; x++)
+        {
+            for (int y = 0; y < numCorners; y++)
+            {
+                for (int z = 0; z < numCorners; z++)
+                {
+                    Vector3 samplePt = lowerCorner + Vector3{(double)x, (double)y, (double)z} * cellSize;
+                    double value = surface->SignedDistance(samplePt);
+                    field[nSlice * z + nRow * y + x] = value;
+                }
+            }
+        }
+
+        iso->GenerateSurface(field, 0, numCells, numCells, numCells, cellSize, cellSize, cellSize);
+
+        std::vector<glm::vec3> nodes;
+        std::vector<std::array<size_t, 3>> triangles;
+
+        int nVerts = iso->m_nVertices;
+
+        for (int i = 0; i < nVerts; i++)
+        {
+            double x = iso->m_ppt3dVertices[i][0];
+            double y = iso->m_ppt3dVertices[i][1];
+            double z = iso->m_ppt3dVertices[i][2];
+
+            Vector3 p = lowerCorner + Vector3{x, y, z};
+            nodes.push_back(glm::vec3{p.x, p.y, p.z});
+        }
+
+        int nTris = iso->m_nTriangles;
+
+        for (int i = 0; i < nTris; i++)
+        {
+            int i1 = iso->m_piTriangleIndices[3 * i];
+            int i2 = iso->m_piTriangleIndices[3 * i + 1];
+            int i3 = iso->m_piTriangleIndices[3 * i + 2];
+
+            triangles.push_back({(size_t)i1, (size_t)i2, (size_t)i3});
+        }
+
+        polyscope::registerSurfaceMesh("implicitSurface", nodes, triangles);
+        delete iso;
+    }
 } // namespace rsurfaces
 
 // UI parameters
@@ -1358,7 +1424,7 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::sce
     else
     {
         std::cout << "Using Barnes-Hut energy with theta = " << theta << "." << std::endl;
-        BarnesHutTPEnergy6D* bh = new BarnesHutTPEnergy6D(m.kernel, theta);
+        BarnesHutTPEnergy6D *bh = new BarnesHutTPEnergy6D(m.kernel, theta);
         bh->disableNearField = scene.disableNearField;
         if (bh->disableNearField)
         {
