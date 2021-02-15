@@ -917,6 +917,63 @@ namespace rsurfaces
         std::cout << "Added " << filename << " as obstacle with weight " << weight << std::endl;
     }
 
+    void MainApp::AddImplicitBarrier(scene::ImplicitBarrierData &barrierData)
+    {
+        ImplicitSurface* implSurface;
+        // Create the requested implicit surface
+        switch (barrierData.type)
+        {
+            case scene::ImplicitType::Plane:
+            {
+                Vector3 point{barrierData.parameters[0], barrierData.parameters[1], barrierData.parameters[2]};
+                Vector3 normal{barrierData.parameters[3], barrierData.parameters[4], barrierData.parameters[5]};
+                std::cout << "Constructing implicit plane at point " << point << " with normal " << normal << std::endl;
+                implSurface = new FlatPlane(point, normal);
+            }
+            break;
+            case scene::ImplicitType::Torus:
+            {
+                double major = barrierData.parameters[0];
+                double minor = barrierData.parameters[1];
+                Vector3 center{barrierData.parameters[2], barrierData.parameters[3], barrierData.parameters[4]};
+                std::cout << "Constructing implicit torus with major radius " << major << ", minor radius " << minor << ", center " << center << std::endl;
+                implSurface = new ImplicitTorus(major, minor, center);
+            }
+            break;
+            case scene::ImplicitType::Sphere:
+            {
+                double radius = barrierData.parameters[0];
+                Vector3 center{barrierData.parameters[1], barrierData.parameters[2], barrierData.parameters[3]};
+                std::cout << "Constructing implicit sphere with radius " << radius << ", center " << center << std::endl;
+                implSurface = new ImplicitSphere(radius, center);
+            }
+            break;
+            default:
+            {
+                throw std::runtime_error("Unimplemented implicit surface type.");
+            }
+            break;
+        }
+
+        // Mesh the 0 isosurface so we can see the implicit surface
+        MainApp::instance->MeshImplicitSurface(implSurface);
+
+        // Use the implicit surface to setup the energy
+        std::unique_ptr<ImplicitSurface> implUnique(implSurface);
+        if (barrierData.repel)
+        {
+            std::cout << "Using implicit surface as obstacle, with weight " << barrierData.weight << std::endl;
+            ImplicitObstacle* obstacle = new ImplicitObstacle(mesh, geom, std::move(implUnique), barrierData.weight);
+            flow->AddAdditionalEnergy(obstacle);
+        }
+        else
+        {
+            std::cout << "Using implicit surface as attractor, with weight " << barrierData.weight << std::endl;
+            ImplicitAttractor* attractor = new ImplicitAttractor(mesh, geom, std::move(implUnique), barrierData.weight);
+            flow->AddAdditionalEnergy(attractor);
+        }
+    }
+
     void MainApp::AddPotential(scene::PotentialType pType, double weight)
     {
         switch (pType)
@@ -1665,10 +1722,13 @@ int main(int argc, char **argv)
     {
         MainApp::instance->AddPotential(p.type, p.weight);
     }
-
     for (scene::ObstacleData &obs : data.obstacles)
     {
         MainApp::instance->AddObstacle(obs.obstacleName, obs.weight, obs.recenter);
+    }
+    for (scene::ImplicitBarrierData &barrierData : data.implicitBarriers)
+    {
+        MainApp::instance->AddImplicitBarrier(barrierData);
     }
 
     MainApp::instance->updateMeshPositions();

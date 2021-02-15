@@ -51,6 +51,7 @@ namespace rsurfaces
         void TakeOptimizationStep(bool remeshAfter, bool showAreaRatios);
         void AddObstacle(std::string filename, double weight, bool recenter);
         void AddPotential(scene::PotentialType pType, double weight);
+        void AddImplicitBarrier(scene::ImplicitBarrierData &implicitBarrier);
 
         MeshPtr mesh;
         GeomPtr geom;
