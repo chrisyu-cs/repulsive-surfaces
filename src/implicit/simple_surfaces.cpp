@@ -90,7 +90,7 @@ namespace rsurfaces
     }
 
     Vector3 FlatPlane::BoundingCenter() {
-        return Vector3{0, 0, 0};
+        return point;
     }
     // ============================================================
 }

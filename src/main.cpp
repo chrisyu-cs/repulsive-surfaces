@@ -1080,7 +1080,8 @@ namespace rsurfaces
             triangles.push_back({(size_t)i1, (size_t)i2, (size_t)i3});
         }
 
-        polyscope::registerSurfaceMesh("implicitSurface", nodes, triangles);
+        implicitCount++;
+        polyscope::registerSurfaceMesh("implicitSurface" + std::to_string(implicitCount), nodes, triangles);
         delete iso;
     }
 } // namespace rsurfaces

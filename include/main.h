@@ -85,6 +85,7 @@ namespace rsurfaces
         bool exitWhenDone;
 
     private:
+        int implicitCount = 0;
         GCVertex pickedVertex;
         std::vector<PriorityVertex> dragVertices;
 
