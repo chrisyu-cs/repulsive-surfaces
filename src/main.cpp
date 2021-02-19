@@ -608,6 +608,8 @@ namespace rsurfaces
         BlockClusterTree2 *bct = CreateOptimizedBCT(mesh, geom, 6., 12., 0.25);
         toc("CreateOptimizedBCT");
         
+        valprint("bct->use_int" , bct->use_int);
+        
         TPEnergyMultipole0 * tpe = new TPEnergyMultipole0( mesh, geom, bct );
         
         tic("Value");
@@ -628,8 +630,28 @@ namespace rsurfaces
         std::cout << "     " << DE(3,0) << " , " << DE(3,1) <<  " , " << DE(3,2)  << std::endl;
         std::cout << "     " << DE(4,0) << " , " << DE(4,1) <<  " , " << DE(4,2)  << std::endl;
         
-        delete bct;
+        bct->use_int = false;
+        valprint("bct->use_int" , bct->use_int);
+        
+        tic("Value");
+        E = tpe->Value();
+        toc("Value");
+        
+        std::cout << "E = " << E << std::endl;
+        
+        tic("Differential");
+        tpe->Differential(DE);
+        toc("Differential");
+        
+        std::cout << "DE = " << DE(0,0) << " , " << DE(0,1) <<  " , " << DE(0,2)  << std::endl;
+        std::cout << "     " << DE(1,0) << " , " << DE(1,1) <<  " , " << DE(1,2)  << std::endl;
+        std::cout << "     " << DE(2,0) << " , " << DE(2,1) <<  " , " << DE(2,2)  << std::endl;
+        std::cout << "     " << DE(3,0) << " , " << DE(3,1) <<  " , " << DE(3,2)  << std::endl;
+        std::cout << "     " << DE(4,0) << " , " << DE(4,1) <<  " , " << DE(4,2)  << std::endl;
         delete tpe;
+        
+        delete bct;
+
     } // TestMultipole0
 
 

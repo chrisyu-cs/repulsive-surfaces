@@ -810,75 +810,6 @@ namespace rsurfaces
     }; // Post
 
 
-
-//    void ClusterTree2::CollectDerivatives( mreal * const restrict output )
-//    {
-//
-//        PrepareBuffers(data_dim);
-//
-//    //    CleanseBuffers();
-//
-//    //    tic("Accumulate cluster contributions");
-//        #pragma omp parallel for
-//        for( mint i = 0; i < primitive_count; ++i )
-//        {
-//            // I did not find out how this can be really parallelized; P_D_data[thread] seems to be the obstruction.
-////            #pragma omp simd aligned( P_out : ALIGN )
-//            for( mint k = 0; k < data_dim; ++k )
-//            {
-//                mreal acc = 0.;
-//                for( mint thread = 0; thread < thread_count; ++thread )
-//                {
-//                    acc += P_D_data[thread][ data_dim * i + k ];
-//                }
-//                P_out[ data_dim * i + k ] = acc;
-//            }
-//        }
-//    //    toc("Accumulate cluster contributions");
-//
-//    //    tic("Accumulate primitive contributions");
-//        #pragma omp parallel for
-//        for( mint i = 0; i < cluster_count; ++i )
-//        {
-//            // I did not find out how this can be really parallelized; C_D_data[thread] seems to be the obstruction.
-////            #pragma omp simd aligned( C_out : ALIGN )
-//            for( mint k = 0; k < data_dim; ++k )
-//            {
-//                mreal acc = 0.;
-//                for( mint thread = 0; thread < thread_count; ++thread )
-//                {
-//                    acc += C_D_data[thread][ data_dim * i + k ];
-//                }
-//                C_out[ data_dim * i + k ]  = acc;
-//            }
-//        }
-//    //    toc("Accumulate primitive contributions");
-//
-//    //    tic("PercolateDown");
-//        PercolateDown(0, thread_count );
-//    //    toc("PercolateDown");
-//
-//    //    tic("C_to_P.");
-//        C_to_P.Multiply( C_out, P_out, data_dim, true);    // true -> add-into
-//    //    toc("C_to_P.");
-//
-//    //    tic("Reorder and copy to output");
-//        #pragma omp parallel for
-//        for( mint i = 0; i < primitive_count; ++i )
-//        {
-//            mint j = inverse_ordering[i];
-//
-//            #pragma omp simd aligned( P_out, output : ALIGN )
-//            for( mint k = 0; k < data_dim; ++k )
-//            {
-//                output[ data_dim * i + k ] = P_out[ data_dim * j + k ];
-//            }
-//        }
-//    //    toc("Reorder and copy to output");
-//
-//    } // CollectDerivatives
-
-
 void ClusterTree2::CollectDerivatives( mreal * const restrict output )
 {
     
@@ -887,7 +818,7 @@ void ClusterTree2::CollectDerivatives( mreal * const restrict output )
     //    CleanseBuffers();
     
     //    tic("Accumulate cluster contributions");
-#pragma omp parallel for
+    #pragma omp parallel for
     for( mint i = 0; i < primitive_count; ++i )
     {
         // I did not find out how this can be really parallelized; P_D_data[thread] seems to be the obstruction.
@@ -905,7 +836,7 @@ void ClusterTree2::CollectDerivatives( mreal * const restrict output )
     //    toc("Accumulate cluster contributions");
     
     //    tic("Accumulate primitive contributions");
-#pragma omp parallel for
+    #pragma omp parallel for
     for( mint i = 0; i < cluster_count; ++i )
     {
         // I did not find out how this can be really parallelized; C_D_data[thread] seems to be the obstruction.
@@ -931,12 +862,12 @@ void ClusterTree2::CollectDerivatives( mreal * const restrict output )
     //    toc("C_to_P.");
     
     //    tic("Reorder and copy to output");
-#pragma omp parallel for
+    #pragma omp parallel for
     for( mint i = 0; i < primitive_count; ++i )
     {
         mint j = inverse_ordering[i];
         
-#pragma omp simd aligned( P_out, output : ALIGN )
+        #pragma omp simd aligned( P_out, output : ALIGN )
         for( mint k = 0; k < data_dim; ++k )
         {
             output[ data_dim * i + k ] = P_out[ data_dim * j + k ];

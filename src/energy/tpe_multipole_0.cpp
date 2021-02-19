@@ -5,7 +5,16 @@ namespace rsurfaces
 {
     double TPEnergyMultipole0::Value()
     {
-        return bct->FarFieldEnergy0() + bct->NearFieldEnergy0();
+        
+        // if bct->alpha is an integer and bct->beta is an even integer, we branch to a faster version of the energy
+        if( bct->use_int )
+        {
+            return bct->FarFieldEnergyInteger0() + bct->NearFieldEnergyInteger0();
+        }
+        else
+        {
+            return bct->FarFieldEnergy0() + bct->NearFieldEnergy0();
+        }
     } // Value
 
 
@@ -17,10 +26,18 @@ namespace rsurfaces
         bct->S->CleanseD();
         bct->T->CleanseD();
 
-        mreal enNear = bct->DNearFieldEnergy0Helper();
-
-        mreal enFar  = bct->DFarFieldEnergy0Helper();
-
+        // if bct->alpha is an integer and bct->beta is an even integer, we branch to a faster version of the energy
+        if( bct->use_int )
+        {
+            mreal enNear = bct->DNearFieldEnergyInteger0Helper();
+            mreal enFar  = bct->DFarFieldEnergyInteger0Helper();
+        }
+        else
+        {
+            mreal enNear = bct->DNearFieldEnergy0Helper();
+            mreal enFar  = bct->DFarFieldEnergy0Helper();
+        }
+        
         bct->S->CollectDerivatives( P_D_data.data() );
         
         

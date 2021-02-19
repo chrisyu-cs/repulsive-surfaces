@@ -98,6 +98,7 @@ namespace rsurfaces
         bool is_symmetric = false;
         bool exploit_symmetry = false;
         bool upper_triangular = false;
+        bool use_int = false;
         
         // If exploit_symmetry != 1, S == T is assume and only roughly half the block clusters are generated during the split pass performed by CreateBlockClusters.
         // If upper_triangular != 0 and if exploit_symmetry != 0, only the upper triangle of the interaction matrices will be generated. --> CreateBlockClusters will be faster.
@@ -110,6 +111,11 @@ namespace rsurfaces
         mreal DFarFieldEnergy0Helper();
         mreal NearFieldEnergy0();
         mreal DNearFieldEnergy0Helper();
+        
+        mreal FarFieldEnergyInteger0();
+        mreal DFarFieldEnergyInteger0Helper();
+        mreal NearFieldEnergyInteger0();
+        mreal DNearFieldEnergyInteger0Helper();
         
         mreal BarnesHutEnergy0();
         mreal DBarnesHutEnergy0Helper();

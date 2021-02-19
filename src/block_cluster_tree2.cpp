@@ -10,6 +10,9 @@ namespace rsurfaces
         T = T_;
         alpha = alpha_;
         beta = beta_;
+        double intpart;
+        use_int = (std::modf( alpha, &intpart) == 0.0) && (std::modf( beta/2, &intpart) == 0.0);
+        
         theta2 = theta_ * theta_;
         is_symmetric = ( S == T );
         exploit_symmetry = is_symmetric && exploit_symmetry_;

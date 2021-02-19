@@ -545,12 +545,87 @@ namespace rsurfaces
     }; // MKLSparseMatrix
 
 
+
     #pragma omp declare simd
     inline mreal mypow ( mreal base, mreal exponent )
     {
         // Warning: Use only for positive base! This is basically pow with certain checks and cases deactivated
         return std::exp2( exponent * std::log2(base) );
-    }
+    } // mypow
+
+    #pragma omp declare simd simdlen(4)
+    inline mreal intpow(mreal base, mint exponent)
+    {
+        mreal r = 1.;
+        mreal x = base;
+        mint  k = abs(exponent);
+
+        while( k > 0)
+        {
+            if( k % 2 )
+            {
+                r *= x;
+            }
+            x *= x;
+            k /= 2;
+        }
+        return exponent >= 0 ? r : 1./r;
+    } // intpow
+
+//    #pragma omp declare simd simdlen(4)
+//    inline mreal intpow(mreal base, mint exponent)
+//    {
+//        mreal b2, b3, b4, b6;
+//        if( exponent >= 0)
+//        {
+//            switch (exponent) {
+//                case 0: return 1.;
+//                case 1: return base;
+//                case 2: return base * base;
+//                case 3: return base * base * base;
+//                case 4:
+//                    b2 = base * base;
+//                    return b2 * b2;
+//                case 5:
+//                    b2 = base * base;
+//                    return b2 * b2 * base;
+//                case 6:
+//                    b2 = base * base;
+//                    return b2 * b2 * b2;
+//                case 7:
+//                    b2 = base * base;
+//                    b4 = b2 * b2;
+//                    return b4 * b2 * base;
+//                case 8:
+//                    b2 = base * base;
+//                    b4 = b2 * b2;
+//                    return b4 * b4;
+//                case 9:
+//                    b2 = base * base;
+//                    b4 = b2 * b2;
+//                    return b4 * b4 * base;
+//                case 10:
+//                    b2 = base * base;
+//                    b4 = b2 * b2;
+//                    return b4 * b4 * b2;
+//                case 11:
+//                    b2 = base * base;
+//                    b4 = b2 * b2;
+//                    return b4 * b4 * b2 * base;
+//                case 12:
+//                    b2 = base * base;
+//                    b4 = b2 * b2;
+//                    return b4 * b4 * b4;
+//
+//                default:
+//                    return mypow(base, exponent);
+//            }
+//        }
+//        else
+//        {
+//            return 1./intpow(base, -exponent);
+//        }
+//    } // intpow
 
     #pragma omp declare simd
     inline mreal mymax(const mreal & a, const mreal & b)
