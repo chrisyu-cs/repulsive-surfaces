@@ -107,8 +107,8 @@ namespace rsurfaces
         mint * restrict leaf_cluster_ptr = NULL;     // point to __end__ of each leaf cluster
         
         
-        A_Vector<A_Vector<mreal>> P_D;
-        A_Vector<A_Vector<mreal>> C_D;
+        A_Vector<A_Vector<mreal>> P_D_data;
+        A_Vector<A_Vector<mreal>> C_D_data;
         
 //        mint scratch_size = 12;
 //        A_Vector<A_Vector<mreal>> scratch;

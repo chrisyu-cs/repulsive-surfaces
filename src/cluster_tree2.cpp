@@ -347,7 +347,7 @@ namespace rsurfaces
             P_max[k] = mreal_alloc( primitive_count );
         }
         
-        P_D = A_Vector<A_Vector<mreal>> ( thread_count );
+        P_D_data = A_Vector<A_Vector<mreal>> ( thread_count );
         
 //        P_moments = A_Vector<mreal * restrict> ( moment_count, NULL );
 //        for( mint k = 0; k < moment_count; ++ k )
@@ -360,7 +360,7 @@ namespace rsurfaces
         #pragma omp parallel for shared( thread_count ) schedule( static, 1 )
         for( mint thread = 0; thread < thread_count; ++thread )
         {
-            P_D[thread] = A_Vector<mreal> ( primitive_count * data_dim );
+            P_D_data[thread] = A_Vector<mreal> ( primitive_count * data_dim );
         }
         
 //        #pragma omp parallel for default( none ) shared( P_data, P_moments, P_ext_pos, P_min, P_min, P_data_, P_hull_coords_, P_moments_, data_dim, hull_size, moment_count, dim )
@@ -430,11 +430,11 @@ namespace rsurfaces
 //            C_moments[k] = mreal_alloc( cluster_count, 0. );
 //        }
         
-        C_D = A_Vector<A_Vector<mreal>> ( thread_count );
+        C_D_data = A_Vector<A_Vector<mreal>> ( thread_count );
         #pragma omp parallel for shared( thread_count ) schedule( static, 1 )
         for( mint thread = 0; thread < thread_count; ++thread )
         {
-            C_D[thread] = A_Vector<mreal> ( cluster_count * data_dim );
+            C_D_data[thread] = A_Vector<mreal> ( cluster_count * data_dim );
         }
     //    toc("Allocation");
         
@@ -601,8 +601,8 @@ namespace rsurfaces
         #pragma omp parallel for schedule(static, 1)
         for( mint thread = 0; thread < thread_count; ++thread )
         {
-            mreal * P = &P_D[thread][0];
-            mreal * C = &C_D[thread][0];
+            mreal * P = &P_D_data[thread][0];
+            mreal * C = &C_D_data[thread][0];
             
             #pragma omp simd aligned( P : ALIGN )
             for( mint i = 0; i < primitive_count * data_dim; ++i )
@@ -811,71 +811,139 @@ namespace rsurfaces
 
 
 
-    void ClusterTree2::CollectDerivatives( mreal * const restrict output )
-    {
-        
-        PrepareBuffers(data_dim);
-        
+//    void ClusterTree2::CollectDerivatives( mreal * const restrict output )
+//    {
+//
+//        PrepareBuffers(data_dim);
+//
+//    //    CleanseBuffers();
+//
+//    //    tic("Accumulate cluster contributions");
+//        #pragma omp parallel for
+//        for( mint i = 0; i < primitive_count; ++i )
+//        {
+//            // I did not find out how this can be really parallelized; P_D_data[thread] seems to be the obstruction.
+////            #pragma omp simd aligned( P_out : ALIGN )
+//            for( mint k = 0; k < data_dim; ++k )
+//            {
+//                mreal acc = 0.;
+//                for( mint thread = 0; thread < thread_count; ++thread )
+//                {
+//                    acc += P_D_data[thread][ data_dim * i + k ];
+//                }
+//                P_out[ data_dim * i + k ] = acc;
+//            }
+//        }
+//    //    toc("Accumulate cluster contributions");
+//
+//    //    tic("Accumulate primitive contributions");
+//        #pragma omp parallel for
+//        for( mint i = 0; i < cluster_count; ++i )
+//        {
+//            // I did not find out how this can be really parallelized; C_D_data[thread] seems to be the obstruction.
+////            #pragma omp simd aligned( C_out : ALIGN )
+//            for( mint k = 0; k < data_dim; ++k )
+//            {
+//                mreal acc = 0.;
+//                for( mint thread = 0; thread < thread_count; ++thread )
+//                {
+//                    acc += C_D_data[thread][ data_dim * i + k ];
+//                }
+//                C_out[ data_dim * i + k ]  = acc;
+//            }
+//        }
+//    //    toc("Accumulate primitive contributions");
+//
+//    //    tic("PercolateDown");
+//        PercolateDown(0, thread_count );
+//    //    toc("PercolateDown");
+//
+//    //    tic("C_to_P.");
+//        C_to_P.Multiply( C_out, P_out, data_dim, true);    // true -> add-into
+//    //    toc("C_to_P.");
+//
+//    //    tic("Reorder and copy to output");
+//        #pragma omp parallel for
+//        for( mint i = 0; i < primitive_count; ++i )
+//        {
+//            mint j = inverse_ordering[i];
+//
+//            #pragma omp simd aligned( P_out, output : ALIGN )
+//            for( mint k = 0; k < data_dim; ++k )
+//            {
+//                output[ data_dim * i + k ] = P_out[ data_dim * j + k ];
+//            }
+//        }
+//    //    toc("Reorder and copy to output");
+//
+//    } // CollectDerivatives
+
+
+void ClusterTree2::CollectDerivatives( mreal * const restrict output )
+{
+    
+    PrepareBuffers(data_dim);
+    
     //    CleanseBuffers();
-        
+    
     //    tic("Accumulate cluster contributions");
-        #pragma omp parallel for
-        for( mint i = 0; i < primitive_count; ++i )
+#pragma omp parallel for
+    for( mint i = 0; i < primitive_count; ++i )
+    {
+        // I did not find out how this can be really parallelized; P_D_data[thread] seems to be the obstruction.
+        //        #pragma omp simd aligned( P_out : ALIGN )
+        for( mint k = 0; k < data_dim; ++k )
         {
-            // I did not find out how this can be really parallelized; P_D[thread] seems to be the obstruction.
-//            #pragma omp simd aligned( P_out : ALIGN )
-            for( mint k = 0; k < data_dim; ++k )
+            mreal acc = 0.;
+            for( mint thread = 0; thread < thread_count; ++thread )
             {
-                mreal acc = 0.;
-                for( mint thread = 0; thread < thread_count; ++thread )
-                {
-                    acc += P_D[thread][ data_dim * i + k ];
-                }
-                P_out[ data_dim * i + k ] = acc;
+                acc += P_D_data[thread][ data_dim * i + k ];
             }
+            P_out[ data_dim * i + k ] = acc;
         }
+    }
     //    toc("Accumulate cluster contributions");
-        
+    
     //    tic("Accumulate primitive contributions");
-        #pragma omp parallel for
-        for( mint i = 0; i < cluster_count; ++i )
+#pragma omp parallel for
+    for( mint i = 0; i < cluster_count; ++i )
+    {
+        // I did not find out how this can be really parallelized; C_D_data[thread] seems to be the obstruction.
+        //        #pragma omp simd aligned( C_out : ALIGN )
+        for( mint k = 0; k < data_dim; ++k )
         {
-            // I did not find out how this can be really parallelized; C_D[thread] seems to be the obstruction.
-//            #pragma omp simd aligned( C_out : ALIGN )
-            for( mint k = 0; k < data_dim; ++k )
+            mreal acc = 0.;
+            for( mint thread = 0; thread < thread_count; ++thread )
             {
-                mreal acc = 0.;
-                for( mint thread = 0; thread < thread_count; ++thread )
-                {
-                    acc += C_D[thread][ data_dim * i + k ];
-                }
-                C_out[ data_dim * i + k ]  = acc;
+                acc += C_D_data[thread][ data_dim * i + k ];
             }
+            C_out[ data_dim * i + k ]  = acc;
         }
+    }
     //    toc("Accumulate primitive contributions");
-        
+    
     //    tic("PercolateDown");
-        PercolateDown(0, thread_count );
+    PercolateDown(0, thread_count );
     //    toc("PercolateDown");
-        
+    
     //    tic("C_to_P.");
-        C_to_P.Multiply( C_out, P_out, data_dim, true);    // true -> add-into
+    C_to_P.Multiply( C_out, P_out, data_dim, true);    // true -> add-into
     //    toc("C_to_P.");
-        
+    
     //    tic("Reorder and copy to output");
-        #pragma omp parallel for
-        for( mint i = 0; i < primitive_count; ++i )
+#pragma omp parallel for
+    for( mint i = 0; i < primitive_count; ++i )
+    {
+        mint j = inverse_ordering[i];
+        
+#pragma omp simd aligned( P_out, output : ALIGN )
+        for( mint k = 0; k < data_dim; ++k )
         {
-            mint j = inverse_ordering[i];
-
-            #pragma omp simd aligned( P_out, output : ALIGN )
-            for( mint k = 0; k < data_dim; ++k )
-            {
-                output[ data_dim * i + k ] = P_out[ data_dim * j + k ];
-            }
+            output[ data_dim * i + k ] = P_out[ data_dim * j + k ];
         }
+    }
     //    toc("Reorder and copy to output");
-
-    } // CollectDerivatives
+    
+} // CollectDerivatives
 
 } // namespace rsurfaces
