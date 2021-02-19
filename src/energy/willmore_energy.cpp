@@ -1,4 +1,4 @@
-#include "willmore_energy.h"
+#include "energy/willmore_energy.h"
 
 namespace rsurfaces
 {

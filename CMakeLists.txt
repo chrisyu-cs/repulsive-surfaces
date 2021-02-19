@@ -25,7 +25,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STR
   SET(BASE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Werror -Xpreprocessor -fopenmp")
   SET(DISABLED_WARNINGS " -Wno-unknown-warning-option -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-copy -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field -Wno-range-loop-analysis")
   SET(TRACE_INCLUDES " -H -Wno-error=unused-command-line-argument")
-
+        
   if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
     message("Setting clang-specific options")
     SET(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -ferror-limit=3 -fcolor-diagnostics")
@@ -80,6 +80,9 @@ set(SRCS
   src/energy/tpe_kernel.cpp
   src/energy/squared_error.cpp
   src/energy/static_obstacle.cpp
+  src/energy/willmore_energy.cpp
+  src/energy/tpe_multipole_0.cpp
+  src/energy/tpe_barnes_hut_0.cpp
   src/remeshing/dynamic_remesher.cpp
   src/remeshing/remeshing.cpp
   src/sobolev/h1.cpp
@@ -115,6 +118,9 @@ set(SRCS
   src/scene_file.cpp
   src/surface_derivatives.cpp
   src/surface_flow.cpp
+  src/bct2_tp_multipole_0.cpp
+  src/bct2_tp_barnes_hut_0.cpp
+  src/derivative_assembler.cpp
 	# add any other source files here
 )
 

@@ -33,6 +33,7 @@
 #include "bct_constructors.h"
 #include "energy/willmore_energy.h"
 #include "energy/tpe_multipole_0.h"
+#include "energy/tpe_barnes_hut_0.h"
 
 #include "remeshing/remeshing.h"
 
@@ -594,13 +595,12 @@ namespace rsurfaces
         numericalNormalDeriv(geom, vert, vert).Print();
     }
 
-    void MainApp::TestMultipole()
+    void MainApp::TestMultipole0()
     {
         std::cout << std::setprecision(16);
         std::cout << "Testing TPEnergyMultipole0" << std::endl;
         auto mesh = rsurfaces::MainApp::instance->mesh;
         auto geom = rsurfaces::MainApp::instance->geom;
-        
         
         tic("CreateOptimizedBCT");
         BlockClusterTree2 *bct = CreateOptimizedBCT(mesh, geom, 6., 12., 0.5);
@@ -613,7 +613,6 @@ namespace rsurfaces
         toc("Value");
         
         std::cout << "E = " << E << std::endl;
-        
         
         Eigen::MatrixXd DE ( mesh->nVertices(), 3 );
         
@@ -629,8 +628,43 @@ namespace rsurfaces
         
         delete bct;
         delete tpe;
-    } // TestMultipole
+    } // TestMultipole0
 
+
+    void MainApp::TestBarnesHut0()
+    {
+        std::cout << std::setprecision(16);
+        std::cout << "Testing TPEnergyBarnesHut0" << std::endl;
+        auto mesh = rsurfaces::MainApp::instance->mesh;
+        auto geom = rsurfaces::MainApp::instance->geom;
+        
+        tic("CreateOptimizedBCT");
+        BlockClusterTree2 *bct = CreateOptimizedBCT(mesh, geom, 6., 12., 0.25);
+        toc("CreateOptimizedBCT");
+        
+        TPEnergyBarnesHut0 * tpe = new TPEnergyBarnesHut0( mesh, geom, bct );
+        
+        tic("Value");
+        double E = tpe->Value();
+        toc("Value");
+        
+        std::cout << "E = " << E << std::endl;
+        
+        Eigen::MatrixXd DE ( mesh->nVertices(), 3 );
+        
+        tic("Differential");
+        tpe->Differential(DE);
+        toc("Differential");
+        
+        std::cout << "DE = " << DE(0,0) << " , " << DE(0,1) <<  " , " << DE(0,2)  << std::endl;
+        std::cout << "     " << DE(1,0) << " , " << DE(1,1) <<  " , " << DE(1,2)  << std::endl;
+        std::cout << "     " << DE(2,0) << " , " << DE(2,1) <<  " , " << DE(2,2)  << std::endl;
+        std::cout << "     " << DE(3,0) << " , " << DE(3,1) <<  " , " << DE(3,2)  << std::endl;
+        std::cout << "     " << DE(4,0) << " , " << DE(4,1) <<  " , " << DE(4,2)  << std::endl;
+        
+        delete bct;
+        delete tpe;
+    } // TestBarnesHut0
 
     void MainApp::TestWillmore()
     {
@@ -1212,7 +1246,12 @@ void customCallback()
     
     if (ImGui::Button("Test Multipole0", ImVec2{ITEM_WIDTH, 0}))
     {
-        MainApp::instance->TestMultipole();
+        MainApp::instance->TestMultipole0();
+    }
+    
+    if (ImGui::Button("Test BarnesHut0", ImVec2{ITEM_WIDTH, 0}))
+    {
+        MainApp::instance->TestBarnesHut0();
     }
     
     if (ImGui::Button("Test new MV product", ImVec2{ITEM_WIDTH, 0}))

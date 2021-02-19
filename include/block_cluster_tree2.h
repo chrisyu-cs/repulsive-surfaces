@@ -67,6 +67,7 @@ namespace rsurfaces
         mint dim = 3;
         mreal theta2 = 0.25;
         mint thread_count = 1;
+        mint tree_thread_count = 1;
         mreal alpha = 6.0;
         mreal beta = 12.0;
         mreal exp_s = 2.0 - 1.0 / 3.0; // differentiability of the energy space
@@ -86,18 +87,18 @@ namespace rsurfaces
         // Product of the kernel matrix with the constant-1-vector.
         // Need to be updated if hi_factor, lo_factor, or fr_factor are changed!
         // Assumed to be in EXTERNAL ORDERING!
-//        mutable A_Vector<mreal> hi_diag;
-//        mutable A_Vector<mreal> lo_diag;
-//        mutable A_Vector<mreal> fr_diag;
-        mreal * restrict hi_diag = NULL;
-        mreal * restrict lo_diag = NULL;
-        mreal * restrict fr_diag = NULL;
+        mutable  mreal * restrict hi_diag = NULL;
+        mutable  mreal * restrict lo_diag = NULL;
+        mutable  mreal * restrict fr_diag = NULL;
         
         // TODO: Maybe these "diag" - vectors should become members to S and T?
         // Remark: If S != T, the "diags" are not used.
 
+        bool metrics_initialized = false;
+        bool is_symmetric = false;
         bool exploit_symmetry = false;
         bool upper_triangular = false;
+        
         // If exploit_symmetry != 1, S == T is assume and only roughly half the block clusters are generated during the split pass performed by CreateBlockClusters.
         // If upper_triangular != 0 and if exploit_symmetry != 0, only the upper triangle of the interaction matrices will be generated. --> CreateBlockClusters will be faster.
         // If exploit_symmetry 1= 1 and upper_triangular 1= 0 then the block cluster twins are generated _at the end_ of the splitting pass by CreateBlockClusters.
@@ -105,13 +106,13 @@ namespace rsurfaces
         std::shared_ptr<InteractionData> far;  // far and near are data containers for far and near field, respectively.
         std::shared_ptr<InteractionData> near; // They also perform the matrix-vector products.
 
-        mreal FarFieldEnergy();
-        mreal DFarFieldEnergyHelper();
-        mreal NearFieldEnergy();
-        mreal DNearFieldEnergyHelper();
+        mreal FarFieldEnergy0();
+        mreal DFarFieldEnergy0Helper();
+        mreal NearFieldEnergy0();
+        mreal DNearFieldEnergy0Helper();
         
-        mreal BarnesHutEnergy();
-        mreal DBarnesHutEnergyHelper();
+        mreal BarnesHutEnergy0();
+        mreal DBarnesHutEnergy0Helper();
         
         // TODO: Transpose operation
         //    void MultiplyTransposed( const mreal * const restrict P_input, mreal * const restrict P_output, const mint  cols, BCTKernelType type, bool addToResult = false );
@@ -134,6 +135,8 @@ namespace rsurfaces
             const mint free_thread_count     //  <-- helps to manage task creation
         );
 
+        void PrepareMetrics();
+        
         void FarFieldInteraction(); // Compute nonzero values of sparse far field interaction matrices.
 
         void NearFieldInteractionCSR(); // Compute nonzero values of sparse near field interaction matrices in CSR format.

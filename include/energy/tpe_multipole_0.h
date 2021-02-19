@@ -52,7 +52,7 @@ namespace rsurfaces
         // Return 0 if this energy doesn't do hierarchical approximation.
         virtual double GetTheta();
         
-        BlockClusterTree2 * GetBCT();
+        BlockClusterTree2 * GetBCT(){ return bct; };
         
     private:
         

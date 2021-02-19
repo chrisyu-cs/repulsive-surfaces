@@ -26,47 +26,13 @@ namespace rsurfaces
     typedef MKL_INT mint; // "machine integer" -- ensuring that we use the integer type requested by MKL. I find "MKL_INT" a bit clunky, though.
     typedef double mreal; // "machine real"
 
-    mreal * mreal_alloc(size_t size)
-    {
-        return (mreal *) mkl_malloc ( size * sizeof(mreal), ALIGN );
-    }
+    mreal * mreal_alloc(size_t size);
+    mreal * mreal_alloc(size_t size, mreal init);
+    void  mreal_free(mreal * ptr);
+    mint * mint_alloc(size_t size);
+    mint * mint_alloc(size_t size, mint init);
+    void  mint_free(mint * ptr);
 
-    mreal * mreal_alloc(size_t size, mreal init)
-    {
-        mreal * ptr = mreal_alloc(size);
-        #pragma omp simd aligned( ptr : ALIGN )
-        for( size_t i = 0; i < size; ++i )
-        {
-            ptr[i] = init;
-        }
-        return ptr;
-    }
-
-    void  mreal_free(mreal * ptr)
-    {
-        if( ptr ){ mkl_free(ptr); }
-    }
-
-    mint * mint_alloc(size_t size)
-    {
-        return (mint * ) mkl_malloc ( size * sizeof(mint), ALIGN );
-    }
-
-    mint * mint_alloc(size_t size, mint init)
-    {
-        mint * ptr = mint_alloc(size);
-        #pragma omp simd aligned( ptr : ALIGN )
-        for( size_t i = 0; i < size; ++i )
-        {
-            ptr[i] = init;
-        }
-        return ptr;
-    }
-
-    void  mint_free(mint * ptr)
-    {
-        if( ptr ){ mkl_free(ptr); }
-    }
 
     typedef Eigen::SparseMatrix<mreal, Eigen::RowMajor, mint> EigenMatrixCSR;
     typedef Eigen::SparseMatrix<mreal> EigenMatrixCSC;
@@ -84,23 +50,33 @@ namespace rsurfaces
 
     inline void print(std::string s)
     {
-        std::cout << (std::string(Timers::time_stack.size() + 1, '\t') + s) << std::endl;
+        std::cout << (std::string( 2 * (Timers::time_stack.size() + 1), ' ') + s) << std::endl;
+    }
+
+    inline void valprint(std::string s, mint val)
+    {
+        std::cout << (std::string( 2 * (Timers::time_stack.size() + 1), ' ') + s) << " = " << val <<  std::endl;
+    }
+
+    inline void valprint(std::string s, mreal val)
+    {
+        std::cout << (std::string( 2 * (Timers::time_stack.size() + 1), ' ') + s) << " = " << val <<  std::endl;
     }
 
     inline void eprint(std::string s)
     {
-        std::cout << (std::string(Timers::time_stack.size() + 1, '\t') + "ERROR: " + s) << std::endl;
+        std::cout << (std::string( 2 * (Timers::time_stack.size() + 1), ' ') + "ERROR: " + s) << std::endl;
     }
 
     inline void wprint(std::string s)
     {
-        std::cout << (std::string(Timers::time_stack.size() + 1, '\t') + "WARNING: " + s) << std::endl;
+        std::cout << (std::string( 2 * (Timers::time_stack.size() + 1), ' ') + "WARNING: " + s) << std::endl;
     }
 
     inline void tic(std::string s)
     {
         Timers::time_stack.push_back(std::chrono::steady_clock::now());
-        std::cout << (std::string(Timers::time_stack.size(), '\t') + s + "...") << std::endl;
+        std::cout << (std::string( 2 * Timers::time_stack.size(), ' ') + s + "...") << std::endl;
     }
 
     inline void toc(std::string s)
@@ -109,7 +85,7 @@ namespace rsurfaces
         {
             auto start_time = Timers::time_stack.back();
             auto stop_time = std::chrono::steady_clock::now();
-            std::cout << (std::string(Timers::time_stack.size(), '\t') + std::to_string((std::chrono::duration<double>(stop_time - start_time).count())) + " s.") << std::endl;
+            std::cout << (std::string( 2 * Timers::time_stack.size(), ' ') + std::to_string((std::chrono::duration<double>(stop_time - start_time).count())) + " s.") << std::endl;
             Timers::time_stack.pop_back();
         }
         else
@@ -265,6 +241,22 @@ namespace rsurfaces
                 mreal_free( values );
             }
         };
+        
+        
+        void PrintInfo()
+        {
+            print("##################################");
+            valprint("m", m);
+            valprint("n", n);
+            valprint("nnz", nnz);
+            valprint("outer[0]", outer[0]);
+            valprint("outer[m]", outer[m]);
+            valprint("inner[0]", inner[0]);
+            valprint("inner[nnz]", inner[nnz-1]);
+            valprint("values[0]", values[0]);
+            valprint("values[nnz]", values[nnz-1]);
+            print("##################################");
+        }
     
         // TODO: Better error handling
     
@@ -392,7 +384,7 @@ namespace rsurfaces
             
             sparse_index_base_t indexing = SPARSE_INDEX_BASE_ZERO;
             
-            stat = mkl_sparse_d_export_csr( csrAT, &indexing, &cols_AT, &rows_AT, &outerB_AT, &outerE_AT, &inner_AT, &values_AT ); // It's not logical to swap rows_AT and cols_AT...
+            stat = mkl_sparse_d_export_csr( csrAT, &indexing, &rows_AT, &cols_AT, &outerB_AT, &outerE_AT, &inner_AT, &values_AT ); // It's not logical to swap rows_AT and cols_AT...
             if (stat)
             {
                 eprint("in MKLSparseMatrix::Transpose: mkl_sparse_d_export_csr returned " + std::to_string(stat) );
@@ -502,7 +494,7 @@ namespace rsurfaces
             return error;
         } // FactorizeNumerically
         
-        mint LinearSolve(mreal * b, mreal * x, bool transposed = False)
+        mint LinearSolve(mreal * b, mreal * x, bool transposed = false)
         {
             // solves A * x = b
             if(!P.numfactorized)
@@ -527,7 +519,7 @@ namespace rsurfaces
         } // LinearSolve
         
         // TODO: Currently untested whether multiple right hand sides are handled correctly here.
-        mint LinearSolveMatrix(mreal * B, mreal * X, mint cols, bool transposed = False)
+        mint LinearSolveMatrix(mreal * B, mreal * X, mint cols, bool transposed = false)
         {
             // solves A * X = B
             if(!P.numfactorized)
@@ -553,10 +545,23 @@ namespace rsurfaces
     }; // MKLSparseMatrix
 
 
-    inline mreal mypow(mreal base, mreal exponent)
+    #pragma omp declare simd
+    inline mreal mypow ( mreal base, mreal exponent )
     {
         // Warning: Use only for positive base! This is basically pow with certain checks and cases deactivated
-        return std::exp2(exponent * std::log2(base));
+        return std::exp2( exponent * std::log2(base) );
+    }
+
+    #pragma omp declare simd
+    inline mreal mymax(const mreal & a, const mreal & b)
+    {
+        return fmax(a,b);
+    }
+
+    #pragma omp declare simd
+    inline mreal mymin(const mreal & a, const mreal & b)
+    {
+        return fmin(a,b);
     }
 
 

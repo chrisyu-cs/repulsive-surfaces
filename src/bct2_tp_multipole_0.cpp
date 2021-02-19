@@ -7,7 +7,7 @@ namespace rsurfaces
     //      Multipole Energy
     //######################################################################################################################################
 
-    mreal BlockClusterTree2::FarFieldEnergy()
+    mreal BlockClusterTree2::FarFieldEnergy0()
     {
         mreal real_minus_betahalf = -beta/2.;
         
@@ -75,10 +75,10 @@ namespace rsurfaces
             sum += A[i] * block_sum;
         }
         return sum;
-    }; //FarFieldEnergy
+    }; //FarFieldEnergy0
 
 
-    mreal BlockClusterTree2::DFarFieldEnergyHelper()
+    mreal BlockClusterTree2::DFarFieldEnergy0Helper()
     {
         
         mreal real_alpha_minus_2 = alpha - 2.;
@@ -116,8 +116,8 @@ namespace rsurfaces
         {
             mint thread = omp_get_thread_num();
             
-            mreal * const restrict U = &S->C_D[thread][0];
-            mreal * const restrict V = &T->C_D[thread][0];
+            mreal * const restrict U = &S->C_D_data[thread][0];
+            mreal * const restrict V = &T->C_D_data[thread][0];
             
             mreal a  =  A[i];
             mreal x1 = X1[i];
@@ -235,10 +235,10 @@ namespace rsurfaces
         } // for( mint i = 0; i < b_m; ++i )
         
         return sum;
-    }; //DFarFieldEnergyHelper
+    }; //DFarFieldEnergy0Helper
 
 
-    mreal BlockClusterTree2::NearFieldEnergy()
+    mreal BlockClusterTree2::NearFieldEnergy0()
     {
         // Caution: This functions assumes that S = T!!!
         
@@ -325,10 +325,10 @@ namespace rsurfaces
             }
         }
         return sum;
-    }; //NearFieldEnergy
+    }; //NearFieldEnergy0
 
 
-    mreal BlockClusterTree2::DNearFieldEnergyHelper()
+    mreal BlockClusterTree2::DNearFieldEnergy0Helper()
     {
         // Caution: This functions assumes that S = T!!!
         
@@ -369,8 +369,8 @@ namespace rsurfaces
         {
             mint thread = omp_get_thread_num();
             
-            mreal * const restrict U = &S->P_D[thread][0];
-            mreal * const restrict V = &T->P_D[thread][0];
+            mreal * const restrict U = &S->P_D_data[thread][0];
+            mreal * const restrict V = &T->P_D_data[thread][0];
             
             mint i_begin = b_row_ptr[b_i];
             mint i_end   = b_row_ptr[b_i+1];
@@ -499,6 +499,6 @@ namespace rsurfaces
         } // for( mint b_i = 0; b_i < b_m; ++b_i )
         
         return sum;
-    }; //DNearFieldEnergyHelper
+    }; //DNearFieldEnergy0Helper
 
 }

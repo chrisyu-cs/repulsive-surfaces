@@ -11,9 +11,11 @@ namespace rsurfaces
         alpha = alpha_;
         beta = beta_;
         theta2 = theta_ * theta_;
-        exploit_symmetry = exploit_symmetry_;
-        upper_triangular = upper_triangular_;
+        is_symmetric = ( S == T );
+        exploit_symmetry = is_symmetric && exploit_symmetry_;
+        upper_triangular = is_symmetric && upper_triangular_;
         disableNearField = false;
+        metrics_initialized = false;
 
         // TODO: Abort and throw error when S->dim != T->dim
         dim = std::min(S->dim, T->dim);
@@ -24,69 +26,18 @@ namespace rsurfaces
                                                             //    fr_exponent = - 0.5 * (2.0 * exp_s + intrinsic_dim); // from Chris' code
                                                             //    fr_exponent =  -0.5 * ( 2. (2. - exp_s) + intrinsic_dim); //shouldn't it be this?
 
-#pragma omp parallel
+        #pragma omp parallel
         {
             thread_count = omp_get_num_threads();
         }
-
-        // print("thread_count = " + std::to_string(thread_count) );
 
         // tic("CreateBlockClusters");
         CreateBlockClusters();
         // toc("CreateBlockClusters");
 
-        //    mint err;
-        //    tic("Check far");
-        //        err = far->Check();
-        //    toc("Check");
-        //
-        //    tic("Check near");
-        //        err = near->Check();
-        //    toc("Check");
+        // TODO: The following line should be move to InternalMultipy in order to delay matrix creation to a time when it is actually needed. Otherwise, using the BCT for line search (evaluating only the energy), the time for creating the matrices would be wasted.
+        PrepareMetrics();
 
-        // tic("Test Energy");
-        // tic("FarFieldEnergy");
-        // mreal en_far = FarFieldEnergy();
-        // print("FarFieldEnergy (multipole) = " + std::to_string(en_far) );
-        // toc("FarFieldEnergy");
-        // tic("NearFieldEnergy");
-        // mreal en_near = NearFieldEnergy();
-        // print("NearFieldEnergy (multipole) = " + std::to_string(en_near) );
-        // toc("NearFieldEnergy");
-
-        // print("total energy (multipole) = " + std::to_string( en_far + en_near ) );
-
-        // toc("Test Energy");
-
-        // tic("Interactions");
-
-        // tic("FarFieldInteraction");
-        FarFieldInteraction();
-        // toc("FarFieldInteraction");
-
-        // tic("NearFieldInteractionCSR");
-        NearFieldInteractionCSR();
-        // toc("NearFieldInteractionCSR");
-
-        // toc("Interactions");
-
-        // toc("Initializing BlockClusterTree2");
-
-        // tic("ComputeDiagonals");
-        ComputeDiagonals();
-        // toc("ComputeDiagonals");
-
-        //    tic("Test Multiply");
-        //
-        //    mint cols = 9;
-        //    A_Vector<mreal> V (T->primitive_count * cols, 1.);
-        //    A_Vector<mreal> U (S->primitive_count * cols);
-        //    Multiply( &V[0], &U[0], cols, BCTKernelType::HighOrder );
-        //
-        //
-        //    toc("Test Multiply");
-
-        // print("BlockClusterTree2 initialized.");
     }; // Constructor
 
     //######################################################################################################################################
@@ -120,35 +71,16 @@ namespace rsurfaces
             nonsep_blockcluster_count += thread_nonsep_idx[thread].size();
         }
 
-        // print("sep_blockcluster_count = "+std::to_string(sep_blockcluster_count));
-
-        // print("nonsep_blockcluster_count = "+std::to_string(nonsep_blockcluster_count));
-
-        // toc("SplitBlockCluster ");
-
-        // tic("Creation of sparsity patterns");
-
-        // using parallel count sort to sort the cluster (i,j)-pairs according to i.
+        // toc("SplitBlockCluster");
 
         // tic("Far field");
-
-        far = std::make_shared<InteractionData>(thread_sep_idx, thread_sep_jdx,
-                                                S->cluster_count, T->cluster_count, upper_triangular);
-
-        // deallocation to free space for the nonsep_row_pointers
-        thread_sep_idx = A_Vector<A_Deque<mint>>();
-        thread_sep_jdx = A_Vector<A_Deque<mint>>();
-
+        far  = std::make_shared<InteractionData> ( thread_sep_idx, thread_sep_jdx, S->cluster_count, T->cluster_count, upper_triangular );
         // toc("Far field");
 
         // tic("Near field");
-
-        near = std::make_shared<InteractionData>(thread_nonsep_idx, thread_nonsep_jdx,
-                                                 S->primitive_count, T->primitive_count, S->leaf_cluster_ptr, T->leaf_cluster_ptr, upper_triangular);
-
+        near = std::make_shared<InteractionData> ( thread_nonsep_idx, thread_nonsep_jdx, S->leaf_cluster_count, T->leaf_cluster_count, upper_triangular );
         // toc("Near field");
 
-        // toc(" Creation of sparsity patterns");
 
     }; //CreateBlockClusters
 
@@ -213,11 +145,11 @@ namespace rsurfaces
                         mint remainder = free_thread_count % 3;
 
 // TODO: These many arguments in the function calls might excert quite a pressure on the stack. Is there a better way to share sep_i, sep_j, nsep_i, nsep_j among all threads other than making them members of the class?
-#pragma omp task final(free_thread_count < 1) default(none) firstprivate(lefti, leftj, spawncount, remainder) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(lefti, leftj, spawncount, remainder) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, lefti, leftj, spawncount + (remainder > 0));
-#pragma omp task final(free_thread_count < 1) default(none) firstprivate(lefti, rightj, spawncount, remainder) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(lefti, rightj, spawncount, remainder) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, lefti, rightj, spawncount + (remainder > 2));
-#pragma omp task final(free_thread_count < 1) default(none) firstprivate(righti, rightj, spawncount, remainder) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(righti, rightj, spawncount, remainder) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, righti, rightj, spawncount);
                         //                    #pragma omp taskwait
                     }
@@ -229,13 +161,13 @@ namespace rsurfaces
                         mint spawncount = free_thread_count / 4;
                         mint remainder = free_thread_count % 4;
 
-#pragma omp task final(free_thread_count < 1) default(none) firstprivate(lefti, leftj, spawncount, remainder) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(lefti, leftj, spawncount, remainder) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, lefti, leftj, spawncount + (remainder > 0));
-#pragma omp task final(free_thread_count < 1) default(none) firstprivate(righti, leftj, spawncount, remainder) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(righti, leftj, spawncount, remainder) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, righti, leftj, spawncount + (remainder > 1));
-#pragma omp task final(free_thread_count < 1) default(none) firstprivate(lefti, rightj, spawncount, remainder) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(lefti, rightj, spawncount, remainder) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, lefti, rightj, spawncount + (remainder > 2));
-#pragma omp task final(free_thread_count < 1) default(none) firstprivate(righti, rightj, spawncount) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(righti, rightj, spawncount) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, righti, rightj, spawncount);
                         //                    #pragma omp taskwait
                     }
@@ -245,19 +177,19 @@ namespace rsurfaces
                     // split only larger cluster
                     if (scorei > scorej)
                     {
-//split cluster i
-#pragma omp task final(free_thread_count < 1) default(none) firstprivate(lefti, j, free_thread_count) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        //split cluster i
+                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(lefti, j, free_thread_count) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, lefti, j, free_thread_count / 2);
-#pragma omp task final(free_thread_count < 1) default(none) firstprivate(righti, j, free_thread_count) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(righti, j, free_thread_count) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, righti, j, free_thread_count - free_thread_count / 2);
                         //                    #pragma omp taskwait
                     }
                     else //scorei < scorej
                     {
-//split cluster j
-#pragma omp task final(free_thread_count < 1) default(none) firstprivate(i, leftj, free_thread_count) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        //split cluster j
+                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(i, leftj, free_thread_count) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, i, leftj, free_thread_count / 2);
-#pragma omp task final(free_thread_count < 1) default(none) firstprivate(i, rightj, free_thread_count) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(i, rightj, free_thread_count) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, i, rightj, free_thread_count - free_thread_count / 2);
                         //                    #pragma omp taskwait
                     }
@@ -350,203 +282,72 @@ namespace rsurfaces
         }
     }; //SplitBlockCluster
 
-    // Coarse energy approximation to test whether BlockClusterTree2 is working correctly.
-    mreal BlockClusterTree2::FarFieldEnergy()
+
+    //######################################################################################################################################
+    //      Initialization of metrics
+    //######################################################################################################################################
+
+
+    void BlockClusterTree2::PrepareMetrics()
     {
-        mint b_m = far->b_m;
-        mint const *const restrict b_outer = &far->b_outer[0];
-        mint const *const restrict b_inner = &far->b_inner[0];
-
-        // Dunno why "restrict" helps with P_data. It is actually a lie here when S = T.
-        mreal const *const restrict A = &S->C_data[0][0];
-        mreal const *const restrict X1 = &S->C_data[1][0];
-        mreal const *const restrict N1 = &S->C_data[4][0];
-        mreal const *const restrict X2 = &S->C_data[2][0];
-        mreal const *const restrict N2 = &S->C_data[5][0];
-        mreal const *const restrict X3 = &S->C_data[3][0];
-        mreal const *const restrict N3 = &S->C_data[6][0];
-
-        mreal const *const restrict B = &T->C_data[0][0];
-        mreal const *const restrict Y1 = &T->C_data[1][0];
-        mreal const *const restrict M1 = &T->C_data[4][0];
-        mreal const *const restrict Y2 = &T->C_data[2][0];
-        mreal const *const restrict M2 = &T->C_data[5][0];
-        mreal const *const restrict Y3 = &T->C_data[3][0];
-        mreal const *const restrict M3 = &T->C_data[6][0];
-
-        mreal sum = 0.;
-#pragma omp parallel for num_threads(thread_count) schedule(guided, 8) reduction(+ \
-                                                                                 : sum)
-        for (mint i = 0; i < b_m; ++i)
+        if( !metrics_initialized )
         {
-            mreal x1 = X1[i];
-            mreal n1 = N1[i];
-            mreal x2 = X2[i];
-            mreal n2 = N2[i];
-            mreal x3 = X3[i];
-            mreal n3 = N3[i];
+            
+//            tic("far->PrepareCSR()");
+            far->PrepareCSR();
+//            toc("far->PrepareCSR()");
 
-            mreal local_sum = 0.;
+//            tic("FarFieldInteraction");
+            FarFieldInteraction();
+//            toc("FarFieldInteraction");
 
-            // This loop can be SIMDized straight-forwardly (horizontal SIMDization).
-            for (mint k = b_outer[i]; k < b_outer[i + 1]; ++k)
-            {
-                mint j = b_inner[k];
+//            tic("near->PrepareCSR( S->leaf_cluster_ptr, T->leaf_cluster_ptr );");
+            near->PrepareCSR( S->leaf_cluster_count, S->leaf_cluster_ptr, T->leaf_cluster_count, T->leaf_cluster_ptr );
+//            toc("near->PrepareCSR( S->leaf_cluster_ptr, T->leaf_cluster_ptr );");
 
-                if (i <= j)
-                {
-                    mreal v1 = Y1[j] - x1;
-                    mreal m1 = M1[j];
-                    mreal v2 = Y2[j] - x2;
-                    mreal m2 = M2[j];
-                    mreal v3 = Y3[j] - x3;
-                    mreal m3 = M3[j];
+//            tic("NearFieldInteractionCSR");
+            NearFieldInteractionCSR();
+//            toc("NearFieldInteractionCSR");
 
-                    mreal rCosPhi = v1 * n1 + v2 * n2 + v3 * n3;
-                    mreal rCosPsi = v1 * m1 + v2 * m2 + v3 * m3;
-                    mreal r2 = v1 * v1 + v2 * v2 + v3 * v3;
+//            tic("ComputeDiagonals");
+            ComputeDiagonals();
+//            toc("ComputeDiagonals");
 
-                    //                    mreal en = ( pow( fabs(rCosPhi(, alpha ) + pow( fabs(rCosPsi), alpha) ) * pow( r2, -0.5 * beta );
-
-                    // Avoiding pow and sqrt for performance; hard coded to for alpha = 6 and beta = 12
-                    mreal rinv2 = 1. / r2;
-                    mreal rinv6 = rinv2 * rinv2 * rinv2;
-                    mreal rinv12 = rinv6 * rinv6;
-                    mreal rCosPhi2 = rCosPhi * rCosPhi;
-                    mreal rCosPsi2 = rCosPsi * rCosPsi;
-                    mreal en = (rCosPhi2 * rCosPhi2 * rCosPhi2 + rCosPsi2 * rCosPsi2 * rCosPsi2) * rinv12;
-                    local_sum += en * B[j];
-                }
-            }
-
-            sum += A[i] * local_sum;
+            metrics_initialized = true;
+    //        print("Done: PrepareMetrics.");
         }
-        return sum;
-    }; //FarFieldEnergy
-
-    mreal BlockClusterTree2::NearFieldEnergy()
-    {
-        // Caution: This functions assumes that S = T!!!
-
-        // Coarse energy approximation to test whether BlockClusterTree2 is working correctly.
-
-        mint b_m = near->b_m;
-
-        mint const *const restrict b_row_ptr = &near->b_row_ptr[0];
-        mint const *const restrict b_col_ptr = &near->b_col_ptr[0];
-        mint const *const restrict b_outer = &near->b_outer[0];
-        mint const *const restrict b_inner = &near->b_inner[0];
-
-        // Dunno why "restrict" helps with P_data. It is actually a lie here.
-        mreal const *const restrict A = &S->P_data[0][0];
-        mreal const *const restrict X1 = &S->P_data[1][0];
-        mreal const *const restrict N1 = &S->P_data[4][0];
-        mreal const *const restrict X2 = &S->P_data[2][0];
-        mreal const *const restrict N2 = &S->P_data[5][0];
-        mreal const *const restrict X3 = &S->P_data[3][0];
-        mreal const *const restrict N3 = &S->P_data[6][0];
-
-        mreal const *const restrict B = &T->P_data[0][0];
-        mreal const *const restrict Y1 = &T->P_data[1][0];
-        mreal const *const restrict M1 = &T->P_data[4][0];
-        mreal const *const restrict Y2 = &T->P_data[2][0];
-        mreal const *const restrict M2 = &T->P_data[5][0];
-        mreal const *const restrict Y3 = &T->P_data[3][0];
-        mreal const *const restrict M3 = &T->P_data[6][0];
-
-        mreal sum = 0.;
-#pragma omp parallel for num_threads(thread_count) schedule(guided, 8) reduction(+ \
-                                                                                 : sum)
-        for (mint b_i = 0; b_i < b_m; ++b_i)
-        {
-
-            mint i_begin = b_row_ptr[b_i];
-            mint i_end = b_row_ptr[b_i + 1];
-
-            for (mint k = b_outer[b_i]; k < b_outer[b_i + 1]; ++k)
-            {
-                mint b_j = b_inner[k];
-                if (b_i <= b_j)
-                {
-                    mint j_begin = b_col_ptr[b_j];
-                    mint j_end = b_col_ptr[b_j + 1];
-                    mreal block_sum = 0.;
-
-                    for (mint i = i_begin; i < i_end; ++i)
-                    {
-                        mreal x1 = X1[i];
-                        mreal n1 = N1[i];
-                        mreal x2 = X2[i];
-                        mreal n2 = N2[i];
-                        mreal x3 = X3[i];
-                        mreal n3 = N3[i];
-
-                        mreal i_sum = 0.;
-
-                        // Here, one could do a bit of horizontal vectorization. However, the number of js an x interacts with varies greatly..
-                        for (mint j = (b_i != b_j ? j_begin : i + 1); j < j_end; ++j) // if i == j, we loop only over the upper triangular block, diagonal excluded
-                        {
-                            mreal v1 = Y1[j] - x1;
-                            mreal m1 = M1[j];
-                            mreal v2 = Y2[j] - x2;
-                            mreal m2 = M2[j];
-                            mreal v3 = Y3[j] - x3;
-                            mreal m3 = M3[j];
-
-                            mreal rCosPhi = v1 * n1 + v2 * n2 + v3 * n3;
-                            mreal rCosPsi = v1 * m1 + v2 * m2 + v3 * m3;
-                            mreal r2 = v1 * v1 + v2 * v2 + v3 * v3;
-
-                            //                        mreal en = ( pow( fabs(rCosPhi), alpha ) + pow( fabs(rCosPsi), alpha) ) * pow( r2, -0.5 * beta );
-
-                            // Avoiding pow and sqrt for performance; hard coded to for alpha = 6 and beta = 12
-                            mreal rinv2 = 1. / r2;
-                            mreal rinv6 = rinv2 * rinv2 * rinv2;
-                            mreal rinv12 = rinv6 * rinv6;
-                            mreal rCosPhi2 = rCosPhi * rCosPhi;
-                            mreal rCosPsi2 = rCosPsi * rCosPsi;
-                            mreal en = (rCosPhi2 * rCosPhi2 * rCosPhi2 + rCosPsi2 * rCosPsi2 * rCosPsi2) * rinv12;
-
-                            i_sum += en * B[j];
-                        }
-                        block_sum += A[i] * i_sum;
-                    }
-                    //            print( "{ " + std::to_string(i) + " , " + std::to_string(j) + "} -> " + std::to_string(block_sum) );
-                    sum += block_sum;
-                }
-            }
-        }
-        return sum;
-    }; //NearFieldEnergy
+    } // PrepareMetrics
 
     void BlockClusterTree2::FarFieldInteraction()
     {
         mint b_m = far->b_m;
-        mint const *const restrict b_outer = &far->b_outer[0];
-        mint const *const restrict b_inner = &far->b_inner[0];
-
+        mint const *const restrict b_outer = far->b_outer;
+        mint const *const restrict b_inner = far->b_inner;
         // Dunno why "restrict" helps with C_data. It is actually a lie here.
-        mreal const *const restrict X1 = &S->C_data[1][0];
-        mreal const *const restrict N1 = &S->C_data[4][0];
-        mreal const *const restrict X2 = &S->C_data[2][0];
-        mreal const *const restrict N2 = &S->C_data[5][0];
-        mreal const *const restrict X3 = &S->C_data[3][0];
-        mreal const *const restrict N3 = &S->C_data[6][0];
+        mreal const *const restrict X1 = S->C_data[1];
+        mreal const *const restrict N1 = S->C_data[4];
+        mreal const *const restrict X2 = S->C_data[2];
+        mreal const *const restrict N2 = S->C_data[5];
+        mreal const *const restrict X3 = S->C_data[3];
+        mreal const *const restrict N3 = S->C_data[6];
 
-        mreal const *const restrict Y1 = &T->C_data[1][0];
-        mreal const *const restrict M1 = &T->C_data[4][0];
-        mreal const *const restrict Y2 = &T->C_data[2][0];
-        mreal const *const restrict M2 = &T->C_data[5][0];
-        mreal const *const restrict Y3 = &T->C_data[3][0];
-        mreal const *const restrict M3 = &T->C_data[6][0];
-
+        mreal const *const restrict Y1 = T->C_data[1];
+        mreal const *const restrict M1 = T->C_data[4];
+        mreal const *const restrict Y2 = T->C_data[2];
+        mreal const *const restrict M2 = T->C_data[5];
+        mreal const *const restrict Y3 = T->C_data[3];
+        mreal const *const restrict M3 = T->C_data[6];
         // "restrict" makes sense to me here because it exclude write conflicts.
-        mreal *const restrict fr_values = &far->fr_values[0];
-        mreal *const restrict hi_values = &far->hi_values[0];
-        mreal *const restrict lo_values = &far->lo_values[0];
+        mreal *const restrict fr_values = far->fr_values;
+        mreal *const restrict hi_values = far->hi_values;
+        mreal *const restrict lo_values = far->lo_values;
+
+        mreal t1 = intrinsic_dim == 1;
+        mreal t2 = intrinsic_dim == 2;
+        mreal t3 = intrinsic_dim == 3;
 
 // Using i and j for cluster positions.
-#pragma omp parallel for num_threads(thread_count) schedule(guided, 8)
+//        #pragma omp parallel for num_threads(thread_count) schedule(guided, 8)
         for (mint i = 0; i < b_m; ++i)
         {
             mreal x1 = X1[i];
@@ -558,6 +359,7 @@ namespace rsurfaces
 
             // This loop can be SIMDized straight-forwardly (horizontal SIMDization).
             // It is in no way the bottleneck at the moment. BlockClusterTree2::NearFieldEnergy takes many times longer.
+            #pragma omp simd aligned( X2, Y1, Y2, Y3, M1, M2, M3 : ALIGN )
             for (mint k = b_outer[i]; k < b_outer[i + 1]; ++k)
             {
                 mint j = b_inner[k]; // We are in  block {i, j}
@@ -575,15 +377,17 @@ namespace rsurfaces
 
                 mreal hi = mypow(r2, hi_exponent); // I got it down to this single call to pow. We might want to generate a lookup table for it...
 
+
                 hi_values[k] = 2.0 * hi; // The factor 2.0 might be suboptimal. That's what my Mathematica code uses and it seems to work fine.
 
                 //                        near->fr_values[ptr] = pow( r2, fr_exponent );
-                mreal mul = r2;
-                for (mint l = 0; l < intrinsic_dim; ++l)
-                {
-                    mul *= r2;
-                }
-                // mul = pow( r2, 1 + dim);
+
+                mreal r4 = r2 * r2;
+                mreal r6 = r4 * r2;
+                mreal r8 = r4 * r4;
+                // Nasty trick to enforce vectorization without resorting to mypow or pos. Works only if intrinsic_dim is one of 1, 2, or 3.
+                mreal mul = t1 * r4 + t2 * r6 + t3 * r8;
+
                 fr_values[k] = 1. / (hi * mul);
 
                 lo_values[k] = (rCosPhi * rCosPhi + rCosPsi * rCosPsi) / (r2 * r2) * hi;
@@ -621,6 +425,10 @@ namespace rsurfaces
         mreal *const restrict hi_values = &near->hi_values[0];
         mreal *const restrict lo_values = &near->lo_values[0];
 
+        mreal t1 = intrinsic_dim == 1;
+        mreal t2 = intrinsic_dim == 2;
+        mreal t3 = intrinsic_dim == 3;
+
 // Using b_i and b_j for block (leaf cluster) positions.
 // Using i and j for primitive positions.
 #pragma omp parallel for
@@ -654,6 +462,7 @@ namespace rsurfaces
                     mint j_begin = b_col_ptr[b_j];
                     mint j_end = b_col_ptr[b_j + 1];
 
+                    #pragma omp simd aligned( Y1, Y2, Y3, M1, M2, M3 : ALIGN )
                     for (mint j = j_begin; j < j_end; ++j)
                     {
                         if (i != j)
@@ -675,15 +484,19 @@ namespace rsurfaces
                             hi_values[ptr] = 2.0 * hi; // The factor 2.0 might be suboptimal. That's what my Mathematica code uses (somwwhat accidentally) and it seems to work fine.
 
                             //                        near->fr_values[ptr] = pow( r2, fr_exponent );
-                            mreal mul = r2;
-                            for (mint l = 0; l < intrinsic_dim; ++l)
-                            {
-                                mul *= r2;
-                            }
-                            // mul = pow( r2, 1 + dim);
+
+
+//                            mreal mul = mypow( r2 , intrinsic_dim + 1 );
+
+                            mreal r4 = r2 * r2;
+                            mreal r6 = r4 * r2;
+                            mreal r8 = r4 * r4;
+                            // Nasty trick to enforce vectorization without resorting to mypow or pos. Works only if intrinsic_dim is one of 1, 2, or 3.
+                            mreal mul = t1 * r4 + t2 * r6 + t3 * r8;
+
                             fr_values[ptr] = 1. / (hi * mul);
 
-                            lo_values[ptr] = (rCosPhi * rCosPhi + rCosPsi * rCosPsi) / (r2 * r2) * hi;
+                            lo_values[ptr] = (rCosPhi * rCosPhi + rCosPsi * rCosPsi) / r4 * hi;
                         }
                         else
                         {
@@ -710,45 +523,36 @@ namespace rsurfaces
         Multiply(input, output, 1, type, addToResult);
     }
 
-    void BlockClusterTree2::Multiply(Eigen::VectorXd &input, Eigen::VectorXd &output, const mint k, BCTKernelType type, bool addToResult) const
+    void BlockClusterTree2::Multiply(Eigen::VectorXd &input, Eigen::VectorXd &output, const mint cols, BCTKernelType type, bool addToResult) const
     {
-        // Version for vectors of k-dimensional vectors. Input and out are assumed to be stored in interleave format.
-        // E.g., for a list {v1, v2, v3,...} of  k = 3-vectors, we expect { v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z, ... }
+        // Version for vectors of cols-dimensional vectors. Input and out are assumed to be stored in interleave format.
+        // E.g., for a list {v1, v2, v3,...} of  cols = 3-vectors, we expect { v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z, ... }
 
         mint n = T->lo_pre.n; // Expected length for a vector of scalars
-
-        if ((input.size() >= k * n) && (output.size() >= k * n))
+        if ((input.size() >= cols * n) && (output.size() >= cols * n))
         {
-            // the acual multiplocation
-            T->Pre(input.data(), k, type);
+            // the acual multiplication
+
+            T->Pre(input.data(), cols, type);
+
             InternalMultiply(type);
-            S->Post(output.data(), k, type, addToResult);
+
+            S->Post(output.data(), cols, type, addToResult);
 
             if (type == BCTKernelType::HighOrder || type == BCTKernelType::LowOrder)
             {
                 output /= 2;
             }
-
-            //        // Just copy to /add into the remaining entries.
-            //        mint nRemainingEntries = std::min(input.size() , output.size() ) - k * n;
-            //        if(addToResult)
-            //        {
-            //            output.segment(k * n, nRemainingEntries) += input.segment(k * n, nRemainingEntries);
-            //        }
-            //        else
-            //        {
-            //            output.segment(k * n, nRemainingEntries)  = input.segment(k * n, nRemainingEntries);
-            //        }
         }
         else
         {
-            if ((input.size() < k * n))
+            if ((input.size() < cols * n))
             {
-                eprint(" in BlockClusterTree2::Multiply: input vector is to short because" + std::to_string(input.size()) + " < " + std::to_string(k) + " * " + std::to_string(n) + ".");
+                eprint(" in BlockClusterTree2::Multiply: input vector is to short because" + std::to_string(input.size()) + " < " + std::to_string(cols) + " * " + std::to_string(n) + ".");
             }
-            if ((output.size() < k * n))
+            if ((output.size() < cols * n))
             {
-                eprint(" in BlockClusterTree2::Multiply: input vector is to short because" + std::to_string(output.size()) + " < " + std::to_string(k) + " * " + std::to_string(n) + ".");
+                eprint(" in BlockClusterTree2::Multiply: input vector is to short because" + std::to_string(output.size()) + " < " + std::to_string(cols) + " * " + std::to_string(n) + ".");
             }
         }
     }
@@ -764,6 +568,7 @@ namespace rsurfaces
 
         //    tic("Multiply");
 
+        // toc("ComputeDiagonals");
         //    tic("T->Pre");
         T->Pre(input, type);
         //    toc("T->Pre");
@@ -782,9 +587,12 @@ namespace rsurfaces
     void BlockClusterTree2::InternalMultiply(BCTKernelType type) const
     {
 
-        mreal *diag = NULL;
-        A_Vector<mreal> *near_values;
-        A_Vector<mreal> *far_values;
+        // TODO: Make it so that PrepareMetrics can be called here to initialize the actual matrices only when they are needed.
+//        PrepareMetrics();
+
+        mreal * diag = NULL;
+        mreal * near_values = NULL;
+        mreal * far_values = NULL;
 
         mreal factor = 1.;
 
@@ -798,25 +606,25 @@ namespace rsurfaces
         case BCTKernelType::FractionalOnly:
         {
             factor = fr_factor;
-            diag = &fr_diag[0];
-            near_values = &near->fr_values;
-            far_values = &far->fr_values;
+            if( is_symmetric ){ diag = fr_diag; };
+            near_values = near->fr_values;
+            far_values = far->fr_values;
             break;
         }
         case BCTKernelType::HighOrder:
         {
             factor = hi_factor;
-            diag = &hi_diag[0];
-            near_values = &near->hi_values;
-            far_values = &far->hi_values;
+            if( is_symmetric ){ diag = hi_diag; };
+            near_values = near->hi_values;
+            far_values = far->hi_values;
             break;
         }
         case BCTKernelType::LowOrder:
         {
             factor = lo_factor;
-            diag = &lo_diag[0];
-            near_values = &near->lo_values;
-            far_values = &far->lo_values;
+            if( is_symmetric ){ diag = lo_diag; };
+            near_values = near->lo_values;
+            far_values = far->lo_values;
             break;
         }
         default:
@@ -825,107 +633,101 @@ namespace rsurfaces
             return;
         }
         }
-
-        //    tic("Apply");
         // The factor of 2. in the last argument stems from the symmetry of the kernel
 
-        // TODO: In case of S != T, we have to replace each call to by one call to ApplyKernel_CSR_MKL and one to (a yet to be written) ApplyKernelTranspose_CSR_MKL
+        // TODO: In case of S != T, we have to replace each call with one call to ApplyKernel_CSR_MKL and one to (a yet to be written) ApplyKernelTranspose_CSR_MKL
 
-        //    near->ApplyKernel_CSR_Eigen( *near_values, &T->P_in[0], &S->P_out[0], cols, -2.0 * factor );
-        //     far->ApplyKernel_CSR_Eigen(  *far_values, &T->C_in[0], &S->C_out[0], cols, -2.0 * factor );
+        //    near->ApplyKernel_CSR_Eigen( near_values, T->P_in, S->P_out, cols, -2.0 * factor );
+        //     far->ApplyKernel_CSR_Eigen(  far_values, T->C_in, S->C_out, cols, -2.0 * factor );
 
-        // if (!disableNearField)
-        // {
-            //    tic("near MKL");
-            near->ApplyKernel_CSR_MKL(*near_values, &T->P_in[0], &S->P_out[0], cols, -2.0 * factor);
-            //    toc("near MKL");
-        // }
-
-        //    tic("far MKL");
-        far->ApplyKernel_CSR_MKL(*far_values, &T->C_in[0], &S->C_out[0], cols, -2.0 * factor);
-        //    toc("far MKL");
-        //    toc("Apply");
+        near->ApplyKernel_CSR_MKL( near_values, T->P_in, S->P_out, cols, -2.0 * factor );
+         far->ApplyKernel_CSR_MKL(  far_values, T->C_in, S->C_out, cols, -2.0 * factor );
 
         //     Adding product of diagonal matrix of "diags".
-        // TODO: We want to skip this if S != T.
-        if (diag)
-        {
-            //        tic("Diagonal");
-            //        #pragma omp parallel for
-            for (mint i = 0; i < std::min(S->primitive_count, T->primitive_count); ++i) // A crude safe-guard protecting against out-of-bound access if S != T.
+        if ( diag ){
+            #pragma omp parallel for
+            for( mint i = 0; i < std::min( S->primitive_count, T->primitive_count ); ++i )   // A crude safe-guard protecting against out-of-bound access if S != T.
             {
-                cblas_daxpy(cols, diag[i], &T->P_in[cols * i], 1, &S->P_out[cols * i], 1);
-
-                //             Compiler will likely be able to vectorize this
-                //            mreal val = diag[i];
-                //            for( mint k = cols * i; k < cols * (i+1) ; ++k )
-                //            {
-                //                S->P_out[k] += val * T->P_in[k];
-                //            }
+                cblas_daxpy( cols, diag[i], T->P_in + (cols * i), 1, S->P_out + (cols * i), 1 );
             }
-            //        toc("Diagonal");
         }
-
     }; // InternalMultiply
 
     // TODO: Needs to be adjusted when S and T are not the same!!!
     void BlockClusterTree2::ComputeDiagonals()
     {
-        //    A_Vector<mreal> diag ( S->primitive_count, 1. );
-        S->PrepareBuffers(1);
-        T->PrepareBuffers(1);
-
-        //Sloppily: hi_diag = hi_ker * P_data[0], where hi_ker is the kernel implemented in ApplyKernel_CSR_MKL
-
-        // Initialize the "diag" vector (weighted by the primitive weights
-        std::copy(T->P_data[0].begin(), T->P_data[0].begin() + T->primitive_count, T->P_in.begin());
-
-        T->P_to_C.Multiply(&T->P_in[0], &T->C_in[0], 1);
-
-        T->PercolateUp(0, thread_count);
-
-        fr_diag = A_Vector<mreal>(S->primitive_count);
-        hi_diag = A_Vector<mreal>(S->primitive_count);
-        lo_diag = A_Vector<mreal>(S->primitive_count);
-
-        // The factor of 2. in the last argument stems from the symmetry of the kernel
-        far->ApplyKernel_CSR_MKL(far->fr_values, &T->C_in[0], &S->C_out[0], 1, 2. * fr_factor);
-        near->ApplyKernel_CSR_MKL(near->fr_values, &T->P_in[0], &S->P_out[0], 1, 2. * fr_factor);
-        S->PercolateDown(0, thread_count);
-        S->C_to_P.Multiply(&S->C_out[0], &S->P_out[0], 1, true);
-
-        // TODO: Explain the hack of dividing by S->P_data[0][i] here to a future self so that he won't change this later.
-        A_Vector<mreal> ainv(S->primitive_count);
-
-#pragma omp parallel for
-        for (mint i = 0; i < S->primitive_count; ++i)
+        if( is_symmetric )
         {
-            ainv[i] = 1. / (S->P_data[0][i]);
-            fr_diag[i] = ainv[i] * (S->P_out[i]);
+            S->PrepareBuffers(1);
+            T->PrepareBuffers(1);
+
+            //Sloppily: hi_diag = hi_ker * P_data[0], where hi_ker is the kernel implemented in ApplyKernel_CSR_MKL
+
+            // Initialize the "diag" vector (weighted by the primitive weights)
+            {
+                mreal * a = &T->P_data[0][0];
+                mreal * diag = T->P_in;
+                #pragma omp simd aligned( a, diag : ALIGN )
+                for( mint i = 0; i < T->primitive_count; ++i )
+                {
+                    diag[i] = a[i];
+                }
+            }
+
+    //        print("T->P_to_C.Multiply");
+            T->P_to_C.Multiply( T->P_in, T->C_in, 1);
+    //        tic("T->PercolateUp");
+            T->PercolateUp( 0 , T->thread_count );
+    //        toc("T->PercolateUp");
+
+            fr_diag = mreal_alloc( S->primitive_count );
+            hi_diag = mreal_alloc( S->primitive_count );
+            lo_diag = mreal_alloc( S->primitive_count );
+
+
+            // The factor of 2. in the last argument stems from the symmetry of the kernel
+            far->ApplyKernel_CSR_MKL(  far->fr_values, T->C_in, S->C_out, 1, 2. * fr_factor );
+           near->ApplyKernel_CSR_MKL( near->fr_values, T->P_in, S->P_out, 1, 2. * fr_factor );
+
+            S->PercolateDown( 0 , S->thread_count );
+            S->C_to_P.Multiply( S->C_out, S->P_out, 1, true);
+
+
+            // TODO: Explain the hack of dividing by S->P_data[0][i] here to a future self so that he won't change this later.
+            A_Vector<mreal> ainv (S->primitive_count);
+
+            #pragma omp parallel for
+            for( mint i = 0; i < S->primitive_count; ++i )
+            {
+                ainv[i] = 1./(S->P_data[0][i]);
+                fr_diag[i] =  ainv[i] * (S->P_out[i]);
+            }
+
+
+            far->ApplyKernel_CSR_MKL(  far->hi_values, T->C_in, S->C_out, 1, 2. * hi_factor );
+           near->ApplyKernel_CSR_MKL( near->hi_values, T->P_in, S->P_out, 1, 2. * hi_factor );
+
+            S->PercolateDown( 0 , S->thread_count );
+            S->C_to_P.Multiply( S->C_out, S->P_out, 1, true);
+
+            #pragma omp parallel for
+            for( mint i = 0; i < S->primitive_count; ++i )
+            {
+                hi_diag[i] =  ainv[i] * (S->P_out[i]);
+            }
+
+            far->ApplyKernel_CSR_MKL(  far->lo_values, T->C_in, S->C_out, 1, 2. * lo_factor );
+           near->ApplyKernel_CSR_MKL( near->lo_values, T->P_in, S->P_out, 1, 2. * lo_factor );
+
+            S->PercolateDown( 0 , S->thread_count );
+            S->C_to_P.Multiply( S->C_out, S->P_out, 1, true);
+
+            #pragma omp parallel for
+            for( mint i = 0; i < S->primitive_count; ++i )
+            {
+                lo_diag[i] =  ainv[i] * (S->P_out[i]);
+            }
         }
-
-        far->ApplyKernel_CSR_MKL(far->hi_values, &T->C_in[0], &S->C_out[0], 1, 2. * hi_factor);
-        near->ApplyKernel_CSR_MKL(near->hi_values, &T->P_in[0], &S->P_out[0], 1, 2. * hi_factor);
-
-        S->PercolateDown(0, thread_count);
-        S->C_to_P.Multiply(&S->C_out[0], &S->P_out[0], 1, true);
-
-#pragma omp parallel for
-        for (mint i = 0; i < S->primitive_count; ++i)
-        {
-            hi_diag[i] = ainv[i] * (S->P_out[i]);
-        }
-
-        far->ApplyKernel_CSR_MKL(far->lo_values, &T->C_in[0], &S->C_out[0], 1, 2. * lo_factor);
-        near->ApplyKernel_CSR_MKL(near->lo_values, &T->P_in[0], &S->P_out[0], 1, 2. * lo_factor);
-        S->PercolateDown(0, thread_count);
-        S->C_to_P.Multiply(&S->C_out[0], &S->P_out[0], 1, true);
-#pragma omp parallel for
-        for (mint i = 0; i < S->primitive_count; ++i)
-        {
-            lo_diag[i] = ainv[i] * (S->P_out[i]);
-        }
-
     }; // ComputeDiagonals
 
 } // namespace rsurfaces

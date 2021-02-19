@@ -4,6 +4,7 @@
 #include "surface_energy.h"
 #include "helpers.h"
 #include "block_cluster_tree2_types.h"
+#include "derivative_assembler.h"
 
 namespace rsurfaces
 {

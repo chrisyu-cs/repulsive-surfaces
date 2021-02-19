@@ -7,7 +7,7 @@ namespace rsurfaces
     //      Barnes-Hut Energy
     //######################################################################################################################################
 
-    mreal BlockClusterTree2::BarnesHutEnergy()
+    mreal BlockClusterTree2::BarnesHutEnergy0()
     {
         
         mreal real_minus_betahalf = -beta/2.;
@@ -174,10 +174,10 @@ namespace rsurfaces
             sum += local_sum;
         }
         return sum;
-    }; //BarnesHutEnergyInteger
+    }; //BarnesHutEnergy0
 
 
-    mreal BlockClusterTree2::DBarnesHutEnergyHelper()
+    mreal BlockClusterTree2::DBarnesHutEnergy0Helper()
     {
         mreal real_alpha_minus_2 = alpha - 2.;
         mreal real_minus_betahalf_minus_1 = -beta/2.;
@@ -228,8 +228,8 @@ namespace rsurfaces
             
             A_Vector<mint> * stack = &thread_stack[thread];
             
-            mreal * const restrict P_U = &S->P_D[thread][0];
-            mreal * const restrict C_U = &S->C_D[thread][0];
+            mreal * const restrict P_U = &S->P_D_data[thread][0];
+            mreal * const restrict C_U = &S->C_D_data[thread][0];
             
             stack->clear();
             stack->push_back(0);
@@ -433,6 +433,6 @@ namespace rsurfaces
             }
         }
         return sum;
-    }; //DBarnesHutEnergyHelper
+    }; //DBarnesHutEnergy0Helper
 
 }
