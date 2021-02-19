@@ -14,6 +14,7 @@
 
 #include <mkl.h>
 #include "block_cluster_tree2.h"
+#include "energy/willmore_energy.h"
 
 #define EIGEN_NO_DEBUG
 
@@ -32,6 +33,8 @@ namespace rsurfaces
         static MainApp *instance;
         MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow *flow_, polyscope::SurfaceMesh *psMesh_, std::string meshName_);
 
+        void TestWillmore();
+        void TestMultipole();
         void TestNewMVProduct();
         void TestMVProduct();
         void TestIterative();

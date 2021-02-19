@@ -31,6 +31,8 @@
 #include "energy/coulomb.h"
 
 #include "bct_constructors.h"
+#include "energy/willmore_energy.h"
+#include "energy/tpe_multipole_0.h"
 
 #include "remeshing/remeshing.h"
 
@@ -592,8 +594,83 @@ namespace rsurfaces
         numericalNormalDeriv(geom, vert, vert).Print();
     }
 
+    void MainApp::TestMultipole()
+    {
+        std::cout << std::setprecision(16);
+        std::cout << "Testing TPEnergyMultipole0" << std::endl;
+        auto mesh = rsurfaces::MainApp::instance->mesh;
+        auto geom = rsurfaces::MainApp::instance->geom;
+        
+        
+        tic("CreateOptimizedBCT");
+        BlockClusterTree2 *bct = CreateOptimizedBCT(mesh, geom, 6., 12., 0.5);
+        toc("CreateOptimizedBCT");
+        
+        TPEnergyMultipole0 * tpe = new TPEnergyMultipole0( mesh, geom, bct );
+        
+        tic("Value");
+        double E = tpe->Value();
+        toc("Value");
+        
+        std::cout << "E = " << E << std::endl;
+        
+        
+        Eigen::MatrixXd DE ( mesh->nVertices(), 3 );
+        
+        tic("Differential");
+        tpe->Differential(DE);
+        toc("Differential");
+        
+        std::cout << "DE = " << DE(0,0) << " , " << DE(0,1) <<  " , " << DE(0,2)  << std::endl;
+        std::cout << "     " << DE(1,0) << " , " << DE(1,1) <<  " , " << DE(1,2)  << std::endl;
+        std::cout << "     " << DE(2,0) << " , " << DE(2,1) <<  " , " << DE(2,2)  << std::endl;
+        std::cout << "     " << DE(3,0) << " , " << DE(3,1) <<  " , " << DE(3,2)  << std::endl;
+        std::cout << "     " << DE(4,0) << " , " << DE(4,1) <<  " , " << DE(4,2)  << std::endl;
+        
+        delete bct;
+        delete tpe;
+    } // TestMultipole
+
+
+    void MainApp::TestWillmore()
+    {
+        
+        std::cout << std::setprecision(16);
+        
+        
+        auto mesh = rsurfaces::MainApp::instance->mesh;
+        auto geom = rsurfaces::MainApp::instance->geom;
+    
+        VertexIndices vInds = mesh->getVertexIndices();
+
+        SurfaceEnergy * willmore = new WillmoreEnergy( mesh , geom );
+        
+        tic("Value");
+        double E = willmore->Value();
+        toc("Value");
+        
+        std::cout << "E = " << E << std::endl;
+        
+        
+        Eigen::MatrixXd DE ( mesh->nVertices(), 3 );
+        
+        tic("Differential");
+        willmore->Differential(DE);
+        toc("Differential");
+        
+        std::cout << "DE = " << DE(0,0) << " , " << DE(0,1) <<  " , " << DE(0,2)  << std::endl;
+        std::cout << "     " << DE(1,0) << " , " << DE(1,1) <<  " , " << DE(1,2)  << std::endl;
+        std::cout << "     " << DE(2,0) << " , " << DE(2,1) <<  " , " << DE(2,2)  << std::endl;
+        std::cout << "     " << DE(3,0) << " , " << DE(3,1) <<  " , " << DE(3,2)  << std::endl;
+        std::cout << "     " << DE(4,0) << " , " << DE(4,1) <<  " , " << DE(4,2)  << std::endl;
+        
+        delete willmore;
+    } // TestWillmore
+
+
     void MainApp::TestNewMVProduct()
     {
+        
         auto mesh = rsurfaces::MainApp::instance->mesh;
         auto geom = rsurfaces::MainApp::instance->geom;
         size_t nVertices = mesh->nVertices();
@@ -607,7 +684,6 @@ namespace rsurfaces
         MatrixUtils::MatrixIntoColumn(gradient, gVec);
         Vector2 exps = energy->GetExponents();
         double s = 2 - Hs::get_s(exps.x, exps.y);
-
         Hs::HsMetric hs(energy);
         std::cout << "Dense fractional Laplacian (s = " << s << "):" << std::endl;
         Eigen::MatrixXd dense, dense_small;
@@ -619,17 +695,25 @@ namespace rsurfaces
         MatrixUtils::TripleMatrix(dense_small, dense);
         // Multiply it
         Eigen::VectorXd denseRes = dense * gVec;
-
         long constructStart = currentTimeMilliseconds();
 
         BlockClusterTree2 *bct = CreateOptimizedBCT(mesh, geom, exps.x, exps.y, 0.5);
-
+        
+//        tic("DFarFieldEnergyHelper");
+//        mreal EFar = bct->DFarFieldEnergyHelper();
+//        toc("DFarFieldEnergyHelper");
+//        
+//        tic("DNearFieldEnergyHelper");
+//        mreal ENear = bct->DNearFieldEnergyHelper();
+//        toc("DNearFieldEnergyHelper");
+//        
+//        print( "Multipole energy  = " + std::to_string( EFar + ENear ) );
+        
         long constructEnd = currentTimeMilliseconds();
 
         Eigen::VectorXd fastRes;
         fastRes.setZero(nVertices * 3);
         bct->MultiplyV3(gVec, fastRes, BCTKernelType::FractionalOnly);
-
         long multiplyEnd = currentTimeMilliseconds();
 
         std::cout << "Construction time = " << (constructEnd - constructStart) << " ms" << std::endl;
@@ -1120,6 +1204,17 @@ void customCallback()
     ImGui::BeginGroup();
     ImGui::Indent(INDENT);
 
+    
+    if (ImGui::Button("Test Willmore", ImVec2{ITEM_WIDTH, 0}))
+    {
+        MainApp::instance->TestWillmore();
+    }
+    
+    if (ImGui::Button("Test Multipole0", ImVec2{ITEM_WIDTH, 0}))
+    {
+        MainApp::instance->TestMultipole();
+    }
+    
     if (ImGui::Button("Test new MV product", ImVec2{ITEM_WIDTH, 0}))
     {
         MainApp::instance->TestNewMVProduct();
