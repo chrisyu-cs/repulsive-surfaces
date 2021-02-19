@@ -23,7 +23,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STR
   # using Clang (linux or apple) or GCC
   message("Using clang/gcc compiler flags")
   SET(BASE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Werror -Xpreprocessor -fopenmp")
-  SET(DISABLED_WARNINGS " -Wno-unknown-warning-option -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-copy -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field -Wno-range-loop-analysis")
+  SET(DISABLED_WARNINGS " -Wno-unknown-warning-option -Wno-pass-failed -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-copy -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field -Wno-range-loop-analysis")
   SET(TRACE_INCLUDES " -H -Wno-error=unused-command-line-argument")
         
   if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")

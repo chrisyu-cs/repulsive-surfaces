@@ -57,7 +57,7 @@ namespace rsurfaces
             P_ext_pos[i] = ordering_[i];
         }
 
-        P_coords = A_Vector<mreal * restrict>( dim, NULL );
+        P_coords = A_Vector<mreal * >( dim, NULL );
         #pragma omp parallel for
         for( mint k = 0; k < dim; ++k)
         {
@@ -264,11 +264,11 @@ namespace rsurfaces
             C->left  = new Cluster2 ( begin, splitindex, C->depth+1 );
             C->right = new Cluster2 ( splitindex, end, C->depth+1 );
             // ... and split them in parallel
-            #pragma omp task final(free_thread_count<1) default(none) shared(C) firstprivate( free_thread_count )
+            #pragma omp task final(free_thread_count<1) default(none) shared(C)
             {
                 SplitCluster( C->left, free_thread_count/2 );
             }
-            #pragma omp task final(free_thread_count<1) default(none) shared(C) firstprivate( free_thread_count )
+            #pragma omp task final(free_thread_count<1) default(none) shared(C)
             {
                 SplitCluster( C->right, free_thread_count - free_thread_count/2 );
             }
@@ -333,14 +333,14 @@ namespace rsurfaces
     {
     //    A_Vector<mreal> v (primitive_count);
     //    P_data   = A_Vector<A_Vector<mreal>> ( data_dim, v );
-        P_data = A_Vector<mreal * restrict> ( data_dim, NULL );
+        P_data = A_Vector<mreal * > ( data_dim, NULL );
         for( mint k = 0; k < data_dim; ++ k )
         {
             P_data[k] = mreal_alloc( primitive_count );
         }
         
-        P_min = A_Vector<mreal * restrict> ( dim, NULL );
-        P_max = A_Vector<mreal * restrict> ( dim, NULL );
+        P_min = A_Vector<mreal * > ( dim, NULL );
+        P_max = A_Vector<mreal * > ( dim, NULL );
         for( mint k = 0; k < data_dim; ++ k )
         {
             P_min[k] = mreal_alloc( primitive_count );
@@ -406,15 +406,15 @@ namespace rsurfaces
 //            scratch[thread] = A_Vector<mreal> ( scratch_size );
 //        }
         
-        C_data = A_Vector<mreal * restrict> ( data_dim, NULL );
+        C_data = A_Vector<mreal * > ( data_dim, NULL );
         for( mint k = 0; k < data_dim; ++ k )
         {
             C_data[k] = mreal_alloc( cluster_count, 0. );
         }
         
-        C_coords = A_Vector<mreal * restrict> ( dim, NULL );
-        C_min = A_Vector<mreal * restrict> ( dim, NULL );
-        C_max = A_Vector<mreal * restrict> ( dim, NULL );
+        C_coords = A_Vector<mreal * > ( dim, NULL );
+        C_min = A_Vector<mreal * > ( dim, NULL );
+        C_max = A_Vector<mreal * > ( dim, NULL );
         for( mint k = 0; k < data_dim; ++ k )
         {
             C_coords[k] = mreal_alloc( cluster_count, 0. );

@@ -80,10 +80,10 @@ namespace rsurfaces
         
         // Primitive double data, stored in Structure of Arrays fashion
         
-        A_Vector<mreal * restrict> P_data;     //weight, center, normal, stored consecutively; assumed to be matrix of size data_dim x n!
-        A_Vector<mreal * restrict> P_coords;   //clustering coordinates, stored as dim x n matrix
-        A_Vector<mreal * restrict> P_min;      //lower bounding box point, stored as dim x n matrix
-        A_Vector<mreal * restrict> P_max;      //upper bounding box point, stored as dim x n matrix
+        A_Vector<mreal * > P_data;     //weight, center, normal, stored consecutively; assumed to be matrix of size data_dim x n!
+        A_Vector<mreal * > P_coords;   //clustering coordinates, stored as dim x n matrix
+        A_Vector<mreal * > P_min;      //lower bounding box point, stored as dim x n matrix
+        A_Vector<mreal * > P_max;      //upper bounding box point, stored as dim x n matrix
 //        A_Vector<mreal * restrict> P_moments;
         mreal * restrict P_in  = NULL;
         mreal * restrict P_out = NULL;
@@ -91,10 +91,10 @@ namespace rsurfaces
 
         // Cluster double data, stored in Structure of Arrays fashion
         
-        A_Vector<mreal * restrict> C_data;      //weight, center, normal, stored consecutively; assumed to be matrix of size data_dim x n
-        A_Vector<mreal * restrict> C_coords;    //clustering coordinate
-        A_Vector<mreal * restrict> C_min;
-        A_Vector<mreal * restrict> C_max;
+        A_Vector<mreal * > C_data;      //weight, center, normal, stored consecutively; assumed to be matrix of size data_dim x n
+        A_Vector<mreal * > C_coords;    //clustering coordinate
+        A_Vector<mreal * > C_min;
+        A_Vector<mreal * > C_max;
 //        A_Vector<mreal * restrict> C_moments;
         mreal * restrict C_in  = NULL;
         mreal * restrict C_out = NULL;
