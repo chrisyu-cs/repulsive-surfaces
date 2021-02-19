@@ -82,7 +82,7 @@ namespace rsurfaces
 
         // create a cluster tree
         int split_threashold = 8;
-        ClusterTree2 *bvh = new ClusterTree2(
+        std::shared_ptr<ClusterTree2> bvh = std::make_shared<ClusterTree2>(
             &P_coords[0],      // coordinates used for clustering
             nFaces,            // number of primitives
             3,                 // dimension of ambient space
@@ -104,7 +104,7 @@ namespace rsurfaces
             beta,  // second parameter of the energy (for the denominator)
             theta  // separation parameter; different gauge for thetas as before are the block clustering is performed slightly differently from before
         );
-        
+
         return bct;
     }
 } // namespace rsurfaces

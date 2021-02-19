@@ -264,11 +264,11 @@ namespace rsurfaces
             C->left  = new Cluster2 ( begin, splitindex, C->depth+1 );
             C->right = new Cluster2 ( splitindex, end, C->depth+1 );
             // ... and split them in parallel
-            #pragma omp task final(free_thread_count<1) default(none) shared(C)
+            #pragma omp task final(free_thread_count<1) default(none) shared(C, free_thread_count)
             {
                 SplitCluster( C->left, free_thread_count/2 );
             }
-            #pragma omp task final(free_thread_count<1) default(none) shared(C)
+            #pragma omp task final(free_thread_count<1) default(none) shared(C, free_thread_count)
             {
                 SplitCluster( C->right, free_thread_count - free_thread_count/2 );
             }
@@ -732,7 +732,7 @@ namespace rsurfaces
 
     void ClusterTree2::Post( Eigen::MatrixXd & output, BCTKernelType type, bool addToResult )
     {
-        tic("Post Eigen");
+//        tic("Post Eigen");
         mint cols = output.cols();
         
         EigenMatrixRM output_wrapper ( output.rows(), output.cols() );
@@ -747,12 +747,12 @@ namespace rsurfaces
         {
             output  = output_wrapper;        // This also converts back to the requested storage type (row/column major).
         }
-        toc("Post Eigen");
+//        toc("Post Eigen");
     }
 
     void ClusterTree2::Post( mreal * output, const mint cols, BCTKernelType type, bool addToResult )
     {
-        tic("Post");
+//        tic("Post");
         MKLSparseMatrix * post;
         
         mint expected_dim = buffer_dim;
@@ -792,21 +792,21 @@ namespace rsurfaces
             wprint("Expected number of columns  = " + std::to_string( expected_dim ) + " is greater than requested number of columns " + std::to_string( cols ) + ". Truncating output. Result is very likely unexpected." );
         }
         
-        tic("PercolateDown");
+//        tic("PercolateDown");
         PercolateDown( 0, thread_count );
-        toc("PercolateDown");
+//        toc("PercolateDown");
         
         // Add data from leaf clusters into data on primitives
-        tic("C_to_P");
+//        tic("C_to_P");
         C_to_P.Multiply( C_out, P_out, buffer_dim, true );  // Beware: The derivative operator increases the number of columns!
-        toc("C_to_P");
+//        toc("C_to_P");
         
         // Multiply by weights, restore external ordering, and apply transpose of diff/averaging operator.
-        tic("MKL post");
+//        tic("MKL post");
         post->Multiply( P_out, output, cols, false );
-        toc("MKL post");
+//        toc("MKL post");
         
-        toc("Post");
+//        toc("Post");
     }; // Post
 
 

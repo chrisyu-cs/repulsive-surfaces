@@ -598,7 +598,7 @@ namespace rsurfaces
     void MainApp::TestMultipole0()
     {
         std::cout << std::setprecision(16);
-        std::cout << "Testing TPEnergyMultipole0" << std::endl;
+        std::cout << "\n=====   TPEnergyMultipole0   =====" << std::endl;
         auto mesh = rsurfaces::MainApp::instance->mesh;
         auto geom = rsurfaces::MainApp::instance->geom;
         
@@ -608,48 +608,48 @@ namespace rsurfaces
         BlockClusterTree2 *bct = CreateOptimizedBCT(mesh, geom, 6., 12., 0.25);
         toc("CreateOptimizedBCT");
         
-        valprint("bct->use_int" , bct->use_int);
+        valprint("Use integer exponents" , bct->use_int);
         
         TPEnergyMultipole0 * tpe = new TPEnergyMultipole0( mesh, geom, bct );
         
-        tic("Value");
+        tic("Compute Value");
         double E = tpe->Value();
-        toc("Value");
+        toc("Compute Value");
         
-        std::cout << "E = " << E << std::endl;
+        std::cout << "  E = " << E << std::endl;
         
         Eigen::MatrixXd DE ( mesh->nVertices(), 3 );
         
-        tic("Differential");
+        tic("Compute Differential");
         tpe->Differential(DE);
-        toc("Differential");
+        toc("Compute Differential");
         
-        std::cout << "DE = " << DE(0,0) << " , " << DE(0,1) <<  " , " << DE(0,2)  << std::endl;
-        std::cout << "     " << DE(1,0) << " , " << DE(1,1) <<  " , " << DE(1,2)  << std::endl;
-        std::cout << "     " << DE(2,0) << " , " << DE(2,1) <<  " , " << DE(2,2)  << std::endl;
-        std::cout << "     " << DE(3,0) << " , " << DE(3,1) <<  " , " << DE(3,2)  << std::endl;
-        std::cout << "     " << DE(4,0) << " , " << DE(4,1) <<  " , " << DE(4,2)  << std::endl;
+        std::cout << "  DE = " << DE(0,0) << " , " << DE(0,1) <<  " , " << DE(0,2)  << std::endl;
+        std::cout << "       " << DE(1,0) << " , " << DE(1,1) <<  " , " << DE(1,2)  << std::endl;
+        std::cout << "       " << DE(2,0) << " , " << DE(2,1) <<  " , " << DE(2,2)  << std::endl;
+        std::cout << "       " << DE(3,0) << " , " << DE(3,1) <<  " , " << DE(3,2)  << std::endl;
+        std::cout << "       " << DE(4,0) << " , " << DE(4,1) <<  " , " << DE(4,2)  << std::endl;
         
         bct->use_int = false;
-        valprint("bct->use_int" , bct->use_int);
+        valprint("Use integer exponents" , bct->use_int);
         
-        tic("Value");
+        tic("Compute Value");
         E = tpe->Value();
-        toc("Value");
+        toc("Compute Value");
         
-        std::cout << "E = " << E << std::endl;
+        std::cout << "  E = " << E << std::endl;
         
-        tic("Differential");
+        tic("Compute Differential");
         tpe->Differential(DE);
-        toc("Differential");
+        toc("Compute Differential");
         
-        std::cout << "DE = " << DE(0,0) << " , " << DE(0,1) <<  " , " << DE(0,2)  << std::endl;
-        std::cout << "     " << DE(1,0) << " , " << DE(1,1) <<  " , " << DE(1,2)  << std::endl;
-        std::cout << "     " << DE(2,0) << " , " << DE(2,1) <<  " , " << DE(2,2)  << std::endl;
-        std::cout << "     " << DE(3,0) << " , " << DE(3,1) <<  " , " << DE(3,2)  << std::endl;
-        std::cout << "     " << DE(4,0) << " , " << DE(4,1) <<  " , " << DE(4,2)  << std::endl;
+        std::cout << "  DE = " << DE(0,0) << " , " << DE(0,1) <<  " , " << DE(0,2)  << std::endl;
+        std::cout << "       " << DE(1,0) << " , " << DE(1,1) <<  " , " << DE(1,2)  << std::endl;
+        std::cout << "       " << DE(2,0) << " , " << DE(2,1) <<  " , " << DE(2,2)  << std::endl;
+        std::cout << "       " << DE(3,0) << " , " << DE(3,1) <<  " , " << DE(3,2)  << std::endl;
+        std::cout << "       " << DE(4,0) << " , " << DE(4,1) <<  " , " << DE(4,2)  << std::endl;
+        
         delete tpe;
-        
         delete bct;
 
     } // TestMultipole0
@@ -658,7 +658,7 @@ namespace rsurfaces
     void MainApp::TestBarnesHut0()
     {
         std::cout << std::setprecision(16);
-        std::cout << "Testing TPEnergyBarnesHut0" << std::endl;
+        std::cout << "\n=====   TPEnergyBarnesHut0   =====" << std::endl;
         auto mesh = rsurfaces::MainApp::instance->mesh;
         auto geom = rsurfaces::MainApp::instance->geom;
         
@@ -672,7 +672,7 @@ namespace rsurfaces
         double E = tpe->Value();
         toc("Value");
         
-        std::cout << "E = " << E << std::endl;
+        std::cout << "  E = " << E << std::endl;
         
         Eigen::MatrixXd DE ( mesh->nVertices(), 3 );
         
@@ -681,11 +681,11 @@ namespace rsurfaces
         tpe->Differential(DE);
         toc("Differential");
         
-        std::cout << "DE = " << DE(0,0) << " , " << DE(0,1) <<  " , " << DE(0,2)  << std::endl;
-        std::cout << "     " << DE(1,0) << " , " << DE(1,1) <<  " , " << DE(1,2)  << std::endl;
-        std::cout << "     " << DE(2,0) << " , " << DE(2,1) <<  " , " << DE(2,2)  << std::endl;
-        std::cout << "     " << DE(3,0) << " , " << DE(3,1) <<  " , " << DE(3,2)  << std::endl;
-        std::cout << "     " << DE(4,0) << " , " << DE(4,1) <<  " , " << DE(4,2)  << std::endl;
+        std::cout << "  DE = " << DE(0,0) << " , " << DE(0,1) <<  " , " << DE(0,2)  << std::endl;
+        std::cout << "       " << DE(1,0) << " , " << DE(1,1) <<  " , " << DE(1,2)  << std::endl;
+        std::cout << "       " << DE(2,0) << " , " << DE(2,1) <<  " , " << DE(2,2)  << std::endl;
+        std::cout << "       " << DE(3,0) << " , " << DE(3,1) <<  " , " << DE(3,2)  << std::endl;
+        std::cout << "       " << DE(4,0) << " , " << DE(4,1) <<  " , " << DE(4,2)  << std::endl;
         
         delete bct;
         delete tpe;
@@ -693,6 +693,8 @@ namespace rsurfaces
 
     void MainApp::TestWillmore()
     {
+     
+        std::cout << "\n=====   WillmoreEnergy   =====" << std::endl;
         
         std::cout << std::setprecision(16);
         
@@ -708,7 +710,7 @@ namespace rsurfaces
         double E = willmore->Value();
         toc("Value");
         
-        std::cout << "E = " << E << std::endl;
+        std::cout << "  E = " << E << std::endl;
         
         
         Eigen::MatrixXd DE ( mesh->nVertices(), 3 );
@@ -717,11 +719,11 @@ namespace rsurfaces
         willmore->Differential(DE);
         toc("Differential");
         
-        std::cout << "DE = " << DE(0,0) << " , " << DE(0,1) <<  " , " << DE(0,2)  << std::endl;
-        std::cout << "     " << DE(1,0) << " , " << DE(1,1) <<  " , " << DE(1,2)  << std::endl;
-        std::cout << "     " << DE(2,0) << " , " << DE(2,1) <<  " , " << DE(2,2)  << std::endl;
-        std::cout << "     " << DE(3,0) << " , " << DE(3,1) <<  " , " << DE(3,2)  << std::endl;
-        std::cout << "     " << DE(4,0) << " , " << DE(4,1) <<  " , " << DE(4,2)  << std::endl;
+        std::cout << "  DE = " << DE(0,0) << " , " << DE(0,1) <<  " , " << DE(0,2)  << std::endl;
+        std::cout << "       " << DE(1,0) << " , " << DE(1,1) <<  " , " << DE(1,2)  << std::endl;
+        std::cout << "       " << DE(2,0) << " , " << DE(2,1) <<  " , " << DE(2,2)  << std::endl;
+        std::cout << "       " << DE(3,0) << " , " << DE(3,1) <<  " , " << DE(3,2)  << std::endl;
+        std::cout << "       " << DE(4,0) << " , " << DE(4,1) <<  " , " << DE(4,2)  << std::endl;
         
         delete willmore;
     } // TestWillmore

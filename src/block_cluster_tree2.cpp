@@ -3,7 +3,7 @@
 namespace rsurfaces
 {
 
-    BlockClusterTree2::BlockClusterTree2(ClusterTree2 *S_, ClusterTree2 *T_, const mreal alpha_, const mreal beta_, const mreal theta_, bool exploit_symmetry_, bool upper_triangular_)
+    BlockClusterTree2::BlockClusterTree2(std::shared_ptr<ClusterTree2> S_, std::shared_ptr<ClusterTree2> T_, const mreal alpha_, const mreal beta_, const mreal theta_, bool exploit_symmetry_, bool upper_triangular_)
     {
         // tic("Initializing BlockClusterTree2");
         S = S_;
@@ -57,9 +57,9 @@ namespace rsurfaces
 
         // tic("SplitBlockCluster");
 
-#pragma omp parallel num_threads(thread_count) default(none) shared(thread_sep_idx, thread_sep_jdx, thread_nonsep_idx, thread_nonsep_jdx)
+        #pragma omp parallel num_threads(thread_count) default(none) shared(thread_sep_idx, thread_sep_jdx, thread_nonsep_idx, thread_nonsep_jdx)
         {
-#pragma omp single
+            #pragma omp single
             {
                 SplitBlockCluster(thread_sep_idx, thread_sep_jdx, thread_nonsep_idx, thread_nonsep_jdx, 0, 0, thread_count);
             }
@@ -180,19 +180,19 @@ namespace rsurfaces
                     // split only larger cluster
                     if (scorei > scorej)
                     {
-//split cluster i
-#pragma omp task final(free_thread_count < 1) default(none) firstprivate(lefti) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        //split cluster i
+                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(lefti, j, free_thread_count) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, lefti, j, free_thread_count / 2);
-#pragma omp task final(free_thread_count < 1) default(none) firstprivate(righti) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(righti, j, free_thread_count) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, righti, j, free_thread_count - free_thread_count / 2);
                         //                    #pragma omp taskwait
                     }
                     else //scorei < scorej
                     {
 //split cluster j
-#pragma omp task final(free_thread_count < 1) default(none) firstprivate(leftj) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(leftj, i, free_thread_count) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, i, leftj, free_thread_count / 2);
-#pragma omp task final(free_thread_count < 1) default(none) firstprivate(rightj) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(rightj, i, free_thread_count) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, i, rightj, free_thread_count - free_thread_count / 2);
                         //                    #pragma omp taskwait
                     }
@@ -317,7 +317,7 @@ namespace rsurfaces
 //            toc("ComputeDiagonals");
 
             metrics_initialized = true;
-    //        print("Done: PrepareMetrics.");
+//          print("Done: PrepareMetrics.");
         }
     } // PrepareMetrics
 
@@ -360,10 +360,12 @@ namespace rsurfaces
             mreal x3 = X3[i];
             mreal n3 = N3[i];
 
+            mint k_begin = b_outer[i];
+            mint k_end = b_outer[i+1];
             // This loop can be SIMDized straight-forwardly (horizontal SIMDization).
             // It is in no way the bottleneck at the moment. BlockClusterTree2::NearFieldEnergy takes many times longer.
             #pragma omp simd aligned( X2, Y1, Y2, Y3, M1, M2, M3 : ALIGN )
-            for (mint k = b_outer[i]; k < b_outer[i + 1]; ++k)
+            for (mint k = k_begin; k < k_end; ++k)
             {
                 mint j = b_inner[k]; // We are in  block {i, j}
 
@@ -434,7 +436,7 @@ namespace rsurfaces
 
 // Using b_i and b_j for block (leaf cluster) positions.
 // Using i and j for primitive positions.
-#pragma omp parallel for
+        #pragma omp parallel for
         for (mint b_i = 0; b_i < b_m; ++b_i) // we are going to loop over all rows in block fashion
         {
             mint k_begin = b_outer[b_i];

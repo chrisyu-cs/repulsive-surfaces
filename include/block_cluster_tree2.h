@@ -37,32 +37,32 @@ namespace rsurfaces
 
         bool disableNearField = false;
 
-        BlockClusterTree2(ClusterTree2 *S_, ClusterTree2 *T_, const mreal alpha_, const mreal beta_, const mreal theta_, bool exploit_symmetry_ = true, bool upper_triangular_ = false);
+        BlockClusterTree2(std::shared_ptr<ClusterTree2> S_, std::shared_ptr<ClusterTree2> T_, const mreal alpha_, const mreal beta_, const mreal theta_, bool exploit_symmetry_ = true, bool upper_triangular_ = false);
 
         ~BlockClusterTree2()
         {
-            // If the two pointers are distinct, delete both
-            if (S != T)
-            {
-                if (S)
-                    delete S;
-                if (T)
-                    delete T;
-            }
-            // If they're the same, just delete one
-            else
-            {
-                if (S)
-                    delete S;
-            }
+//            // If the two pointers are distinct, delete both
+//            if (S != T)
+//            {
+//                if (S)
+//                    delete S;
+//                if (T)
+//                    delete T;
+//            }
+//            // If they're the same, just delete one
+//            else
+//            {
+//                if (S)
+//                    delete S;
+//            }
             
             mreal_free(hi_diag);
             mreal_free(lo_diag);
             mreal_free(fr_diag);
         };
 
-        mutable ClusterTree2 *S; // "left" ClusterTree2 (output side of matrix-vector multiplication)
-        mutable ClusterTree2 *T; // "right" ClusterTree2 (input side of matrix-vector multiplication)
+        mutable std::shared_ptr<ClusterTree2> S; // "left" ClusterTree2 (output side of matrix-vector multiplication)
+        mutable std::shared_ptr<ClusterTree2> T; // "right" ClusterTree2 (input side of matrix-vector multiplication)
 
         mint dim = 3;
         mreal theta2 = 0.25;
