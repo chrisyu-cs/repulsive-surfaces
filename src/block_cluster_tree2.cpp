@@ -180,19 +180,19 @@ namespace rsurfaces
                     // split only larger cluster
                     if (scorei > scorej)
                     {
-                        //split cluster i
-                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(lefti, j, free_thread_count) shared(sep_i, sep_j, nsep_i, nsep_j)
+//split cluster i
+#pragma omp task final(free_thread_count < 1) default(none) firstprivate(lefti) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, lefti, j, free_thread_count / 2);
-                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(righti, j, free_thread_count) shared(sep_i, sep_j, nsep_i, nsep_j)
+#pragma omp task final(free_thread_count < 1) default(none) firstprivate(righti) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, righti, j, free_thread_count - free_thread_count / 2);
                         //                    #pragma omp taskwait
                     }
                     else //scorei < scorej
                     {
-                        //split cluster j
-                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(i, leftj, free_thread_count) shared(sep_i, sep_j, nsep_i, nsep_j)
+//split cluster j
+#pragma omp task final(free_thread_count < 1) default(none) firstprivate(leftj) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, i, leftj, free_thread_count / 2);
-                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(i, rightj, free_thread_count) shared(sep_i, sep_j, nsep_i, nsep_j)
+#pragma omp task final(free_thread_count < 1) default(none) firstprivate(rightj) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, i, rightj, free_thread_count - free_thread_count / 2);
                         //                    #pragma omp taskwait
                     }

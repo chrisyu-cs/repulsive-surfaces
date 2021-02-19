@@ -1,0 +1,116 @@
+Arguments in <angle brackets> are mandatory;
+arguments in [square brackets] are optional.
+
+==============================================================================
+
+Specify a repulsive surface:
+
+	repel_mesh <mesh.obj> <alpha> <beta>
+
+The path for the OBJ is relative to where the scene file is.
+A good default choice for alpha and beta is (6, 12).
+
+==============================================================================
+
+Add constraints:
+
+	constrain barycenter
+	constrain area [growth multiplier] [growth iterations]
+	constrain volume [growth multiplier] [growth iterations]
+	constrain vertices <vertex 1> [vertex 2] [vertex 3] [...]
+
+The "growth multiplier" specifies how much the area or volume of the mesh
+should grow, and the "growth iterations" specifies over how many iterations
+the growth happens. So, for example,
+
+	constrain area 3 200
+
+means grow the total surface area by 3x over the course of 200 iterations.
+
+A barycenter constraint should basically always be used.
+
+==============================================================================
+
+Add extra potentials:
+
+	minimize squared_error [weight]
+	minimize area [weight]
+	minimize volume [weight]
+	minimize area_deviation [weight]
+	minimzie volume_deviation [weight]
+
+These are extra terms that are added to the objective function for
+gradient descent.
+
+"area" and "volume" are penalties on the raw quantities, while
+"area_deviation" and "volume_deviation" penalize how much the
+quantities have changed from their initial values.
+
+"squared_error" penalizes distance of each vertex from its initial position.
+
+The "weight" parameter is a coefficient that multiplies the value of the
+extra potential term. e.g.
+
+	minimize area 1000
+
+will add the term 1000 * (mesh total area) to the objective.
+
+==============================================================================
+
+Implicit barriers:
+
+	implicit <surface name> <repel | attract> <weight> <specific parameters>
+
+Sets up an implicit surface as either an obstacle or an attractor. Obstacles
+repel other surfaces, while attractors attract other surfaces.
+
+Valid names for the first parameter are "sphere", "torus", and "plane".
+
+The second parameter must be either "repel" or "attract", and will result
+in an obstacle or an attractor, respectively.
+
+The weight parameter is mandatory here (unlike with potentials).
+
+Specific parameters depend on the chosen implicit surface. All parameters are
+numbers, which will be parsed as doubles. Currently, the parameters are:
+
+	sphere: <radius> <center x> <center y> <center z>
+	torus: <major radius> <minor radius> <center x> <center y> <center z>
+	plane: <point x> <point y> <point z> <normal x> <normal y> <normal z>
+
+==============================================================================
+
+Time limits:
+
+	iteration_limit <iterations>
+	time_limit <time in ms>
+
+"iteration_limit" stops the flow after the given number of iterations.
+"time_limit" stops the flow after the given wall-clock (IRL) time has elapsed.
+
+==============================================================================
+
+Miscellaneous:
+
+	allow_barycenter_shift
+
+Allows the barycenter of the overall mesh to shift, even when
+constrain_barycenter is active.
+
+	disable_near_field
+
+Turns off near-field interactions of the energy and metric. This will not
+avoid self-intersections, but also allows the energy to stay finite when
+self-intersections are already present.
+
+	method <method name>
+
+Sets the initial method to be the given method. If not specified, the flow
+will use "hs" by default. Available other names are "aqp", "bqn", "h1",
+and "h1-lbfgs".
+
+	log <logfile.csv>
+
+Logs the performance of the method, with per-iteration runtimes and energy
+values dumped line-by-line to the specified CSV file. The path is also
+relative to the scene file.

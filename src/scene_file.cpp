@@ -256,6 +256,51 @@ namespace rsurfaces
                 }
                 data.obstacles.push_back(obsData);
             }
+
+            else if (parts[0] == "implicit")
+            {
+                ImplicitBarrierData implData;
+
+                if (parts[1] == "sphere")
+                {
+                    implData.type = ImplicitType::Sphere;
+                }
+                else if (parts[1] == "torus")
+                {
+                    implData.type = ImplicitType::Torus;
+                }
+                else if (parts[1] == "plane")
+                {
+                    implData.type = ImplicitType::Plane;
+                }
+                else
+                {
+                    throw std::runtime_error("Unrecognized implicit type " + parts[1]);
+                }
+
+                if (parts[2] == "repel")
+                {
+                    implData.repel = true;
+                }
+                else if (parts[2] == "attract")
+                {
+                    implData.repel = false;
+                }
+                else
+                {
+                    throw std::runtime_error("Implicit action must be either 'attract' or 'repel'.");
+                }
+
+                implData.weight = stod(parts[3]);
+
+                for (size_t i = 4; i < parts.size(); i++)
+                {
+                    implData.parameters.push_back(stod(parts[i]));
+                }
+
+                data.implicitBarriers.push_back(implData);
+            }
+
             else if (parts[0] == "method")
             {
                 data.defaultMethod = methodOfName(parts[1]);

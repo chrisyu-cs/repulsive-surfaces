@@ -17,6 +17,8 @@
 #include "energy/willmore_energy.h"
 #include "energy/tpe_multipole_0.h"
 #include "energy/tpe_barnes_hut_0.h"
+#include "implicit/simple_surfaces.h"
+#include "marchingcubes/CIsoSurface.h"
 
 #define EIGEN_NO_DEBUG
 
@@ -47,6 +49,7 @@ namespace rsurfaces
         void PlotEnergyPerFace();
         void Scale2x();
         void TestNormalDeriv();
+        void MeshImplicitSurface(ImplicitSurface *surface);
 
         void GetFalloffWindow(GCVertex v, double radius, std::vector<PriorityVertex> &verts);
         void HandlePicking();
@@ -54,6 +57,7 @@ namespace rsurfaces
         void TakeOptimizationStep(bool remeshAfter, bool showAreaRatios);
         void AddObstacle(std::string filename, double weight, bool recenter);
         void AddPotential(scene::PotentialType pType, double weight);
+        void AddImplicitBarrier(scene::ImplicitBarrierData &implicitBarrier);
 
         MeshPtr mesh;
         GeomPtr geom;
@@ -87,6 +91,7 @@ namespace rsurfaces
         bool exitWhenDone;
 
     private:
+        int implicitCount = 0;
         GCVertex pickedVertex;
         std::vector<PriorityVertex> dragVertices;
 

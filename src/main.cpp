@@ -160,16 +160,16 @@ namespace rsurfaces
         {
             logPerformanceLine();
         }
-        
-        if(showAreaRatios)
+
+        if (showAreaRatios)
         {
-        	VertexData <double> areaRatio(*mesh);
-        	for(Vertex v : mesh->vertices())
-        	{
-        		areaRatio[v] = geomOrig->vertexDualArea(v) / geom->vertexDualArea(v);
-        	}
-        	
-        	psMesh->addVertexScalarQuantity("Area ratios", areaRatio);
+            VertexData<double> areaRatio(*mesh);
+            for (Vertex v : mesh->vertices())
+            {
+                areaRatio[v] = geomOrig->vertexDualArea(v) / geom->vertexDualArea(v);
+            }
+
+            psMesh->addVertexScalarQuantity("Area ratios", areaRatio);
         }
     }
 
@@ -1060,6 +1060,63 @@ namespace rsurfaces
         std::cout << "Added " << filename << " as obstacle with weight " << weight << std::endl;
     }
 
+    void MainApp::AddImplicitBarrier(scene::ImplicitBarrierData &barrierData)
+    {
+        ImplicitSurface* implSurface;
+        // Create the requested implicit surface
+        switch (barrierData.type)
+        {
+            case scene::ImplicitType::Plane:
+            {
+                Vector3 point{barrierData.parameters[0], barrierData.parameters[1], barrierData.parameters[2]};
+                Vector3 normal{barrierData.parameters[3], barrierData.parameters[4], barrierData.parameters[5]};
+                std::cout << "Constructing implicit plane at point " << point << " with normal " << normal << std::endl;
+                implSurface = new FlatPlane(point, normal);
+            }
+            break;
+            case scene::ImplicitType::Torus:
+            {
+                double major = barrierData.parameters[0];
+                double minor = barrierData.parameters[1];
+                Vector3 center{barrierData.parameters[2], barrierData.parameters[3], barrierData.parameters[4]};
+                std::cout << "Constructing implicit torus with major radius " << major << ", minor radius " << minor << ", center " << center << std::endl;
+                implSurface = new ImplicitTorus(major, minor, center);
+            }
+            break;
+            case scene::ImplicitType::Sphere:
+            {
+                double radius = barrierData.parameters[0];
+                Vector3 center{barrierData.parameters[1], barrierData.parameters[2], barrierData.parameters[3]};
+                std::cout << "Constructing implicit sphere with radius " << radius << ", center " << center << std::endl;
+                implSurface = new ImplicitSphere(radius, center);
+            }
+            break;
+            default:
+            {
+                throw std::runtime_error("Unimplemented implicit surface type.");
+            }
+            break;
+        }
+
+        // Mesh the 0 isosurface so we can see the implicit surface
+        MainApp::instance->MeshImplicitSurface(implSurface);
+
+        // Use the implicit surface to setup the energy
+        std::unique_ptr<ImplicitSurface> implUnique(implSurface);
+        if (barrierData.repel)
+        {
+            std::cout << "Using implicit surface as obstacle, with weight " << barrierData.weight << std::endl;
+            ImplicitObstacle* obstacle = new ImplicitObstacle(mesh, geom, std::move(implUnique), barrierData.weight);
+            flow->AddAdditionalEnergy(obstacle);
+        }
+        else
+        {
+            std::cout << "Using implicit surface as attractor, with weight " << barrierData.weight << std::endl;
+            ImplicitAttractor* attractor = new ImplicitAttractor(mesh, geom, std::move(implUnique), barrierData.weight);
+            flow->AddAdditionalEnergy(attractor);
+        }
+    }
+
     void MainApp::AddPotential(scene::PotentialType pType, double weight)
     {
         switch (pType)
@@ -1102,6 +1159,73 @@ namespace rsurfaces
             break;
         }
         }
+    }
+
+    void MainApp::MeshImplicitSurface(ImplicitSurface *surface)
+    {
+        CIsoSurface<double> *iso = new CIsoSurface<double>();
+
+        std::cout << "Meshing the supplied implicit surface using marching cubes..." << std::endl;
+
+        const int numCells = 50;
+        Vector3 center = surface->BoundingCenter();
+        double diameter = surface->BoundingDiameter();
+        double cellSize = diameter / numCells;
+        double radius = diameter / 2;
+
+        Vector3 lowerCorner = center - Vector3{radius, radius, radius};
+
+        int numCorners = numCells + 1;
+
+        double field[numCorners * numCorners * numCorners];
+
+        int nSlice = numCorners * numCorners;
+        int nRow = numCorners;
+
+        for (int x = 0; x < numCorners; x++)
+        {
+            for (int y = 0; y < numCorners; y++)
+            {
+                for (int z = 0; z < numCorners; z++)
+                {
+                    Vector3 samplePt = lowerCorner + Vector3{(double)x, (double)y, (double)z} * cellSize;
+                    double value = surface->SignedDistance(samplePt);
+                    field[nSlice * z + nRow * y + x] = value;
+                }
+            }
+        }
+
+        iso->GenerateSurface(field, 0, numCells, numCells, numCells, cellSize, cellSize, cellSize);
+
+        std::vector<glm::vec3> nodes;
+        std::vector<std::array<size_t, 3>> triangles;
+
+        int nVerts = iso->m_nVertices;
+
+        for (int i = 0; i < nVerts; i++)
+        {
+            double x = iso->m_ppt3dVertices[i][0];
+            double y = iso->m_ppt3dVertices[i][1];
+            double z = iso->m_ppt3dVertices[i][2];
+
+            Vector3 p = lowerCorner + Vector3{x, y, z};
+            nodes.push_back(glm::vec3{p.x, p.y, p.z});
+        }
+
+        int nTris = iso->m_nTriangles;
+
+        for (int i = 0; i < nTris; i++)
+        {
+            int i1 = iso->m_piTriangleIndices[3 * i];
+            int i2 = iso->m_piTriangleIndices[3 * i + 1];
+            int i3 = iso->m_piTriangleIndices[3 * i + 2];
+
+            triangles.push_back({(size_t)i1, (size_t)i2, (size_t)i3});
+        }
+
+        implicitCount++;
+        polyscope::registerSurfaceMesh("implicitSurface" + std::to_string(implicitCount), nodes, triangles);
+        delete iso;
     }
 } // namespace rsurfaces
 
@@ -1517,7 +1641,7 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::sce
     else
     {
         std::cout << "Using Barnes-Hut energy with theta = " << theta << "." << std::endl;
-        BarnesHutTPEnergy6D* bh = new BarnesHutTPEnergy6D(m.kernel, theta);
+        BarnesHutTPEnergy6D *bh = new BarnesHutTPEnergy6D(m.kernel, theta);
         bh->disableNearField = scene.disableNearField;
         if (bh->disableNearField)
         {
@@ -1758,10 +1882,13 @@ int main(int argc, char **argv)
     {
         MainApp::instance->AddPotential(p.type, p.weight);
     }
-
     for (scene::ObstacleData &obs : data.obstacles)
     {
         MainApp::instance->AddObstacle(obs.obstacleName, obs.weight, obs.recenter);
+    }
+    for (scene::ImplicitBarrierData &barrierData : data.implicitBarriers)
+    {
+        MainApp::instance->AddImplicitBarrier(barrierData);
     }
 
     MainApp::instance->updateMeshPositions();

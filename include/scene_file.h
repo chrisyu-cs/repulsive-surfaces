@@ -4,6 +4,7 @@
 #include <vector>
 #include <sstream>
 #include "rsurface_types.h"
+#include "implicit/simple_surfaces.h"
 
 namespace rsurfaces
 {
@@ -51,6 +52,21 @@ namespace rsurfaces
             bool recenter = false;
         };
 
+        enum class ImplicitType
+        {
+            Sphere,
+            Torus,
+            Plane
+        };
+
+        struct ImplicitBarrierData
+        {
+            ImplicitType type;
+            std::vector<double> parameters;
+            bool repel = true;
+            double weight = 1;
+        };
+
         struct SceneData
         {
             std::string meshName;
@@ -62,6 +78,7 @@ namespace rsurfaces
             std::vector<PotentialData> potentials;
             std::vector<size_t> vertexPins;
             std::vector<size_t> vertexNormals;
+            std::vector<ImplicitBarrierData> implicitBarriers;
             int iterationLimit = 0;
             long realTimeLimit = 0;
             std::string performanceLogFile = "performance.csv";

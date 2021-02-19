@@ -9,4 +9,5 @@
 #include "energy/barnes_hut_newtonian.h"
 #include "energy/soft_area_constraint.h"
 #include "energy/soft_volume_constraint.h"
-
+#include "energy/implicit_attractor.h"
+#include "energy/implicit_obstacle.h"
