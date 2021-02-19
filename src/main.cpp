@@ -603,7 +603,9 @@ namespace rsurfaces
         auto geom = rsurfaces::MainApp::instance->geom;
         
         tic("CreateOptimizedBCT");
-        BlockClusterTree2 *bct = CreateOptimizedBCT(mesh, geom, 6., 12., 0.5);
+        // theta = 0.5 might suffice for the preconditioner
+        // theta = 0.25 might be needed to obtain accuracy for the energy similar to the one by BarnesHutTPEnergy6D
+        BlockClusterTree2 *bct = CreateOptimizedBCT(mesh, geom, 6., 12., 0.25);
         toc("CreateOptimizedBCT");
         
         TPEnergyMultipole0 * tpe = new TPEnergyMultipole0( mesh, geom, bct );
@@ -652,6 +654,7 @@ namespace rsurfaces
         
         Eigen::MatrixXd DE ( mesh->nVertices(), 3 );
         
+        // Currently, the derivative is not correct.
         tic("Differential");
         tpe->Differential(DE);
         toc("Differential");
