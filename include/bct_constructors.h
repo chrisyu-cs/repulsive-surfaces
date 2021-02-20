@@ -5,7 +5,8 @@
 
 namespace rsurfaces
 {
-    inline BlockClusterTree2 *CreateOptimizedBCT(MeshPtr &mesh, GeomPtr &geom, double alpha, double beta, double theta, bool exploit_symmetry_ = true, bool upper_triangular_ = false)
+
+    inline std::shared_ptr<ClusterTree2> CreateOptimizedBVH(MeshPtr &mesh, GeomPtr &geom)
     {
         int nVertices = mesh->nVertices();
         int nFaces = mesh->nFaces();
@@ -82,7 +83,7 @@ namespace rsurfaces
 
         // create a cluster tree
         int split_threashold = 8;
-        std::shared_ptr<ClusterTree2> bvh = std::make_shared<ClusterTree2>(
+        return std::make_shared<ClusterTree2>(
             &P_coords[0],      // coordinates used for clustering
             nFaces,            // number of primitives
             3,                 // dimension of ambient space
@@ -96,7 +97,12 @@ namespace rsurfaces
             DiffOp,            // the first-order differential operator belonging to the hi order term of the metric
             AvOp               // the zeroth-order differential operator belonging to the lo order term of the metric
         );
+    }
 
+    inline BlockClusterTree2 *CreateOptimizedBCT(MeshPtr &mesh, GeomPtr &geom, double alpha, double beta, double theta, bool exploit_symmetry_ = true, bool upper_triangular_ = false)
+    {
+        std::shared_ptr<ClusterTree2> bvh = CreateOptimizedBVH(mesh, geom);
+        
         BlockClusterTree2 *bct = new BlockClusterTree2(
             bvh,   // gets handed two pointers to instances of ClusterTree2
             bvh,   // no problem with handing the same pointer twice; this is actually intended

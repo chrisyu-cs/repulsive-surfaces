@@ -6,16 +6,16 @@ namespace rsurfaces
     double TPEnergyBarnesHut0::Value()
     {
         
-        if( bct->use_int )
+        if( use_int )
         {
-            mint int_alpha = std::round(bct->alpha);
-            mint int_betahalf = std::round(bct->beta/2);
+            mint int_alpha = std::round(alpha);
+            mint int_betahalf = std::round(beta/2);
             return Energy( int_alpha, int_betahalf );
         }
         else
         {
-            mreal real_alpha = bct->alpha;
-            mreal real_betahalf = bct->beta/2;
+            mreal real_alpha = alpha;
+            mreal real_betahalf = beta/2;
             return Energy( real_alpha, real_betahalf );
         }
     } // Value
@@ -26,24 +26,23 @@ namespace rsurfaces
     {
         EigenMatrixRM P_D_data ( mesh->nFaces(), 7 );
 
-        bct->S->CleanseD();
-        bct->T->CleanseD();
+        bvh->CleanseD();
 
-        if( bct->use_int )
+        if( use_int )
         {
-            mint int_alpha = std::round(bct->alpha);
-            mint int_betahalf = std::round(bct->beta/2);
+            mint int_alpha = std::round(alpha);
+            mint int_betahalf = std::round(beta/2);
             DEnergy( int_alpha, int_betahalf );
             
         }
         else
         {
-            mreal real_alpha = bct->alpha;
-            mreal real_betahalf = bct->beta/2;
+            mreal real_alpha = alpha;
+            mreal real_betahalf = beta/2;
             DEnergy( real_alpha, real_betahalf );
         }
         
-        bct->S->CollectDerivatives( P_D_data.data() );
+        bvh->CollectDerivatives( P_D_data.data() );
         
         
         mint vertex_count = mesh->nVertices();
@@ -231,47 +230,46 @@ mreal TPEnergyBarnesHut0::Energy(T1 alpha, T2 betahalf)
 {
     
     T2 minus_betahalf = -betahalf;
-    mreal theta2 = bct->theta2;
+    mreal theta2 = theta*theta;
     
-    auto S = bct->S;
-    mint nthreads = S->thread_count;
+    mint nthreads = bvh->thread_count;
     
     // Dunno why "restrict" helps with P_data. It is actually a lie here when S = T.
-    mreal const * const restrict P_A  = S->P_data[0];
-    mreal const * const restrict P_X1 = S->P_data[1];
-    mreal const * const restrict P_X2 = S->P_data[2];
-    mreal const * const restrict P_X3 = S->P_data[3];
-    mreal const * const restrict P_N1 = S->P_data[4];
-    mreal const * const restrict P_N2 = S->P_data[5];
-    mreal const * const restrict P_N3 = S->P_data[6];
+    mreal const * const restrict P_A  = bvh->P_data[0];
+    mreal const * const restrict P_X1 = bvh->P_data[1];
+    mreal const * const restrict P_X2 = bvh->P_data[2];
+    mreal const * const restrict P_X3 = bvh->P_data[3];
+    mreal const * const restrict P_N1 = bvh->P_data[4];
+    mreal const * const restrict P_N2 = bvh->P_data[5];
+    mreal const * const restrict P_N3 = bvh->P_data[6];
 
-    mreal const * const restrict C_min1 = S->C_min[0];
-    mreal const * const restrict C_min2 = S->C_min[1];
-    mreal const * const restrict C_min3 = S->C_min[2];
+    mreal const * const restrict C_min1 = bvh->C_min[0];
+    mreal const * const restrict C_min2 = bvh->C_min[1];
+    mreal const * const restrict C_min3 = bvh->C_min[2];
     
-    mreal const * const restrict C_max1 = S->C_max[0];
-    mreal const * const restrict C_max2 = S->C_max[1];
-    mreal const * const restrict C_max3 = S->C_max[2];
+    mreal const * const restrict C_max1 = bvh->C_max[0];
+    mreal const * const restrict C_max2 = bvh->C_max[1];
+    mreal const * const restrict C_max3 = bvh->C_max[2];
     
-    mreal const * const restrict C_A  = S->C_data[0];
-    mreal const * const restrict C_X1 = S->C_data[1];
-    mreal const * const restrict C_X2 = S->C_data[2];
-    mreal const * const restrict C_X3 = S->C_data[3];
+    mreal const * const restrict C_A  = bvh->C_data[0];
+    mreal const * const restrict C_X1 = bvh->C_data[1];
+    mreal const * const restrict C_X2 = bvh->C_data[2];
+    mreal const * const restrict C_X3 = bvh->C_data[3];
 
-    mint  const * const restrict C_left  = S->C_left;
-    mint  const * const restrict C_right = S->C_right;
-    mint  const * const restrict C_begin = S->C_begin;
-    mint  const * const restrict C_end   = S->C_end;
-    mreal const * const restrict C_r2    = S->C_squared_radius;
+    mint  const * const restrict C_left  = bvh->C_left;
+    mint  const * const restrict C_right = bvh->C_right;
+    mint  const * const restrict C_begin = bvh->C_begin;
+    mint  const * const restrict C_end   = bvh->C_end;
+    mreal const * const restrict C_r2    = bvh->C_squared_radius;
     
-    mint  const * const restrict leaf = S->leaf_clusters;
+    mint  const * const restrict leaf = bvh->leaf_clusters;
     
     A_Vector<A_Vector<mint>> thread_stack ( nthreads );
     
     mreal sum = 0.;
     
     #pragma omp parallel for num_threads( nthreads ) reduction( + : sum)
-    for( mint k = 0; k < S->leaf_cluster_count; ++k )
+    for( mint k = 0; k < bvh->leaf_cluster_count; ++k )
     {
         mint thread = omp_get_thread_num();
         
@@ -408,54 +406,53 @@ mreal TPEnergyBarnesHut0::DEnergy(T1 alpha, T2 betahalf)
     T2 minus_betahalf_minus_1 = -betahalf - 1;
     
     mreal beta = 2. * betahalf;
-    mreal theta2 = bct->theta2;
+    mreal theta2 = theta * theta;
     mreal sum = 0.;
     
-    auto S = bct->S;
-    mint nthreads = S->thread_count;
+    mint nthreads = bvh->thread_count;
     
     // Dunno why "restrict" helps with P_data. It is actually a lie here when S = T.
-    mreal const * const restrict P_A  = S->P_data[0];
-    mreal const * const restrict P_X1 = S->P_data[1];
-    mreal const * const restrict P_X2 = S->P_data[2];
-    mreal const * const restrict P_X3 = S->P_data[3];
-    mreal const * const restrict P_N1 = S->P_data[4];
-    mreal const * const restrict P_N2 = S->P_data[5];
-    mreal const * const restrict P_N3 = S->P_data[6];
+    mreal const * const restrict P_A  = bvh->P_data[0];
+    mreal const * const restrict P_X1 = bvh->P_data[1];
+    mreal const * const restrict P_X2 = bvh->P_data[2];
+    mreal const * const restrict P_X3 = bvh->P_data[3];
+    mreal const * const restrict P_N1 = bvh->P_data[4];
+    mreal const * const restrict P_N2 = bvh->P_data[5];
+    mreal const * const restrict P_N3 = bvh->P_data[6];
 
-    mreal const * const restrict C_min1 = S->C_min[0];
-    mreal const * const restrict C_min2 = S->C_min[1];
-    mreal const * const restrict C_min3 = S->C_min[2];
+    mreal const * const restrict C_min1 = bvh->C_min[0];
+    mreal const * const restrict C_min2 = bvh->C_min[1];
+    mreal const * const restrict C_min3 = bvh->C_min[2];
     
-    mreal const * const restrict C_max1 = S->C_max[0];
-    mreal const * const restrict C_max2 = S->C_max[1];
-    mreal const * const restrict C_max3 = S->C_max[2];
+    mreal const * const restrict C_max1 = bvh->C_max[0];
+    mreal const * const restrict C_max2 = bvh->C_max[1];
+    mreal const * const restrict C_max3 = bvh->C_max[2];
     
-    mreal const * const restrict C_A  = S->C_data[0];
-    mreal const * const restrict C_X1 = S->C_data[1];
-    mreal const * const restrict C_X2 = S->C_data[2];
-    mreal const * const restrict C_X3 = S->C_data[3];
+    mreal const * const restrict C_A  = bvh->C_data[0];
+    mreal const * const restrict C_X1 = bvh->C_data[1];
+    mreal const * const restrict C_X2 = bvh->C_data[2];
+    mreal const * const restrict C_X3 = bvh->C_data[3];
 
     
-    mint  const * const restrict C_left  = S->C_left;
-    mint  const * const restrict C_right = S->C_right;
-    mint  const * const restrict C_begin = S->C_begin;
-    mint  const * const restrict C_end   = S->C_end;
-    mreal const * const restrict C_r2    = S->C_squared_radius;
+    mint  const * const restrict C_left  = bvh->C_left;
+    mint  const * const restrict C_right = bvh->C_right;
+    mint  const * const restrict C_begin = bvh->C_begin;
+    mint  const * const restrict C_end   = bvh->C_end;
+    mreal const * const restrict C_r2    = bvh->C_squared_radius;
     
-    mint  const * const restrict leaf = S->leaf_clusters;
+    mint  const * const restrict leaf = bvh->leaf_clusters;
     
     A_Vector<A_Vector<mint>> thread_stack ( nthreads );
     
     #pragma omp parallel for num_threads( nthreads ) reduction( + : sum)
-    for( mint k = 0; k < S->leaf_cluster_count; ++k )
+    for( mint k = 0; k < bvh->leaf_cluster_count; ++k )
     {
         mint thread = omp_get_thread_num();
         
         A_Vector<mint> * stack = &thread_stack[thread];
         
-        mreal * const restrict P_U = &S->P_D_data[thread][0];
-        mreal * const restrict C_U = &S->C_D_data[thread][0];
+        mreal * const restrict P_U = &bvh->P_D_data[thread][0];
+        mreal * const restrict C_U = &bvh->C_D_data[thread][0];
         
         stack->clear();
         stack->push_back(0);

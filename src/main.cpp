@@ -616,7 +616,7 @@ namespace rsurfaces
         double E;
         Eigen::MatrixXd DE ( mesh->nVertices(), 3 );
 
-        TPEnergyMultipole0 * tpe = new TPEnergyMultipole0( mesh, geom, bct );
+        TPEnergyMultipole0 * tpe = new TPEnergyMultipole0( mesh, geom, bct, 6., 12. );
         
         std::cout << "Using integer exponents." << std::endl;
         
@@ -635,7 +635,7 @@ namespace rsurfaces
         std::cout << "       " << DE(3,0) << " , " << DE(3,1) <<  " , " << DE(3,2)  << std::endl;
         std::cout << "       " << DE(4,0) << " , " << DE(4,1) <<  " , " << DE(4,2)  << std::endl;
         
-        bct->use_int = false;
+        tpe->use_int = false;
         std::cout << "Using double exponents." << std::endl;
         
         tic("Compute Value");
@@ -669,16 +669,16 @@ namespace rsurfaces
         auto mesh = rsurfaces::MainApp::instance->mesh;
         auto geom = rsurfaces::MainApp::instance->geom;
         
-        tic("CreateOptimizedBCT");
-        BlockClusterTree2 *bct = CreateOptimizedBCT(mesh, geom, 6., 12., 0.25, true, false);
-        toc("CreateOptimizedBCT");
+        tic("CreateOptimizedBVH");
+        auto bvh = CreateOptimizedBVH(mesh, geom);
+        toc("CreateOptimizedBVH");
         
-        bct->PrintStats();
+//        bvh->PrintStats();
         
         double E;
         Eigen::MatrixXd DE ( mesh->nVertices(), 3 );
         
-        TPEnergyBarnesHut0 * tpe = new TPEnergyBarnesHut0( mesh, geom, bct );
+        auto tpe = std::make_shared<TPEnergyBarnesHut0>( mesh, geom, bvh, 6., 12., 0.25);
         
         std::cout << "Using integer exponents." << std::endl;
         
@@ -697,7 +697,7 @@ namespace rsurfaces
         std::cout << "       " << DE(3,0) << " , " << DE(3,1) <<  " , " << DE(3,2)  << std::endl;
         std::cout << "       " << DE(4,0) << " , " << DE(4,1) <<  " , " << DE(4,2)  << std::endl;
         
-        bct->use_int = false;
+        tpe->use_int = false;
         std::cout << "Using double exponents." << std::endl;
         
         
@@ -716,8 +716,6 @@ namespace rsurfaces
         std::cout << "       " << DE(3,0) << " , " << DE(3,1) <<  " , " << DE(3,2)  << std::endl;
         std::cout << "       " << DE(4,0) << " , " << DE(4,1) <<  " , " << DE(4,2)  << std::endl;
         
-        delete bct;
-        delete tpe;
     } // TestBarnesHut0
 
     void MainApp::TestWillmore()

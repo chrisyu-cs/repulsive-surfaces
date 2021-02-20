@@ -17,11 +17,17 @@ namespace rsurfaces
     public:
         ~TPEnergyMultipole0(){};
         
-        TPEnergyMultipole0( MeshPtr mesh_, GeomPtr geom_, BlockClusterTree2 * bct_)
+        TPEnergyMultipole0( MeshPtr mesh_, GeomPtr geom_, BlockClusterTree2 * bct_, mreal alpha_, mreal beta_)
         {
             mesh = mesh_;
             geom = geom_;
             bct = bct_;
+            
+            alpha = alpha_;
+            beta = beta_;
+            
+            mreal intpart;
+            use_int = (std::modf( alpha, &intpart) == 0.0) && (std::modf( beta/2, &intpart) == 0.0);
         }
         
         // Returns the current value of the energy.
@@ -54,11 +60,15 @@ namespace rsurfaces
         
         BlockClusterTree2 * GetBCT();
         
+        bool use_int = false;
     private:
         
         MeshPtr mesh = nullptr;
         GeomPtr geom = nullptr;
         BlockClusterTree2 * bct = nullptr;
+        
+        mreal alpha = 6.;
+        mreal beta  = 12.;
         
         template<typename T1, typename T2>
         mreal FarField( T1 alpha, T2 betahalf);

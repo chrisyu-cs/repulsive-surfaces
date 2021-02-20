@@ -98,7 +98,6 @@ namespace rsurfaces
         bool is_symmetric = false;
         bool exploit_symmetry = false;
         bool upper_triangular = false;
-        bool use_int = false;
         
         // If exploit_symmetry != 1, S == T is assume and only roughly half the block clusters are generated during the split pass performed by CreateBlockClusters.
         // If upper_triangular != 0 and if exploit_symmetry != 0, only the upper triangle of the interaction matrices will be generated. --> CreateBlockClusters will be faster.
@@ -170,7 +169,6 @@ namespace rsurfaces
             std::cout << " is_symmetric        = " <<  is_symmetric << std::endl;
             std::cout << " exploit_symmetry    = " <<  exploit_symmetry << std::endl;
             std::cout << " upper_triangular    = " <<  upper_triangular << std::endl;
-            std::cout << " use_int             = " <<  use_int << std::endl;
             
             std::cout << "\n---- double data ----" << std::endl;
             

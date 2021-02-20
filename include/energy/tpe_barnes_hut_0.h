@@ -16,11 +16,17 @@ namespace rsurfaces
     public:
         ~TPEnergyBarnesHut0(){};
         
-        TPEnergyBarnesHut0( MeshPtr mesh_, GeomPtr geom_, BlockClusterTree2 * bct_ )
+        TPEnergyBarnesHut0( MeshPtr mesh_, GeomPtr geom_, std::shared_ptr<ClusterTree2> bvh_, mreal alpha_, mreal beta_, mreal theta_ )
         {
             mesh = mesh_;
             geom = geom_;
-            bct = bct_;
+            bvh = bvh_;
+            alpha = alpha_;
+            beta = beta_;
+            theta = theta_;
+            
+            mreal intpart;
+            use_int = (std::modf( alpha, &intpart) == 0.0) && (std::modf( beta/2, &intpart) == 0.0);
         }
         
         // Returns the current value of the energy.
@@ -52,13 +58,17 @@ namespace rsurfaces
         // Return 0 if this energy doesn't do hierarchical approximation.
         virtual double GetTheta();
         
-        BlockClusterTree2 * GetBCT(){ return bct; };
+        bool use_int = false;
         
     private:
         
         MeshPtr mesh = nullptr;
         GeomPtr geom = nullptr;
-        BlockClusterTree2 * bct = nullptr;
+        mreal alpha = 6.;
+        mreal beta  = 12.;
+        mreal theta = 0.5;
+        
+        std::shared_ptr<ClusterTree2> bvh = nullptr;
         
         template<typename T1, typename T2>
         mreal Energy(T1 alpha, T2 betahalf);

@@ -8,16 +8,16 @@ namespace rsurfaces
     double TPEnergyMultipole0::Value()
     {
         
-        if( bct->use_int )
+        if( use_int )
         {
-            mint int_alpha = std::round(bct->alpha);
-            mint int_betahalf = std::round(bct->beta/2);
+            mint int_alpha = std::round(alpha);
+            mint int_betahalf = std::round(beta/2);
             return FarField( int_alpha, int_betahalf ) + NearField (int_alpha, int_betahalf );
         }
         else
         {
-            mreal real_alpha = bct->alpha;
-            mreal real_betahalf = bct->beta/2;
+            mreal real_alpha = alpha;
+            mreal real_betahalf = beta/2;
             return FarField( real_alpha, real_betahalf ) + NearField( real_alpha, real_betahalf );
         }
     } // Value
@@ -32,18 +32,18 @@ namespace rsurfaces
         bct->S->CleanseD();
         bct->T->CleanseD();
         
-        if( bct->use_int )
+        if( use_int )
         {
-            mint int_alpha = std::round(bct->alpha);
-            mint int_betahalf = std::round(bct->beta/2);
+            mint int_alpha = std::round(alpha);
+            mint int_betahalf = std::round(beta/2);
             DNearField( int_alpha, int_betahalf );
             DFarField ( int_alpha, int_betahalf );
             
         }
         else
         {
-            mreal real_alpha = bct->alpha;
-            mreal real_betahalf = bct->beta/2;
+            mreal real_alpha = alpha;
+            mreal real_betahalf = beta/2;
             DNearField( real_alpha, real_betahalf );
             DFarField ( real_alpha, real_betahalf );
         }
