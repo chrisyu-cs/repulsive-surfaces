@@ -126,7 +126,6 @@ set(SRCS
   src/scene_file.cpp
   src/surface_derivatives.cpp
   src/surface_flow.cpp
-  src/bct2_tp_barnes_hut_0.cpp
   src/derivative_assembler.cpp
 	# add any other source files here
 )
