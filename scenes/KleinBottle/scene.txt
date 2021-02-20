@@ -1,0 +1,6 @@
+repel_mesh klein_bottle_2.obj 3.5 7 
+constrain barycenter
+constrain area
+disable_near_field
+iteration_limit 700
+
