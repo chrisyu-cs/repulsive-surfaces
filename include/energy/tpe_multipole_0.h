@@ -7,6 +7,7 @@
 #include "block_cluster_tree2.h"
 #include "derivative_assembler.h"
 
+
 namespace rsurfaces
 {
 
@@ -16,7 +17,7 @@ namespace rsurfaces
     public:
         ~TPEnergyMultipole0(){};
         
-        TPEnergyMultipole0( MeshPtr mesh_, GeomPtr geom_, BlockClusterTree2 * bct_ )
+        TPEnergyMultipole0( MeshPtr mesh_, GeomPtr geom_, BlockClusterTree2 * bct_)
         {
             mesh = mesh_;
             geom = geom_;
@@ -25,7 +26,6 @@ namespace rsurfaces
         
         // Returns the current value of the energy.
         virtual double Value();
-
         // Returns the current differential of the energy, stored in the given
         // V x 3 matrix, where each row holds the differential (a 3-vector) with
         // respect to the corresponding vertex.
@@ -52,13 +52,26 @@ namespace rsurfaces
         // Return 0 if this energy doesn't do hierarchical approximation.
         virtual double GetTheta();
         
-        BlockClusterTree2 * GetBCT(){ return bct; };
+        BlockClusterTree2 * GetBCT();
         
     private:
         
         MeshPtr mesh = nullptr;
         GeomPtr geom = nullptr;
         BlockClusterTree2 * bct = nullptr;
+        
+        template<typename T1, typename T2>
+        mreal FarField( T1 alpha, T2 betahalf);
+        
+        template<typename T1, typename T2>
+        mreal NearField(T1 alpha, T2 betahalf);
+        
+        template<typename T1, typename T2>
+        mreal DFarField(T1 alpha, T2 betahalf);
+        
+        template<typename T1, typename T2>
+        mreal DNearField(T1 alpha, T2 betahalf);
+        
         
     }; // TPEnergyMultipole0
 

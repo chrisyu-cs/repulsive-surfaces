@@ -598,27 +598,32 @@ namespace rsurfaces
     void MainApp::TestMultipole0()
     {
         std::cout << std::setprecision(16);
-        std::cout << "\n=====   TPEnergyMultipole0   =====" << std::endl;
+        std::cout << "\n  =====                        =====  " << std::endl;
+        std::cout << "=======   TPEnergyMultipole0   =======" << std::endl;
+        std::cout << "  =====                        =====  " << std::endl;
+        std::cout << "\n" << std::endl;
         auto mesh = rsurfaces::MainApp::instance->mesh;
         auto geom = rsurfaces::MainApp::instance->geom;
         
         tic("CreateOptimizedBCT");
         // theta = 0.5 might suffice for the preconditioner
         // theta = 0.25 might be needed to obtain accuracy for the energy similar to the one by BarnesHutTPEnergy6D
-        BlockClusterTree2 *bct = CreateOptimizedBCT(mesh, geom, 6., 12., 0.25);
+        BlockClusterTree2 * bct = CreateOptimizedBCT(mesh, geom, 6., 12., 0.25, true, false);
         toc("CreateOptimizedBCT");
+
+        bct->PrintStats();
         
-        valprint("Use integer exponents" , bct->use_int);
-        
+        double E;
+        Eigen::MatrixXd DE ( mesh->nVertices(), 3 );
+
         TPEnergyMultipole0 * tpe = new TPEnergyMultipole0( mesh, geom, bct );
         
+        std::cout << "Using integer exponents." << std::endl;
+        
         tic("Compute Value");
-        double E = tpe->Value();
+        E = tpe->Value();
         toc("Compute Value");
-        
         std::cout << "  E = " << E << std::endl;
-        
-        Eigen::MatrixXd DE ( mesh->nVertices(), 3 );
         
         tic("Compute Differential");
         tpe->Differential(DE);
@@ -631,12 +636,11 @@ namespace rsurfaces
         std::cout << "       " << DE(4,0) << " , " << DE(4,1) <<  " , " << DE(4,2)  << std::endl;
         
         bct->use_int = false;
-        valprint("Use integer exponents" , bct->use_int);
+        std::cout << "Using double exponents." << std::endl;
         
         tic("Compute Value");
         E = tpe->Value();
         toc("Compute Value");
-        
         std::cout << "  E = " << E << std::endl;
         
         tic("Compute Differential");
@@ -658,28 +662,53 @@ namespace rsurfaces
     void MainApp::TestBarnesHut0()
     {
         std::cout << std::setprecision(16);
-        std::cout << "\n=====   TPEnergyBarnesHut0   =====" << std::endl;
+        std::cout << "\n  =====                        =====  " << std::endl;
+        std::cout << "=======   TPEnergyBarnesHut0   =======" << std::endl;
+        std::cout << "  =====                        =====  " << std::endl;
+        std::cout << "\n" << std::endl;
         auto mesh = rsurfaces::MainApp::instance->mesh;
         auto geom = rsurfaces::MainApp::instance->geom;
         
         tic("CreateOptimizedBCT");
-        BlockClusterTree2 *bct = CreateOptimizedBCT(mesh, geom, 6., 12., 0.25);
+        BlockClusterTree2 *bct = CreateOptimizedBCT(mesh, geom, 6., 12., 0.25, true, false);
         toc("CreateOptimizedBCT");
+        
+        bct->PrintStats();
+        
+        double E;
+        Eigen::MatrixXd DE ( mesh->nVertices(), 3 );
         
         TPEnergyBarnesHut0 * tpe = new TPEnergyBarnesHut0( mesh, geom, bct );
         
-        tic("Value");
-        double E = tpe->Value();
-        toc("Value");
+        std::cout << "Using integer exponents." << std::endl;
         
+        tic("Compute Value");
+        E = tpe->Value();
+        toc("Compute Value");
         std::cout << "  E = " << E << std::endl;
         
-        Eigen::MatrixXd DE ( mesh->nVertices(), 3 );
-        
-        // Currently, the derivative is not correct.
-        tic("Differential");
+        tic("Compute Differential");
         tpe->Differential(DE);
-        toc("Differential");
+        toc("Compute Differential");
+        
+        std::cout << "  DE = " << DE(0,0) << " , " << DE(0,1) <<  " , " << DE(0,2)  << std::endl;
+        std::cout << "       " << DE(1,0) << " , " << DE(1,1) <<  " , " << DE(1,2)  << std::endl;
+        std::cout << "       " << DE(2,0) << " , " << DE(2,1) <<  " , " << DE(2,2)  << std::endl;
+        std::cout << "       " << DE(3,0) << " , " << DE(3,1) <<  " , " << DE(3,2)  << std::endl;
+        std::cout << "       " << DE(4,0) << " , " << DE(4,1) <<  " , " << DE(4,2)  << std::endl;
+        
+        bct->use_int = false;
+        std::cout << "Using double exponents." << std::endl;
+        
+        
+        tic("Compute Value");
+        E = tpe->Value();
+        toc("Compute Value");
+        std::cout << "  E = " << E << std::endl;
+        
+        tic("Compute Differential");
+        tpe->Differential(DE);
+        toc("Compute Differential");
         
         std::cout << "  DE = " << DE(0,0) << " , " << DE(0,1) <<  " , " << DE(0,2)  << std::endl;
         std::cout << "       " << DE(1,0) << " , " << DE(1,1) <<  " , " << DE(1,2)  << std::endl;

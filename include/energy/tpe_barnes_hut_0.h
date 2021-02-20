@@ -60,6 +60,12 @@ namespace rsurfaces
         GeomPtr geom = nullptr;
         BlockClusterTree2 * bct = nullptr;
         
+        template<typename T1, typename T2>
+        mreal Energy(T1 alpha, T2 betahalf);
+        
+        template<typename T1, typename T2>
+        mreal DEnergy(T1 alpha, T2 betahalf);
+        
     }; // TPEnergyBarnesHut0
 
 } // namespace rsurfaces

@@ -150,6 +150,42 @@ namespace rsurfaces
         void InternalMultiply(BCTKernelType type) const;
 
         void ComputeDiagonals();
+        
+        void PrintStats(){
+            std::cout << "\n==== BlockClusterTree2 Stats ====" << std::endl;
+            
+            std::cout << " dim                 = " <<  dim << std::endl;
+            std::cout << " theta               = " <<  sqrt(theta2) << std::endl;
+            std::cout << " thread_count        = " <<  thread_count << std::endl;
+            std::cout << " tree_thread_count   = " <<  tree_thread_count << std::endl;
+            
+            std::cout << " S->cluster_count    = " <<  S->cluster_count << std::endl;
+            std::cout << " T->cluster_count    = " <<  T->cluster_count << std::endl;
+            std::cout << " separated blocks    = " <<  far->nnz << std::endl;
+            std::cout << " nonseparated blocks = " <<  near->b_nnz << std::endl;
+            
+            std::cout << "\n---- bool data ----" << std::endl;
+            
+            std::cout << " metrics_initialized = " <<  metrics_initialized << std::endl;
+            std::cout << " is_symmetric        = " <<  is_symmetric << std::endl;
+            std::cout << " exploit_symmetry    = " <<  exploit_symmetry << std::endl;
+            std::cout << " upper_triangular    = " <<  upper_triangular << std::endl;
+            std::cout << " use_int             = " <<  use_int << std::endl;
+            
+            std::cout << "\n---- double data ----" << std::endl;
+            
+            std::cout << " alpha       = " <<  alpha << std::endl;
+            std::cout << " beta        = " <<  beta << std::endl;
+            std::cout << " exp_s       = " <<  exp_s << std::endl;
+            std::cout << " hi_exponent = " <<  hi_exponent << std::endl;
+            std::cout << " hi_factor   = " <<  hi_factor << std::endl;
+            std::cout << " lo_factor   = " <<  lo_factor << std::endl;
+            std::cout << " fr_factor   = " <<  fr_factor << std::endl;
+            
+            
+            std::cout << "==== BlockClusterTree2 Stats ====\n" << std::endl;
+            
+        };
 
     }; //BlockClusterTree2
 

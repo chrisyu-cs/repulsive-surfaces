@@ -5,7 +5,7 @@
 
 namespace rsurfaces
 {
-    inline BlockClusterTree2 *CreateOptimizedBCT(MeshPtr &mesh, GeomPtr &geom, double alpha, double beta, double theta)
+    inline BlockClusterTree2 *CreateOptimizedBCT(MeshPtr &mesh, GeomPtr &geom, double alpha, double beta, double theta, bool exploit_symmetry_ = true, bool upper_triangular_ = false)
     {
         int nVertices = mesh->nVertices();
         int nFaces = mesh->nFaces();
@@ -102,7 +102,9 @@ namespace rsurfaces
             bvh,   // no problem with handing the same pointer twice; this is actually intended
             alpha, // first parameter of the energy (for the numerator)
             beta,  // second parameter of the energy (for the denominator)
-            theta  // separation parameter; different gauge for thetas as before are the block clustering is performed slightly differently from before
+            theta,  // separation parameter; different gauge for thetas as before are the block clustering is performed slightly differently from before
+            exploit_symmetry_,
+            upper_triangular_
         );
 
         return bct;
