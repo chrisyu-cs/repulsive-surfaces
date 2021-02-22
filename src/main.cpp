@@ -704,7 +704,6 @@ namespace rsurfaces
         tic("Compute Value");
         E = tpe->Value();
         toc("Compute Value");
-        std::cout << "  E = " << E << std::endl;
         
         tic("Compute Differential");
         tpe->Differential(DE);
@@ -715,7 +714,26 @@ namespace rsurfaces
         std::cout << "       " << DE(2,0) << " , " << DE(2,1) <<  " , " << DE(2,2)  << std::endl;
         std::cout << "       " << DE(3,0) << " , " << DE(3,1) <<  " , " << DE(3,2)  << std::endl;
         std::cout << "       " << DE(4,0) << " , " << DE(4,1) <<  " , " << DE(4,2)  << std::endl;
-        
+
+        std::cout << "Energy value = " << E << std::endl;
+        std::cout << "Diff. norm   = " << DE.norm() << std::endl;
+
+        SurfaceEnergy *energy = new AllPairsTPEnergy(kernel);
+        Eigen::MatrixXd diff(mesh->nVertices(), 3);
+
+        diff.setZero();
+        energy->Update();
+        double eVal = energy->Value();
+        energy->Differential(diff);
+
+        double energyError = (E - eVal) / eVal * 100;
+        double diffError = (DE - diff).norm() / diff.norm() * 100;
+
+        std::cout << "Energy relative error = " << energyError << " percent" << std::endl;
+        std::cout << "Diff. relative error  = " << diffError << " percent" << std::endl;
+
+        delete energy;
+
     } // TestBarnesHut0
 
     void MainApp::TestWillmore()
