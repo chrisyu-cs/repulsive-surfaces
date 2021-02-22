@@ -62,9 +62,9 @@ namespace rsurfaces
                         Vector3 sum = deriv1;
                         size_t r = indices[v];
 
-                        output(r, 0) += sum.x;
-                        output(r, 1) += sum.y;
-                        output(r, 2) += sum.z;
+                        partialOutput(r, 0) += sum.x;
+                        partialOutput(r, 1) += sum.y;
+                        partialOutput(r, 2) += sum.z;
                     }
                 }
             }
