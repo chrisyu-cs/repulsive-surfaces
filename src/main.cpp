@@ -1141,7 +1141,7 @@ namespace rsurfaces
         std::unique_ptr<HalfedgeMesh> obstacleMesh;
         std::unique_ptr<VertexPositionGeometry> obstacleGeometry;
         // Load mesh
-        std::tie(obstacleMesh, obstacleGeometry) = loadMesh(filename);
+        std::tie(obstacleMesh, obstacleGeometry) = readManifoldSurfaceMesh(filename);
 
         obstacleGeometry->requireVertexDualAreas();
         obstacleGeometry->requireVertexNormals();
@@ -1712,14 +1712,41 @@ MeshAndEnergy initTPEOnMesh(std::string meshFile, double alpha, double beta)
 
     std::unique_ptr<HalfedgeMesh> u_mesh;
     std::unique_ptr<VertexPositionGeometry> u_geometry;
+    std::unique_ptr<CornerData<Vector2>> uvs;
+
     // Load mesh
-    std::tie(u_mesh, u_geometry) = loadMesh(meshFile);
+    std::tie(u_mesh, u_geometry, uvs) = readParameterizedManifoldSurfaceMesh(meshFile);
     std::string mesh_name = polyscope::guessNiceNameFromPath(meshFile);
+
+    std::cout << "Read " << uvs->size() << " UV coordinates" << std::endl;
+    bool hasUVs = false;
+
+    for (GCVertex v : u_mesh->vertices())
+    {
+        for (surface::Corner c : v.adjacentCorners())
+        {
+            Vector2 uv = (*uvs)[c];
+            if (uv.x > 0 || uv.y > 0)
+            {
+                hasUVs = true;
+            }
+        }
+    }
+
+    if (hasUVs)
+    {
+        std::cout << "Mesh has nonzero UVs; using as flags for attractors" << std::endl;
+    }
+    else
+    {
+        std::cout << "Mesh has no UVs or all UVs are 0; not using as flags" << std::endl;
+    }
 
     // Register the mesh with polyscope
     polyscope::SurfaceMesh *psMesh = polyscope::registerSurfaceMesh(mesh_name,
                                                                     u_geometry->inputVertexPositions, u_mesh->getFaceVertexList(),
                                                                     polyscopePermutations(*u_mesh));
+
 
     MeshPtr meshShared = std::move(u_mesh);
     GeomPtr geomShared = std::move(u_geometry);
