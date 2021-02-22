@@ -1,6 +1,7 @@
-repel_mesh chimney.obj
-constrain boundary_vertices
-# constrain area
+repel_mesh chimney.obj 6 12
+constrain barycenter
+constrain area
+minimize boundary_length
 # constrain vertex 1445
 # constrain boundary_normals
 

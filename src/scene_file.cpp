@@ -157,6 +157,11 @@ namespace rsurfaces
                     data.potentials.push_back(PotentialData{PotentialType::SquaredError, weight});
                     cout << "  * Adding squared error potential (weight " << weight << ")" << endl;
                 }
+                if (parts[1] == "boundary_length")
+                {
+                    data.potentials.push_back(PotentialData{PotentialType::BoundaryLength, weight});
+                    cout << "  * Adding boundary length potential (weight " << weight << ")" << endl;
+                }
                 else if (parts[1] == "area")
                 {
                     data.potentials.push_back(PotentialData{PotentialType::Area, weight});

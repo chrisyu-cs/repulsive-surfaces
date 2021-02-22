@@ -26,6 +26,7 @@ namespace rsurfaces
         enum class PotentialType
         {
             SquaredError,
+            BoundaryLength,
             Area,
             Volume,
             SoftAreaConstraint,

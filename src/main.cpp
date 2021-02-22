@@ -1247,6 +1247,12 @@ namespace rsurfaces
             flow->AddAdditionalEnergy(volumePotential);
             break;
         }
+        case scene::PotentialType::BoundaryLength:
+        {
+            BoundaryLengthPenalty *errorPotential = new BoundaryLengthPenalty(mesh, geom, weight);
+            flow->AddAdditionalEnergy(errorPotential);
+            break;
+        }
         case scene::PotentialType::SoftAreaConstraint:
         {
             SoftAreaConstraint *softArea = new SoftAreaConstraint(mesh, geom, weight);
