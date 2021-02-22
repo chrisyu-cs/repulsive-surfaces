@@ -726,7 +726,10 @@ namespace rsurfaces
         double eVal = energy->Value();
         energy->Differential(diff);
 
-        double energyError = (E - eVal) / eVal * 100;
+        std::cout << "Exact energy value = " << eVal << std::endl;
+        std::cout << "Exact diff. value  = " << diff.norm() << std::endl;
+
+        double energyError = fabs(E - eVal) / eVal * 100;
         double diffError = (DE - diff).norm() / diff.norm() * 100;
 
         std::cout << "Energy relative error = " << energyError << " percent" << std::endl;

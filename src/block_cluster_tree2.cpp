@@ -55,7 +55,7 @@ namespace rsurfaces
 
         // tic("SplitBlockCluster");
 
-        #pragma omp parallel num_threads(thread_count) default(none) shared(thread_sep_idx, thread_sep_jdx, thread_nonsep_idx, thread_nonsep_jdx)
+        #pragma omp parallel num_threads(thread_count) shared(thread_sep_idx, thread_sep_jdx, thread_nonsep_idx, thread_nonsep_jdx)
         {
             #pragma omp single
             {
@@ -146,11 +146,11 @@ namespace rsurfaces
                         mint remainder = free_thread_count % 3;
 
 // TODO: These many arguments in the function calls might excert quite a pressure on the stack. Is there a better way to share sep_i, sep_j, nsep_i, nsep_j among all threads other than making them members of the class?
-                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(lefti, leftj, spawncount, remainder) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        #pragma omp task final(free_thread_count < 1) firstprivate(lefti, leftj, spawncount, remainder) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, lefti, leftj, spawncount + (remainder > 0));
-                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(lefti, rightj, spawncount, remainder) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        #pragma omp task final(free_thread_count < 1) firstprivate(lefti, rightj, spawncount, remainder) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, lefti, rightj, spawncount + (remainder > 2));
-                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(righti, rightj, spawncount, remainder) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        #pragma omp task final(free_thread_count < 1) firstprivate(righti, rightj, spawncount, remainder) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, righti, rightj, spawncount);
                         //                    #pragma omp taskwait
                     }
@@ -162,13 +162,13 @@ namespace rsurfaces
                         mint spawncount = free_thread_count / 4;
                         mint remainder = free_thread_count % 4;
 
-                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(lefti, leftj, spawncount, remainder) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        #pragma omp task final(free_thread_count < 1) firstprivate(lefti, leftj, spawncount, remainder) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, lefti, leftj, spawncount + (remainder > 0));
-                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(righti, leftj, spawncount, remainder) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        #pragma omp task final(free_thread_count < 1) firstprivate(righti, leftj, spawncount, remainder) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, righti, leftj, spawncount + (remainder > 1));
-                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(lefti, rightj, spawncount, remainder) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        #pragma omp task final(free_thread_count < 1) firstprivate(lefti, rightj, spawncount, remainder) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, lefti, rightj, spawncount + (remainder > 2));
-                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(righti, rightj, spawncount) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        #pragma omp task final(free_thread_count < 1) firstprivate(righti, rightj, spawncount) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, righti, rightj, spawncount);
                         //                    #pragma omp taskwait
                     }
@@ -179,18 +179,18 @@ namespace rsurfaces
                     if (scorei > scorej)
                     {
                         //split cluster i
-                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(lefti) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        #pragma omp task final(free_thread_count < 1) firstprivate(lefti) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, lefti, j, free_thread_count / 2);
-                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(righti) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        #pragma omp task final(free_thread_count < 1) firstprivate(righti) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, righti, j, free_thread_count - free_thread_count / 2);
                         //                    #pragma omp taskwait
                     }
                     else //scorei < scorej
                     {
 //split cluster j
-                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(leftj) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        #pragma omp task final(free_thread_count < 1) firstprivate(leftj) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, i, leftj, free_thread_count / 2);
-                        #pragma omp task final(free_thread_count < 1) default(none) firstprivate(rightj) shared(sep_i, sep_j, nsep_i, nsep_j)
+                        #pragma omp task final(free_thread_count < 1) firstprivate(rightj) shared(sep_i, sep_j, nsep_i, nsep_j)
                         SplitBlockCluster(sep_i, sep_j, nsep_i, nsep_j, i, rightj, free_thread_count - free_thread_count / 2);
                         //                    #pragma omp taskwait
                     }

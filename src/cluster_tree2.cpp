@@ -64,7 +64,7 @@ namespace rsurfaces
             P_coords[k] = mreal_alloc(primitive_count);
         }
 
-        #pragma omp parallel for num_threads(thread_count) default(none) shared( P_coords, P_ext_pos, P_coords_, dim, primitive_count )
+        #pragma omp parallel for num_threads(thread_count)  shared( P_coords, P_ext_pos, P_coords_, dim, primitive_count )
         for( mint i=0; i < primitive_count; ++i )
         {
             mint j = P_ext_pos[i];
@@ -76,7 +76,7 @@ namespace rsurfaces
         
         Cluster2 * root = new Cluster2 ( 0, primitive_count, 0 );
 
-        #pragma omp parallel num_threads(tree_thread_count) default( none ) shared( root, P_coords, P_ext_pos, tree_thread_count)
+        #pragma omp parallel num_threads(tree_thread_count)  shared( root, P_coords, P_ext_pos, tree_thread_count)
         {
             #pragma omp single
             {
@@ -99,7 +99,7 @@ namespace rsurfaces
         leaf_clusters = mint_alloc( leaf_cluster_count );
         leaf_cluster_lookup = mint_alloc( cluster_count );
 
-        #pragma omp parallel num_threads(tree_thread_count) default( none ) shared( root, tree_thread_count )
+        #pragma omp parallel num_threads(tree_thread_count)  shared( root, tree_thread_count )
         {
             #pragma omp single
             {
@@ -264,11 +264,11 @@ namespace rsurfaces
             C->left  = new Cluster2 ( begin, splitindex, C->depth+1 );
             C->right = new Cluster2 ( splitindex, end, C->depth+1 );
             // ... and split them in parallel
-            #pragma omp task final(free_thread_count<1) default(none) shared(C, free_thread_count)
+            #pragma omp task final(free_thread_count<1)  shared(C, free_thread_count)
             {
                 SplitCluster( C->left, free_thread_count/2 );
             }
-            #pragma omp task final(free_thread_count<1) default(none) shared(C, free_thread_count)
+            #pragma omp task final(free_thread_count<1)  shared(C, free_thread_count)
             {
                 SplitCluster( C->right, free_thread_count - free_thread_count/2 );
             }
@@ -301,11 +301,11 @@ namespace rsurfaces
             C_left [ID] = ID + 1;
             C_right[ID] = ID + 1 + C->left->descendant_count;
     //
-            #pragma omp task final(free_thread_count<1) default(none) shared( C, ID, C_left, C_right ) firstprivate( free_thread_count, leaf_before_count )
+            #pragma omp task final(free_thread_count<1)  shared( C, ID, C_left, C_right ) firstprivate( free_thread_count, leaf_before_count )
             {
                 Serialize( C->left, C_left[ID], leaf_before_count, free_thread_count/2 );
             }
-            #pragma omp task final(free_thread_count<1) default(none) shared( C, ID, C_left, C_right ) firstprivate( free_thread_count, leaf_before_count )
+            #pragma omp task final(free_thread_count<1)  shared( C, ID, C_left, C_right ) firstprivate( free_thread_count, leaf_before_count )
             {
                 Serialize( C->right, C_right[ID], leaf_before_count + C->left->descendant_leaf_count, free_thread_count - free_thread_count/2 );
             }
@@ -363,8 +363,8 @@ namespace rsurfaces
             P_D_data[thread] = A_Vector<mreal> ( primitive_count * data_dim );
         }
         
-//        #pragma omp parallel for default( none ) shared( P_data, P_moments, P_ext_pos, P_min, P_min, P_data_, P_hull_coords_, P_moments_, data_dim, hull_size, moment_count, dim )
-#pragma omp parallel for default( none ) shared( P_data, P_ext_pos, P_min, P_min, P_data_, P_hull_coords_, data_dim, hull_size, dim )
+//        #pragma omp parallel for  shared( P_data, P_moments, P_ext_pos, P_min, P_min, P_data_, P_hull_coords_, P_moments_, data_dim, hull_size, moment_count, dim )
+#pragma omp parallel for  shared( P_data, P_ext_pos, P_min, P_min, P_data_, P_hull_coords_, data_dim, hull_size, dim )
         for( mint i = 0; i < primitive_count; ++i )
         {
             mreal min, max;
@@ -439,7 +439,7 @@ namespace rsurfaces
     //    toc("Allocation");
         
         // using the already serialized cluster tree
-        #pragma omp parallel default( none ) shared( thread_count )
+        #pragma omp parallel  shared( thread_count )
         {
             #pragma omp single
             {
@@ -459,11 +459,11 @@ namespace rsurfaces
         if( L >= 0 && R >= 0 ){
             //C points to interior node.
 
-            #pragma omp task final(free_thread_count<1) default(none) shared( L, free_thread_count ) //firstprivate(free_thread_count)
+            #pragma omp task final(free_thread_count<1)  shared( L, free_thread_count ) //firstprivate(free_thread_count)
             {
                 computeClusterData( L, free_thread_count/2 );
             }
-            #pragma omp task final(free_thread_count<1) default(none) shared( R, free_thread_count )// firstprivate(free_thread_count)
+            #pragma omp task final(free_thread_count<1)  shared( R, free_thread_count )// firstprivate(free_thread_count)
             {
                 computeClusterData( R, free_thread_count-free_thread_count/2 );
             }
@@ -627,9 +627,9 @@ namespace rsurfaces
         if( (L >= 0) && (R >= 0) )
         {
             // If not a leaf, compute the values of the children first.
-            #pragma omp task final(free_thread_count<1) default(none) shared( L, free_thread_count )
+            #pragma omp task final(free_thread_count<1)  shared( L, free_thread_count )
                 PercolateUp( L, free_thread_count/2 );
-            #pragma omp task final(free_thread_count<1) default(none) shared( R, free_thread_count )
+            #pragma omp task final(free_thread_count<1)  shared( R, free_thread_count )
                 PercolateUp( R, free_thread_count-free_thread_count/2 );
             #pragma omp taskwait
             
@@ -663,9 +663,9 @@ namespace rsurfaces
                 C_out[ buffer_dim * R + k ] += buffer;
             }
             
-            #pragma omp task final(free_thread_count<1) default(none) shared( L, free_thread_count )
+            #pragma omp task final(free_thread_count<1)  shared( L, free_thread_count )
                 PercolateDown( L, free_thread_count/2 );
-            #pragma omp task final(free_thread_count<1) default(none) shared( R, free_thread_count )
+            #pragma omp task final(free_thread_count<1)  shared( R, free_thread_count )
                 PercolateDown( R, free_thread_count-free_thread_count/2 );
             #pragma omp taskwait
         }
