@@ -652,6 +652,45 @@ namespace rsurfaces
         std::cout << "       " << DE(2,0) << " , " << DE(2,1) <<  " , " << DE(2,2)  << std::endl;
         std::cout << "       " << DE(3,0) << " , " << DE(3,1) <<  " , " << DE(3,2)  << std::endl;
         std::cout << "       " << DE(4,0) << " , " << DE(4,1) <<  " , " << DE(4,2)  << std::endl;
+
+        std::cout << "Energy value = " << E << std::endl;
+        std::cout << "Diff. norm   = " << DE.norm() << std::endl;
+
+        SurfaceEnergy *xEnergy = new AllPairsTPEnergy(kernel);
+        Eigen::MatrixXd xDiff(mesh->nVertices(), 3);
+
+        xDiff.setZero();
+        xEnergy->Update();
+        double eVal = xEnergy->Value();
+        xEnergy->Differential(xDiff);
+
+        std::cout << "Exact energy value = " << eVal << std::endl;
+        std::cout << "Exact diff. value  = " << xDiff.norm() << std::endl;
+
+        double energyError = fabs(E - eVal) / eVal * 100;
+        double diffError = (DE - xDiff).norm() / xDiff.norm() * 100;
+
+        std::cout << "Energy relative error = " << energyError << " percent" << std::endl;
+        std::cout << "Diff. relative error  = " << diffError << " percent" << std::endl;
+
+        SurfaceEnergy *oldBH = flow->BaseEnergy();
+        Eigen::MatrixXd oldDiff(mesh->nVertices(), 3);
+
+        oldDiff.setZero();
+        oldBH->Update();
+        double oldE = oldBH->Value();
+        oldBH->Differential(oldDiff);
+
+        std::cout << "Old BH energy value = " << oldE << std::endl;
+        std::cout << "Old BH diff. value  = " << oldDiff.norm() << std::endl;
+
+        double oldEnergyError = fabs(oldE - eVal) / eVal * 100;
+        double oldDiffError = (oldDiff - xDiff).norm() / xDiff.norm() * 100;
+
+        std::cout << "Energy relative error = " << oldEnergyError << " percent" << std::endl;
+        std::cout << "Diff. relative error  = " << oldDiffError << " percent" << std::endl;
+
+        delete xEnergy;
         
         delete tpe;
         delete bct;
@@ -718,24 +757,41 @@ namespace rsurfaces
         std::cout << "Energy value = " << E << std::endl;
         std::cout << "Diff. norm   = " << DE.norm() << std::endl;
 
-        SurfaceEnergy *energy = new AllPairsTPEnergy(kernel);
-        Eigen::MatrixXd diff(mesh->nVertices(), 3);
+        SurfaceEnergy *xEnergy = new AllPairsTPEnergy(kernel);
+        Eigen::MatrixXd xDiff(mesh->nVertices(), 3);
 
-        diff.setZero();
-        energy->Update();
-        double eVal = energy->Value();
-        energy->Differential(diff);
+        xDiff.setZero();
+        xEnergy->Update();
+        double eVal = xEnergy->Value();
+        xEnergy->Differential(xDiff);
 
         std::cout << "Exact energy value = " << eVal << std::endl;
-        std::cout << "Exact diff. value  = " << diff.norm() << std::endl;
+        std::cout << "Exact diff. value  = " << xDiff.norm() << std::endl;
 
         double energyError = fabs(E - eVal) / eVal * 100;
-        double diffError = (DE - diff).norm() / diff.norm() * 100;
+        double diffError = (DE - xDiff).norm() / xDiff.norm() * 100;
 
         std::cout << "Energy relative error = " << energyError << " percent" << std::endl;
         std::cout << "Diff. relative error  = " << diffError << " percent" << std::endl;
 
-        delete energy;
+        SurfaceEnergy *oldBH = flow->BaseEnergy();
+        Eigen::MatrixXd oldDiff(mesh->nVertices(), 3);
+
+        oldDiff.setZero();
+        oldBH->Update();
+        double oldE = oldBH->Value();
+        oldBH->Differential(oldDiff);
+
+        std::cout << "Old BH energy value = " << oldE << std::endl;
+        std::cout << "Old BH diff. value  = " << oldDiff.norm() << std::endl;
+
+        double oldEnergyError = fabs(oldE - eVal) / eVal * 100;
+        double oldDiffError = (oldDiff - xDiff).norm() / xDiff.norm() * 100;
+
+        std::cout << "Energy relative error = " << oldEnergyError << " percent" << std::endl;
+        std::cout << "Diff. relative error  = " << oldDiffError << " percent" << std::endl;
+
+        delete xEnergy;
 
     } // TestBarnesHut0
 
