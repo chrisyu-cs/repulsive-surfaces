@@ -22,10 +22,12 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STR
 
   # using Clang (linux or apple) or GCC
   message("Using clang/gcc compiler flags")
-  SET(BASE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Werror -Xpreprocessor -fopenmp")
-  SET(DISABLED_WARNINGS " -Wno-unknown-warning-option -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-copy -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field -Wno-range-loop-analysis")
+  SET(BASE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Werror -Xpreprocessor -fopenmp ")
+  SET(DISABLED_WARNINGS " -Wno-unknown-warning-option -Wno-pass-failed -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-copy -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field -Wno-range-loop-analysis")
+  #SET(BASE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Xpreprocessor -fopenmp -gline-tables-only -gcolumn-info")
+  #SET(DISABLED_WARNINGS " -Wno-unknown-warning-option -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-copy -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field -Wno-range-loop-analysis")
   SET(TRACE_INCLUDES " -H -Wno-error=unused-command-line-argument")
-
+        
   if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
     message("Setting clang-specific options")
     SET(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -ferror-limit=3 -fcolor-diagnostics")
@@ -82,6 +84,9 @@ set(SRCS
   src/energy/tpe_kernel.cpp
   src/energy/squared_error.cpp
   src/energy/static_obstacle.cpp
+  src/energy/willmore_energy.cpp
+  src/energy/tpe_multipole_0.cpp
+  src/energy/tpe_barnes_hut_0.cpp
   src/implicit/implicit_surface.cpp
   src/implicit/simple_surfaces.cpp
   src/marchingcubes/CIsoSurface.cpp
@@ -121,6 +126,7 @@ set(SRCS
   src/scene_file.cpp
   src/surface_derivatives.cpp
   src/surface_flow.cpp
+  src/derivative_assembler.cpp
 	# add any other source files here
 )
 

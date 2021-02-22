@@ -14,6 +14,9 @@
 
 #include <mkl.h>
 #include "block_cluster_tree2.h"
+#include "energy/willmore_energy.h"
+#include "energy/tpe_multipole_0.h"
+#include "energy/tpe_barnes_hut_0.h"
 #include "implicit/simple_surfaces.h"
 #include "marchingcubes/CIsoSurface.h"
 
@@ -34,6 +37,9 @@ namespace rsurfaces
         static MainApp *instance;
         MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow *flow_, polyscope::SurfaceMesh *psMesh_, std::string meshName_);
 
+        void TestWillmore();
+        void TestMultipole0();
+        void TestBarnesHut0();
         void TestNewMVProduct();
         void TestMVProduct();
         void TestIterative();

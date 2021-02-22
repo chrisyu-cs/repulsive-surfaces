@@ -5,7 +5,8 @@
 
 namespace rsurfaces
 {
-    inline BlockClusterTree2 *CreateOptimizedBCT(MeshPtr &mesh, GeomPtr &geom, double alpha, double beta, double theta)
+
+    inline std::shared_ptr<ClusterTree2> CreateOptimizedBVH(MeshPtr &mesh, GeomPtr &geom)
     {
         int nVertices = mesh->nVertices();
         int nFaces = mesh->nFaces();
@@ -13,17 +14,15 @@ namespace rsurfaces
         VertexIndices vInds = mesh->getVertexIndices();
 
         double athird = 1. / 3.;
-        int nnz = 3 * nFaces;
-        std::vector<int> outer(nFaces + 1);
-        outer[nFaces] = 3 * nFaces;
-        std::vector<int> inner(nnz);
-        std::vector<double> values(3 * nFaces, 1. / 3.);
 
         std::vector<int> ordering(nFaces);
         std::vector<double> P_coords(3 * nFaces);
         std::vector<double> P_hull_coords(9 * nFaces);
         std::vector<double> P_data(7 * nFaces);
 
+        MKLSparseMatrix AvOp = MKLSparseMatrix( nFaces, nVertices, 3 * nFaces ); // This is a sparse matrix in CSR format.
+        AvOp.outer[nFaces] = 3 * nFaces;
+        
         int facecounter = 0;
 
         for (auto face : mesh->faces()) // when I have to use a "." to reference into members of face then there is a lot of copying going on
@@ -31,7 +30,7 @@ namespace rsurfaces
             int i = fInds[face];
 
             ordering[i] = i; // unless we know anything better, let's use the identity permutation.
-            outer[facecounter] = 3 * facecounter;
+            AvOp.outer[facecounter] = 3 * facecounter;
             facecounter++;
 
             GCHalfedge he = face.halfedge();
@@ -65,20 +64,26 @@ namespace rsurfaces
             P_hull_coords[9 * i + 7] = p3.y;
             P_hull_coords[9 * i + 8] = p3.z;
 
-            inner[3 * i + 0] = i0;
-            inner[3 * i + 1] = i1;
-            inner[3 * i + 2] = i2;
+            AvOp.inner[3 * i + 0] = i0;
+            AvOp.inner[3 * i + 1] = i1;
+            AvOp.inner[3 * i + 2] = i2;
+        
+            AvOp.values[3 * i + 0] = athird;
+            AvOp.values[3 * i + 1] = athird;
+            AvOp.values[3 * i + 2] = athird;
 
-            std::sort(inner.begin() + 3 * i, inner.begin() + 3 * (i + 1));
+            std::sort( AvOp.inner + 3 * i, AvOp.inner + 3 * (i + 1) );
         }
+        
+        EigenMatrixCSR DiffOp0 = Hs::BuildDfOperator(mesh, geom); // This is a sparse matrix in CSC!!! format.
+        
+        DiffOp0.makeCompressed();
+        
+        MKLSparseMatrix DiffOp = MKLSparseMatrix( DiffOp0.rows(), DiffOp0.cols(), DiffOp0.outerIndexPtr(), DiffOp0.innerIndexPtr(), DiffOp0.valuePtr() ); // This is a sparse matrix in CSR format.
 
-        EigenMatrixCSR DiffOp = Hs::BuildDfOperator(mesh, geom); // This is a sparse matrix in CSC!!! format.
-        DiffOp.makeCompressed();
-        EigenMatrixCSR AvOp = Eigen::Map<EigenMatrixCSR>(nFaces, nVertices, nnz, &outer[0], &inner[0], &values[0]); // This is a sparse matrix in CSR format.
-        AvOp.makeCompressed();
         // create a cluster tree
         int split_threashold = 8;
-        ClusterTree2 *bvh = new ClusterTree2(
+        return std::make_shared<ClusterTree2>(
             &P_coords[0],      // coordinates used for clustering
             nFaces,            // number of primitives
             3,                 // dimension of ambient space
@@ -92,13 +97,20 @@ namespace rsurfaces
             DiffOp,            // the first-order differential operator belonging to the hi order term of the metric
             AvOp               // the zeroth-order differential operator belonging to the lo order term of the metric
         );
+    }
 
+    inline BlockClusterTree2 *CreateOptimizedBCT(MeshPtr &mesh, GeomPtr &geom, double alpha, double beta, double theta, bool exploit_symmetry_ = true, bool upper_triangular_ = false)
+    {
+        std::shared_ptr<ClusterTree2> bvh = CreateOptimizedBVH(mesh, geom);
+        
         BlockClusterTree2 *bct = new BlockClusterTree2(
             bvh,   // gets handed two pointers to instances of ClusterTree2
             bvh,   // no problem with handing the same pointer twice; this is actually intended
             alpha, // first parameter of the energy (for the numerator)
             beta,  // second parameter of the energy (for the denominator)
-            theta  // separation parameter; different gauge for thetas as before are the block clustering is performed slightly differently from before
+            theta,  // separation parameter; different gauge for thetas as before are the block clustering is performed slightly differently from before
+            exploit_symmetry_,
+            upper_triangular_
         );
 
         return bct;

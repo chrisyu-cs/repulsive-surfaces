@@ -37,32 +37,37 @@ namespace rsurfaces
 
         bool disableNearField = false;
 
-        BlockClusterTree2(ClusterTree2 *S_, ClusterTree2 *T_, const mreal alpha_, const mreal beta_, const mreal theta_, bool exploit_symmetry_ = true, bool upper_triangular_ = false);
+        BlockClusterTree2(std::shared_ptr<ClusterTree2> S_, std::shared_ptr<ClusterTree2> T_, const mreal alpha_, const mreal beta_, const mreal theta_, bool exploit_symmetry_ = true, bool upper_triangular_ = false);
 
         ~BlockClusterTree2()
         {
-            // If the two pointers are distinct, delete both
-            if (S != T)
-            {
-                if (S)
-                    delete S;
-                if (T)
-                    delete T;
-            }
-            // If they're the same, just delete one
-            else
-            {
-                if (S)
-                    delete S;
-            }
+//            // If the two pointers are distinct, delete both
+//            if (S != T)
+//            {
+//                if (S)
+//                    delete S;
+//                if (T)
+//                    delete T;
+//            }
+//            // If they're the same, just delete one
+//            else
+//            {
+//                if (S)
+//                    delete S;
+//            }
+            
+            mreal_free(hi_diag);
+            mreal_free(lo_diag);
+            mreal_free(fr_diag);
         };
 
-        mutable ClusterTree2 *S; // "left" ClusterTree2 (output side of matrix-vector multiplication)
-        mutable ClusterTree2 *T; // "right" ClusterTree2 (input side of matrix-vector multiplication)
+        mutable std::shared_ptr<ClusterTree2> S; // "left" ClusterTree2 (output side of matrix-vector multiplication)
+        mutable std::shared_ptr<ClusterTree2> T; // "right" ClusterTree2 (input side of matrix-vector multiplication)
 
         mint dim = 3;
         mreal theta2 = 0.25;
         mint thread_count = 1;
+        mint tree_thread_count = 1;
         mreal alpha = 6.0;
         mreal beta = 12.0;
         mreal exp_s = 2.0 - 1.0 / 3.0; // differentiability of the energy space
@@ -82,14 +87,18 @@ namespace rsurfaces
         // Product of the kernel matrix with the constant-1-vector.
         // Need to be updated if hi_factor, lo_factor, or fr_factor are changed!
         // Assumed to be in EXTERNAL ORDERING!
-        mutable A_Vector<mreal> hi_diag;
-        mutable A_Vector<mreal> lo_diag;
-        mutable A_Vector<mreal> fr_diag;
+        mutable  mreal * restrict hi_diag = NULL;
+        mutable  mreal * restrict lo_diag = NULL;
+        mutable  mreal * restrict fr_diag = NULL;
+        
         // TODO: Maybe these "diag" - vectors should become members to S and T?
         // Remark: If S != T, the "diags" are not used.
 
+        bool metrics_initialized = false;
+        bool is_symmetric = false;
         bool exploit_symmetry = false;
         bool upper_triangular = false;
+        
         // If exploit_symmetry != 1, S == T is assume and only roughly half the block clusters are generated during the split pass performed by CreateBlockClusters.
         // If upper_triangular != 0 and if exploit_symmetry != 0, only the upper triangle of the interaction matrices will be generated. --> CreateBlockClusters will be faster.
         // If exploit_symmetry 1= 1 and upper_triangular 1= 0 then the block cluster twins are generated _at the end_ of the splitting pass by CreateBlockClusters.
@@ -97,9 +106,19 @@ namespace rsurfaces
         std::shared_ptr<InteractionData> far;  // far and near are data containers for far and near field, respectively.
         std::shared_ptr<InteractionData> near; // They also perform the matrix-vector products.
 
-        mreal FarFieldEnergy(); // Implemented only for debuggin reasons and as warm up for the interaction kernels. I swear. ;o)
-        mreal NearFieldEnergy();
-
+        mreal FarFieldEnergy0();
+        mreal DFarFieldEnergy0Helper();
+        mreal NearFieldEnergy0();
+        mreal DNearFieldEnergy0Helper();
+        
+        mreal FarFieldEnergyInteger0();
+        mreal DFarFieldEnergyInteger0Helper();
+        mreal NearFieldEnergyInteger0();
+        mreal DNearFieldEnergyInteger0Helper();
+        
+        mreal BarnesHutEnergy0();
+        mreal DBarnesHutEnergy0Helper();
+        
         // TODO: Transpose operation
         //    void MultiplyTransposed( const mreal * const restrict P_input, mreal * const restrict P_output, const mint  cols, BCTKernelType type, bool addToResult = false );
         //
@@ -121,6 +140,8 @@ namespace rsurfaces
             const mint free_thread_count     //  <-- helps to manage task creation
         );
 
+        void PrepareMetrics();
+        
         void FarFieldInteraction(); // Compute nonzero values of sparse far field interaction matrices.
 
         void NearFieldInteractionCSR(); // Compute nonzero values of sparse near field interaction matrices in CSR format.
@@ -128,6 +149,41 @@ namespace rsurfaces
         void InternalMultiply(BCTKernelType type) const;
 
         void ComputeDiagonals();
+        
+        void PrintStats(){
+            std::cout << "\n==== BlockClusterTree2 Stats ====" << std::endl;
+            
+            std::cout << " dim                 = " <<  dim << std::endl;
+            std::cout << " theta               = " <<  sqrt(theta2) << std::endl;
+            std::cout << " thread_count        = " <<  thread_count << std::endl;
+            std::cout << " tree_thread_count   = " <<  tree_thread_count << std::endl;
+            
+            std::cout << " S->cluster_count    = " <<  S->cluster_count << std::endl;
+            std::cout << " T->cluster_count    = " <<  T->cluster_count << std::endl;
+            std::cout << " separated blocks    = " <<  far->nnz << std::endl;
+            std::cout << " nonseparated blocks = " <<  near->b_nnz << std::endl;
+            
+            std::cout << "\n---- bool data ----" << std::endl;
+            
+            std::cout << " metrics_initialized = " <<  metrics_initialized << std::endl;
+            std::cout << " is_symmetric        = " <<  is_symmetric << std::endl;
+            std::cout << " exploit_symmetry    = " <<  exploit_symmetry << std::endl;
+            std::cout << " upper_triangular    = " <<  upper_triangular << std::endl;
+            
+            std::cout << "\n---- double data ----" << std::endl;
+            
+            std::cout << " alpha       = " <<  alpha << std::endl;
+            std::cout << " beta        = " <<  beta << std::endl;
+            std::cout << " exp_s       = " <<  exp_s << std::endl;
+            std::cout << " hi_exponent = " <<  hi_exponent << std::endl;
+            std::cout << " hi_factor   = " <<  hi_factor << std::endl;
+            std::cout << " lo_factor   = " <<  lo_factor << std::endl;
+            std::cout << " fr_factor   = " <<  fr_factor << std::endl;
+            
+            
+            std::cout << "==== BlockClusterTree2 Stats ====\n" << std::endl;
+            
+        };
 
     }; //BlockClusterTree2
 

@@ -2,17 +2,26 @@
 
 #include "rsurface_types.h"
 #include "surface_energy.h"
-#include "spatial/bvh_6d.h"
+#include "helpers.h"
+#include "block_cluster_tree2_types.h"
+#include "derivative_assembler.h"
 
 namespace rsurfaces
 {
-    class StaticObstacle : public SurfaceEnergy
+
+
+    class WillmoreEnergy : public SurfaceEnergy
     {
     public:
-        StaticObstacle(MeshPtr mesh_, GeomPtr geom_, MeshUPtr obsMesh_, GeomUPtr obsGeom_, double p_, double theta_, double weight_);
-
-        virtual ~StaticObstacle() {}
-
+        ~WillmoreEnergy(){};
+        
+        WillmoreEnergy( MeshPtr mesh_, GeomPtr geom_ )
+        {
+            H_initialized = false;
+            mesh = mesh_;
+            geom = geom_;
+        }
+        
         // Returns the current value of the energy.
         virtual double Value();
 
@@ -41,17 +50,16 @@ namespace rsurfaces
         // Return the separation parameter for this energy.
         // Return 0 if this energy doesn't do hierarchical approximation.
         virtual double GetTheta();
-
+        
+        void requireMeanCurvatureVectors();
+        
     private:
-        MeshPtr mesh;
-        GeomPtr geom;
-        double p, theta, weight;
-
-        BVHNode6D *obstacleBvh;
-        MeshUPtr obstacleMesh;
-        GeomUPtr obstacleGeom;
-
-        double computeEnergyOfVertex(GCVertex vertex, BVHNode6D *bvhRoot);
-        Vector3 computeForceAtVertex(GCVertex vertex, BVHNode6D *bvhRoot);
-    };
+        
+        MeshPtr mesh = nullptr;
+        GeomPtr geom = nullptr;
+        bool H_initialized = false;
+        Eigen::MatrixXd H;
+        Eigen::VectorXd H_squared;
+        
+    }; // WillmoreEnergy
 } // namespace rsurfaces

@@ -2,17 +2,33 @@
 
 #include "rsurface_types.h"
 #include "surface_energy.h"
-#include "spatial/bvh_6d.h"
+#include "helpers.h"
+#include "block_cluster_tree2_types.h"
+#include "block_cluster_tree2.h"
+#include "derivative_assembler.h"
 
 namespace rsurfaces
 {
-    class StaticObstacle : public SurfaceEnergy
+
+    // 0-th order multipole approximation of tangent-point energy
+    class TPEnergyBarnesHut0 : public SurfaceEnergy
     {
     public:
-        StaticObstacle(MeshPtr mesh_, GeomPtr geom_, MeshUPtr obsMesh_, GeomUPtr obsGeom_, double p_, double theta_, double weight_);
-
-        virtual ~StaticObstacle() {}
-
+        ~TPEnergyBarnesHut0(){};
+        
+        TPEnergyBarnesHut0( MeshPtr mesh_, GeomPtr geom_, std::shared_ptr<ClusterTree2> bvh_, mreal alpha_, mreal beta_, mreal theta_ )
+        {
+            mesh = mesh_;
+            geom = geom_;
+            bvh = bvh_;
+            alpha = alpha_;
+            beta = beta_;
+            theta = theta_;
+            
+            mreal intpart;
+            use_int = (std::modf( alpha, &intpart) == 0.0) && (std::modf( beta/2, &intpart) == 0.0);
+        }
+        
         // Returns the current value of the energy.
         virtual double Value();
 
@@ -41,17 +57,25 @@ namespace rsurfaces
         // Return the separation parameter for this energy.
         // Return 0 if this energy doesn't do hierarchical approximation.
         virtual double GetTheta();
-
+        
+        bool use_int = false;
+        
     private:
-        MeshPtr mesh;
-        GeomPtr geom;
-        double p, theta, weight;
+        
+        MeshPtr mesh = nullptr;
+        GeomPtr geom = nullptr;
+        mreal alpha = 6.;
+        mreal beta  = 12.;
+        mreal theta = 0.5;
+        
+        std::shared_ptr<ClusterTree2> bvh = nullptr;
+        
+        template<typename T1, typename T2>
+        mreal Energy(T1 alpha, T2 betahalf);
+        
+        template<typename T1, typename T2>
+        mreal DEnergy(T1 alpha, T2 betahalf);
+        
+    }; // TPEnergyBarnesHut0
 
-        BVHNode6D *obstacleBvh;
-        MeshUPtr obstacleMesh;
-        GeomUPtr obstacleGeom;
-
-        double computeEnergyOfVertex(GCVertex vertex, BVHNode6D *bvhRoot);
-        Vector3 computeForceAtVertex(GCVertex vertex, BVHNode6D *bvhRoot);
-    };
 } // namespace rsurfaces
