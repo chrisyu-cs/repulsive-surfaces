@@ -214,6 +214,8 @@ namespace rsurfaces
         
         void PrepareBuffers( const mint cols );
         
+        void ComputePrePost( MKLSparseMatrix & DiffOp, MKLSparseMatrix & AvOp );
+        
         void CleanseBuffers();
         
         void CleanseD();

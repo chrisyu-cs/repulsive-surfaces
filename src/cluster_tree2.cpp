@@ -48,14 +48,7 @@ namespace rsurfaces
 
         mint a = 1;
         split_threshold = std::max( a, split_threshold_);
-        
-        P_ext_pos = mint_alloc( primitive_count );
-        
-        #pragma omp simd aligned( P_ext_pos : ALIGN )
-        for( mint i = 0; i < primitive_count; ++i )
-        {
-            P_ext_pos[i] = ordering_[i];
-        }
+    
 
         P_coords = A_Vector<mreal * >( dim, NULL );
         #pragma omp parallel for
@@ -64,10 +57,13 @@ namespace rsurfaces
             P_coords[k] = mreal_alloc(primitive_count);
         }
 
-        #pragma omp parallel for num_threads(thread_count)  shared( P_coords, P_ext_pos, P_coords_, dim, primitive_count )
+        P_ext_pos = mint_alloc( primitive_count );
+        
+        #pragma omp parallel for num_threads(thread_count)  shared( P_coords, P_ext_pos, P_coords_, dim, primitive_count, ordering_ )
         for( mint i=0; i < primitive_count; ++i )
         {
-            mint j = P_ext_pos[i];
+            mint j = ordering_[i];
+            P_ext_pos[i] = j;
             for( mint k = 0, last = dim; k < last; ++k )
             {
                 P_coords[k][i] = P_coords_[ dim * j + k ];
@@ -121,93 +117,8 @@ namespace rsurfaces
         
         ComputeClusterData();
 
+        ComputePrePost( DiffOp, AvOp );
 
-    //    tic("Create pre and post");
-        
-    //    // Eigen is insanely slow in multiplying pre and post processors.
-    //    // Converting to MKL version.
-
-        
-        //    P_to_C = MKLSparseMatrix(cluster_count, primitive_count, &C_rp[0], &P_rp[0], &P_one[0]); // Copy!
-            
-        //    C_to_P = MKLSparseMatrix(primitive_count, cluster_count, &P_rp[0], &P_leaf[0], &P_one[0]); // Copy!
-
-        P_to_C = MKLSparseMatrix(cluster_count, primitive_count, primitive_count );
-        P_to_C.outer[0] = 0;
-        
-        C_to_P = MKLSparseMatrix(primitive_count, cluster_count, primitive_count );
-        C_to_P.outer[primitive_count] = primitive_count;
-        
-        leaf_cluster_ptr = mint_alloc( leaf_cluster_count + 1  );
-        leaf_cluster_ptr[0] = 0;
-    //    P_leaf = A_Vector<mint>( primitive_count );
-
-        #pragma omp parallel for
-        for( mint i = 0; i < leaf_cluster_count; ++i )
-        {
-            mint leaf = leaf_clusters[i];
-            mint begin = C_begin[leaf];
-            mint end   = C_end  [leaf];
-            leaf_cluster_ptr[ i + 1 ] = end;
-            for( mint k = begin; k < end; ++k )
-            {
-                C_to_P.inner[k] = leaf;
-            }
-        }
-
-        {
-            mreal * x = C_to_P.values;
-            mreal * y = P_to_C.values;
-            mint * i  = C_to_P.outer;
-            mint * j  = P_to_C.inner;
-            #pragma omp simd aligned ( x, y, i, j  : ALIGN )
-            for( mint k = 0; k < primitive_count; ++k )
-            {
-                x[k] = 1.;
-                y[k] = 1.;
-                
-                i[k] = k;
-                j[k] = k;
-            }
-        }
-
-        for (mint C = 0; C < cluster_count; ++C)
-        {
-            if( C_left[C] >= 0)
-            {
-                P_to_C.outer[C + 1] = P_to_C.outer[C];
-            }
-            else
-            {
-                P_to_C.outer[C + 1] = P_to_C.outer[C] + C_end[C] - C_begin[C];
-            }
-        }
-        
-        MKLSparseMatrix hi_perm ( dim * primitive_count, dim * primitive_count, dim * primitive_count );
-        
-        hi_perm.outer[ dim * primitive_count ] = dim * primitive_count;
-        
-        #pragma omp parallel for
-        for( mint i = 0; i < primitive_count; ++i )
-        {
-            mreal a = P_data[0][i];
-            for( mint k = 0; k < dim; ++k )
-            {
-                mint to = dim * i + k;
-                hi_perm.outer [ to ] = to;
-                hi_perm.inner [ to ] = dim * P_ext_pos[i] + k;
-                hi_perm.values[ to ] = a;
-            }
-        }
-        hi_perm.Multiply( DiffOp, hi_pre );
-
-        hi_pre.Transpose( hi_post );
-        
-        MKLSparseMatrix lo_perm( primitive_count, primitive_count, C_to_P.outer, P_ext_pos, P_data[0] ); // Copy
-
-        lo_perm.Multiply( AvOp, lo_pre );
-
-        lo_pre.Transpose( lo_post );
     }; //Constructor
 
 
@@ -331,8 +242,7 @@ namespace rsurfaces
 //                                           , const mreal * const  restrict P_moments_
                                            ) // reordering and computing bounding boxes
     {
-    //    A_Vector<mreal> v (primitive_count);
-    //    P_data   = A_Vector<A_Vector<mreal>> ( data_dim, v );
+
         P_data = A_Vector<mreal * > ( data_dim, NULL );
         for( mint k = 0; k < data_dim; ++ k )
         {
@@ -363,8 +273,7 @@ namespace rsurfaces
             P_D_data[thread] = A_Vector<mreal> ( primitive_count * data_dim );
         }
         
-//        #pragma omp parallel for  shared( P_data, P_moments, P_ext_pos, P_min, P_min, P_data_, P_hull_coords_, P_moments_, data_dim, hull_size, moment_count, dim )
-#pragma omp parallel for  shared( P_data, P_ext_pos, P_min, P_min, P_data_, P_hull_coords_, data_dim, hull_size, dim )
+        #pragma omp parallel for  shared( P_data, P_ext_pos, P_min, P_min, P_data_, P_hull_coords_, data_dim, hull_size, dim )
         for( mint i = 0; i < primitive_count; ++i )
         {
             mreal min, max;
@@ -552,6 +461,96 @@ namespace rsurfaces
         }
         C_squared_radius[C] = r2;
     }; //computeClusterData
+
+    void ClusterTree2::ComputePrePost( MKLSparseMatrix & DiffOp, MKLSparseMatrix & AvOp )
+    {
+    //    tic("Create pre and post");
+        
+    //    // Eigen is insanely slow in multiplying pre and post processors.
+    //    // Converting to MKL version.
+
+        
+        //    P_to_C = MKLSparseMatrix(cluster_count, primitive_count, &C_rp[0], &P_rp[0], &P_one[0]); // Copy!
+            
+        //    C_to_P = MKLSparseMatrix(primitive_count, cluster_count, &P_rp[0], &P_leaf[0], &P_one[0]); // Copy!
+
+        P_to_C = MKLSparseMatrix(cluster_count, primitive_count, primitive_count );
+        P_to_C.outer[0] = 0;
+        
+        C_to_P = MKLSparseMatrix(primitive_count, cluster_count, primitive_count );
+        C_to_P.outer[primitive_count] = primitive_count;
+        
+        leaf_cluster_ptr = mint_alloc( leaf_cluster_count + 1  );
+        leaf_cluster_ptr[0] = 0;
+    //    P_leaf = A_Vector<mint>( primitive_count );
+
+        #pragma omp parallel for
+        for( mint i = 0; i < leaf_cluster_count; ++i )
+        {
+            mint leaf = leaf_clusters[i];
+            mint begin = C_begin[leaf];
+            mint end   = C_end  [leaf];
+            leaf_cluster_ptr[ i + 1 ] = end;
+            for( mint k = begin; k < end; ++k )
+            {
+                C_to_P.inner[k] = leaf;
+            }
+        }
+
+        {
+            mreal * x = C_to_P.values;
+            mreal * y = P_to_C.values;
+            mint * i  = C_to_P.outer;
+            mint * j  = P_to_C.inner;
+            #pragma omp simd aligned ( x, y, i, j  : ALIGN )
+            for( mint k = 0; k < primitive_count; ++k )
+            {
+                x[k] = 1.;
+                y[k] = 1.;
+                
+                i[k] = k;
+                j[k] = k;
+            }
+        }
+
+        for (mint C = 0; C < cluster_count; ++C)
+        {
+            if( C_left[C] >= 0)
+            {
+                P_to_C.outer[C + 1] = P_to_C.outer[C];
+            }
+            else
+            {
+                P_to_C.outer[C + 1] = P_to_C.outer[C] + C_end[C] - C_begin[C];
+            }
+        }
+        
+        MKLSparseMatrix hi_perm ( dim * primitive_count, dim * primitive_count, dim * primitive_count );
+        
+        hi_perm.outer[ dim * primitive_count ] = dim * primitive_count;
+        
+        #pragma omp parallel for
+        for( mint i = 0; i < primitive_count; ++i )
+        {
+            mreal a = P_data[0][i];
+            for( mint k = 0; k < dim; ++k )
+            {
+                mint to = dim * i + k;
+                hi_perm.outer [ to ] = to;
+                hi_perm.inner [ to ] = dim * P_ext_pos[i] + k;
+                hi_perm.values[ to ] = a;
+            }
+        }
+        hi_perm.Multiply( DiffOp, hi_pre );
+
+        hi_pre.Transpose( hi_post );
+        
+        MKLSparseMatrix lo_perm( primitive_count, primitive_count, C_to_P.outer, P_ext_pos, P_data[0] ); // Copy
+
+        lo_perm.Multiply( AvOp, lo_pre );
+
+        lo_pre.Transpose( lo_post );
+    } // ComputePrePost
 
     void ClusterTree2::PrepareBuffers( const mint cols )
     {
