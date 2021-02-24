@@ -62,6 +62,7 @@ namespace rsurfaces
         MeshPtr mesh;
         GeomPtr geom;
         GeomPtr geomOrig;
+        UVDataPtr uvs;
         SurfaceFlow *flow;
         TPEKernel *kernel;
         AllPairsTPEnergy *referenceEnergy;

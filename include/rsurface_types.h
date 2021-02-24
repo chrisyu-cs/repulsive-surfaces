@@ -13,10 +13,12 @@ namespace rsurfaces
     typedef std::unique_ptr<surface::VertexPositionGeometry> GeomUPtr;
     typedef std::shared_ptr<surface::HalfedgeMesh> MeshPtr;
     typedef std::shared_ptr<surface::VertexPositionGeometry> GeomPtr;
+    typedef std::shared_ptr<surface::CornerData<Vector2>> UVDataPtr;
     typedef surface::Vertex GCVertex;
     typedef surface::Halfedge GCHalfedge;
     typedef surface::Edge GCEdge;
     typedef surface::Face GCFace;
+    typedef surface::Corner GCCorner;
 
     typedef surface::VertexData<size_t> VertexIndices;
     typedef surface::FaceData<size_t> FaceIndices;
