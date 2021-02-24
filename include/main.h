@@ -38,6 +38,7 @@ namespace rsurfaces
         MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow *flow_, polyscope::SurfaceMesh *psMesh_, std::string meshName_);
 
         void TestWillmore();
+        void TestObstacle0();
         void TestMultipole0();
         void TestBarnesHut0();
         void TestNewMVProduct();

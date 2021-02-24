@@ -13,4 +13,11 @@
 #include "energy/implicit_attractor.h"
 #include "energy/implicit_obstacle.h"
 #include "energy/willmore_energy.h"
+
 #include "energy/tpe_multipole_0.h"
+#include "energy/tpe_barnes_hut_0.h"
+#include "energy/tpe_all_pairs.h"
+
+#include "energy/tp_obstacle_multipole_0.h"
+#include "energy/tp_obstacle_barnes_hut_0.h"
+#include "energy/tp_obstacle_all_pairs.h"

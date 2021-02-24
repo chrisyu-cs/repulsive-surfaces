@@ -207,7 +207,7 @@ namespace rsurfaces
     // Get the exponents of this energy; only applies to tangent-point energies.
     Vector2 TPEnergyBarnesHut0::GetExponents()
     {
-        return Vector2{1, 0};
+        return Vector2{alpha, beta};
     }
 
     // Get a pointer to the current BVH for this energy.
@@ -221,7 +221,7 @@ namespace rsurfaces
     // Return 0 if this energy doesn't do hierarchical approximation.
     double TPEnergyBarnesHut0::GetTheta()
     {
-        return 0;
+        return theta;
     }
 
 
@@ -395,7 +395,7 @@ mreal TPEnergyBarnesHut0::Energy(T1 alpha, T2 betahalf)
         sum += local_sum;
     }
     return sum;
-}; //BarnesHutEnergy0
+}; // Energy
 
 
 template<typename T1, typename T2>
@@ -656,7 +656,7 @@ mreal TPEnergyBarnesHut0::DEnergy(T1 alpha, T2 betahalf)
         }
     }
     return sum;
-}; //DBarnesHutEnergy0Helper
+}; // DEnergy
 
 
 } // namespace rsurfaces

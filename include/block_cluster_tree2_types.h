@@ -79,18 +79,43 @@ namespace rsurfaces
         std::cout << (std::string( 2 * Timers::time_stack.size(), ' ') + s + "...") << std::endl;
     }
 
-    inline void toc(std::string s)
+    inline mreal toc(std::string s)
     {
         if (!Timers::time_stack.empty())
         {
             auto start_time = Timers::time_stack.back();
             auto stop_time = std::chrono::steady_clock::now();
-            std::cout << (std::string( 2 * Timers::time_stack.size(), ' ') + std::to_string((std::chrono::duration<double>(stop_time - start_time).count())) + " s.") << std::endl;
+            mreal duration = std::chrono::duration<double>(stop_time - start_time).count();
+            std::cout << (std::string( 2 * Timers::time_stack.size(), ' ') + std::to_string(duration) + " s.") << std::endl;
             Timers::time_stack.pop_back();
+            return duration;
         }
         else
         {
             std::cout << ("Unmatched toc detected. Label =  " + s) << std::endl;
+            return 0.;
+        }
+    }
+
+    inline void tic()
+    {
+        Timers::time_stack.push_back(std::chrono::steady_clock::now());
+    }
+
+    inline mreal toc()
+    {
+        if (!Timers::time_stack.empty())
+        {
+            auto start_time = Timers::time_stack.back();
+            auto stop_time = std::chrono::steady_clock::now();
+            mreal duration = std::chrono::duration<double>(stop_time - start_time).count();
+            Timers::time_stack.pop_back();
+            return duration;
+        }
+        else
+        {
+            std::cout << ("Unmatched toc detected.") << std::endl;
+            return 0.;
         }
     }
 

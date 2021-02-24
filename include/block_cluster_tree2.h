@@ -169,17 +169,16 @@ namespace rsurfaces
             std::cout << " is_symmetric        = " <<  is_symmetric << std::endl;
             std::cout << " exploit_symmetry    = " <<  exploit_symmetry << std::endl;
             std::cout << " upper_triangular    = " <<  upper_triangular << std::endl;
-            
-            std::cout << "\n---- double data ----" << std::endl;
-            
-            std::cout << " alpha       = " <<  alpha << std::endl;
-            std::cout << " beta        = " <<  beta << std::endl;
-            std::cout << " exp_s       = " <<  exp_s << std::endl;
-            std::cout << " hi_exponent = " <<  hi_exponent << std::endl;
-            std::cout << " hi_factor   = " <<  hi_factor << std::endl;
-            std::cout << " lo_factor   = " <<  lo_factor << std::endl;
-            std::cout << " fr_factor   = " <<  fr_factor << std::endl;
-            
+//
+//            std::cout << "\n---- double data ----" << std::endl;
+//
+//            std::cout << " alpha       = " <<  alpha << std::endl;
+//            std::cout << " beta        = " <<  beta << std::endl;
+//            std::cout << " exp_s       = " <<  exp_s << std::endl;
+//            std::cout << " hi_exponent = " <<  hi_exponent << std::endl;
+//            std::cout << " hi_factor   = " <<  hi_factor << std::endl;
+//            std::cout << " lo_factor   = " <<  lo_factor << std::endl;
+//            std::cout << " fr_factor   = " <<  fr_factor << std::endl;
             
             std::cout << "==== BlockClusterTree2 Stats ====\n" << std::endl;
             

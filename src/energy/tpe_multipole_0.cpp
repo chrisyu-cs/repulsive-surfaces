@@ -233,8 +233,6 @@ namespace rsurfaces
     {
         T2 minus_betahalf = -betahalf;
         
-        bool not_symmetric = !bct->is_symmetric;
-        
         auto S = bct->S;
         auto T = bct->T;
         mint b_m = bct->far->b_m;
@@ -283,7 +281,7 @@ namespace rsurfaces
             {
                 mint j = b_inner[k];
                 
-                if( not_symmetric || (i <= j) )
+                if(i <= j)
                 {
                     mreal v1 = Y1[j] - x1;
                     mreal v2 = Y2[j] - x2;
@@ -311,7 +309,6 @@ namespace rsurfaces
     {
         T2 minus_betahalf = -betahalf;
         
-        bool not_symmetric = !bct->is_symmetric;
         auto S = bct->S;
         auto T = bct->T;
         mint b_m = bct->near->b_m;
@@ -351,7 +348,7 @@ namespace rsurfaces
             for( mint k = b_outer[b_i]; k < b_outer[b_i+1]; ++k )
             {
                 mint b_j = b_inner[k];
-                if( not_symmetric || (b_i <= b_j) )
+                if(b_i <= b_j)
                 {
                     mint j_begin = b_col_ptr[b_j];
                     mint j_end   = b_col_ptr[b_j+1];
@@ -369,7 +366,7 @@ namespace rsurfaces
                         mreal i_sum = 0.;
                         
                         // if b_i == b_j, we loop only over the upper triangular block, diagonal excluded
-                        mint begin = ( not_symmetric || (b_i != b_j) ? j_begin : i + 1 );
+                        mint begin = (b_i != b_j) ? j_begin : i + 1;
                         // Here, one could do a bit of horizontal vectorization. However, the number of js an x interacts with varies greatly..
                         //                    #pragma omp simd aligned( B, Y1, Y2, Y3, M1, M2, M3 : ALIGN ) reduction( + : block_sum )
                         for( mint j = begin; j < j_end; ++j )
@@ -415,7 +412,7 @@ namespace rsurfaces
         
         auto S = bct->S;
         auto T = bct->T;
-        bool not_symmetric = !bct->is_symmetric;
+
         mint b_m = bct->far->b_m;
         mint data_dim = std::min( S->data_dim, T->data_dim);
         mint nthreads = std::min( S->thread_count, T->thread_count);
@@ -476,7 +473,7 @@ namespace rsurfaces
             {
                 mint j = b_inner[k];
                 
-                if( not_symmetric || (i <= j) )
+                if( i <= j )
                 {
                     mreal  b = B [j];
                     mreal y1 = Y1[j];
@@ -583,7 +580,7 @@ namespace rsurfaces
         
         auto S = bct->S;
         auto T = bct->T;
-        bool not_symmetric = !bct->is_symmetric;
+        
         mint b_m = bct->near->b_m;
         mint data_dim = std::min( S->data_dim, T->data_dim);
         mint nthreads = std::min( S->thread_count, T->thread_count);
@@ -626,7 +623,7 @@ namespace rsurfaces
             for( mint k = b_outer[b_i]; k < b_outer[b_i+1]; ++k )
             {
                 mint b_j = b_inner[k];
-                if( not_symmetric || (b_i <= b_j) )
+                if( b_i <= b_j )
                 {
                     mint j_begin = b_col_ptr[b_j];
                     mint j_end   = b_col_ptr[b_j+1];
@@ -651,13 +648,14 @@ namespace rsurfaces
                         
                         
                         // if i == j, we loop only over the upper triangular block, diagonal excluded
-                        mint begin = ( not_symmetric || (b_i != b_j) ? j_begin : i + 1 );
+                        mint begin = (b_i != b_j) ? j_begin : i + 1;
                         
                         // Here, one could do a bit of horizontal vectorization. However, the number of js an x interacts with is small and varies greatly..
                         //                            #pragma omp simd aligned( B, Y1, Y2, Y3, M1, M2, M3 : ALIGN ) reduction( + : sum)
                         for( mint j = begin; j < j_end; ++j )
                         {
-                            if( i!= j ){
+                            if( i != j )
+                            {
                                 mreal  b = B [j];
                                 mreal y1 = Y1[j];
                                 mreal y2 = Y2[j];
