@@ -84,7 +84,7 @@ namespace rsurfaces
         leaf_cluster_count = root->descendant_leaf_count;
 
         // TODO: Create parallel tasks here.
-        PrepareBuffers( std::max( dim * dim, max_buffer_dim_ ) );
+        RequireBuffers( std::max( dim * dim, max_buffer_dim_ ) );
         
         C_left  = mint_alloc ( cluster_count );
         C_right = mint_alloc ( cluster_count );
@@ -552,7 +552,7 @@ namespace rsurfaces
         lo_pre.Transpose( lo_post );
     } // ComputePrePost
 
-    void ClusterTree2::PrepareBuffers( const mint cols )
+    void ClusterTree2::RequireBuffers( const mint cols )
     {
         // TODO: parallelize allocation
         if( cols > max_buffer_dim )
@@ -576,7 +576,7 @@ namespace rsurfaces
         
         buffer_dim = cols;
         
-    }; // PrepareBuffers
+    }; // RequireBuffers
 
     void ClusterTree2::CleanseBuffers()
     {
@@ -691,19 +691,19 @@ namespace rsurfaces
             case BCTKernelType::FractionalOnly:
             {
                 pre  = &lo_pre ;
-                PrepareBuffers( cols );
+                RequireBuffers( cols );
                 break;
             }
             case BCTKernelType::HighOrder:
             {
                 pre  = &hi_pre ;
-                PrepareBuffers( dim * cols );                                   // Beware: The derivative operator increases the number of columns!
+                RequireBuffers( dim * cols );                                   // Beware: The derivative operator increases the number of columns!
                 break;
             }
             case BCTKernelType::LowOrder:
             {
                 pre  = &lo_pre ;
-                PrepareBuffers( cols );
+                RequireBuffers( cols );
                 break;
             }
             default:
@@ -812,7 +812,7 @@ namespace rsurfaces
 void ClusterTree2::CollectDerivatives( mreal * const restrict output )
 {
     
-    PrepareBuffers(data_dim);
+    RequireBuffers(data_dim);
     
     //    CleanseBuffers();
     

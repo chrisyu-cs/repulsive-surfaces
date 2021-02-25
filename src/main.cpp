@@ -602,26 +602,21 @@ namespace rsurfaces
         
         double alpha = 6.;
         double beta  = 12.;
-        double theta = 0.125;
-        
+        double theta = 0.25;
         
         // mesh1 and geom1 represent the movable surface
         auto mesh1 = rsurfaces::MainApp::instance->mesh;
         auto geom1 = rsurfaces::MainApp::instance->geom;
         
+        // Load obstacle
         std::string filename = "../scenes/Bunny/bunny.obj";
         std::unique_ptr<HalfedgeMesh> umesh;
         std::unique_ptr<VertexPositionGeometry> ugeom;
-        // Load mesh
         std::tie(umesh, ugeom) = readManifoldSurfaceMesh(filename);
-        
         ugeom->requireVertexDualAreas();
         ugeom->requireVertexNormals();
-        
         std::string mesh_name = polyscope::guessNiceNameFromPath(filename);
-        polyscope::SurfaceMesh *psMesh = polyscope::registerSurfaceMesh(mesh_name, ugeom->inputVertexPositions,
-                                                                        umesh->getFaceVertexList(), polyscopePermutations(*umesh));
-        
+        polyscope::SurfaceMesh *psMesh = polyscope::registerSurfaceMesh(mesh_name, ugeom->inputVertexPositions, umesh->getFaceVertexList(), polyscopePermutations(*umesh));
         // mesh2 and geom2 represent the pinned obstacle
         std::shared_ptr<HalfedgeMesh> mesh2 = std::move(umesh);
         std::shared_ptr<VertexPositionGeometry> geom2 = std::move(ugeom);
@@ -639,6 +634,9 @@ namespace rsurfaces
         tic("Create bct12");
         auto bct12 = std::make_shared<BlockClusterTree2>(bvh1, bvh2, alpha, beta, theta);
         toc("Create bct12");
+        
+        // The transpose of bct12 and thus not needed.
+        //auto bct21 = std::make_shared<BlockClusterTree2>(bvh2, bvh1, alpha, beta, theta);
         tic("Create bct22");
         auto bct22 = std::make_shared<BlockClusterTree2>(bvh2, bvh2, alpha, beta, theta);
         toc("Create bct22");
@@ -646,29 +644,48 @@ namespace rsurfaces
         bct11->PrintStats();
         bct12->PrintStats();
         bct22->PrintStats();
+
+        
+        // The joint bct of the union of mesh1 and mesh2 can be written in block matrix for as
+        //  bct = {
+        //            { bct11, bct12 },
+        //            { bct21, bct22 }
+        //        },
+        // where bct11 and bct22 are the instances of BlockClusterTree2 of mesh1 and mesh2, respectively, bct12 is cross interaction BlockClusterTree2 of mesh1 and mesh2, and bct21 is the transpose of bct12.
+        // However, the according matrix (on the space of dofs on the primitives) would be
+        //  A   = {
+        //            { A11 + diag( A12 * one2 ) , A12                      },
+        //            { A21                      , A22 + diag( A21 * one1 ) }
+        //        },
+        // where one1 and one2 are all-1-vectors on the primitives of mesh1 and mesh2, respectively.
+        // BlockClusterTree2::AddObstacleCorrection is supposed to compute diag( A12 * one2 ) and to add it to the diagonal of A11.
+        // Afterwards, bct1->Multiply will also multiply with the metric contribution of the obstacle.
+        tic("Modifying bct11 to include the terms with respect to the obstacle.");
+        bct11->AddObstacleCorrection( bct12.get() );
+        toc("Modifying bct11 to include the terms with respect to the obstacle.");
         
         // the self-interaction energy of mesh1
-        auto tpe_fmm_11 = std::make_shared<TPEnergyMultipole0> ( mesh1, geom1, bct11.get(), alpha, beta );
-        auto tpe_bh_11  = std::make_shared<TPEnergyBarnesHut0> ( mesh1, geom1, bvh1, alpha, beta, theta );
-        auto tpe_ex_11  = std::make_shared<TPEnergyAllPairs>   ( mesh1, geom1, bvh1, alpha, beta );
+        auto tpe_fm_11 = std::make_shared<TPEnergyMultipole0> ( mesh1, geom1, bct11.get(), alpha, beta );
+        auto tpe_bh_11 = std::make_shared<TPEnergyBarnesHut0> ( mesh1, geom1, bvh1, alpha, beta, theta );
+        auto tpe_ex_11 = std::make_shared<TPEnergyAllPairs>   ( mesh1, geom1, bvh1, alpha, beta );
         
         // the interaction energy between mesh1 and mesh2
-        auto tpe_fmm_12 = std::make_shared<TPObstacleMultipole0>( mesh1, geom1, bct12.get(), alpha, beta );
-        auto tpe_bh_12  = std::make_shared<TPObstacleBarnesHut0>( mesh1, geom1, bvh1, bvh2, alpha, beta, theta );
-        auto tpe_ex_12  = std::make_shared<TPObstacleAllPairs>  ( mesh1, geom1, bvh1, bvh2, alpha, beta );
+        auto tpe_fm_12 = std::make_shared<TPObstacleMultipole0>( mesh1, geom1, bct12.get(), alpha, beta );
+        auto tpe_bh_12 = std::make_shared<TPObstacleBarnesHut0>( mesh1, geom1, bvh1, bvh2, alpha, beta, theta );
+        auto tpe_ex_12 = std::make_shared<TPObstacleAllPairs>  ( mesh1, geom1, bvh1, bvh2, alpha, beta );
         
         // the self-interaction energy of mesh2; since mesh2 is the obstacle here, this is not needed in practice; I used this here only for test purposes and in order to see how much "work" is saved by this approach.
-        auto tpe_fmm_22 = std::make_shared<TPEnergyMultipole0> ( mesh2, geom2, bct22.get(), alpha, beta );
-        auto tpe_bh_22  = std::make_shared<TPEnergyBarnesHut0> ( mesh2, geom2, bvh2, alpha, beta, theta );
-        auto tpe_ex_22  = std::make_shared<TPEnergyAllPairs>   ( mesh2, geom2, bvh2, alpha, beta );
+        auto tpe_fm_22 = std::make_shared<TPEnergyMultipole0> ( mesh2, geom2, bct22.get(), alpha, beta );
+        auto tpe_bh_22 = std::make_shared<TPEnergyBarnesHut0> ( mesh2, geom2, bvh2, alpha, beta, theta );
+        auto tpe_ex_22 = std::make_shared<TPEnergyAllPairs>   ( mesh2, geom2, bvh2, alpha, beta );
 
-        double E_fmm_11, E_fmm_12, E_fmm_22;
-        double E_bh_11,  E_bh_12,  E_bh_22;
-        double E_ex_11,  E_ex_12,  E_ex_22;
+        double E_fm_11, E_fm_12, E_fm_22;
+        double E_bh_11, E_bh_12, E_bh_22;
+        double E_ex_11, E_ex_12, E_ex_22;
 
-        Eigen::MatrixXd DE_fmm_11 ( mesh1->nVertices(), 3 );
-        Eigen::MatrixXd DE_fmm_12 ( mesh1->nVertices(), 3 );
-        Eigen::MatrixXd DE_fmm_22 ( mesh2->nVertices(), 3 );
+        Eigen::MatrixXd DE_fm_11 ( mesh1->nVertices(), 3 );
+        Eigen::MatrixXd DE_fm_12 ( mesh1->nVertices(), 3 );
+        Eigen::MatrixXd DE_fm_22 ( mesh2->nVertices(), 3 );
         Eigen::MatrixXd DE_bh_11  ( mesh1->nVertices(), 3 );
         Eigen::MatrixXd DE_bh_12  ( mesh1->nVertices(), 3 );
         Eigen::MatrixXd DE_bh_22  ( mesh2->nVertices(), 3 );
@@ -729,34 +746,30 @@ namespace rsurfaces
         
         //######################################
         tic();
-        E_fmm_11 = tpe_fmm_11->Value();
-        mreal t_fmm_11 = toc();
+        E_fm_11 = tpe_fm_11->Value();
+        mreal t_fm_11 = toc();
         
         tic();
-        E_fmm_12 = tpe_fmm_12->Value();
-        mreal t_fmm_12 = toc();
+        E_fm_12 = tpe_fm_12->Value();
+        mreal t_fm_12 = toc();
         
         tic();
-        E_fmm_22 = tpe_fmm_22->Value();
-        mreal t_fmm_22 = toc();
+        E_fm_22 = tpe_fm_22->Value();
+        mreal t_fm_22 = toc();
         
         tic();
-        tpe_fmm_11->Differential( DE_fmm_11 );
-        mreal Dt_fmm_11 = toc();
+        tpe_fm_11->Differential( DE_fm_11 );
+        mreal Dt_fm_11 = toc();
         
         tic();
-        tpe_fmm_12->Differential( DE_fmm_12 );
-        mreal Dt_fmm_12 = toc();
+        tpe_fm_12->Differential( DE_fm_12 );
+        mreal Dt_fm_12 = toc();
         
         tic();
-        tpe_fmm_22->Differential( DE_fmm_22 );
-        mreal Dt_fmm_22 = toc();
+        tpe_fm_22->Differential( DE_fm_22 );
+        mreal Dt_fm_22 = toc();
         
-        //######################################
-//
-//        printf("%-20s%-10s%-10s%-10s\n", "", "exact", "BH", "FMM" );
-//        printf("%-20s%-10.2f%-10.2f%-10.2f\n", " E_11 error (%) ", fabs(E_ex_11/E_ex_11 - 1) * 100, fabs(E_bh_11/E_ex_11 - 1) * 100, fabs(E_fmm_11/E_ex_11 - 1) * 100 );
-            
+        //######################################            
         
         int w = 22;
         
@@ -771,37 +784,37 @@ namespace rsurfaces
         std::cout << std::setw(w) << "  E_11 error (%) "
             << " | " << std::setw(w) << fabs(E_ex_11/E_ex_11 - 1) * 100
             << " | " << std::setw(w) << fabs(E_bh_11/E_ex_11 - 1) * 100
-            << " | " << std::setw(w) << fabs(E_fmm_11/E_ex_11 - 1) * 100
+            << " | " << std::setw(w) << fabs(E_fm_11/E_ex_11 - 1) * 100
             << std::endl;
         
         std::cout << std::setw(w) << "  E_12 error (%) "
             << " | " << std::setw(w) << fabs(E_ex_12/E_ex_12 - 1) * 100
             << " | " << std::setw(w) << fabs(E_bh_12/E_ex_12 - 1) * 100
-            << " | " << std::setw(w) << fabs(E_fmm_12/E_ex_12 - 1) * 100
+            << " | " << std::setw(w) << fabs(E_fm_12/E_ex_12 - 1) * 100
         << std::endl;
         
         std::cout << std::setw(w) << "  E_22 error (%) "
             << " | " << std::setw(w) << fabs(E_ex_12/E_ex_12 - 1) * 100
             << " | " << std::setw(w) << fabs(E_bh_22/E_ex_22 - 1) * 100
-            << " | " << std::setw(w) << fabs(E_fmm_22/E_ex_22 - 1) * 100
+            << " | " << std::setw(w) << fabs(E_fm_22/E_ex_22 - 1) * 100
             << std::endl;
         
         std::cout << std::setw(w) << " DE_11 error (%) "
             << " | " << std::setw(w) << (DE_ex_11-DE_ex_11).norm() / DE_ex_11.norm()  * 100
             << " | " << std::setw(w) << (DE_bh_11-DE_ex_11).norm() / DE_ex_11.norm() * 100
-            << " | " << std::setw(w) << (DE_fmm_11-DE_ex_11).norm() / DE_ex_11.norm() * 100
+            << " | " << std::setw(w) << (DE_fm_11-DE_ex_11).norm() / DE_ex_11.norm() * 100
             << std::endl;
         
         std::cout << std::setw(w) << " DE_12 error (%) "
             << " | " << std::setw(w) << (DE_ex_12-DE_ex_12).norm() / DE_ex_12.norm() * 100
             << " | " << std::setw(w) << (DE_bh_12-DE_ex_12).norm() / DE_ex_12.norm() * 100
-            << " | " << std::setw(w) << (DE_fmm_12-DE_ex_12).norm() / DE_ex_12.norm() * 100
+            << " | " << std::setw(w) << (DE_fm_12-DE_ex_12).norm() / DE_ex_12.norm() * 100
         << std::endl;
         
         std::cout << std::setw(w) << " DE_22 error (%) "
             << " | " << std::setw(w) << (DE_ex_22-DE_ex_22).norm() / DE_ex_22.norm() * 100
             << " | " << std::setw(w) << (DE_bh_22-DE_ex_22).norm() / DE_ex_22.norm() * 100
-            << " | " << std::setw(w) << (DE_fmm_22-DE_ex_22).norm() / DE_ex_22.norm() * 100
+            << " | " << std::setw(w) << (DE_fm_22-DE_ex_22).norm() / DE_ex_22.norm() * 100
             << std::endl;
         
         std::cout << "\n" << std::endl;
@@ -813,12 +826,12 @@ namespace rsurfaces
         
         std::cout << "------------------------------------------------------------------------------------------------" << std::endl;
         
-        std::cout << std::setw(w) << "  E_11 time  (s) " << " | " << std::setw(w) << t_ex_11  << " | " << std::setw(w) <<  t_bh_11 << " | " << std::setw(w) << t_fmm_11 << std::endl;
-        std::cout << std::setw(w) << "  E_12 time  (s) " << " | " << std::setw(w) << t_ex_12  << " | " << std::setw(w) <<  t_bh_12 << " | " << std::setw(w) << t_fmm_12 << std::endl;
-        std::cout << std::setw(w) << "  E_22 time  (s) " << " | " << std::setw(w) << t_ex_22  << " | " << std::setw(w) <<  t_bh_22 << " | " << std::setw(w) << t_fmm_22 << std::endl;
-        std::cout << std::setw(w) << " DE_11 time  (s) " << " | " << std::setw(w) << Dt_ex_11  << " | " << std::setw(w) <<  Dt_bh_11 << " | " << std::setw(w) << Dt_fmm_11 << std::endl;
-        std::cout << std::setw(w) << " DE_12 time  (s) " << " | " << std::setw(w) << Dt_ex_12  << " | " << std::setw(w) <<  Dt_bh_12 << " | " << std::setw(w) << Dt_fmm_12 << std::endl;
-        std::cout << std::setw(w) << " DE_22 time  (s) " << " | " << std::setw(w) << Dt_ex_22  << " | " << std::setw(w) <<  Dt_bh_22 << " | " << std::setw(w) << Dt_fmm_22 << std::endl;
+        std::cout << std::setw(w) << "  E_11 time  (s) " << " | " << std::setw(w) << t_ex_11  << " | " << std::setw(w) <<  t_bh_11 << " | " << std::setw(w) << t_fm_11 << std::endl;
+        std::cout << std::setw(w) << "  E_12 time  (s) " << " | " << std::setw(w) << t_ex_12  << " | " << std::setw(w) <<  t_bh_12 << " | " << std::setw(w) << t_fm_12 << std::endl;
+        std::cout << std::setw(w) << "  E_22 time  (s) " << " | " << std::setw(w) << t_ex_22  << " | " << std::setw(w) <<  t_bh_22 << " | " << std::setw(w) << t_fm_22 << std::endl;
+        std::cout << std::setw(w) << " DE_11 time  (s) " << " | " << std::setw(w) << Dt_ex_11  << " | " << std::setw(w) <<  Dt_bh_11 << " | " << std::setw(w) << Dt_fm_11 << std::endl;
+        std::cout << std::setw(w) << " DE_12 time  (s) " << " | " << std::setw(w) << Dt_ex_12  << " | " << std::setw(w) <<  Dt_bh_12 << " | " << std::setw(w) << Dt_fm_12 << std::endl;
+        std::cout << std::setw(w) << " DE_22 time  (s) " << " | " << std::setw(w) << Dt_ex_22  << " | " << std::setw(w) <<  Dt_bh_22 << " | " << std::setw(w) << Dt_fm_22 << std::endl;
         
     } // TestObstacle0
 

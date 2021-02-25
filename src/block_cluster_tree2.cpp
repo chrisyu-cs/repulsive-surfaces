@@ -36,9 +36,10 @@ namespace rsurfaces
         CreateBlockClusters();
         // toc("CreateBlockClusters");
 
-        // TODO: The following line should be move to InternalMultipy in order to delay matrix creation to a time when it is actually needed. Otherwise, using the BCT for line search (evaluating only the energy), the time for creating the matrices would be wasted.
-        PrepareMetrics();
+        // TODO: The following line should be moved to InternalMultiply in order to delay matrix creation to a time when it is actually needed. Otherwise, using the BCT for line search (evaluating only the energy), the time for creating the matrices would be wasted.
+        RequireMetrics();
 
+        
     }; // Constructor
 
     //######################################################################################################################################
@@ -289,7 +290,7 @@ namespace rsurfaces
     //######################################################################################################################################
 
 
-    void BlockClusterTree2::PrepareMetrics()
+    void BlockClusterTree2::RequireMetrics()
     {
         if( !metrics_initialized )
         {
@@ -298,6 +299,7 @@ namespace rsurfaces
             far->PrepareCSR();
 //            toc("far->PrepareCSR()");
 
+            
 //            tic("FarFieldInteraction");
             FarFieldInteraction();
 //            toc("FarFieldInteraction");
@@ -305,7 +307,7 @@ namespace rsurfaces
 //            tic("near->PrepareCSR( S->leaf_cluster_ptr, T->leaf_cluster_ptr );");
             near->PrepareCSR( S->leaf_cluster_count, S->leaf_cluster_ptr, T->leaf_cluster_count, T->leaf_cluster_ptr );
 //            toc("near->PrepareCSR( S->leaf_cluster_ptr, T->leaf_cluster_ptr );");
-
+            
 //            tic("NearFieldInteractionCSR");
             NearFieldInteractionCSR();
 //            toc("NearFieldInteractionCSR");
@@ -315,9 +317,9 @@ namespace rsurfaces
 //            toc("ComputeDiagonals");
 
             metrics_initialized = true;
-//          print("Done: PrepareMetrics.");
+//          print("Done: RequireMetrics.");
         }
-    } // PrepareMetrics
+    } // RequireMetrics
 
     void BlockClusterTree2::FarFieldInteraction()
     {
@@ -590,8 +592,8 @@ namespace rsurfaces
     void BlockClusterTree2::InternalMultiply(BCTKernelType type) const
     {
 
-        // TODO: Make it so that PrepareMetrics can be called here to initialize the actual matrices only when they are needed.
-//        PrepareMetrics();
+        // TODO: Make it so that RequireMetrics can be called here to initialize the actual matrices only when they are needed.
+//        RequireMetrics();
 
         mreal * diag = NULL;
         mreal * near_values = NULL;
@@ -601,7 +603,7 @@ namespace rsurfaces
 
         mint cols = T->buffer_dim;
 
-        S->PrepareBuffers(cols); // Tell the S-side what it has to expect.
+        S->RequireBuffers(cols); // Tell the S-side what it has to expect.
 
         // I know, this looks awful... hash tables with keys from BCTKernelType would be nicer.
         switch (type)
@@ -659,19 +661,20 @@ namespace rsurfaces
     // TODO: Needs to be adjusted when S and T are not the same!!!
     void BlockClusterTree2::ComputeDiagonals()
     {
-        if( is_symmetric )
+        if( true )
         {
-            S->PrepareBuffers(1);
-            T->PrepareBuffers(1);
+            S->RequireBuffers(1);
+            T->RequireBuffers(1);
 
             //Sloppily: hi_diag = hi_ker * P_data[0], where hi_ker is the kernel implemented in ApplyKernel_CSR_MKL
 
             // Initialize the "diag" vector (weighted by the primitive weights)
             {
-                mreal * a = &T->P_data[0][0];
-                mreal * diag = T->P_in;
-                #pragma omp simd aligned( a, diag : ALIGN )
-                for( mint i = 0; i < T->primitive_count; ++i )
+                mreal const  * restrict const a = T->P_data[0];
+                mreal * restrict const diag = T->P_in;
+                mint m = T->primitive_count;
+                #pragma omp parallel for simd aligned( a, diag : ALIGN )
+                for( mint i = 0; i < m; ++i )
                 {
                     diag[i] = a[i];
                 }
@@ -697,13 +700,17 @@ namespace rsurfaces
 
 
             // TODO: Explain the hack of dividing by S->P_data[0][i] here to a future self so that he won't change this later.
-            A_Vector<mreal> ainv (S->primitive_count);
-
-            #pragma omp parallel for
-            for( mint i = 0; i < S->primitive_count; ++i )
+            
+            mreal * restrict ainv = mreal_alloc(S->primitive_count);
+            mint m = S->primitive_count;
+            mreal const * restrict const data = S->P_out;
+            mreal const * restrict const a = S->P_data[0];
+            
+            #pragma omp parallel for simd aligned( ainv, a, fr_diag, data : ALIGN)
+            for( mint i = 0; i < m; ++i )
             {
-                ainv[i] = 1./(S->P_data[0][i]);
-                fr_diag[i] =  ainv[i] * (S->P_out[i]);
+                ainv[i] = 1./(a[i]);
+                fr_diag[i] =  ainv[i] * data[i];
             }
 
 
@@ -713,10 +720,10 @@ namespace rsurfaces
             S->PercolateDown( 0 , S->thread_count );
             S->C_to_P.Multiply( S->C_out, S->P_out, 1, true);
 
-            #pragma omp parallel for
-            for( mint i = 0; i < S->primitive_count; ++i )
+            #pragma omp parallel for simd aligned( ainv, hi_diag, data : ALIGN)
+            for( mint i = 0; i < m; ++i )
             {
-                hi_diag[i] =  ainv[i] * (S->P_out[i]);
+                hi_diag[i] =  ainv[i] * data[i];
             }
 
             far->ApplyKernel_CSR_MKL(  far->lo_values, T->C_in, S->C_out, 1, 2. * lo_factor );
@@ -725,12 +732,81 @@ namespace rsurfaces
             S->PercolateDown( 0 , S->thread_count );
             S->C_to_P.Multiply( S->C_out, S->P_out, 1, true);
 
-            #pragma omp parallel for
-            for( mint i = 0; i < S->primitive_count; ++i )
+            #pragma omp parallel for simd aligned( ainv, lo_diag, data : ALIGN)
+            for( mint i = 0; i < m; ++i )
             {
-                lo_diag[i] =  ainv[i] * (S->P_out[i]);
+                lo_diag[i] =  ainv[i] * data[i];
             }
+            
+            mreal_free(ainv);
         }
     }; // ComputeDiagonals
 
+
+    void BlockClusterTree2::AddObstacleCorrection( BlockClusterTree2 * bct12)
+    {
+        // Suppose that bct11 = this;
+        // The joint bct of the union of mesh1 and mesh2 can be written in block matrix for as
+        //  bct = {
+        //            { bct11, bct12 },
+        //            { bct21, bct22 }
+        //        },
+        // where bct11 and bct22 are the instances of BlockClusterTree2 of mesh1 and mesh2, respectively, bct12 is cross interaction BlockClusterTree2 of mesh1 and mesh2, and bct21 is the transpose of bct12.
+        // However, the according matrix (on the space of dofs on the primitives) would be
+        //  A   = {
+        //            { A11 + diag( A12 * one2 ) , A12                      },
+        //            { A21                      , A22 + diag( A21 * one1 ) }
+        //        },
+        // where one1 and one2 are all-1-vectors on the primitives of mesh1 and mesh2, respectively.
+        // BlockClusterTree2::AddObstacleCorrection is supposed to compute diag( A12 * one2 ) and to add it to the diagonal of A11.
+        // Then the bct11->Multiply will also multiply with the obstacle.
+        
+        if( (S == T) && (T == bct12->S) )
+        {
+            RequireMetrics();
+            bct12->RequireMetrics();
+
+            if( fr_factor != bct12->fr_factor )
+            {
+                wprint("AddToDiagonal: The values of fr_factor of the two instances of BlockClusterTree2 do not coincide.");
+            }
+            if( hi_factor != bct12->hi_factor )
+            {
+                wprint("AddToDiagonal: The values of hi_factor of the two instances of BlockClusterTree2 do not coincide.");
+            }
+            if( lo_factor != bct12->lo_factor )
+            {
+                wprint("AddToDiagonal: The values of lo_factor of the two instances of BlockClusterTree2 do not coincide.");
+            }
+            
+            mint n = T->primitive_count;
+            
+            mreal * restrict const fr_target = fr_diag;
+            mreal * restrict const hi_target = hi_diag;
+            mreal * restrict const lo_target = lo_diag;
+            
+            mreal const * restrict const fr_source = bct12->fr_diag;
+            mreal const * restrict const hi_source = bct12->hi_diag;
+            mreal const * restrict const lo_source = bct12->lo_diag;
+            
+            #pragma omp parallel for simd aligned( fr_target, hi_target, lo_target, fr_source, hi_source, lo_source : ALIGN )
+            for( mint i = 0; i < n; ++ i)
+            {
+                fr_target[i] += fr_source[i];
+                hi_target[i] += hi_source[i];
+                lo_target[i] += lo_source[i];
+            }
+        }
+        else
+        {
+            if( S != T )
+            {
+                eprint("AddToDiagonal: Instance of BlockClusterTree2 is not symmetric. Doing nothing.");
+            }
+            if( S != bct12->S )
+            {
+                eprint("AddToDiagonal: The two instances of BlockClusterTree2 are not compatible. Doing nothing.");
+            }
+        }
+    }
 } // namespace rsurfaces

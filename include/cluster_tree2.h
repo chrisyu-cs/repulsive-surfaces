@@ -212,7 +212,7 @@ namespace rsurfaces
 
         void ComputeClusterData();
         
-        void PrepareBuffers( const mint cols );
+        void RequireBuffers( const mint cols );
         
         void ComputePrePost( MKLSparseMatrix & DiffOp, MKLSparseMatrix & AvOp );
         

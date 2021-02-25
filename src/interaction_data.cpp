@@ -102,6 +102,7 @@ namespace rsurfaces
     // Allocate nonzero values for CSR matrices
     void InteractionData::PrepareCSR()
     {
+//        tic("PrepareCSR()");
     //    tic("Allocate nonzero values");
         #pragma omp parallel
         {
@@ -122,12 +123,14 @@ namespace rsurfaces
                 #pragma omp taskwait
             }
         }
+//        toc("PrepareCSR()");
     //    toc("Allocate nonzero values");
     }
 
     // Allocate nonzero values _and_ compute block date for blocked matrices in CSR matrices
     void InteractionData::PrepareCSR( mint b_m_, mint * b_row_ptr_, mint b_n_, mint * b_col_ptr_ )
     {
+//        tic("PrepareCSR( mint b_m_, mint * b_row_ptr_, mint b_n_, mint * b_col_ptr_ )");
         b_m = b_m_;
         b_n = b_n_;
         
@@ -282,6 +285,8 @@ namespace rsurfaces
                 block_ptr[k+1] = entries_before_kth_block;
             }
         }
+        
+//        toc("PrepareCSR( mint b_m_, mint * b_row_ptr_, mint b_n_, mint * b_col_ptr_ )");
     }
 
     void InteractionData::ApplyKernel_CSR_MKL( mreal * values, mreal * T_input, mreal * S_output, mint cols, mreal factor ) // sparse matrix-vector multiplication using mkl_sparse_d_mm
@@ -300,7 +305,7 @@ namespace rsurfaces
             if( cols > 1 )
             {
 //                tic("MKL sparse matrix-matrix multiplication: cols = " + std::to_string(cols) );
-                stat = mkl_sparse_d_mm ( SPARSE_OPERATION_NON_TRANSPOSE, factor, A, descr, SPARSE_LAYOUT_ROW_MAJOR, &T_input[0], cols, cols, 0., &S_output[0], cols );
+                stat = mkl_sparse_d_mm ( SPARSE_OPERATION_NON_TRANSPOSE, factor, A, descr, SPARSE_LAYOUT_ROW_MAJOR, T_input, cols, cols, 0., S_output, cols );
                 if (stat)
                 {
                     eprint("mkl_sparse_d_mm returned stat = " + std::to_string(stat) );
@@ -310,7 +315,7 @@ namespace rsurfaces
             else
             {
 //                tic("MKL sparse matrix-vector multiplication");
-                stat = mkl_sparse_d_mv( SPARSE_OPERATION_NON_TRANSPOSE, factor, A, descr, &T_input[0], 0, &S_output[0]);
+                stat = mkl_sparse_d_mv( SPARSE_OPERATION_NON_TRANSPOSE, factor, A, descr, T_input, 0, S_output);
                 if (stat)
                 {
                     eprint("mkl_sparse_d_mv returned stat = " + std::to_string(stat) );
@@ -326,7 +331,23 @@ namespace rsurfaces
         }
         else
         {
-            eprint("InteractionData::ApplyKernel_CSR_MKL: No nonzeroes found. Doing nothing.");
+            if( !T_input)
+            {
+                eprint("InteractionData::ApplyKernel_CSR_MKL: Input pointer is NULL. Doing nothing.");
+            }
+            if( !S_output)
+            {
+                eprint("InteractionData::ApplyKernel_CSR_MKL: Output pointer is NULL. Doing nothing.");
+            }
+            // !values or OuterPtrB()[m] == 0 are allowed to happen if there is no near field.
+            if( !values && OuterPtrB()[m] == 0 )
+            {
+                #pragma omp parallel for simd aligned( S_output : ALIGN )
+                for( mint i = 0; i < m * cols; ++i )
+                {
+                    S_output[i] = 0.;
+                }
+            }
         }
     }; // ApplyKernel_CSR_MKL
 

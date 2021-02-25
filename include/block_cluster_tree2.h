@@ -140,7 +140,7 @@ namespace rsurfaces
             const mint free_thread_count     //  <-- helps to manage task creation
         );
 
-        void PrepareMetrics();
+        void RequireMetrics();
         
         void FarFieldInteraction(); // Compute nonzero values of sparse far field interaction matrices.
 
@@ -149,6 +149,8 @@ namespace rsurfaces
         void InternalMultiply(BCTKernelType type) const;
 
         void ComputeDiagonals();
+        
+        void AddObstacleCorrection( BlockClusterTree2 * bct12);
         
         void PrintStats(){
             std::cout << "\n==== BlockClusterTree2 Stats ====" << std::endl;
