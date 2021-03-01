@@ -2,7 +2,6 @@
 
 #include "energy/tpe_kernel.h"
 #include "spatial/bvh_6d.h"
-#include "spatial/bvh_flattened.h"
 
 namespace rsurfaces
 {

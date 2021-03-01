@@ -13,7 +13,6 @@
 #include "energy/all_energies.h"
 #include "helpers.h"
 #include <memory>
-#include "spatial/bvh_flattened.h"
 
 #include <Eigen/Sparse>
 #include <omp.h>
@@ -24,7 +23,6 @@
 #include "sobolev/h1.h"
 #include "spatial/convolution.h"
 #include "spatial/convolution_kernel.h"
-#include "block_cluster_tree.h"
 #include "surface_derivatives.h"
 #include "obj_writer.h"
 #include "dropdown_strings.h"
@@ -247,85 +245,6 @@ namespace rsurfaces
         PlotMatrix(l2Diff, psMesh, "L2 differential");
         PlotMatrix(hsGrad, psMesh, "Hs sparse gradient");
         PlotMatrix(hsGradExact, psMesh, "Hs dense gradient");
-    }
-
-    void MainApp::TestBarnesHut()
-    {
-        TPEKernel *tpe = new rsurfaces::TPEKernel(mesh, geom, 6, 12);
-        SurfaceEnergy *energy_ap, *energy_bh, *energy_newton;
-        energy_ap = new AllPairsTPEnergy(tpe);
-        energy_bh = new BarnesHutTPEnergy6D(tpe, bh_theta);
-        energy_newton = new BarnesHutNewtonian(tpe, bh_theta);
-
-        energy_ap->Update();
-        energy_bh->Update();
-        energy_newton->Update();
-
-        bool doAllPairs = (mesh->nFaces() < 3000);
-
-        Eigen::MatrixXd grad_ap(mesh->nVertices(), 3);
-        Eigen::MatrixXd grad_bh(mesh->nVertices(), 3);
-        Eigen::MatrixXd grad_newton(mesh->nVertices(), 3);
-        grad_ap.setZero();
-        grad_bh.setZero();
-        grad_newton.setZero();
-
-        long start_ape = currentTimeMilliseconds();
-        double value_ap = 0;
-        if (doAllPairs)
-            energy_ap->Value();
-        long end_ape = currentTimeMilliseconds();
-
-        long start_bhe = currentTimeMilliseconds();
-        double value_bh = energy_bh->Value();
-        long end_bhe = currentTimeMilliseconds();
-
-        double val_error = fabs(value_ap - value_bh) / value_ap;
-
-        if (!doAllPairs)
-            std::cout << "Mesh has too many faces; not running all-pairs comparison." << std::endl;
-
-        std::cout << "\n=====   Energy   =====" << std::endl;
-        if (doAllPairs)
-            std::cout << "All-pairs energy value  = " << value_ap << std::endl;
-        std::cout << "Barnes-Hut energy value = " << value_bh << std::endl;
-        if (doAllPairs)
-            std::cout << "Relative error     = " << val_error * 100 << " percent" << std::endl;
-        if (doAllPairs)
-            std::cout << "All-pairs time     = " << (end_ape - start_ape) << " ms" << std::endl;
-        std::cout << "Barnes-Hut time    = " << (end_bhe - start_bhe) << " ms" << std::endl;
-
-        long start_apg = currentTimeMilliseconds();
-        if (doAllPairs)
-            energy_ap->Differential(grad_ap);
-        long end_apg = currentTimeMilliseconds();
-
-        long start_bhg = currentTimeMilliseconds();
-        energy_bh->Differential(grad_bh);
-        long end_bhg = currentTimeMilliseconds();
-
-        long start_newton = currentTimeMilliseconds();
-        energy_newton->Differential(grad_newton);
-        long end_newton = currentTimeMilliseconds();
-
-        double grad_error = (grad_ap - grad_bh).norm() / grad_ap.norm();
-
-        std::cout << "\n=====  Gradient  =====" << std::endl;
-        if (doAllPairs)
-            std::cout << "All-pairs gradient norm      = " << grad_ap.norm() << std::endl;
-        std::cout << "Barnes-Hut gradient norm     = " << grad_bh.norm() << std::endl;
-        std::cout << "Newton gravity norm          = " << grad_newton.norm() << std::endl;
-        if (doAllPairs)
-            std::cout << "Barnes-Hut relative error    = " << grad_error * 100 << " percent" << std::endl;
-        if (doAllPairs)
-            std::cout << "All-pairs time     = " << (end_apg - start_apg) << " ms" << std::endl;
-        std::cout << "Barnes-Hut time    = " << (end_bhg - start_bhg) << " ms" << std::endl;
-        std::cout << "Newtonian time     = " << (end_newton - start_newton) << " ms" << std::endl;
-
-        delete energy_ap;
-        delete energy_bh;
-        delete energy_newton;
-        delete tpe;
     }
 
     void MainApp::PlotEnergyPerFace()
@@ -1164,118 +1083,6 @@ namespace rsurfaces
         delete bct;
     } // TestNewMVProduct
 
-    void MainApp::TestMVProduct()
-    {
-        geom->refreshQuantities();
-
-        long gradientStartTime = currentTimeMilliseconds();
-        // Use the differential of the energy as the test case
-        SurfaceEnergy *energy = flow->BaseEnergy();
-        energy->Update();
-        Eigen::MatrixXd gradient(mesh->nVertices(), 3);
-        energy->Differential(gradient);
-        Eigen::VectorXd gVec(3 * mesh->nVertices());
-        MatrixUtils::MatrixIntoColumn(gradient, gVec);
-        Vector2 exps = energy->GetExponents();
-        double s = 2 - Hs::get_s(exps.x, exps.y);
-
-        long gradientEndTime = currentTimeMilliseconds();
-        Hs::HsMetric hs(energy);
-
-        std::cout << "Dense fractional Laplacian (s = " << s << "):" << std::endl;
-        Eigen::MatrixXd dense, dense_small;
-        dense_small.setZero(mesh->nVertices(), mesh->nVertices());
-        dense.setZero(3 * mesh->nVertices(), 3 * mesh->nVertices());
-        // Build dense fractional Laplacian
-        long fracStart = currentTimeMilliseconds();
-        hs.FillMatrixFracOnly(dense_small, s, mesh, geom);
-        MatrixUtils::TripleMatrix(dense_small, dense);
-        // Multiply it
-        Eigen::VectorXd denseRes = dense * gVec;
-        long fracEnd = currentTimeMilliseconds();
-
-        // Block cluster tree multiplication
-        BVHNode6D *bvh = energy->GetBVH();
-
-        BlockClusterTree *bct = new BlockClusterTree(mesh, geom, bvh, bh_theta, s);
-        long fracBCT = currentTimeMilliseconds();
-        Eigen::VectorXd bctRes = gVec;
-        bct->MultiplyVector3(gVec, bctRes, BCTKernelType::FractionalOnly);
-        long fracEnd2 = currentTimeMilliseconds();
-
-        bct->PrintData();
-
-        Eigen::VectorXd diff = denseRes - bctRes;
-        double error = 100 * diff.norm() / denseRes.norm();
-        std::cout << "Dense multiply norm = " << denseRes.norm() << std::endl;
-        std::cout << "Hierarchical multiply norm = " << bctRes.norm() << std::endl;
-        std::cout << "Relative error = " << error << " percent" << std::endl;
-        std::cout << "Dot product of directions = " << denseRes.dot(bctRes) / (denseRes.norm() * bctRes.norm()) << std::endl;
-        std::cout << "Dense assembly took " << (fracEnd - fracStart) << " ms, hierarchical product took " << (fracEnd2 - fracBCT) << " ms" << std::endl;
-        std::cout << "BCT assembly took " << (fracBCT - fracEnd) << " ms" << std::endl;
-
-        // Reset for high-order term
-        denseRes.setZero();
-        bctRes.setZero();
-        dense_small.setZero();
-        dense.setZero();
-        s = Hs::get_s(exps.x, exps.y);
-        bct->SetExponent(s);
-
-        std::cout << "High-order term (s = " << s << "):" << std::endl;
-
-        // Build dense matrix for high-order term
-        long hiStart = currentTimeMilliseconds();
-        hs.FillMatrixHigh(dense_small, s, mesh, geom);
-        MatrixUtils::TripleMatrix(dense_small, dense);
-        // Multiply it
-        denseRes = dense * gVec;
-        long hiEnd = currentTimeMilliseconds();
-
-        // Use BCT to multiply high-order term
-        bct->MultiplyVector3(gVec, bctRes, BCTKernelType::HighOrder);
-        long hiEnd2 = currentTimeMilliseconds();
-
-        diff = denseRes - bctRes;
-        error = 100 * diff.norm() / denseRes.norm();
-        std::cout << "Dense multiply norm = " << denseRes.norm() << std::endl;
-        std::cout << "Hierarchical multiply norm = " << bctRes.norm() << std::endl;
-        std::cout << "Relative error = " << error << " percent" << std::endl;
-        std::cout << "Dot product of directions = " << denseRes.dot(bctRes) / (denseRes.norm() * bctRes.norm()) << std::endl;
-        std::cout << "Dense assembly took " << (hiEnd - hiStart) << " ms, hierarchical product took " << (hiEnd2 - hiEnd) << " ms" << std::endl;
-
-        // Reset for low-order term
-        denseRes.setZero();
-        bctRes.setZero();
-        dense_small.setZero();
-        dense.setZero();
-        s = Hs::get_s(exps.x, exps.y);
-        bct->SetExponent(s);
-
-        std::cout << "Low-order term (s = " << s << "):" << std::endl;
-
-        // Build dense matrix for low-order term
-        long lowStart = currentTimeMilliseconds();
-        hs.FillMatrixLow(dense_small, s, mesh, geom);
-        MatrixUtils::TripleMatrix(dense_small, dense);
-        // Multiply it
-        denseRes = dense * gVec;
-        long lowEnd = currentTimeMilliseconds();
-
-        // Use BCT to multiply low-order term
-        bct->MultiplyVector3(gVec, bctRes, BCTKernelType::LowOrder);
-        long lowEnd2 = currentTimeMilliseconds();
-
-        diff = denseRes - bctRes;
-        error = 100 * diff.norm() / denseRes.norm();
-        std::cout << "Dense multiply norm = " << denseRes.norm() << std::endl;
-        std::cout << "Hierarchical multiply norm = " << bctRes.norm() << std::endl;
-        std::cout << "Relative error = " << error << " percent" << std::endl;
-        std::cout << "Dot product of directions = " << denseRes.dot(bctRes) / (denseRes.norm() * bctRes.norm()) << std::endl;
-        std::cout << "Dense assembly took " << (lowEnd - lowStart) << " ms, hierarchical product took " << (lowEnd2 - lowEnd) << " ms" << std::endl;
-
-        delete bct;
-    }
 
     void MainApp::TestIterative()
     {
@@ -1768,21 +1575,10 @@ void customCallback()
         MainApp::instance->TestNewMVProduct();
     }
 
-    if (ImGui::Button("Test MV product", ImVec2{ITEM_WIDTH, 0}))
-    {
-        MainApp::instance->TestMVProduct();
-    }
-    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
     if (ImGui::Button("Test iterative", ImVec2{ITEM_WIDTH, 0}))
     {
         MainApp::instance->TestIterative();
     }
-
-    if (ImGui::Button("Test B-H", ImVec2{ITEM_WIDTH, 0}))
-    {
-        MainApp::instance->TestBarnesHut();
-    }
-    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
     if (ImGui::Button("Benchmark B-H", ImVec2{ITEM_WIDTH, 0}))
     {
         MainApp::instance->BenchmarkBH();

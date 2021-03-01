@@ -71,8 +71,6 @@ add_subdirectory(deps/polyscope)
 
 set(SRCS 
   src/energy/all_pairs_tpe.cpp
-  src/energy/all_pairs_with_bvh.cpp
-  src/energy/barnes_hut_newtonian.cpp
   src/energy/barnes_hut_tpe_6d.cpp
   src/energy/boundary_length.cpp
   src/energy/coulomb.cpp
@@ -116,9 +114,7 @@ set(SRCS
   src/sobolev/constraints/vertex_pin.cpp
   src/spatial/bvh_6d.cpp
   src/spatial/bvh_data.cpp
-  src/spatial/bvh_flattened.cpp
   src/spatial/convolution_kernel.cpp
-  src/block_cluster_tree.cpp
   src/block_cluster_tree2.cpp
   src/block_cluster_tree2_types.cpp
   src/cluster_tree2.cpp

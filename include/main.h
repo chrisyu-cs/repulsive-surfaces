@@ -42,10 +42,8 @@ namespace rsurfaces
         void TestMultipole0();
         void TestBarnesHut0();
         void TestNewMVProduct();
-        void TestMVProduct();
         void TestIterative();
         void BenchmarkBH();
-        void TestBarnesHut();
         void PlotGradients();
         void PlotEnergyPerFace();
         void Scale2x();
