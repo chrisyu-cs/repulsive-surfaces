@@ -71,7 +71,6 @@ add_subdirectory(deps/polyscope)
 
 set(SRCS 
   src/energy/all_pairs_tpe.cpp
-  src/energy/barnes_hut_tpe_6d.cpp
   src/energy/boundary_length.cpp
   src/energy/coulomb.cpp
   src/energy/implicit_attractor.cpp
