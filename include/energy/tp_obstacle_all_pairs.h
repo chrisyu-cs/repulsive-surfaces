@@ -4,7 +4,7 @@
 #include "surface_energy.h"
 #include "helpers.h"
 #include "block_cluster_tree2_types.h"
-#include "block_cluster_tree2.h"
+#include "optimized_bct.h"
 #include "derivative_assembler.h"
 
 
@@ -17,7 +17,7 @@ namespace rsurfaces
     public:
         ~TPObstacleAllPairs(){};
         
-        TPObstacleAllPairs( MeshPtr mesh_, GeomPtr geom_, std::shared_ptr<ClusterTree2> bvh_, std::shared_ptr<ClusterTree2> o_bvh_, mreal alpha_, mreal beta_)
+        TPObstacleAllPairs( MeshPtr mesh_, GeomPtr geom_, std::shared_ptr<OptimizedClusterTree> bvh_, std::shared_ptr<OptimizedClusterTree> o_bvh_, mreal alpha_, mreal beta_)
         {
             mesh = mesh_;
             geom = geom_;
@@ -58,15 +58,15 @@ namespace rsurfaces
         // Return 0 if this energy doesn't do hierarchical approximation.
         virtual double GetTheta();
         
-        BlockClusterTree2 * GetBCT();
+        BlockOptimizedClusterTree * GetBCT();
         
         bool use_int = false;
     private:
         
         MeshPtr mesh = nullptr;
         GeomPtr geom = nullptr;
-        std::shared_ptr<ClusterTree2> bvh = nullptr;
-        std::shared_ptr<ClusterTree2> o_bvh = nullptr;
+        std::shared_ptr<OptimizedClusterTree> bvh = nullptr;
+        std::shared_ptr<OptimizedClusterTree> o_bvh = nullptr;
         
         mreal alpha = 6.;
         mreal beta  = 12.;

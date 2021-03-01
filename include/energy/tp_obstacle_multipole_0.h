@@ -4,7 +4,7 @@
 #include "surface_energy.h"
 #include "helpers.h"
 #include "block_cluster_tree2_types.h"
-#include "block_cluster_tree2.h"
+#include "optimized_bct.h"
 #include "derivative_assembler.h"
 
 
@@ -17,7 +17,7 @@ namespace rsurfaces
     public:
         ~TPObstacleMultipole0(){};
         
-        TPObstacleMultipole0( MeshPtr mesh_, GeomPtr geom_, BlockClusterTree2 * bct_, mreal alpha_, mreal beta_)
+        TPObstacleMultipole0( MeshPtr mesh_, GeomPtr geom_, BlockOptimizedClusterTree * bct_, mreal alpha_, mreal beta_)
         {
             mesh = mesh_;
             geom = geom_;
@@ -58,14 +58,14 @@ namespace rsurfaces
         // Return 0 if this energy doesn't do hierarchical approximation.
         virtual double GetTheta();
         
-        BlockClusterTree2 * GetBCT();
+        BlockOptimizedClusterTree * GetBCT();
         
         bool use_int = false;
     private:
         
         MeshPtr mesh = nullptr;
         GeomPtr geom = nullptr;
-        BlockClusterTree2 * bct = nullptr;
+        BlockOptimizedClusterTree * bct = nullptr;
         
         mreal alpha = 6.;
         mreal beta  = 12.;

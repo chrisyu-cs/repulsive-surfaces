@@ -24,16 +24,16 @@ namespace rsurfaces
         Cluster2 * right = nullptr;
     }; //Cluster2
 
-    class ClusterTree2 // binary cluster tree; layout mostly in Struct of Array fashion in order to prepare SIMDization. Note SIMDized, yet, though.
+    class OptimizedClusterTree // binary cluster tree; layout mostly in Struct of Array fashion in order to prepare SIMDization. Note SIMDized, yet, though.
     {
     public:
         
-        ClusterTree2(){};
+        OptimizedClusterTree(){};
         
         // Solving interface problems by using standard types
         // This way, things are easier to port. For example, I can call this from Mathematica for faster debugging.
         
-        ClusterTree2(
+        OptimizedClusterTree(
                     const mreal * const restrict P_coords_,            // coordinates per primitive used for clustering; assumed to be of size primitive_count x dim
                     const mint primitive_count_,
                     const mint dim_,
@@ -122,7 +122,7 @@ namespace rsurfaces
         MKLSparseMatrix P_to_C;
         MKLSparseMatrix C_to_P;
 
-        ~ClusterTree2(){
+        ~OptimizedClusterTree(){
             
             // pointer arrays come at the cost of manual deallocation...
             
@@ -239,5 +239,5 @@ namespace rsurfaces
     //private:
 
         void computeClusterData( const mint C, const mint free_thread_count ); // helper function for ComputeClusterData
-    }; //ClusterTree2
+    }; //OptimizedClusterTree
     } // namespace rsurfaces

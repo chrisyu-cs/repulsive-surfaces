@@ -13,7 +13,7 @@
 #include "energy/squared_error.h"
 
 #include <mkl.h>
-#include "block_cluster_tree2.h"
+#include "optimized_bct.h"
 #include "energy/willmore_energy.h"
 #include "energy/tpe_multipole_0.h"
 #include "energy/tpe_barnes_hut_0.h"

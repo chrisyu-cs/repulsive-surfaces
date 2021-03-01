@@ -4,7 +4,7 @@
 #include "surface_energy.h"
 #include "helpers.h"
 #include "block_cluster_tree2_types.h"
-#include "cluster_tree2.h"
+#include "optimized_cluster_tree.h"
 #include "derivative_assembler.h"
 
 namespace rsurfaces
@@ -16,7 +16,7 @@ namespace rsurfaces
     public:
         ~TPObstacleBarnesHut0(){};
         
-        TPObstacleBarnesHut0( MeshPtr mesh_, GeomPtr geom_, std::shared_ptr<ClusterTree2> bvh_, std::shared_ptr<ClusterTree2> o_bvh_, mreal alpha_, mreal beta_, mreal theta_ )
+        TPObstacleBarnesHut0( MeshPtr mesh_, GeomPtr geom_, std::shared_ptr<OptimizedClusterTree> bvh_, std::shared_ptr<OptimizedClusterTree> o_bvh_, mreal alpha_, mreal beta_, mreal theta_ )
         {
             mesh = mesh_;
             geom = geom_;
@@ -69,8 +69,8 @@ namespace rsurfaces
         mreal beta  = 12.;
         mreal theta = 0.5;
         
-        std::shared_ptr<ClusterTree2> bvh = nullptr;
-        std::shared_ptr<ClusterTree2> o_bvh = nullptr;
+        std::shared_ptr<OptimizedClusterTree> bvh = nullptr;
+        std::shared_ptr<OptimizedClusterTree> o_bvh = nullptr;
         
         template<typename T1, typename T2>
         mreal Energy(T1 alpha, T2 betahalf);

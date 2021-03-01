@@ -1,4 +1,4 @@
-#include "cluster_tree2.h"
+#include "optimized_cluster_tree.h"
 
 namespace rsurfaces
 {
@@ -14,7 +14,7 @@ namespace rsurfaces
     }; // struct Cluster2
 
     // Solving interface problems by using standard types. This way, things are easier to port. For example, I can call this from Mathematica for faster debugging.
-    ClusterTree2::ClusterTree2(
+    OptimizedClusterTree::OptimizedClusterTree(
                 const mreal * const P_coords_,              // coordinates per primitive used for clustering; assumed to be of size primitive_count x dim
                 const mint primitive_count_,
                 const mint dim_,
@@ -122,7 +122,7 @@ namespace rsurfaces
     }; //Constructor
 
 
-    void ClusterTree2::SplitCluster( Cluster2 * const C, const mint free_thread_count )
+    void OptimizedClusterTree::SplitCluster( Cluster2 * const C, const mint free_thread_count )
     {
         
         mint begin = C->begin;
@@ -200,7 +200,7 @@ namespace rsurfaces
     }; //SplitCluster
 
 
-    void ClusterTree2::Serialize( Cluster2 * C, mint ID, mint leaf_before_count, mint free_thread_count )
+    void OptimizedClusterTree::Serialize( Cluster2 * C, mint ID, mint leaf_before_count, mint free_thread_count )
     {
         // enumeration in depth-first order
         C_begin[ID] = C->begin;
@@ -236,7 +236,7 @@ namespace rsurfaces
     }; //Serialize
 
 
-    void ClusterTree2::ComputePrimitiveData(
+    void OptimizedClusterTree::ComputePrimitiveData(
                                            const mreal * const  restrict P_hull_coords_,
                                            const mreal * const  restrict P_data_
 //                                           , const mreal * const  restrict P_moments_
@@ -304,7 +304,7 @@ namespace rsurfaces
         }
     } //ComputePrimitiveData
 
-    void ClusterTree2::ComputeClusterData()
+    void OptimizedClusterTree::ComputeClusterData()
     {
         
     //    tic("Allocation");
@@ -358,7 +358,7 @@ namespace rsurfaces
     }; //ComputeClusterData
 
 
-    void ClusterTree2::computeClusterData( const mint C, const mint free_thread_count ) // helper function for ComputeClusterData
+    void OptimizedClusterTree::computeClusterData( const mint C, const mint free_thread_count ) // helper function for ComputeClusterData
     {
         
         mint thread = omp_get_thread_num();
@@ -462,7 +462,7 @@ namespace rsurfaces
         C_squared_radius[C] = r2;
     }; //computeClusterData
 
-    void ClusterTree2::ComputePrePost( MKLSparseMatrix & DiffOp, MKLSparseMatrix & AvOp )
+    void OptimizedClusterTree::ComputePrePost( MKLSparseMatrix & DiffOp, MKLSparseMatrix & AvOp )
     {
     //    tic("Create pre and post");
         
@@ -552,7 +552,7 @@ namespace rsurfaces
         lo_pre.Transpose( lo_post );
     } // ComputePrePost
 
-    void ClusterTree2::RequireBuffers( const mint cols )
+    void OptimizedClusterTree::RequireBuffers( const mint cols )
     {
         // TODO: parallelize allocation
         if( cols > max_buffer_dim )
@@ -578,7 +578,7 @@ namespace rsurfaces
         
     }; // RequireBuffers
 
-    void ClusterTree2::CleanseBuffers()
+    void OptimizedClusterTree::CleanseBuffers()
     {
         #pragma omp parallel for simd aligned( P_in, P_out : ALIGN )
         for( mint i = 0; i < primitive_count * buffer_dim; ++i )
@@ -595,7 +595,7 @@ namespace rsurfaces
         }
     }; // CleanseBuffers
 
-    void ClusterTree2::CleanseD()
+    void OptimizedClusterTree::CleanseD()
     {
         #pragma omp parallel for schedule(static, 1)
         for( mint thread = 0; thread < thread_count; ++thread )
@@ -616,7 +616,7 @@ namespace rsurfaces
         }
     }; // CleanseD
 
-    void ClusterTree2::PercolateUp( const mint C, const mint free_thread_count )
+    void OptimizedClusterTree::PercolateUp( const mint C, const mint free_thread_count )
     {
         // C = cluster index
         
@@ -645,7 +645,7 @@ namespace rsurfaces
     }; // PercolateUp
 
 
-    void ClusterTree2::PercolateDown(const mint C, const mint free_thread_count )
+    void OptimizedClusterTree::PercolateDown(const mint C, const mint free_thread_count )
     {
         // C = cluster index
         
@@ -671,7 +671,7 @@ namespace rsurfaces
     }; // PercolateDown
 
 
-    void ClusterTree2::Pre( Eigen::MatrixXd & input, BCTKernelType type )
+    void OptimizedClusterTree::Pre( Eigen::MatrixXd & input, BCTKernelType type )
     {
      
         mint cols = input.cols();
@@ -682,7 +682,7 @@ namespace rsurfaces
         Pre( input_wrapper.data(), cols, type );
     }
 
-    void ClusterTree2::Pre( mreal * input, const mint cols, BCTKernelType type )
+    void OptimizedClusterTree::Pre( mreal * input, const mint cols, BCTKernelType type )
     {
         MKLSparseMatrix * pre;
         
@@ -729,7 +729,7 @@ namespace rsurfaces
     //    toc("PercolateUp");
     }; // Pre
 
-    void ClusterTree2::Post( Eigen::MatrixXd & output, BCTKernelType type, bool addToResult )
+    void OptimizedClusterTree::Post( Eigen::MatrixXd & output, BCTKernelType type, bool addToResult )
     {
 //        tic("Post Eigen");
         mint cols = output.cols();
@@ -749,7 +749,7 @@ namespace rsurfaces
 //        toc("Post Eigen");
     }
 
-    void ClusterTree2::Post( mreal * output, const mint cols, BCTKernelType type, bool addToResult )
+    void OptimizedClusterTree::Post( mreal * output, const mint cols, BCTKernelType type, bool addToResult )
     {
 //        tic("Post");
         MKLSparseMatrix * post;
@@ -809,7 +809,7 @@ namespace rsurfaces
     }; // Post
 
 
-void ClusterTree2::CollectDerivatives( mreal * const restrict output )
+void OptimizedClusterTree::CollectDerivatives( mreal * const restrict output )
 {
     
     RequireBuffers(data_dim);

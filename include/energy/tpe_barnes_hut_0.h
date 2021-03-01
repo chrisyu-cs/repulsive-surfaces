@@ -4,7 +4,7 @@
 #include "surface_energy.h"
 #include "helpers.h"
 #include "block_cluster_tree2_types.h"
-#include "block_cluster_tree2.h"
+#include "optimized_bct.h"
 #include "derivative_assembler.h"
 
 namespace rsurfaces
@@ -16,7 +16,7 @@ namespace rsurfaces
     public:
         ~TPEnergyBarnesHut0(){};
         
-        TPEnergyBarnesHut0( MeshPtr mesh_, GeomPtr geom_, std::shared_ptr<ClusterTree2> bvh_, mreal alpha_, mreal beta_, mreal theta_ )
+        TPEnergyBarnesHut0( MeshPtr mesh_, GeomPtr geom_, std::shared_ptr<OptimizedClusterTree> bvh_, mreal alpha_, mreal beta_, mreal theta_ )
         {
             mesh = mesh_;
             geom = geom_;
@@ -68,7 +68,7 @@ namespace rsurfaces
         mreal beta  = 12.;
         mreal theta = 0.5;
         
-        std::shared_ptr<ClusterTree2> bvh = nullptr;
+        std::shared_ptr<OptimizedClusterTree> bvh = nullptr;
         
         template<typename T1, typename T2>
         mreal Energy(T1 alpha, T2 betahalf);

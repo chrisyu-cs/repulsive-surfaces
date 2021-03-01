@@ -541,23 +541,23 @@ namespace rsurfaces
         std::shared_ptr<VertexPositionGeometry> geom2 = std::move(ugeom);
 
         tic("Create bvh1");
-        std::shared_ptr<ClusterTree2> bvh1 = CreateOptimizedBVH(mesh1, geom1);
+        std::shared_ptr<OptimizedClusterTree> bvh1 = CreateOptimizedBVH(mesh1, geom1);
         toc("Create bvh1");
         tic("Create bvh2");
-        std::shared_ptr<ClusterTree2> bvh2 = CreateOptimizedBVH(mesh2, geom2);
+        std::shared_ptr<OptimizedClusterTree> bvh2 = CreateOptimizedBVH(mesh2, geom2);
         toc("Create bvh2");
         
         tic("Create bct11");
-        auto bct11 = std::make_shared<BlockClusterTree2>(bvh1, bvh1, alpha, beta, theta);
+        auto bct11 = std::make_shared<BlockOptimizedClusterTree>(bvh1, bvh1, alpha, beta, theta);
         toc("Create bct11");
         tic("Create bct12");
-        auto bct12 = std::make_shared<BlockClusterTree2>(bvh1, bvh2, alpha, beta, theta);
+        auto bct12 = std::make_shared<BlockOptimizedClusterTree>(bvh1, bvh2, alpha, beta, theta);
         toc("Create bct12");
         
         // The transpose of bct12 and thus not needed.
-        //auto bct21 = std::make_shared<BlockClusterTree2>(bvh2, bvh1, alpha, beta, theta);
+        //auto bct21 = std::make_shared<BlockOptimizedClusterTree>(bvh2, bvh1, alpha, beta, theta);
         tic("Create bct22");
-        auto bct22 = std::make_shared<BlockClusterTree2>(bvh2, bvh2, alpha, beta, theta);
+        auto bct22 = std::make_shared<BlockOptimizedClusterTree>(bvh2, bvh2, alpha, beta, theta);
         toc("Create bct22");
         
         bct11->PrintStats();
@@ -570,14 +570,14 @@ namespace rsurfaces
         //            { bct11, bct12 },
         //            { bct21, bct22 }
         //        },
-        // where bct11 and bct22 are the instances of BlockClusterTree2 of mesh1 and mesh2, respectively, bct12 is cross interaction BlockClusterTree2 of mesh1 and mesh2, and bct21 is the transpose of bct12.
+        // where bct11 and bct22 are the instances of BlockOptimizedClusterTree of mesh1 and mesh2, respectively, bct12 is cross interaction BlockOptimizedClusterTree of mesh1 and mesh2, and bct21 is the transpose of bct12.
         // However, the according matrix (on the space of dofs on the primitives) would be
         //  A   = {
         //            { A11 + diag( A12 * one2 ) , A12                      },
         //            { A21                      , A22 + diag( A21 * one1 ) }
         //        },
         // where one1 and one2 are all-1-vectors on the primitives of mesh1 and mesh2, respectively.
-        // BlockClusterTree2::AddObstacleCorrection is supposed to compute diag( A12 * one2 ) and to add it to the diagonal of A11.
+        // BlockOptimizedClusterTree::AddObstacleCorrection is supposed to compute diag( A12 * one2 ) and to add it to the diagonal of A11.
         // Afterwards, bct1->Multiply will also multiply with the metric contribution of the obstacle.
         tic("Modifying bct11 to include the terms with respect to the obstacle.");
         bct11->AddObstacleCorrection( bct12.get() );
@@ -769,13 +769,13 @@ namespace rsurfaces
         mreal theta = 0.25;
         
         tic("Create BVH");
-        std::shared_ptr<ClusterTree2> bvh = CreateOptimizedBVH( mesh, geom );
+        std::shared_ptr<OptimizedClusterTree> bvh = CreateOptimizedBVH( mesh, geom );
         toc("Create BVH");
         
         tic("Create BCT");
         // theta = 0.5 might suffice for the preconditioner
         // theta = 0.25 might be needed to obtain accuracy for the energy similar to the one by BarnesHutTPEnergy6D
-        auto bct = std::make_shared<BlockClusterTree2>( bvh, bvh, alpha, beta, theta, true, false );
+        auto bct = std::make_shared<BlockOptimizedClusterTree>( bvh, bvh, alpha, beta, theta, true, false );
         toc("Create BCT");
 
         bct->PrintStats();
@@ -875,7 +875,7 @@ namespace rsurfaces
         mreal theta = 0.25;
         
         tic("Create BVH");
-        std::shared_ptr<ClusterTree2> bvh = CreateOptimizedBVH( mesh, geom );
+        std::shared_ptr<OptimizedClusterTree> bvh = CreateOptimizedBVH( mesh, geom );
         tic("Create BVH");
         
         double E, Ex;
@@ -1024,7 +1024,7 @@ namespace rsurfaces
         Eigen::VectorXd denseRes = dense * gVec;
         long constructStart = currentTimeMilliseconds();
 
-        BlockClusterTree2 *bct = CreateOptimizedBCT(mesh, geom, exps.x, exps.y, 0.5);
+        BlockOptimizedClusterTree *bct = CreateOptimizedBCT(mesh, geom, exps.x, exps.y, 0.5);
         
 //        tic("DFarFieldEnergyHelper");
 //        mreal EFar = bct->DFarFieldEnergyHelper();

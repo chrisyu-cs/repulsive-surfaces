@@ -3,7 +3,7 @@
 #include "rsurface_types.h"
 #include "matrix_utils.h"
 #include "constraints.h"
-#include "block_cluster_tree2.h"
+#include "optimized_bct.h"
 #include "hs_operators.h"
 #include "sobolev/h1.h"
 #include "sobolev/all_constraints.h"
@@ -170,7 +170,7 @@ namespace rsurfaces
             }
             void shiftBarycenterConstraint(Vector3 shift);
 
-            inline BlockClusterTree2 *getBlockClusterTree() const
+            inline BlockOptimizedClusterTree *getBlockClusterTree() const
             {
                 if (!optBCT)
                 {
@@ -210,7 +210,7 @@ namespace rsurfaces
             bool usedDefaultConstraint;
 
             mutable SparseFactorization factorizedLaplacian;
-            mutable BlockClusterTree2 *optBCT;
+            mutable BlockOptimizedClusterTree *optBCT;
             mutable bool schurComplementComputed;
             mutable SchurComplement schurComplement;
         };
