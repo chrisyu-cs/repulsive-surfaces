@@ -115,7 +115,7 @@ set(SRCS
   src/spatial/bvh_6d.cpp
   src/spatial/bvh_data.cpp
   src/spatial/convolution_kernel.cpp
-  src/block_cluster_tree2_types.cpp
+  src/optimized_bct_types.cpp
   src/optimized_cluster_tree.cpp
   src/optimized_bct.cpp
   src/fractional_laplacian.cpp

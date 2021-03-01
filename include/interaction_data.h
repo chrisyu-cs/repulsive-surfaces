@@ -1,6 +1,6 @@
 #pragma once
 
-#include "block_cluster_tree2_types.h"
+#include "optimized_bct_types.h"
 
 namespace rsurfaces
 {
