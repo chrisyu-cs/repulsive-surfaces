@@ -6,7 +6,6 @@
 
 #include "polyscope/polyscope.h"
 #include "polyscope/surface_mesh.h"
-#include "energy/barnes_hut_tpe_6d.h"
 #include "scene_file.h"
 #include "geometrycentral/surface/meshio.h"
 
@@ -39,7 +38,6 @@ namespace rsurfaces
 
         void TestWillmore();
         void TestObstacle0();
-        void TestMultipole0();
         void TestBarnesHut0();
         void TestNewMVProduct();
         void TestIterative();

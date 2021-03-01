@@ -14,8 +14,6 @@ namespace rsurfaces
     class TPEnergyBarnesHut0 : public SurfaceEnergy
     {
     public:
-        ~TPEnergyBarnesHut0(){};
-        
         TPEnergyBarnesHut0( MeshPtr mesh_, GeomPtr geom_, mreal alpha_, mreal beta_, mreal theta_)
         {
             mesh = mesh_;
@@ -27,6 +25,15 @@ namespace rsurfaces
             
             mreal intpart;
             use_int = (std::modf( alpha, &intpart) == 0.0) && (std::modf( beta/2, &intpart) == 0.0);
+
+            std::cout << "Constructed accelerated Barnes-Hut energy w/ exps (" << alpha << ", " << beta << ")" << std::endl;
+
+            Update();
+        }
+
+        ~TPEnergyBarnesHut0()
+        {
+            if (bvh) delete bvh;
         }
         
         // Returns the current value of the energy.

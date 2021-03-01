@@ -1,5 +1,5 @@
-
 #include "energy/tpe_all_pairs.h"
+#include "bct_constructors.h"
 
 namespace rsurfaces
 {
@@ -189,7 +189,12 @@ namespace rsurfaces
     // involve building a new BVH for Barnes-Hut energies, for instance.
     void TPEnergyAllPairs::Update()
     {
-        // Nothing needs to be done
+        if (bvh)
+        {
+            delete bvh;
+        }
+        
+        bvh = CreateOptimizedBVH(mesh, geom);
     }
 
     // Get the mesh associated with this energy.

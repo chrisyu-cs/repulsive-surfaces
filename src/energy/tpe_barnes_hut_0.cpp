@@ -26,10 +26,13 @@ namespace rsurfaces
     {
         if (bvh)
         {
+            std::cout << "Deleting old BVH" << std::endl;
             delete bvh;
         }
         
+        std::cout << "Constructing new BVH" << std::endl;
         bvh = CreateOptimizedBVH(mesh, geom);
+        std::cout << "Finished constructing new BVH" << std::endl;
     }
 
     // Get the mesh associated with this energy.
@@ -63,8 +66,6 @@ namespace rsurfaces
     {
         return theta;
     }
-
-
 
     void TPEnergyBarnesHut0::Differential( Eigen::MatrixXd &output )
     {

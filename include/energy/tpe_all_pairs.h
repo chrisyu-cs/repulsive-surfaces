@@ -15,18 +15,23 @@ namespace rsurfaces
     class TPEnergyAllPairs : public SurfaceEnergy
     {
     public:
-        ~TPEnergyAllPairs(){};
-        
-        TPEnergyAllPairs( MeshPtr mesh_, GeomPtr geom_, std::shared_ptr<OptimizedClusterTree> bvh_, mreal alpha_, mreal beta_)
+        TPEnergyAllPairs( MeshPtr mesh_, GeomPtr geom_, mreal alpha_, mreal beta_)
         {
             mesh = mesh_;
             geom = geom_;
-            bvh = bvh_;
+            bvh = 0;
             
             alpha = alpha_;
             beta = beta_;
             mreal intpart;
             use_int = (std::modf( alpha, &intpart) == 0.0) && (std::modf( beta/2, &intpart) == 0.0);
+
+            Update();
+        }
+
+        ~TPEnergyAllPairs()
+        {
+            if (bvh) delete bvh;
         }
         
         // Returns the current value of the energy.
@@ -64,7 +69,7 @@ namespace rsurfaces
         
         MeshPtr mesh = nullptr;
         GeomPtr geom = nullptr;
-        std::shared_ptr<OptimizedClusterTree> bvh = nullptr;
+        OptimizedClusterTree* bvh = nullptr;
         
         mreal alpha = 6.;
         mreal beta  = 12.;

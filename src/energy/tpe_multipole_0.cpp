@@ -192,7 +192,7 @@ namespace rsurfaces
     // involve building a new BVH for Barnes-Hut energies, for instance.
     void TPEnergyMultipole0::Update()
     {
-        // Nothing needs to be done
+        throw std::runtime_error("Multipole energy not supported for flow");
     }
 
     // Get the mesh associated with this energy.

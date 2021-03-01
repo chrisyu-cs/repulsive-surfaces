@@ -14,9 +14,7 @@ namespace rsurfaces
     class TPObstacleBarnesHut0 : public SurfaceEnergy
     {
     public:
-        ~TPObstacleBarnesHut0(){};
-        
-        TPObstacleBarnesHut0( MeshPtr mesh_, GeomPtr geom_, std::shared_ptr<OptimizedClusterTree> bvh_, std::shared_ptr<OptimizedClusterTree> o_bvh_, mreal alpha_, mreal beta_, mreal theta_ )
+        TPObstacleBarnesHut0( MeshPtr mesh_, GeomPtr geom_, OptimizedClusterTree* bvh_, OptimizedClusterTree* o_bvh_, mreal alpha_, mreal beta_, mreal theta_ )
         {
             mesh = mesh_;
             geom = geom_;
@@ -28,6 +26,12 @@ namespace rsurfaces
             
             mreal intpart;
             use_int = (std::modf( alpha, &intpart) == 0.0) && (std::modf( beta/2, &intpart) == 0.0);
+        }
+
+        ~TPObstacleBarnesHut0()
+        {
+            if (bvh) delete bvh;
+            if (o_bvh) delete o_bvh;
         }
         
         // Returns the current value of the energy.
@@ -69,8 +73,8 @@ namespace rsurfaces
         mreal beta  = 12.;
         mreal theta = 0.5;
         
-        std::shared_ptr<OptimizedClusterTree> bvh = nullptr;
-        std::shared_ptr<OptimizedClusterTree> o_bvh = nullptr;
+        OptimizedClusterTree* bvh = nullptr;
+        OptimizedClusterTree* o_bvh = nullptr;
         
         template<typename T1, typename T2>
         mreal Energy(T1 alpha, T2 betahalf);

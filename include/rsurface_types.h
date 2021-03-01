@@ -35,7 +35,6 @@ namespace rsurfaces
         HsProjected,
         HsProjectedIterative,
         HsExactProjected,
-        HsNCG,
         H1Projected,
         L2Unconstrained,
         L2Projected,

@@ -15,9 +15,7 @@ namespace rsurfaces
     class TPObstacleAllPairs : public SurfaceEnergy
     {
     public:
-        ~TPObstacleAllPairs(){};
-        
-        TPObstacleAllPairs( MeshPtr mesh_, GeomPtr geom_, std::shared_ptr<OptimizedClusterTree> bvh_, std::shared_ptr<OptimizedClusterTree> o_bvh_, mreal alpha_, mreal beta_)
+        TPObstacleAllPairs( MeshPtr mesh_, GeomPtr geom_, OptimizedClusterTree* bvh_, OptimizedClusterTree* o_bvh_, mreal alpha_, mreal beta_)
         {
             mesh = mesh_;
             geom = geom_;
@@ -28,6 +26,12 @@ namespace rsurfaces
             beta = beta_;
             mreal intpart;
             use_int = (std::modf( alpha, &intpart) == 0.0) && (std::modf( beta/2, &intpart) == 0.0);
+        }
+
+        ~TPObstacleAllPairs()
+        {
+            if (bvh) delete bvh;
+            if (o_bvh) delete o_bvh;
         }
         
         // Returns the current value of the energy.
@@ -65,8 +69,8 @@ namespace rsurfaces
         
         MeshPtr mesh = nullptr;
         GeomPtr geom = nullptr;
-        std::shared_ptr<OptimizedClusterTree> bvh = nullptr;
-        std::shared_ptr<OptimizedClusterTree> o_bvh = nullptr;
+        OptimizedClusterTree* bvh = nullptr;
+        OptimizedClusterTree* o_bvh = nullptr;
         
         mreal alpha = 6.;
         mreal beta  = 12.;
