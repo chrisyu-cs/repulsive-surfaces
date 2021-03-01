@@ -45,7 +45,7 @@ namespace rsurfaces
 
         // Get a pointer to the current BVH for this energy.
         // Return 0 if the energy doesn't use a BVH.
-        virtual BVHNode6D *GetBVH();
+        virtual OptimizedClusterTree *GetBVH();
 
         // Return the separation parameter for this energy.
         // Return 0 if this energy doesn't do hierarchical approximation.

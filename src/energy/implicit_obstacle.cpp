@@ -59,7 +59,7 @@ namespace rsurfaces
         return Vector2{0, 2};
     }
 
-    BVHNode6D *ImplicitObstacle::GetBVH()
+    OptimizedClusterTree *ImplicitObstacle::GetBVH()
     {
         return 0;
     }

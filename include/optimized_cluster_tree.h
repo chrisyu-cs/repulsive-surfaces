@@ -199,6 +199,11 @@ namespace rsurfaces
 //            }
             
         };
+
+        inline void recomputeCentersOfMass(MeshPtr mesh, GeomPtr geom)
+        {
+            // TODO: does this exist already?
+        }
         
         void SplitCluster( Cluster2 * const C, const mint free_thread_count );
 

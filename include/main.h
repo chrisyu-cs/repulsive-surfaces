@@ -45,7 +45,6 @@ namespace rsurfaces
         void TestIterative();
         void BenchmarkBH();
         void PlotGradients();
-        void PlotEnergyPerFace();
         void Scale2x();
         void TestNormalDeriv();
         void MeshImplicitSurface(ImplicitSurface *surface);

@@ -16,11 +16,11 @@ namespace rsurfaces
     public:
         ~TPEnergyBarnesHut0(){};
         
-        TPEnergyBarnesHut0( MeshPtr mesh_, GeomPtr geom_, std::shared_ptr<OptimizedClusterTree> bvh_, mreal alpha_, mreal beta_, mreal theta_ )
+        TPEnergyBarnesHut0( MeshPtr mesh_, GeomPtr geom_, mreal alpha_, mreal beta_, mreal theta_)
         {
             mesh = mesh_;
             geom = geom_;
-            bvh = bvh_;
+            bvh = 0;
             alpha = alpha_;
             beta = beta_;
             theta = theta_;
@@ -52,7 +52,7 @@ namespace rsurfaces
 
         // Get a pointer to the current BVH for this energy.
         // Return 0 if the energy doesn't use a BVH.
-        virtual BVHNode6D *GetBVH();
+        virtual OptimizedClusterTree *GetBVH();
 
         // Return the separation parameter for this energy.
         // Return 0 if this energy doesn't do hierarchical approximation.
@@ -62,13 +62,13 @@ namespace rsurfaces
         
     private:
         
-        MeshPtr mesh = nullptr;
-        GeomPtr geom = nullptr;
+        MeshPtr mesh;
+        GeomPtr geom;
         mreal alpha = 6.;
         mreal beta  = 12.;
         mreal theta = 0.5;
         
-        std::shared_ptr<OptimizedClusterTree> bvh = nullptr;
+        OptimizedClusterTree* bvh;
         
         template<typename T1, typename T2>
         mreal Energy(T1 alpha, T2 betahalf);

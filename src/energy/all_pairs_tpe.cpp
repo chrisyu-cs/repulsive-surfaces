@@ -96,7 +96,7 @@ namespace rsurfaces
         return Vector2{kernel->alpha, kernel->beta};
     }
 
-    BVHNode6D *AllPairsTPEnergy::GetBVH()
+    OptimizedClusterTree *AllPairsTPEnergy::GetBVH()
     {
         return 0;
     }

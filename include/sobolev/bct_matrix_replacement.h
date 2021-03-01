@@ -64,7 +64,7 @@ public:
     // Custom API:
     BCTMatrixReplacement() {}
 
-    void addTree(rsurfaces::BlockOptimizedClusterTree *bct_)
+    void addTree(rsurfaces::OptimizedBlockClusterTree *bct_)
     {
         bct = bct_;
     }
@@ -79,7 +79,7 @@ public:
         hs = hs_;
     }
 
-    const rsurfaces::BlockOptimizedClusterTree *getTree() const
+    const rsurfaces::OptimizedBlockClusterTree *getTree() const
     {
         return bct;
     }
@@ -95,7 +95,7 @@ public:
     }
 
 private:
-    mutable rsurfaces::BlockOptimizedClusterTree *bct;
+    mutable rsurfaces::OptimizedBlockClusterTree *bct;
     const Eigen::SparseMatrix<double> *C;
     const rsurfaces::Hs::HsMetric *hs;
 };
@@ -185,7 +185,7 @@ namespace Eigen
                 assert(alpha == Scalar(1) && "scaling is not implemented");
                 EIGEN_ONLY_USED_FOR_DEBUG(alpha);
 
-                const rsurfaces::BlockOptimizedClusterTree *bct = lhs.getTree();
+                const rsurfaces::OptimizedBlockClusterTree *bct = lhs.getTree();
 
                 Eigen::VectorXd product(3 * lhs.getHs()->mesh->nVertices() + lhs.getConstraintBlock().rows());
                 product.setZero();

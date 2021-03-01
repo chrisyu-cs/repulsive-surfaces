@@ -215,7 +215,7 @@ namespace rsurfaces
 
     // Get a pointer to the current BVH for this energy.
     // Return 0 if the energy doesn't use a BVH.
-    BVHNode6D *TPObstacleMultipole0::GetBVH()
+    OptimizedClusterTree *TPObstacleMultipole0::GetBVH()
     {
         return 0;
     }
