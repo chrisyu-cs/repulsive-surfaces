@@ -747,9 +747,9 @@ namespace rsurfaces
         mreal beta = 12.;
         mreal theta = 0.25;
         
-        tic("Create BVH");
-        OptimizedClusterTree* bvh = CreateOptimizedBVH( mesh, geom );
-        tic("Create BVH");
+//        tic("Create BVH");
+//        OptimizedClusterTree* bvh = CreateOptimizedBVH( mesh, geom );
+//        tic("Create BVH");
         
         double E, Ex;
         Eigen::MatrixXd DE, DEx ( mesh->nVertices(), 3 );
@@ -774,16 +774,16 @@ namespace rsurfaces
         tic("Compute Differential (all pairs)");
         tpex->Differential(DEx);
         toc("Compute Differential (all pairs)");
-        
+
         std::cout << "  DE = " << DE(0,0) << " , " << DE(0,1) <<  " , " << DE(0,2)  << std::endl;
         std::cout << "       " << DE(1,0) << " , " << DE(1,1) <<  " , " << DE(1,2)  << std::endl;
         std::cout << "       " << DE(2,0) << " , " << DE(2,1) <<  " , " << DE(2,2)  << std::endl;
         std::cout << "       " << DE(3,0) << " , " << DE(3,1) <<  " , " << DE(3,2)  << std::endl;
         std::cout << "       " << DE(4,0) << " , " << DE(4,1) <<  " , " << DE(4,2)  << std::endl;
-        
+
         tpe->use_int = false;
         std::cout << "Using double exponents." << std::endl;
-        
+
         tic("Compute Value");
         E = tpe->Value();
         toc("Compute Value");
@@ -791,7 +791,7 @@ namespace rsurfaces
         tic("Compute Differential");
         tpe->Differential(DE);
         toc("Compute Differential");
-        
+
         std::cout << "  DE = " << DE(0,0) << " , " << DE(0,1) <<  " , " << DE(0,2)  << std::endl;
         std::cout << "       " << DE(1,0) << " , " << DE(1,1) <<  " , " << DE(1,2)  << std::endl;
         std::cout << "       " << DE(2,0) << " , " << DE(2,1) <<  " , " << DE(2,2)  << std::endl;
@@ -800,8 +800,8 @@ namespace rsurfaces
 
         std::cout << "Energy value = " << E << std::endl;
         std::cout << "Diff. norm   = " << DE.norm() << std::endl;
-            
-        
+
+
         std::cout << "Exact energy value = " << Ex << std::endl;
         std::cout << "Exact diff. value  = " << DEx.norm() << std::endl;
 
@@ -828,7 +828,43 @@ namespace rsurfaces
         std::cout << "Energy relative error = " << oldEnergyError << " percent" << std::endl;
         std::cout << "Diff. relative error  = " << oldDiffError << " percent" << std::endl;
 
-        delete bvh;
+        std::cout << "\n --- Derivative test --- " << std::endl;
+        
+        mreal Et;
+        Eigen::MatrixXd x ( mesh->nVertices(), 3 );
+        Eigen::MatrixXd xnew ( mesh->nVertices(), 3 );
+
+        VertexIndices inds = mesh->getVertexIndices();
+        for (GCVertex v : mesh->vertices())
+        {
+            size_t i = inds[v];
+            x(i,0) = geom->inputVertexPositions[v].x;
+            x(i,1) = geom->inputVertexPositions[v].y;
+            x(i,2) = geom->inputVertexPositions[v].z;
+        }
+        
+        Eigen::MatrixXd u = Eigen::MatrixXd::Random( mesh->nVertices(), 3 );
+        
+        mreal t = 1.;
+        for( int k = 0; k < 8; ++k )
+        {
+            t *= 0.1;
+            xnew = x + t * u;
+            VertexIndices inds = mesh->getVertexIndices();
+            for (GCVertex v : mesh->vertices())
+            {
+                size_t i = inds[v];
+                Vector3 corr{ xnew(i,0), xnew(i,1), xnew(i,2)};
+                geom->inputVertexPositions[v] = corr;
+            }
+
+            geom->refreshQuantities();
+            
+            UpdateOptimizedBVH( mesh, geom, tpe->GetBVH() );
+            
+            Et = tpe->Value();
+            std::cout << "Et - E -t * DE * u = " << Et - E - t * (DE.transpose() * u).trace()<< std::endl;
+        }
 
     } // TestBarnesHut0
 
