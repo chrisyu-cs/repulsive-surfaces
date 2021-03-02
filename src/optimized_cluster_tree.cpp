@@ -900,7 +900,7 @@ void OptimizedClusterTree::SemiStaticUpdate( const mreal * const restrict P_data
         }
     }
     
-    // accumulate primitive input buffers of leaf clusters
+    // accumulate primitive input buffers in leaf clusters
     P_to_C.Multiply(P_in, C_in, data_dim);
     
     // upward pass, obviously
