@@ -1,13 +1,13 @@
     #pragma once
 
 #include "bct_kernel_type.h"
-#include "cluster_tree2.h"
+#include "optimized_cluster_tree.h"
 #include "interaction_data.h"
 
 namespace rsurfaces
 {
 
-    class BlockClusterTree2
+    class OptimizedBlockClusterTree
     {
     public:
         //Main interface routines first:
@@ -37,32 +37,17 @@ namespace rsurfaces
 
         bool disableNearField = false;
 
-        BlockClusterTree2(std::shared_ptr<ClusterTree2> S_, std::shared_ptr<ClusterTree2> T_, const mreal alpha_, const mreal beta_, const mreal theta_, bool exploit_symmetry_ = true, bool upper_triangular_ = false);
+        OptimizedBlockClusterTree(OptimizedClusterTree* S_, OptimizedClusterTree* T_, const mreal alpha_, const mreal beta_, const mreal theta_, bool exploit_symmetry_ = true, bool upper_triangular_ = false);
 
-        ~BlockClusterTree2()
-        {
-//            // If the two pointers are distinct, delete both
-//            if (S != T)
-//            {
-//                if (S)
-//                    delete S;
-//                if (T)
-//                    delete T;
-//            }
-//            // If they're the same, just delete one
-//            else
-//            {
-//                if (S)
-//                    delete S;
-//            }
-            
+        ~OptimizedBlockClusterTree()
+        {   
             mreal_free(hi_diag);
             mreal_free(lo_diag);
             mreal_free(fr_diag);
         };
 
-        mutable std::shared_ptr<ClusterTree2> S; // "left" ClusterTree2 (output side of matrix-vector multiplication)
-        mutable std::shared_ptr<ClusterTree2> T; // "right" ClusterTree2 (input side of matrix-vector multiplication)
+        mutable OptimizedClusterTree* S; // "left" OptimizedClusterTree (output side of matrix-vector multiplication)
+        mutable OptimizedClusterTree* T; // "right" OptimizedClusterTree (input side of matrix-vector multiplication)
 
         mint dim = 3;
         mreal theta2 = 0.25;
@@ -150,10 +135,10 @@ namespace rsurfaces
 
         void ComputeDiagonals();
         
-        void AddObstacleCorrection( BlockClusterTree2 * bct12);
+        void AddObstacleCorrection( OptimizedBlockClusterTree * bct12);
         
         void PrintStats(){
-            std::cout << "\n==== BlockClusterTree2 Stats ====" << std::endl;
+            std::cout << "\n==== OptimizedBlockClusterTree Stats ====" << std::endl;
             
             std::cout << " dim                 = " <<  dim << std::endl;
             std::cout << " theta               = " <<  sqrt(theta2) << std::endl;
@@ -182,10 +167,10 @@ namespace rsurfaces
 //            std::cout << " lo_factor   = " <<  lo_factor << std::endl;
 //            std::cout << " fr_factor   = " <<  fr_factor << std::endl;
             
-            std::cout << "==== BlockClusterTree2 Stats ====\n" << std::endl;
+            std::cout << "==== OptimizedBlockClusterTree Stats ====\n" << std::endl;
             
         };
 
-    }; //BlockClusterTree2
+    }; //OptimizedBlockClusterTree
 
 } // namespace rsurfaces

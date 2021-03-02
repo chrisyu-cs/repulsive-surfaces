@@ -3,8 +3,8 @@
 #include "rsurface_types.h"
 #include "surface_energy.h"
 #include "helpers.h"
-#include "block_cluster_tree2_types.h"
-#include "block_cluster_tree2.h"
+#include "optimized_bct_types.h"
+#include "optimized_bct.h"
 #include "derivative_assembler.h"
 
 
@@ -15,18 +15,23 @@ namespace rsurfaces
     class TPEnergyAllPairs : public SurfaceEnergy
     {
     public:
-        ~TPEnergyAllPairs(){};
-        
-        TPEnergyAllPairs( MeshPtr mesh_, GeomPtr geom_, std::shared_ptr<ClusterTree2> bvh_, mreal alpha_, mreal beta_)
+        TPEnergyAllPairs( MeshPtr mesh_, GeomPtr geom_, mreal alpha_, mreal beta_)
         {
             mesh = mesh_;
             geom = geom_;
-            bvh = bvh_;
+            bvh = 0;
             
             alpha = alpha_;
             beta = beta_;
             mreal intpart;
             use_int = (std::modf( alpha, &intpart) == 0.0) && (std::modf( beta/2, &intpart) == 0.0);
+
+            Update();
+        }
+
+        ~TPEnergyAllPairs()
+        {
+            if (bvh) delete bvh;
         }
         
         // Returns the current value of the energy.
@@ -51,20 +56,20 @@ namespace rsurfaces
 
         // Get a pointer to the current BVH for this energy.
         // Return 0 if the energy doesn't use a BVH.
-        virtual BVHNode6D *GetBVH();
+        virtual OptimizedClusterTree *GetBVH();
 
         // Return the separation parameter for this energy.
         // Return 0 if this energy doesn't do hierarchical approximation.
         virtual double GetTheta();
         
-        BlockClusterTree2 * GetBCT();
+        OptimizedBlockClusterTree * GetBCT();
         
         bool use_int = false;
     private:
         
         MeshPtr mesh = nullptr;
         GeomPtr geom = nullptr;
-        std::shared_ptr<ClusterTree2> bvh = nullptr;
+        OptimizedClusterTree* bvh = nullptr;
         
         mreal alpha = 6.;
         mreal beta  = 12.;

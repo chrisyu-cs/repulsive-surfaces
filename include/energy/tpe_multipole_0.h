@@ -3,8 +3,8 @@
 #include "rsurface_types.h"
 #include "surface_energy.h"
 #include "helpers.h"
-#include "block_cluster_tree2_types.h"
-#include "block_cluster_tree2.h"
+#include "optimized_bct_types.h"
+#include "optimized_bct.h"
 #include "derivative_assembler.h"
 
 
@@ -17,7 +17,7 @@ namespace rsurfaces
     public:
         ~TPEnergyMultipole0(){};
         
-        TPEnergyMultipole0( MeshPtr mesh_, GeomPtr geom_, BlockClusterTree2 * bct_, mreal alpha_, mreal beta_)
+        TPEnergyMultipole0( MeshPtr mesh_, GeomPtr geom_, OptimizedBlockClusterTree * bct_, mreal alpha_, mreal beta_)
         {
             mesh = mesh_;
             geom = geom_;
@@ -52,20 +52,20 @@ namespace rsurfaces
 
         // Get a pointer to the current BVH for this energy.
         // Return 0 if the energy doesn't use a BVH.
-        virtual BVHNode6D *GetBVH();
+        virtual OptimizedClusterTree *GetBVH();
 
         // Return the separation parameter for this energy.
         // Return 0 if this energy doesn't do hierarchical approximation.
         virtual double GetTheta();
         
-        BlockClusterTree2 * GetBCT();
+        OptimizedBlockClusterTree * GetBCT();
         
         bool use_int = false;
     private:
         
         MeshPtr mesh = nullptr;
         GeomPtr geom = nullptr;
-        BlockClusterTree2 * bct = nullptr;
+        OptimizedBlockClusterTree * bct = nullptr;
         
         mreal alpha = 6.;
         mreal beta  = 12.;

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "rsurface_types.h"
-#include "block_cluster_tree2.h"
+#include "optimized_bct.h"
 #include "sobolev/hs.h"
 
 class BCTMatrixReplacement;
@@ -64,7 +64,7 @@ public:
     // Custom API:
     BCTMatrixReplacement() {}
 
-    void addTree(rsurfaces::BlockClusterTree2 *bct_)
+    void addTree(rsurfaces::OptimizedBlockClusterTree *bct_)
     {
         bct = bct_;
     }
@@ -79,7 +79,7 @@ public:
         hs = hs_;
     }
 
-    const rsurfaces::BlockClusterTree2 *getTree() const
+    const rsurfaces::OptimizedBlockClusterTree *getTree() const
     {
         return bct;
     }
@@ -95,7 +95,7 @@ public:
     }
 
 private:
-    mutable rsurfaces::BlockClusterTree2 *bct;
+    mutable rsurfaces::OptimizedBlockClusterTree *bct;
     const Eigen::SparseMatrix<double> *C;
     const rsurfaces::Hs::HsMetric *hs;
 };
@@ -185,7 +185,7 @@ namespace Eigen
                 assert(alpha == Scalar(1) && "scaling is not implemented");
                 EIGEN_ONLY_USED_FOR_DEBUG(alpha);
 
-                const rsurfaces::BlockClusterTree2 *bct = lhs.getTree();
+                const rsurfaces::OptimizedBlockClusterTree *bct = lhs.getTree();
 
                 Eigen::VectorXd product(3 * lhs.getHs()->mesh->nVertices() + lhs.getConstraintBlock().rows());
                 product.setZero();

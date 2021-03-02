@@ -58,7 +58,7 @@ namespace rsurfaces
         return Vector2{0, 2};
     }
 
-    BVHNode6D *ImplicitAttractor::GetBVH()
+    OptimizedClusterTree *ImplicitAttractor::GetBVH()
     {
         return 0;
     }

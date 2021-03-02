@@ -6,14 +6,13 @@
 
 #include "polyscope/polyscope.h"
 #include "polyscope/surface_mesh.h"
-#include "energy/barnes_hut_tpe_6d.h"
 #include "scene_file.h"
 #include "geometrycentral/surface/meshio.h"
 
 #include "energy/squared_error.h"
 
 #include <mkl.h>
-#include "block_cluster_tree2.h"
+#include "optimized_bct.h"
 #include "energy/willmore_energy.h"
 #include "energy/tpe_multipole_0.h"
 #include "energy/tpe_barnes_hut_0.h"
@@ -39,15 +38,11 @@ namespace rsurfaces
 
         void TestWillmore();
         void TestObstacle0();
-        void TestMultipole0();
         void TestBarnesHut0();
         void TestNewMVProduct();
-        void TestMVProduct();
         void TestIterative();
         void BenchmarkBH();
-        void TestBarnesHut();
         void PlotGradients();
-        void PlotEnergyPerFace();
         void Scale2x();
         void TestNormalDeriv();
         void MeshImplicitSurface(ImplicitSurface *surface);

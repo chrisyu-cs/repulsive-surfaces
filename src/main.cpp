@@ -13,7 +13,6 @@
 #include "energy/all_energies.h"
 #include "helpers.h"
 #include <memory>
-#include "spatial/bvh_flattened.h"
 
 #include <Eigen/Sparse>
 #include <omp.h>
@@ -24,7 +23,6 @@
 #include "sobolev/h1.h"
 #include "spatial/convolution.h"
 #include "spatial/convolution_kernel.h"
-#include "block_cluster_tree.h"
 #include "surface_derivatives.h"
 #include "obj_writer.h"
 #include "dropdown_strings.h"
@@ -92,9 +90,6 @@ namespace rsurfaces
             break;
         case GradientMethod::HsProjectedIterative:
             flow->StepProjectedGradientIterative();
-            break;
-        case GradientMethod::HsNCG:
-            flow->StepNCG();
             break;
         case GradientMethod::HsExactProjected:
             flow->StepProjectedGradientExact();
@@ -247,108 +242,6 @@ namespace rsurfaces
         PlotMatrix(l2Diff, psMesh, "L2 differential");
         PlotMatrix(hsGrad, psMesh, "Hs sparse gradient");
         PlotMatrix(hsGradExact, psMesh, "Hs dense gradient");
-    }
-
-    void MainApp::TestBarnesHut()
-    {
-        TPEKernel *tpe = new rsurfaces::TPEKernel(mesh, geom, 6, 12);
-        SurfaceEnergy *energy_ap, *energy_bh, *energy_newton;
-        energy_ap = new AllPairsTPEnergy(tpe);
-        energy_bh = new BarnesHutTPEnergy6D(tpe, bh_theta);
-        energy_newton = new BarnesHutNewtonian(tpe, bh_theta);
-
-        energy_ap->Update();
-        energy_bh->Update();
-        energy_newton->Update();
-
-        bool doAllPairs = (mesh->nFaces() < 3000);
-
-        Eigen::MatrixXd grad_ap(mesh->nVertices(), 3);
-        Eigen::MatrixXd grad_bh(mesh->nVertices(), 3);
-        Eigen::MatrixXd grad_newton(mesh->nVertices(), 3);
-        grad_ap.setZero();
-        grad_bh.setZero();
-        grad_newton.setZero();
-
-        long start_ape = currentTimeMilliseconds();
-        double value_ap = 0;
-        if (doAllPairs)
-            energy_ap->Value();
-        long end_ape = currentTimeMilliseconds();
-
-        long start_bhe = currentTimeMilliseconds();
-        double value_bh = energy_bh->Value();
-        long end_bhe = currentTimeMilliseconds();
-
-        double val_error = fabs(value_ap - value_bh) / value_ap;
-
-        if (!doAllPairs)
-            std::cout << "Mesh has too many faces; not running all-pairs comparison." << std::endl;
-
-        std::cout << "\n=====   Energy   =====" << std::endl;
-        if (doAllPairs)
-            std::cout << "All-pairs energy value  = " << value_ap << std::endl;
-        std::cout << "Barnes-Hut energy value = " << value_bh << std::endl;
-        if (doAllPairs)
-            std::cout << "Relative error     = " << val_error * 100 << " percent" << std::endl;
-        if (doAllPairs)
-            std::cout << "All-pairs time     = " << (end_ape - start_ape) << " ms" << std::endl;
-        std::cout << "Barnes-Hut time    = " << (end_bhe - start_bhe) << " ms" << std::endl;
-
-        long start_apg = currentTimeMilliseconds();
-        if (doAllPairs)
-            energy_ap->Differential(grad_ap);
-        long end_apg = currentTimeMilliseconds();
-
-        long start_bhg = currentTimeMilliseconds();
-        energy_bh->Differential(grad_bh);
-        long end_bhg = currentTimeMilliseconds();
-
-        long start_newton = currentTimeMilliseconds();
-        energy_newton->Differential(grad_newton);
-        long end_newton = currentTimeMilliseconds();
-
-        double grad_error = (grad_ap - grad_bh).norm() / grad_ap.norm();
-
-        std::cout << "\n=====  Gradient  =====" << std::endl;
-        if (doAllPairs)
-            std::cout << "All-pairs gradient norm      = " << grad_ap.norm() << std::endl;
-        std::cout << "Barnes-Hut gradient norm     = " << grad_bh.norm() << std::endl;
-        std::cout << "Newton gravity norm          = " << grad_newton.norm() << std::endl;
-        if (doAllPairs)
-            std::cout << "Barnes-Hut relative error    = " << grad_error * 100 << " percent" << std::endl;
-        if (doAllPairs)
-            std::cout << "All-pairs time     = " << (end_apg - start_apg) << " ms" << std::endl;
-        std::cout << "Barnes-Hut time    = " << (end_bhg - start_bhg) << " ms" << std::endl;
-        std::cout << "Newtonian time     = " << (end_newton - start_newton) << " ms" << std::endl;
-
-        delete energy_ap;
-        delete energy_bh;
-        delete energy_newton;
-        delete tpe;
-    }
-
-    void MainApp::PlotEnergyPerFace()
-    {
-        TPEKernel *tpe = new rsurfaces::TPEKernel(mesh, geom, 6, 12);
-        BarnesHutTPEnergy6D *energy_bh = new BarnesHutTPEnergy6D(tpe, bh_theta);
-
-        energy_bh->Update();
-        double total = energy_bh->Value();
-
-        for (GCFace f : mesh->faces())
-        {
-            double e = energy_bh->energyPerFace[f];
-            // This looks like it scales the right way:
-            // doubling the mesh also doubles the resulting lengths
-            energy_bh->energyPerFace[f] = pow(e, 1.0 / (2 - tpe->alpha));
-        }
-
-        psMesh->addFaceScalarQuantity("energy per face", energy_bh->energyPerFace);
-        std::cout << "Total energy = " << total << std::endl;
-
-        delete energy_bh;
-        delete tpe;
     }
 
     bool MainApp::pickNearbyVertex(GCVertex &out)
@@ -622,23 +515,23 @@ namespace rsurfaces
         std::shared_ptr<VertexPositionGeometry> geom2 = std::move(ugeom);
 
         tic("Create bvh1");
-        std::shared_ptr<ClusterTree2> bvh1 = CreateOptimizedBVH(mesh1, geom1);
+        OptimizedClusterTree *bvh1 = CreateOptimizedBVH(mesh1, geom1);
         toc("Create bvh1");
         tic("Create bvh2");
-        std::shared_ptr<ClusterTree2> bvh2 = CreateOptimizedBVH(mesh2, geom2);
+        OptimizedClusterTree *bvh2 = CreateOptimizedBVH(mesh2, geom2);
         toc("Create bvh2");
         
         tic("Create bct11");
-        auto bct11 = std::make_shared<BlockClusterTree2>(bvh1, bvh1, alpha, beta, theta);
+        auto bct11 = std::make_shared<OptimizedBlockClusterTree>(bvh1, bvh1, alpha, beta, theta);
         toc("Create bct11");
         tic("Create bct12");
-        auto bct12 = std::make_shared<BlockClusterTree2>(bvh1, bvh2, alpha, beta, theta);
+        auto bct12 = std::make_shared<OptimizedBlockClusterTree>(bvh1, bvh2, alpha, beta, theta);
         toc("Create bct12");
         
         // The transpose of bct12 and thus not needed.
-        //auto bct21 = std::make_shared<BlockClusterTree2>(bvh2, bvh1, alpha, beta, theta);
+        //auto bct21 = std::make_shared<OptimizedBlockClusterTree>(bvh2, bvh1, alpha, beta, theta);
         tic("Create bct22");
-        auto bct22 = std::make_shared<BlockClusterTree2>(bvh2, bvh2, alpha, beta, theta);
+        auto bct22 = std::make_shared<OptimizedBlockClusterTree>(bvh2, bvh2, alpha, beta, theta);
         toc("Create bct22");
         
         bct11->PrintStats();
@@ -651,14 +544,14 @@ namespace rsurfaces
         //            { bct11, bct12 },
         //            { bct21, bct22 }
         //        },
-        // where bct11 and bct22 are the instances of BlockClusterTree2 of mesh1 and mesh2, respectively, bct12 is cross interaction BlockClusterTree2 of mesh1 and mesh2, and bct21 is the transpose of bct12.
+        // where bct11 and bct22 are the instances of OptimizedBlockClusterTree of mesh1 and mesh2, respectively, bct12 is cross interaction OptimizedBlockClusterTree of mesh1 and mesh2, and bct21 is the transpose of bct12.
         // However, the according matrix (on the space of dofs on the primitives) would be
         //  A   = {
         //            { A11 + diag( A12 * one2 ) , A12                      },
         //            { A21                      , A22 + diag( A21 * one1 ) }
         //        },
         // where one1 and one2 are all-1-vectors on the primitives of mesh1 and mesh2, respectively.
-        // BlockClusterTree2::AddObstacleCorrection is supposed to compute diag( A12 * one2 ) and to add it to the diagonal of A11.
+        // OptimizedBlockClusterTree::AddObstacleCorrection is supposed to compute diag( A12 * one2 ) and to add it to the diagonal of A11.
         // Afterwards, bct1->Multiply will also multiply with the metric contribution of the obstacle.
         tic("Modifying bct11 to include the terms with respect to the obstacle.");
         bct11->AddObstacleCorrection( bct12.get() );
@@ -667,8 +560,8 @@ namespace rsurfaces
         
         // the self-interaction energy of mesh1
         auto tpe_fm_11 = std::make_shared<TPEnergyMultipole0> ( mesh1, geom1, bct11.get(), alpha, beta );
-        auto tpe_bh_11 = std::make_shared<TPEnergyBarnesHut0> ( mesh1, geom1, bvh1, alpha, beta, theta );
-        auto tpe_ex_11 = std::make_shared<TPEnergyAllPairs>   ( mesh1, geom1, bvh1, alpha, beta );
+        auto tpe_bh_11 = std::make_shared<TPEnergyBarnesHut0> ( mesh1, geom1, alpha, beta, theta );
+        auto tpe_ex_11 = std::make_shared<TPEnergyAllPairs>   ( mesh1, geom1, alpha, beta );
         
         // the interaction energy between mesh1 and mesh2
         auto tpe_fm_12 = std::make_shared<TPObstacleMultipole0>( mesh1, geom1, bct12.get(), alpha, beta );
@@ -677,8 +570,8 @@ namespace rsurfaces
         
         // the self-interaction energy of mesh2; since mesh2 is the obstacle here, this is not needed in practice; I used this here only for test purposes and in order to see how much "work" is saved by this approach.
         auto tpe_fm_22 = std::make_shared<TPEnergyMultipole0> ( mesh2, geom2, bct22.get(), alpha, beta );
-        auto tpe_bh_22 = std::make_shared<TPEnergyBarnesHut0> ( mesh2, geom2, bvh2, alpha, beta, theta );
-        auto tpe_ex_22 = std::make_shared<TPEnergyAllPairs>   ( mesh2, geom2, bvh2, alpha, beta );
+        auto tpe_bh_22 = std::make_shared<TPEnergyBarnesHut0> ( mesh2, geom2, alpha, beta, theta );
+        auto tpe_ex_22 = std::make_shared<TPEnergyAllPairs>   ( mesh2, geom2, alpha, beta );
 
         // the energies tpe_**_11, tpe_**_12, tpe_**_22 are gauged such that their sum equals the tangent-point energy of the union of mesh1 and mesh2.
         
@@ -836,113 +729,9 @@ namespace rsurfaces
         std::cout << std::setw(w) << " DE_12 time  (s) " << " | " << std::setw(w) << Dt_ex_12  << " | " << std::setw(w) <<  Dt_bh_12 << " | " << std::setw(w) << Dt_fm_12 << std::endl;
         std::cout << std::setw(w) << " DE_22 time  (s) " << " | " << std::setw(w) << Dt_ex_22  << " | " << std::setw(w) <<  Dt_bh_22 << " | " << std::setw(w) << Dt_fm_22 << std::endl;
         
+        delete bvh2;
+        delete bvh1;
     } // TestObstacle0
-
-    void MainApp::TestMultipole0()
-    {
-        std::cout << std::setprecision(16);
-        std::cout << "\n  =====                        =====  " << std::endl;
-        std::cout << "=======   TPEnergyMultipole0   =======" << std::endl;
-        std::cout << "  =====                        =====  " << std::endl;
-        std::cout << "\n" << std::endl;
-        auto mesh = rsurfaces::MainApp::instance->mesh;
-        auto geom = rsurfaces::MainApp::instance->geom;
-        
-        mreal alpha = 6.;
-        mreal beta = 12.;
-        mreal theta = 0.25;
-        
-        tic("Create BVH");
-        std::shared_ptr<ClusterTree2> bvh = CreateOptimizedBVH( mesh, geom );
-        toc("Create BVH");
-        
-        tic("Create BCT");
-        // theta = 0.5 might suffice for the preconditioner
-        // theta = 0.25 might be needed to obtain accuracy for the energy similar to the one by BarnesHutTPEnergy6D
-        auto bct = std::make_shared<BlockClusterTree2>( bvh, bvh, alpha, beta, theta, true, false );
-        toc("Create BCT");
-
-        bct->PrintStats();
-        
-        double E, Ex;
-        Eigen::MatrixXd DE, DEx ( mesh->nVertices(), 3 );
-
-        auto tpe = std::make_shared<TPEnergyMultipole0>( mesh, geom, bct.get(), alpha, beta );
-        auto tpex = std::make_shared<TPEnergyAllPairs>  ( mesh, geom, bvh, alpha, beta );
-        
-        std::cout << "Using integer exponents." << std::endl;
-        
-        tic("Compute Value");
-        E = tpe->Value();
-        toc("Compute Value");
-        std::cout << "  E = " << E << std::endl;
-        tic("Compute Differential");
-        tpe->Differential(DE);
-        toc("Compute Differential");
-        
-        
-        tic("Compute Value (all pairs)");
-        Ex = tpex->Value();
-        toc("Compute Value (all pairs)");
-        std::cout << "  Ex = " << Ex << std::endl;
-        tic("Compute Differential (all pairs)");
-        tpex->Differential(DEx);
-        toc("Compute Differential (all pairs)");
-        
-        std::cout << "  DE = " << DE(0,0) << " , " << DE(0,1) <<  " , " << DE(0,2)  << std::endl;
-        std::cout << "       " << DE(1,0) << " , " << DE(1,1) <<  " , " << DE(1,2)  << std::endl;
-        std::cout << "       " << DE(2,0) << " , " << DE(2,1) <<  " , " << DE(2,2)  << std::endl;
-        std::cout << "       " << DE(3,0) << " , " << DE(3,1) <<  " , " << DE(3,2)  << std::endl;
-        std::cout << "       " << DE(4,0) << " , " << DE(4,1) <<  " , " << DE(4,2)  << std::endl;
-        
-        tpe->use_int = false;
-        std::cout << "Using double exponents." << std::endl;
-        
-        tic("Compute Value");
-        E = tpe->Value();
-        toc("Compute Value");
-        std::cout << "  E = " << E << std::endl;
-        
-        tic("Compute Differential");
-        tpe->Differential(DE);
-        toc("Compute Differential");
-        
-        std::cout << "  DE = " << DE(0,0) << " , " << DE(0,1) <<  " , " << DE(0,2)  << std::endl;
-        std::cout << "       " << DE(1,0) << " , " << DE(1,1) <<  " , " << DE(1,2)  << std::endl;
-        std::cout << "       " << DE(2,0) << " , " << DE(2,1) <<  " , " << DE(2,2)  << std::endl;
-        std::cout << "       " << DE(3,0) << " , " << DE(3,1) <<  " , " << DE(3,2)  << std::endl;
-        std::cout << "       " << DE(4,0) << " , " << DE(4,1) <<  " , " << DE(4,2)  << std::endl;
-
-        std::cout << "Energy value = " << E << std::endl;
-        std::cout << "Diff. norm   = " << DE.norm() << std::endl;
-        
-        std::cout << "Exact energy value = " << Ex << std::endl;
-        std::cout << "Exact diff. value  = " << DEx.norm() << std::endl;
-
-        double energyError = fabs(E - Ex) / Ex * 100;
-        double diffError = (DE - DEx).norm() / DEx.norm() * 100;
-
-        std::cout << "Energy relative error = " << energyError << " percent" << std::endl;
-        std::cout << "Diff. relative error  = " << diffError << " percent" << std::endl;
-
-        SurfaceEnergy *oldBH = flow->BaseEnergy();
-        Eigen::MatrixXd oldDiff(mesh->nVertices(), 3);
-
-        oldDiff.setZero();
-        oldBH->Update();
-        double oldE = oldBH->Value();
-        oldBH->Differential(oldDiff);
-
-        std::cout << "Old BH energy value = " << oldE << std::endl;
-        std::cout << "Old BH diff. value  = " << oldDiff.norm() << std::endl;
-
-        double oldEnergyError = fabs(oldE - Ex) / Ex * 100;
-        double oldDiffError = (oldDiff - DEx).norm() / DEx.norm() * 100;
-
-        std::cout << "Energy relative error = " << oldEnergyError << " percent" << std::endl;
-        std::cout << "Diff. relative error  = " << oldDiffError << " percent" << std::endl;
-
-    } // TestMultipole0
 
     void MainApp::TestBarnesHut0()
     {
@@ -959,14 +748,14 @@ namespace rsurfaces
         mreal theta = 0.25;
         
         tic("Create BVH");
-        std::shared_ptr<ClusterTree2> bvh = CreateOptimizedBVH( mesh, geom );
+        OptimizedClusterTree* bvh = CreateOptimizedBVH( mesh, geom );
         tic("Create BVH");
         
         double E, Ex;
         Eigen::MatrixXd DE, DEx ( mesh->nVertices(), 3 );
 
-        auto tpe = std::make_shared<TPEnergyBarnesHut0>( mesh, geom, bvh, alpha, beta, theta);
-        auto tpex = std::make_shared<TPEnergyAllPairs> ( mesh, geom, bvh, alpha, beta );
+        auto tpe = std::make_shared<TPEnergyBarnesHut0>( mesh, geom, alpha, beta, theta);
+        auto tpex = std::make_shared<TPEnergyAllPairs> ( mesh, geom, alpha, beta );
         
         std::cout << "Using integer exponents." << std::endl;
         
@@ -1038,6 +827,8 @@ namespace rsurfaces
 
         std::cout << "Energy relative error = " << oldEnergyError << " percent" << std::endl;
         std::cout << "Diff. relative error  = " << oldDiffError << " percent" << std::endl;
+
+        delete bvh;
 
     } // TestBarnesHut0
 
@@ -1108,7 +899,8 @@ namespace rsurfaces
         Eigen::VectorXd denseRes = dense * gVec;
         long constructStart = currentTimeMilliseconds();
 
-        BlockClusterTree2 *bct = CreateOptimizedBCT(mesh, geom, exps.x, exps.y, 0.5);
+        OptimizedClusterTree *bvh = CreateOptimizedBVH(mesh, geom);
+        OptimizedBlockClusterTree *bct = CreateOptimizedBCTFromBVH(bvh, exps.x, exps.y, 0.5);
         
 //        tic("DFarFieldEnergyHelper");
 //        mreal EFar = bct->DFarFieldEnergyHelper();
@@ -1165,120 +957,9 @@ namespace rsurfaces
         std::cout << "Dot product of directions = " << denseRes.dot(fastRes) / (denseRes.norm() * fastRes.norm()) << std::endl;
 
         delete bct;
+        delete bvh;
     } // TestNewMVProduct
 
-    void MainApp::TestMVProduct()
-    {
-        geom->refreshQuantities();
-
-        long gradientStartTime = currentTimeMilliseconds();
-        // Use the differential of the energy as the test case
-        SurfaceEnergy *energy = flow->BaseEnergy();
-        energy->Update();
-        Eigen::MatrixXd gradient(mesh->nVertices(), 3);
-        energy->Differential(gradient);
-        Eigen::VectorXd gVec(3 * mesh->nVertices());
-        MatrixUtils::MatrixIntoColumn(gradient, gVec);
-        Vector2 exps = energy->GetExponents();
-        double s = 2 - Hs::get_s(exps.x, exps.y);
-
-        long gradientEndTime = currentTimeMilliseconds();
-        Hs::HsMetric hs(energy);
-
-        std::cout << "Dense fractional Laplacian (s = " << s << "):" << std::endl;
-        Eigen::MatrixXd dense, dense_small;
-        dense_small.setZero(mesh->nVertices(), mesh->nVertices());
-        dense.setZero(3 * mesh->nVertices(), 3 * mesh->nVertices());
-        // Build dense fractional Laplacian
-        long fracStart = currentTimeMilliseconds();
-        hs.FillMatrixFracOnly(dense_small, s, mesh, geom);
-        MatrixUtils::TripleMatrix(dense_small, dense);
-        // Multiply it
-        Eigen::VectorXd denseRes = dense * gVec;
-        long fracEnd = currentTimeMilliseconds();
-
-        // Block cluster tree multiplication
-        BVHNode6D *bvh = energy->GetBVH();
-
-        BlockClusterTree *bct = new BlockClusterTree(mesh, geom, bvh, bh_theta, s);
-        long fracBCT = currentTimeMilliseconds();
-        Eigen::VectorXd bctRes = gVec;
-        bct->MultiplyVector3(gVec, bctRes, BCTKernelType::FractionalOnly);
-        long fracEnd2 = currentTimeMilliseconds();
-
-        bct->PrintData();
-
-        Eigen::VectorXd diff = denseRes - bctRes;
-        double error = 100 * diff.norm() / denseRes.norm();
-        std::cout << "Dense multiply norm = " << denseRes.norm() << std::endl;
-        std::cout << "Hierarchical multiply norm = " << bctRes.norm() << std::endl;
-        std::cout << "Relative error = " << error << " percent" << std::endl;
-        std::cout << "Dot product of directions = " << denseRes.dot(bctRes) / (denseRes.norm() * bctRes.norm()) << std::endl;
-        std::cout << "Dense assembly took " << (fracEnd - fracStart) << " ms, hierarchical product took " << (fracEnd2 - fracBCT) << " ms" << std::endl;
-        std::cout << "BCT assembly took " << (fracBCT - fracEnd) << " ms" << std::endl;
-
-        // Reset for high-order term
-        denseRes.setZero();
-        bctRes.setZero();
-        dense_small.setZero();
-        dense.setZero();
-        s = Hs::get_s(exps.x, exps.y);
-        bct->SetExponent(s);
-
-        std::cout << "High-order term (s = " << s << "):" << std::endl;
-
-        // Build dense matrix for high-order term
-        long hiStart = currentTimeMilliseconds();
-        hs.FillMatrixHigh(dense_small, s, mesh, geom);
-        MatrixUtils::TripleMatrix(dense_small, dense);
-        // Multiply it
-        denseRes = dense * gVec;
-        long hiEnd = currentTimeMilliseconds();
-
-        // Use BCT to multiply high-order term
-        bct->MultiplyVector3(gVec, bctRes, BCTKernelType::HighOrder);
-        long hiEnd2 = currentTimeMilliseconds();
-
-        diff = denseRes - bctRes;
-        error = 100 * diff.norm() / denseRes.norm();
-        std::cout << "Dense multiply norm = " << denseRes.norm() << std::endl;
-        std::cout << "Hierarchical multiply norm = " << bctRes.norm() << std::endl;
-        std::cout << "Relative error = " << error << " percent" << std::endl;
-        std::cout << "Dot product of directions = " << denseRes.dot(bctRes) / (denseRes.norm() * bctRes.norm()) << std::endl;
-        std::cout << "Dense assembly took " << (hiEnd - hiStart) << " ms, hierarchical product took " << (hiEnd2 - hiEnd) << " ms" << std::endl;
-
-        // Reset for low-order term
-        denseRes.setZero();
-        bctRes.setZero();
-        dense_small.setZero();
-        dense.setZero();
-        s = Hs::get_s(exps.x, exps.y);
-        bct->SetExponent(s);
-
-        std::cout << "Low-order term (s = " << s << "):" << std::endl;
-
-        // Build dense matrix for low-order term
-        long lowStart = currentTimeMilliseconds();
-        hs.FillMatrixLow(dense_small, s, mesh, geom);
-        MatrixUtils::TripleMatrix(dense_small, dense);
-        // Multiply it
-        denseRes = dense * gVec;
-        long lowEnd = currentTimeMilliseconds();
-
-        // Use BCT to multiply low-order term
-        bct->MultiplyVector3(gVec, bctRes, BCTKernelType::LowOrder);
-        long lowEnd2 = currentTimeMilliseconds();
-
-        diff = denseRes - bctRes;
-        error = 100 * diff.norm() / denseRes.norm();
-        std::cout << "Dense multiply norm = " << denseRes.norm() << std::endl;
-        std::cout << "Hierarchical multiply norm = " << bctRes.norm() << std::endl;
-        std::cout << "Relative error = " << error << " percent" << std::endl;
-        std::cout << "Dot product of directions = " << denseRes.dot(bctRes) / (denseRes.norm() * bctRes.norm()) << std::endl;
-        std::cout << "Dense assembly took " << (lowEnd - lowStart) << " ms, hierarchical product took " << (lowEnd2 - lowEnd) << " ms" << std::endl;
-
-        delete bct;
-    }
 
     void MainApp::TestIterative()
     {
@@ -1756,11 +1437,6 @@ void customCallback()
         MainApp::instance->TestObstacle0();
     }
     
-    if (ImGui::Button("Test Multipole0", ImVec2{ITEM_WIDTH, 0}))
-    {
-        MainApp::instance->TestMultipole0();
-    }
-    
     if (ImGui::Button("Test BarnesHut0", ImVec2{ITEM_WIDTH, 0}))
     {
         MainApp::instance->TestBarnesHut0();
@@ -1771,36 +1447,14 @@ void customCallback()
         MainApp::instance->TestNewMVProduct();
     }
 
-    if (ImGui::Button("Test MV product", ImVec2{ITEM_WIDTH, 0}))
-    {
-        MainApp::instance->TestMVProduct();
-    }
-    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
     if (ImGui::Button("Test iterative", ImVec2{ITEM_WIDTH, 0}))
     {
         MainApp::instance->TestIterative();
     }
-
-    if (ImGui::Button("Test B-H", ImVec2{ITEM_WIDTH, 0}))
-    {
-        MainApp::instance->TestBarnesHut();
-    }
-    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
     if (ImGui::Button("Benchmark B-H", ImVec2{ITEM_WIDTH, 0}))
     {
         MainApp::instance->BenchmarkBH();
     }
-
-    if (ImGui::Button("Plot face energies", ImVec2{ITEM_WIDTH, 0}))
-    {
-        MainApp::instance->PlotEnergyPerFace();
-    }
-    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
-    if (ImGui::Button("Scale mesh 2x", ImVec2{ITEM_WIDTH, 0}))
-    {
-        MainApp::instance->Scale2x();
-    }
-
     if (ImGui::Button("Plot gradients", ImVec2{ITEM_WIDTH, 0}))
     {
         MainApp::instance->PlotGradients();
@@ -2031,11 +1685,10 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::sce
     else
     {
         std::cout << "Using Barnes-Hut energy with theta = " << theta << "." << std::endl;
-        BarnesHutTPEnergy6D *bh = new BarnesHutTPEnergy6D(m.kernel, theta);
-        bh->disableNearField = scene.disableNearField;
-        if (bh->disableNearField)
+        TPEnergyBarnesHut0 *bh = new TPEnergyBarnesHut0(m.kernel->mesh, m.kernel->geom, m.kernel->alpha, m.kernel->beta, theta);
+        if (scene.disableNearField)
         {
-            std::cout << "Near-field interactions are disabled." << std::endl;
+            throw std::runtime_error("disable_near_field has not yet been ported to the new energy.");
         }
         energy = bh;
     }

@@ -17,14 +17,14 @@ namespace rsurfaces
         virtual MeshPtr GetMesh();
         virtual GeomPtr GetGeom();
         virtual Vector2 GetExponents();
-        virtual BVHNode6D *GetBVH();
+        virtual OptimizedClusterTree *GetBVH();
         virtual double GetTheta();
 
     private:
         TPEKernel *kernel;
-        BVHNode6D *root;
+        OptimizedClusterTree *root;
         double theta;
-        double energyAtVertex(BVHNode6D *node, GCVertex v);
-        Vector3 gradientAtVertex(BVHNode6D *node, GCVertex v);
+        double energyAtVertex(OptimizedClusterTree *node, GCVertex v);
+        Vector3 gradientAtVertex(OptimizedClusterTree *node, GCVertex v);
     };
 } // namespace rsurfaces

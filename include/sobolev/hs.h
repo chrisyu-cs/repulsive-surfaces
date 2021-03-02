@@ -3,7 +3,7 @@
 #include "rsurface_types.h"
 #include "matrix_utils.h"
 #include "constraints.h"
-#include "block_cluster_tree2.h"
+#include "optimized_bct.h"
 #include "hs_operators.h"
 #include "sobolev/h1.h"
 #include "sobolev/all_constraints.h"
@@ -116,7 +116,7 @@ namespace rsurfaces
                 }
             }
 
-            inline BVHNode6D *GetBVH() const
+            inline OptimizedClusterTree *GetBVH() const
             {
                 return bvh;
             }
@@ -170,12 +170,12 @@ namespace rsurfaces
             }
             void shiftBarycenterConstraint(Vector3 shift);
 
-            inline BlockClusterTree2 *getBlockClusterTree() const
+            inline OptimizedBlockClusterTree *getBlockClusterTree() const
             {
                 if (!optBCT)
                 {
                     Vector2 exps = energy->GetExponents();
-                    optBCT = CreateOptimizedBCT(mesh, geom, exps.x, exps.y, bh_theta);
+                    optBCT = CreateOptimizedBCTFromBVH(bvh, exps.x, exps.y, bh_theta);
                     optBCT->disableNearField = disableNearField;
                     if (disableNearField)
                     {
@@ -199,7 +199,7 @@ namespace rsurfaces
             // Same as above but with the input/output being matrices
             void ProjectSparseMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double epsilon = 1e-10) const;
 
-            BVHNode6D *bvh;
+            OptimizedClusterTree *bvh;
             double bh_theta;
             double bct_theta;
 
@@ -210,7 +210,7 @@ namespace rsurfaces
             bool usedDefaultConstraint;
 
             mutable SparseFactorization factorizedLaplacian;
-            mutable BlockClusterTree2 *optBCT;
+            mutable OptimizedBlockClusterTree *optBCT;
             mutable bool schurComplementComputed;
             mutable SchurComplement schurComplement;
         };

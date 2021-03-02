@@ -3,8 +3,8 @@
 #include "rsurface_types.h"
 #include "surface_energy.h"
 #include "helpers.h"
-#include "block_cluster_tree2_types.h"
-#include "cluster_tree2.h"
+#include "optimized_bct_types.h"
+#include "optimized_cluster_tree.h"
 #include "derivative_assembler.h"
 
 namespace rsurfaces
@@ -14,9 +14,7 @@ namespace rsurfaces
     class TPObstacleBarnesHut0 : public SurfaceEnergy
     {
     public:
-        ~TPObstacleBarnesHut0(){};
-        
-        TPObstacleBarnesHut0( MeshPtr mesh_, GeomPtr geom_, std::shared_ptr<ClusterTree2> bvh_, std::shared_ptr<ClusterTree2> o_bvh_, mreal alpha_, mreal beta_, mreal theta_ )
+        TPObstacleBarnesHut0( MeshPtr mesh_, GeomPtr geom_, OptimizedClusterTree* bvh_, OptimizedClusterTree* o_bvh_, mreal alpha_, mreal beta_, mreal theta_ )
         {
             mesh = mesh_;
             geom = geom_;
@@ -28,6 +26,12 @@ namespace rsurfaces
             
             mreal intpart;
             use_int = (std::modf( alpha, &intpart) == 0.0) && (std::modf( beta/2, &intpart) == 0.0);
+        }
+
+        ~TPObstacleBarnesHut0()
+        {
+            if (bvh) delete bvh;
+            if (o_bvh) delete o_bvh;
         }
         
         // Returns the current value of the energy.
@@ -53,7 +57,7 @@ namespace rsurfaces
 
         // Get a pointer to the current BVH for this energy.
         // Return 0 if the energy doesn't use a BVH.
-        virtual BVHNode6D *GetBVH();
+        virtual OptimizedClusterTree *GetBVH();
 
         // Return the separation parameter for this energy.
         // Return 0 if this energy doesn't do hierarchical approximation.
@@ -69,8 +73,8 @@ namespace rsurfaces
         mreal beta  = 12.;
         mreal theta = 0.5;
         
-        std::shared_ptr<ClusterTree2> bvh = nullptr;
-        std::shared_ptr<ClusterTree2> o_bvh = nullptr;
+        OptimizedClusterTree* bvh = nullptr;
+        OptimizedClusterTree* o_bvh = nullptr;
         
         template<typename T1, typename T2>
         mreal Energy(T1 alpha, T2 betahalf);

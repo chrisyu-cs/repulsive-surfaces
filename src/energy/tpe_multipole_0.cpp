@@ -192,7 +192,7 @@ namespace rsurfaces
     // involve building a new BVH for Barnes-Hut energies, for instance.
     void TPEnergyMultipole0::Update()
     {
-        // Nothing needs to be done
+        throw std::runtime_error("Multipole energy not supported for flow");
     }
 
     // Get the mesh associated with this energy.
@@ -215,7 +215,7 @@ namespace rsurfaces
 
     // Get a pointer to the current BVH for this energy.
     // Return 0 if the energy doesn't use a BVH.
-    BVHNode6D *TPEnergyMultipole0::GetBVH()
+    OptimizedClusterTree *TPEnergyMultipole0::GetBVH()
     {
         return 0;
     }

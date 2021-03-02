@@ -71,9 +71,6 @@ add_subdirectory(deps/polyscope)
 
 set(SRCS 
   src/energy/all_pairs_tpe.cpp
-  src/energy/all_pairs_with_bvh.cpp
-  src/energy/barnes_hut_newtonian.cpp
-  src/energy/barnes_hut_tpe_6d.cpp
   src/energy/boundary_length.cpp
   src/energy/coulomb.cpp
   src/energy/implicit_attractor.cpp
@@ -83,8 +80,8 @@ set(SRCS
   src/energy/total_area_potential.cpp
   src/energy/total_volume_potential.cpp
   src/energy/tpe_kernel.cpp
-  src/energy/squared_error.cpp
   src/energy/static_obstacle.cpp
+  src/energy/squared_error.cpp
   src/energy/willmore_energy.cpp
   src/energy/tpe_multipole_0.cpp
   src/energy/tpe_barnes_hut_0.cpp
@@ -116,12 +113,10 @@ set(SRCS
   src/sobolev/constraints/vertex_pin.cpp
   src/spatial/bvh_6d.cpp
   src/spatial/bvh_data.cpp
-  src/spatial/bvh_flattened.cpp
   src/spatial/convolution_kernel.cpp
-  src/block_cluster_tree.cpp
-  src/block_cluster_tree2.cpp
-  src/block_cluster_tree2_types.cpp
-  src/cluster_tree2.cpp
+  src/optimized_bct_types.cpp
+  src/optimized_cluster_tree.cpp
+  src/optimized_bct.cpp
   src/fractional_laplacian.cpp
   src/interaction_data.cpp
   src/line_search.cpp

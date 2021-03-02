@@ -3,7 +3,7 @@
 #include "rsurface_types.h"
 #include "surface_energy.h"
 #include "helpers.h"
-#include "block_cluster_tree2_types.h"
+#include "optimized_bct_types.h"
 #include "derivative_assembler.h"
 
 namespace rsurfaces
@@ -45,7 +45,7 @@ namespace rsurfaces
 
         // Get a pointer to the current BVH for this energy.
         // Return 0 if the energy doesn't use a BVH.
-        virtual BVHNode6D *GetBVH();
+        virtual OptimizedClusterTree *GetBVH();
 
         // Return the separation parameter for this energy.
         // Return 0 if this energy doesn't do hierarchical approximation.
