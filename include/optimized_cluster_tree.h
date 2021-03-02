@@ -241,7 +241,7 @@ namespace rsurfaces
         
         void CollectDerivatives( mreal * const restrict output );
         
-        void SemiStaticUpdate( const mreal * const restrict P_data_ ); // Updates only the computational data like primitive/cluster areas, centers of mass and normals. All data related to clustering or multipole acceptance criteria remain are unchanged.
+        void SemiStaticUpdate( const mreal * const restrict P_data_ ); // Updates only the computational data (primitive/cluster areas, centers of mass and normals). All data related to clustering or multipole acceptance criteria remain are unchanged, as well as the preprocessor and postprocessor matrices (that are needed for matrix-vector multiplies of the BCT.)
         
     //private:
 

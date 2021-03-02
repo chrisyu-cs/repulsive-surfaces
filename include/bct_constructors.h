@@ -26,7 +26,7 @@ namespace rsurfaces
         
         int facecounter = 0;
 
-        for (auto face : mesh->faces()) // when I have to use a "." to reference into members of face then there is a lot of copying going on
+        for (auto face : mesh->faces())
         {
             int i = fInds[face];
 
@@ -98,7 +98,43 @@ namespace rsurfaces
             DiffOp,            // the first-order differential operator belonging to the hi order term of the metric
             AvOp               // the zeroth-order differential operator belonging to the lo order term of the metric
         );
-    }
+    } // CreateOptimizedBVH
+
+    inline void UpdateOptimizedBVH(MeshPtr &mesh, GeomPtr &geom, OptimizedClusterTree * bvh)
+    {
+        int nVertices = mesh->nVertices();
+        int nFaces = mesh->nFaces();
+        FaceIndices fInds = mesh->getFaceIndices();
+        VertexIndices vInds = mesh->getVertexIndices();
+
+        double athird = 1. / 3.;
+
+        std::vector<double> P_data(7 * nFaces);
+
+        for (auto face : mesh->faces())
+        {
+            int i = fInds[face];
+
+            GCHalfedge he = face.halfedge();
+
+            int i0 = vInds[he.vertex()];
+            int i1 = vInds[he.next().vertex()];
+            int i2 = vInds[he.next().next().vertex()];
+            Vector3 p1 = geom->inputVertexPositions[i0];
+            Vector3 p2 = geom->inputVertexPositions[i1];
+            Vector3 p3 = geom->inputVertexPositions[i2];
+
+            P_data[7 * i + 0] = geom->faceAreas[face];
+            P_data[7 * i + 1] = athird * (p1.x + p2.x + p3.x);
+            P_data[7 * i + 2] = athird * (p1.y + p2.y + p3.y);
+            P_data[7 * i + 3] = athird * (p1.z + p2.z + p3.z);
+            P_data[7 * i + 4] = geom->faceNormals[face].x;
+            P_data[7 * i + 5] = geom->faceNormals[face].y;
+            P_data[7 * i + 6] = geom->faceNormals[face].z;
+        }
+        
+        bvh->SemiStaticUpdate( &P_data[0] );
+    } // UpdateOptimizedBVH
 
     inline OptimizedBlockClusterTree *CreateOptimizedBCTFromBVH(OptimizedClusterTree* bvh, double alpha, double beta, double theta, bool exploit_symmetry_ = true, bool upper_triangular_ = false)
     {
@@ -113,5 +149,5 @@ namespace rsurfaces
         );
 
         return bct;
-    }
+    } // CreateOptimizedBCTFromBVH
 } // namespace rsurfaces
