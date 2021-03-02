@@ -43,7 +43,7 @@ namespace rsurfaces
 
         if (energies[0]->GetBVH())
         {
-            energies[0]->GetBVH()->SemiStaticUpdate(mesh, geom);
+            energies[0]->GetBVH()->UpdateWithNewPositions(mesh, geom);
         }
     }
 
@@ -64,7 +64,7 @@ namespace rsurfaces
 
         if (energies[0]->GetBVH())
         {
-            energies[0]->GetBVH()->SemiStaticUpdate(mesh, geom);
+            energies[0]->GetBVH()->UpdateWithNewPositions(mesh, geom);
         }
     }
 

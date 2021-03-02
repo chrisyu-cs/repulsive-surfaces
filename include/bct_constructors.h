@@ -102,7 +102,7 @@ namespace rsurfaces
 
     inline void UpdateOptimizedBVH(MeshPtr &mesh, GeomPtr &geom, OptimizedClusterTree * bvh)
     {
-        bvh->SemiStaticUpdate(mesh, geom);
+        bvh->UpdateWithNewPositions(mesh, geom);
     } // UpdateOptimizedBVH
 
     inline OptimizedBlockClusterTree *CreateOptimizedBCTFromBVH(OptimizedClusterTree* bvh, double alpha, double beta, double theta, bool exploit_symmetry_ = true, bool upper_triangular_ = false)

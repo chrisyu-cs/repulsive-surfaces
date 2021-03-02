@@ -7,7 +7,12 @@ namespace rsurfaces
     // Returns the current value of the energy.
     double TPObstacleAllPairs::Value()
     {
-        
+        bvh = bvhSharedFrom->GetBVH();
+        if (!bvh)
+        {
+            throw std::runtime_error("Obstacle energy is sharing BVH from an energy that has no BVH.");
+        }
+
         if( use_int )
         {
             mint int_alpha = std::round(alpha);
@@ -27,6 +32,12 @@ namespace rsurfaces
     // respect to the corresponding vertex.
     void TPObstacleAllPairs::Differential(Eigen::MatrixXd &output)
     {
+        bvh = bvhSharedFrom->GetBVH();
+        if (!bvh)
+        {
+            throw std::runtime_error("Obstacle energy is sharing BVH from an energy that has no BVH.");
+        }
+        
         EigenMatrixRM P_D_data ( mesh->nFaces(), 7 );
         
         bvh->CleanseD();

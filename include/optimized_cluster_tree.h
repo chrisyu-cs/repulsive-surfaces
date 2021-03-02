@@ -195,7 +195,7 @@ namespace rsurfaces
             //            }
         };
 
-        inline void SemiStaticUpdate(MeshPtr &mesh, GeomPtr &geom)
+        inline void UpdateWithNewPositions(MeshPtr &mesh, GeomPtr &geom)
         {
             int nVertices = mesh->nVertices();
             int nFaces = mesh->nFaces();
@@ -274,6 +274,6 @@ namespace rsurfaces
         // All data related to clustering or multipole acceptance criteria remain are unchanged, as well
         // as the preprocessor and postprocessor matrices (that are needed for matrix-vector multiplies of the BCT.)
         void SemiStaticUpdate(const mreal *const restrict P_data_);
-        
+
     }; //OptimizedClusterTree
 } // namespace rsurfaces

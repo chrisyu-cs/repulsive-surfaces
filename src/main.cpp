@@ -565,8 +565,8 @@ namespace rsurfaces
         
         // the interaction energy between mesh1 and mesh2
         auto tpe_fm_12 = std::make_shared<TPObstacleMultipole0>( mesh1, geom1, bct12.get(), alpha, beta );
-        auto tpe_bh_12 = std::make_shared<TPObstacleBarnesHut0>( mesh1, geom1, bvh1, bvh2, alpha, beta, theta );
-        auto tpe_ex_12 = std::make_shared<TPObstacleAllPairs>  ( mesh1, geom1, bvh1, bvh2, alpha, beta );
+        auto tpe_bh_12 = std::make_shared<TPObstacleBarnesHut0>( mesh1, geom1, tpe_bh_11.get(), mesh2, geom2, alpha, beta, theta );
+        auto tpe_ex_12 = std::make_shared<TPObstacleAllPairs>  ( mesh1, geom1, tpe_bh_11.get(), mesh2, geom2, alpha, beta );
         
         // the self-interaction energy of mesh2; since mesh2 is the obstacle here, this is not needed in practice; I used this here only for test purposes and in order to see how much "work" is saved by this approach.
         auto tpe_fm_22 = std::make_shared<TPEnergyMultipole0> ( mesh2, geom2, bct22.get(), alpha, beta );
@@ -594,76 +594,94 @@ namespace rsurfaces
         tic();
         E_ex_11 = tpe_ex_11->Value();
         mreal t_ex_11 = toc();
+        std::cout << "done 1" << std::endl;
         
         tic();
         E_ex_12 = tpe_ex_12->Value();
         mreal t_ex_12 = toc();
+        std::cout << "done 2" << std::endl;
         
         tic();
         E_ex_22 = tpe_ex_22->Value();
         mreal t_ex_22 = toc();
+        std::cout << "done 3" << std::endl;
         
         tic();
         tpe_ex_11->Differential( DE_ex_11 );
         mreal Dt_ex_11 = toc();
+        std::cout << "done 4" << std::endl;
         
         tic();
         tpe_ex_12->Differential( DE_ex_12 );
         mreal Dt_ex_12 = toc();
+        std::cout << "done 5" << std::endl;
         
         tic();
         tpe_ex_22->Differential( DE_ex_22 );
         mreal Dt_ex_22 = toc();
+        std::cout << "done 6" << std::endl;
         
         //######################################
         tic();
         E_bh_11 = tpe_bh_11->Value();
         mreal t_bh_11 = toc();
+        std::cout << "done 7" << std::endl;
         
         tic();
         E_bh_12 = tpe_bh_12->Value();
         mreal t_bh_12 = toc();
+        std::cout << "done 8" << std::endl;
         
         tic();
         E_bh_22 = tpe_bh_22->Value();
         mreal t_bh_22 = toc();
+        std::cout << "done 9" << std::endl;
         
         tic();
         tpe_bh_11->Differential( DE_bh_11 );
         mreal Dt_bh_11 = toc();
+        std::cout << "done 10" << std::endl;
         
         tic();
         tpe_bh_12->Differential( DE_bh_12 );
         mreal Dt_bh_12 = toc();
+        std::cout << "done 11" << std::endl;
         
         tic();
         tpe_bh_22->Differential( DE_bh_22 );
         mreal Dt_bh_22 = toc();
+        std::cout << "done 12" << std::endl;
         
         //######################################
         tic();
         E_fm_11 = tpe_fm_11->Value();
         mreal t_fm_11 = toc();
+        std::cout << "done 13" << std::endl;
         
         tic();
         E_fm_12 = tpe_fm_12->Value();
         mreal t_fm_12 = toc();
+        std::cout << "done 14" << std::endl;
         
         tic();
         E_fm_22 = tpe_fm_22->Value();
         mreal t_fm_22 = toc();
+        std::cout << "done 15" << std::endl;
         
         tic();
         tpe_fm_11->Differential( DE_fm_11 );
         mreal Dt_fm_11 = toc();
+        std::cout << "done 16" << std::endl;
         
         tic();
         tpe_fm_12->Differential( DE_fm_12 );
         mreal Dt_fm_12 = toc();
+        std::cout << "done 17" << std::endl;
         
         tic();
         tpe_fm_22->Differential( DE_fm_22 );
         mreal Dt_fm_22 = toc();
+        std::cout << "done 18" << std::endl;
         
         //######################################            
         
@@ -729,7 +747,6 @@ namespace rsurfaces
         std::cout << std::setw(w) << " DE_12 time  (s) " << " | " << std::setw(w) << Dt_ex_12  << " | " << std::setw(w) <<  Dt_bh_12 << " | " << std::setw(w) << Dt_fm_12 << std::endl;
         std::cout << std::setw(w) << " DE_22 time  (s) " << " | " << std::setw(w) << Dt_ex_22  << " | " << std::setw(w) <<  Dt_bh_22 << " | " << std::setw(w) << Dt_fm_22 << std::endl;
         
-        delete bvh2;
         delete bvh1;
     } // TestObstacle0
 

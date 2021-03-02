@@ -1,4 +1,4 @@
-#include "energy/barnes_hut_tpe_6d.h"
+#include "deprecated/barnes_hut_tpe_6d.h"
 #include "helpers.h"
 #include "surface_derivatives.h"
 #include "matrix_utils.h"

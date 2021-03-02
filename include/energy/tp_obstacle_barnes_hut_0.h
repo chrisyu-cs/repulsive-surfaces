@@ -3,6 +3,7 @@
 #include "rsurface_types.h"
 #include "surface_energy.h"
 #include "helpers.h"
+#include "bct_constructors.h"
 #include "optimized_bct_types.h"
 #include "optimized_cluster_tree.h"
 #include "derivative_assembler.h"
@@ -14,26 +15,28 @@ namespace rsurfaces
     class TPObstacleBarnesHut0 : public SurfaceEnergy
     {
     public:
-        TPObstacleBarnesHut0( MeshPtr mesh_, GeomPtr geom_, OptimizedClusterTree* bvh_, OptimizedClusterTree* o_bvh_, mreal alpha_, mreal beta_, mreal theta_ )
+        TPObstacleBarnesHut0(MeshPtr mesh_, GeomPtr geom_, SurfaceEnergy *bvhSharedFrom_, MeshPtr &obsMesh, GeomPtr &obsGeom,
+                             mreal alpha_, mreal beta_, mreal theta_)
         {
             mesh = mesh_;
             geom = geom_;
-            bvh = bvh_;
-            o_bvh = o_bvh_;
+            bvhSharedFrom = bvhSharedFrom_;
+            bvh = 0;
+            o_bvh = CreateOptimizedBVH(obsMesh, obsGeom);
             alpha = alpha_;
             beta = beta_;
             theta = theta_;
-            
+
             mreal intpart;
-            use_int = (std::modf( alpha, &intpart) == 0.0) && (std::modf( beta/2, &intpart) == 0.0);
+            use_int = (std::modf(alpha, &intpart) == 0.0) && (std::modf(beta / 2, &intpart) == 0.0);
         }
 
         ~TPObstacleBarnesHut0()
         {
-            if (bvh) delete bvh;
-            if (o_bvh) delete o_bvh;
+            if (o_bvh)
+                delete o_bvh;
         }
-        
+
         // Returns the current value of the energy.
         virtual double Value();
 
@@ -62,26 +65,26 @@ namespace rsurfaces
         // Return the separation parameter for this energy.
         // Return 0 if this energy doesn't do hierarchical approximation.
         virtual double GetTheta();
-        
+
         bool use_int = false;
-        
+
     private:
-        
         MeshPtr mesh = nullptr;
         GeomPtr geom = nullptr;
         mreal alpha = 6.;
-        mreal beta  = 12.;
+        mreal beta = 12.;
         mreal theta = 0.5;
-        
-        OptimizedClusterTree* bvh = nullptr;
-        OptimizedClusterTree* o_bvh = nullptr;
-        
-        template<typename T1, typename T2>
+
+        SurfaceEnergy *bvhSharedFrom;
+        OptimizedClusterTree *bvh = nullptr;
+        OptimizedClusterTree *o_bvh = nullptr;
+
+        template <typename T1, typename T2>
         mreal Energy(T1 alpha, T2 betahalf);
-        
-        template<typename T1, typename T2>
+
+        template <typename T1, typename T2>
         mreal DEnergy(T1 alpha, T2 betahalf);
-        
+
     }; // TPEnergyBarnesHut0
 
 } // namespace rsurfaces

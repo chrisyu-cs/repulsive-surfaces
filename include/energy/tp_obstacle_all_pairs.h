@@ -3,6 +3,7 @@
 #include "rsurface_types.h"
 #include "surface_energy.h"
 #include "helpers.h"
+#include "bct_constructors.h"
 #include "optimized_bct_types.h"
 #include "optimized_bct.h"
 #include "derivative_assembler.h"
@@ -15,12 +16,13 @@ namespace rsurfaces
     class TPObstacleAllPairs : public SurfaceEnergy
     {
     public:
-        TPObstacleAllPairs( MeshPtr mesh_, GeomPtr geom_, OptimizedClusterTree* bvh_, OptimizedClusterTree* o_bvh_, mreal alpha_, mreal beta_)
+        TPObstacleAllPairs( MeshPtr mesh_, GeomPtr geom_, SurfaceEnergy *bvhSharedFrom_, MeshPtr &obsMesh, GeomPtr &obsGeom, mreal alpha_, mreal beta_)
         {
             mesh = mesh_;
             geom = geom_;
-            bvh = bvh_;
-            o_bvh = o_bvh_;
+            bvh = 0;
+            bvhSharedFrom = bvhSharedFrom_;
+            o_bvh = CreateOptimizedBVH(obsMesh, obsGeom);
             
             alpha = alpha_;
             beta = beta_;
@@ -30,8 +32,8 @@ namespace rsurfaces
 
         ~TPObstacleAllPairs()
         {
-            if (bvh) delete bvh;
-            if (o_bvh) delete o_bvh;
+            if (o_bvh)
+                delete o_bvh;
         }
         
         // Returns the current value of the energy.
@@ -69,6 +71,7 @@ namespace rsurfaces
         
         MeshPtr mesh = nullptr;
         GeomPtr geom = nullptr;
+        SurfaceEnergy* bvhSharedFrom;
         OptimizedClusterTree* bvh = nullptr;
         OptimizedClusterTree* o_bvh = nullptr;
         
