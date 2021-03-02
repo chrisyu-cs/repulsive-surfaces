@@ -664,6 +664,7 @@ namespace rsurfaces
         bct11->AddObstacleCorrection( bct12.get() );
         toc("Modifying bct11 to include the terms with respect to the obstacle.");
         
+        
         // the self-interaction energy of mesh1
         auto tpe_fm_11 = std::make_shared<TPEnergyMultipole0> ( mesh1, geom1, bct11.get(), alpha, beta );
         auto tpe_bh_11 = std::make_shared<TPEnergyBarnesHut0> ( mesh1, geom1, bvh1, alpha, beta, theta );
@@ -679,6 +680,8 @@ namespace rsurfaces
         auto tpe_bh_22 = std::make_shared<TPEnergyBarnesHut0> ( mesh2, geom2, bvh2, alpha, beta, theta );
         auto tpe_ex_22 = std::make_shared<TPEnergyAllPairs>   ( mesh2, geom2, bvh2, alpha, beta );
 
+        // the energies tpe_**_11, tpe_**_12, tpe_**_22 are gauged such that their sum equals the tangent-point energy of the union of mesh1 and mesh2.
+        
         double E_fm_11, E_fm_12, E_fm_22;
         double E_bh_11, E_bh_12, E_bh_22;
         double E_ex_11, E_ex_12, E_ex_22;

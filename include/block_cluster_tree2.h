@@ -1,4 +1,4 @@
-#pragma once
+    #pragma once
 
 #include "bct_kernel_type.h"
 #include "cluster_tree2.h"
