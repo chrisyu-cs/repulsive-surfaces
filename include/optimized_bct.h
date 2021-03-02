@@ -61,7 +61,6 @@ namespace rsurfaces
         mreal hi_exponent = -0.5 * (2.0 * (2.0 / 3.0) + 2.0); // The only exponent we have to use for pow to compute matrix entries. All other exponents have been optimized away.
                                                               //    mreal fr_exponent;
 
-        // TODO: better use a hash table with keys from BCTKernelType to store factor, diag, and stuff. Easier to access, more easily to extend, and way easier to loop over these three cases.
 
         // Scaling parameters for the matrix-vector product.
         // E.g. one can perform  u = hi_factor * A_hi * v. With MKL, this comes at no cost, because it is fused into the matrix multiplications anyways.

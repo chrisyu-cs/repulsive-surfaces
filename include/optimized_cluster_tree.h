@@ -241,6 +241,8 @@ namespace rsurfaces
         
         void CollectDerivatives( mreal * const restrict output );
         
+        void SemiStaticUpdate( const mreal * const restrict P_data_ ); // Updates only the computational data like primitive/cluster areas, centers of mass and normals. All data related to clustering or multipole acceptance criteria remain are unchanged.
+        
     //private:
 
         void computeClusterData( const mint C, const mint free_thread_count ); // helper function for ComputeClusterData

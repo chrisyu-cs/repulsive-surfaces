@@ -876,4 +876,49 @@ void OptimizedClusterTree::CollectDerivatives( mreal * const restrict output )
     
 } // CollectDerivatives
 
+
+void OptimizedClusterTree::SemiStaticUpdate( const mreal * const restrict P_data_ ){
+    // Updates only the computational data like primitive/cluster areas, centers of mass and normals. All data related to clustering or multipole acceptance criteria remain are unchanged.
+    
+    RequireBuffers( data_dim );
+    
+    #pragma omp parallel for shared( P_data, P_ext_pos, P_data_, P_in, data_dim )
+    for( mint i = 0; i < primitive_count; ++i )
+    {
+        mint j = P_ext_pos[i];
+        for( mint k = 0; k < data_dim; ++k )
+        {
+            P_data[k][i] = P_data_[ data_dim * j + k];
+        }
+        
+        //store o-th moments in the primitive  input buffer
+        mreal a = P_data_[ data_dim * j];
+        P_in[ data_dim * i] = a;
+        for( mint k = 1; k < data_dim; ++k )
+        {
+            P_in[ data_dim * i + k] = a * P_data_[ data_dim * j + k];
+        }
+    }
+    
+    // accumulate primitive input buffers of leaf clusters
+    P_to_C.Multiply(P_in, C_in, data_dim);
+    
+    // upward pass, obviously
+    PercolateUp( 0, thread_count );
+    
+    // finally divide center and normal moments by area and store the result in C_data
+    #pragma omp parallel for shared( C_data, C_in, data_dim )
+    for( mint i = 0; i < cluster_count; ++i )
+    {
+        mreal a = C_in[ data_dim * i];
+        C_data[0][i] = a;
+        mreal ainv = 1./a;
+        for( mint k = 1; k < data_dim; ++k )
+        {
+            C_data[k][i] = ainv * C_in[ data_dim * i + k];
+        }
+    }
+    
+} // SemiStaticUpdate
+
 } // namespace rsurfaces
