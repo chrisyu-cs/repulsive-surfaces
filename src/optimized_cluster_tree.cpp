@@ -891,7 +891,7 @@ void OptimizedClusterTree::SemiStaticUpdate( const mreal * const restrict P_data
             P_data[k][i] = P_data_[ data_dim * j + k];
         }
         
-        //store o-th moments in the primitive  input buffer
+        //store 0-th moments in the primitive input buffer so that we can use P_to_C and PercolateUp.
         mreal a = P_data_[ data_dim * j];
         P_in[ data_dim * i] = a;
         for( mint k = 1; k < data_dim; ++k )
