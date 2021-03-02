@@ -63,8 +63,9 @@ namespace rsurfaces
     {
         if (!referenceEnergy)
         {
-            referenceEnergy = new AllPairsTPEnergy(kernel);
+            referenceEnergy = new TPEnergyAllPairs(kernel->mesh, kernel->geom, kernel->alpha, kernel->beta);
         }
+        referenceEnergy->Update();
 
         geom->refreshQuantities();
         std::ofstream outfile;

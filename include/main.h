@@ -60,7 +60,7 @@ namespace rsurfaces
         GeomPtr geomOrig;
         SurfaceFlow *flow;
         TPEKernel *kernel;
-        AllPairsTPEnergy *referenceEnergy;
+        TPEnergyAllPairs *referenceEnergy;
         
         polyscope::SurfaceMesh *psMesh;
         std::vector<polyscope::SurfaceMesh *> obstacles;
