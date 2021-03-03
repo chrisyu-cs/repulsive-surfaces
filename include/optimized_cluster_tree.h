@@ -63,17 +63,17 @@ namespace rsurfaces
         mint buffer_dim = 0;
         //        mint moment_count = 22;
 
-        mint *restrict P_ext_pos;        // Reordering of primitives; crucial for communication with outside world
-        mint *restrict inverse_ordering; // Inverse ordering of the above; crucial for communication with outside world
+        mint *restrict P_ext_pos = NULL;        // Reordering of primitives; crucial for communication with outside world
+        mint *restrict inverse_ordering = NULL; // Inverse ordering of the above; crucial for communication with outside world
                                          //    A_Vector<mint> P_leaf;               // Index of the leaf cluster to which the primitive belongs
 
         // "C_" stands for "cluster", "P_" stands for "primitive"
 
-        mint *restrict C_begin;
-        mint *restrict C_end;
-        mint *restrict C_depth;
-        mint *restrict C_left;  // list of index of left children;  entry is -1 if no child is present
-        mint *restrict C_right; // list of index of right children; entry is -1 if no child is present
+        mint *restrict C_begin = NULL;
+        mint *restrict C_end = NULL;
+        mint *restrict C_depth = NULL;
+        mint *restrict C_left = NULL;  // list of index of left children;  entry is -1 if no child is present
+        mint *restrict C_right = NULL; // list of index of right children; entry is -1 if no child is present
 
         // Primitive double data, stored in Structure of Arrays fashion
 

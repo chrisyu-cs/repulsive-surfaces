@@ -251,7 +251,7 @@ namespace rsurfaces
         
         P_min = A_Vector<mreal * > ( dim, NULL );
         P_max = A_Vector<mreal * > ( dim, NULL );
-        for( mint k = 0; k < data_dim; ++ k )
+        for( mint k = 0; k < dim; ++ k )
         {
             P_min[k] = mreal_alloc( primitive_count );
             P_max[k] = mreal_alloc( primitive_count );
@@ -324,7 +324,7 @@ namespace rsurfaces
         C_coords = A_Vector<mreal * > ( dim, NULL );
         C_min = A_Vector<mreal * > ( dim, NULL );
         C_max = A_Vector<mreal * > ( dim, NULL );
-        for( mint k = 0; k < data_dim; ++ k )
+        for( mint k = 0; k < dim; ++ k )
         {
             C_coords[k] = mreal_alloc( cluster_count, 0. );
             C_min[k]    = mreal_alloc( cluster_count );
