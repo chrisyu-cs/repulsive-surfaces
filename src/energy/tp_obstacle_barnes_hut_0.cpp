@@ -5,23 +5,17 @@ namespace rsurfaces
 {
     double TPObstacleBarnesHut0::Value()
     {
-        bvh = bvhSharedFrom->GetBVH();
-        if (!bvh)
-        {
-            throw std::runtime_error("Obstacle energy is sharing BVH from an energy that has no BVH.");
-        }
-
         if (use_int)
         {
             mint int_alpha = std::round(alpha);
             mint int_betahalf = std::round(beta / 2);
-            return Energy(int_alpha, int_betahalf);
+            return weight * Energy(int_alpha, int_betahalf);
         }
         else
         {
             mreal real_alpha = alpha;
             mreal real_betahalf = beta / 2;
-            return Energy(real_alpha, real_betahalf);
+            return weight * Energy(real_alpha, real_betahalf);
         }
     } // Value
 
@@ -32,6 +26,11 @@ namespace rsurfaces
         // Invalidate the old BVH pointer
         bvh = 0;
         // bvhSharedFrom is responsible for reallocating it in its Update() function
+        bvh = bvhSharedFrom->GetBVH();
+        if (!bvh)
+        {
+            throw std::runtime_error("Obstacle energy is sharing BVH from an energy that has no BVH.");
+        }
     }
 
     // Get the mesh associated with this energy.
@@ -56,7 +55,7 @@ namespace rsurfaces
     // Return 0 if the energy doesn't use a BVH.
     OptimizedClusterTree *TPObstacleBarnesHut0::GetBVH()
     {
-        return 0;
+        return o_bvh;
     }
 
     // Return the separation parameter for this energy.
@@ -68,12 +67,6 @@ namespace rsurfaces
 
     void TPObstacleBarnesHut0::Differential(Eigen::MatrixXd &output)
     {
-        bvh = bvhSharedFrom->GetBVH();
-        if (!bvh)
-        {
-            throw std::runtime_error("Obstacle energy is sharing BVH from an energy that has no BVH.");
-        }
-
         EigenMatrixRM P_D_data(mesh->nFaces(), 7);
 
         bvh->CleanseD();
@@ -226,7 +219,7 @@ namespace rsurfaces
             buffer(3 * i + 2, 2) = (s56 * s75) / 2. + (s57 * s81) / 2. + (s37 * s41 * s88) / 4. + (s37 * s42 * s46 * s88) / 12. + (s37 * s47 * s49 * s88) / 12. + s51 * (s48 + (s37 * s50 * s88) / 12.);
         }
 
-        output = DerivativeAssembler(mesh, geom) * buffer;
+        output += weight * (DerivativeAssembler(mesh, geom) * buffer);
 
     } // Differential
 

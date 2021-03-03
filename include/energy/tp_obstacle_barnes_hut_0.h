@@ -16,7 +16,7 @@ namespace rsurfaces
     {
     public:
         TPObstacleBarnesHut0(MeshPtr mesh_, GeomPtr geom_, SurfaceEnergy *bvhSharedFrom_, MeshPtr &obsMesh, GeomPtr &obsGeom,
-                             mreal alpha_, mreal beta_, mreal theta_)
+                             mreal alpha_, mreal beta_, mreal theta_, double wt)
         {
             mesh = mesh_;
             geom = geom_;
@@ -26,6 +26,7 @@ namespace rsurfaces
             alpha = alpha_;
             beta = beta_;
             theta = theta_;
+            weight = wt;
 
             mreal intpart;
             use_int = (std::modf(alpha, &intpart) == 0.0) && (std::modf(beta / 2, &intpart) == 0.0);
@@ -84,6 +85,8 @@ namespace rsurfaces
 
         template <typename T1, typename T2>
         mreal DEnergy(T1 alpha, T2 betahalf);
+
+        double weight;
 
     }; // TPEnergyBarnesHut0
 

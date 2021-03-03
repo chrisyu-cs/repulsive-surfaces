@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "rsurface_types.h"
+#include "energy/tp_obstacle_barnes_hut_0.h"
 #include "sobolev/constraints.h"
 #include "sobolev/all_constraints.h"
 #include "surface_energy.h"
@@ -17,6 +18,7 @@ namespace rsurfaces
     public:
         SurfaceFlow(SurfaceEnergy *energy_);
         void AddAdditionalEnergy(SurfaceEnergy *extraEnergy);
+        void AddObstacleEnergy(TPObstacleBarnesHut0 *obsEnergy);
 
         void StepL2Unconstrained();
         void StepL2Projected();
@@ -78,9 +80,9 @@ namespace rsurfaces
         std::vector<ConstraintPack> schurConstraints;
         std::vector<Constraints::SimpleProjectorConstraint *> simpleConstraints;
         Vector3 origBarycenter;
-        Hs::HsNCG *ncg;
         Constraints::BarycenterComponentsConstraint *secretBarycenter;
         LBFGSOptimizer* lbfgs;
+        TPObstacleBarnesHut0* obstacleEnergy;
 
         size_t addConstraintTriplets(std::vector<Triplet> &triplets, bool includeSchur);
         

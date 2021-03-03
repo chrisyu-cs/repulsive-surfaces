@@ -5,6 +5,7 @@
 #include "constraints.h"
 #include "optimized_bct.h"
 #include "hs_operators.h"
+#include "energy/tp_obstacle_barnes_hut_0.h"
 #include "sobolev/h1.h"
 #include "sobolev/all_constraints.h"
 #include "sobolev/sparse_factorization.h"
@@ -43,7 +44,8 @@ namespace rsurfaces
         {
         public:
             HsMetric(SurfaceEnergy *energy_);
-            HsMetric(SurfaceEnergy *energy_, std::vector<Constraints::SimpleProjectorConstraint *> &spcs,
+            HsMetric(SurfaceEnergy *energy_, TPObstacleBarnesHut0 *obstacleEnergy_,
+                     std::vector<Constraints::SimpleProjectorConstraint *> &spcs,
                      std::vector<ConstraintPack> &schurs);
             ~HsMetric();
 
@@ -181,6 +183,14 @@ namespace rsurfaces
                     {
                         std::cout << "    * BCT near-field interactions are disabled." << std::endl;
                     }
+
+                    if (obstacleEnergy)
+                    {
+                        OptimizedClusterTree* obstacleBVH = obstacleEnergy->GetBVH();
+                        obstacleBCT = new OptimizedBlockClusterTree(bvh, obstacleBVH, exps.x, exps.y, bh_theta);
+                        optBCT->AddObstacleCorrection(obstacleBCT);
+                    }
+
                 }
                 return optBCT;
             }
@@ -207,10 +217,12 @@ namespace rsurfaces
             size_t newtonRows;
 
             SurfaceEnergy *energy;
+            TPObstacleBarnesHut0 *obstacleEnergy;
             bool usedDefaultConstraint;
 
             mutable SparseFactorization factorizedLaplacian;
             mutable OptimizedBlockClusterTree *optBCT;
+            mutable OptimizedBlockClusterTree *obstacleBCT;
             mutable bool schurComplementComputed;
             mutable SchurComplement schurComplement;
         };

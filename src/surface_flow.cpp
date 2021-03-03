@@ -29,9 +29,9 @@ namespace rsurfaces
         std::cout << "Original barycenter = " << origBarycenter << std::endl;
         RecenterMesh();
         secretBarycenter = 0;
+        obstacleEnergy = 0;
 
         verticesMutated = false;
-        ncg = 0;
         lbfgs = 0;
         bqn_B = 0;
     }
@@ -40,6 +40,13 @@ namespace rsurfaces
     {
         energies.push_back(extraEnergy);
     }
+
+    void SurfaceFlow::AddObstacleEnergy(TPObstacleBarnesHut0 *obsEnergy)
+    {
+        obstacleEnergy = obsEnergy;
+        AddAdditionalEnergy(obstacleEnergy);
+    }
+
 
     void SurfaceFlow::UpdateEnergies()
     {
@@ -152,7 +159,7 @@ namespace rsurfaces
 
     std::unique_ptr<Hs::HsMetric> SurfaceFlow::GetHsMetric()
     {
-        std::unique_ptr<Hs::HsMetric> hs(new Hs::HsMetric(energies[0], simpleConstraints, schurConstraints));
+        std::unique_ptr<Hs::HsMetric> hs(new Hs::HsMetric(energies[0], obstacleEnergy, simpleConstraints, schurConstraints));
         hs->disableNearField = disableNearField;
         return hs;
     }

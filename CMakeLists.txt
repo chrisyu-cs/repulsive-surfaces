@@ -80,7 +80,6 @@ set(SRCS
   src/energy/total_area_potential.cpp
   src/energy/total_volume_potential.cpp
   src/energy/tpe_kernel.cpp
-  src/energy/static_obstacle.cpp
   src/energy/squared_error.cpp
   src/energy/willmore_energy.cpp
   src/energy/tpe_multipole_0.cpp

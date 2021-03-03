@@ -36,12 +36,12 @@ namespace rsurfaces
         static MainApp *instance;
         MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow *flow_, polyscope::SurfaceMesh *psMesh_, std::string meshName_);
 
+        void CreateAndDestroyBVH();
         void TestWillmore();
         void TestObstacle0();
         void TestBarnesHut0();
         void TestNewMVProduct();
         void TestIterative();
-        void BenchmarkBH();
         void PlotGradients();
         void Scale2x();
         void TestNormalDeriv();
