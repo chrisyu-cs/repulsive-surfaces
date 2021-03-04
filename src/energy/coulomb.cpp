@@ -40,7 +40,7 @@ namespace rsurfaces
         return Vector2{kernel->alpha, kernel->beta};
     }
 
-    BVHNode6D *CoulombEnergy::GetBVH()
+    OptimizedClusterTree *CoulombEnergy::GetBVH()
     {
         return root;
     }
@@ -63,7 +63,7 @@ namespace rsurfaces
         return sum;
     }
 
-    double CoulombEnergy::energyAtVertex(BVHNode6D* node, GCVertex v)
+    double CoulombEnergy::energyAtVertex(OptimizedClusterTree* node, GCVertex v)
     {
         Vector3 vPos = kernel->geom->inputVertexPositions[v];
         
@@ -100,7 +100,7 @@ namespace rsurfaces
         }
     }
 
-    Vector3 CoulombEnergy::gradientAtVertex(BVHNode6D *node, GCVertex v)
+    Vector3 CoulombEnergy::gradientAtVertex(OptimizedClusterTree *node, GCVertex v)
     {
         Vector3 vPos = kernel->geom->inputVertexPositions[v];
         Vector3 sum{0, 0, 0};

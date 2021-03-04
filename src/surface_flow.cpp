@@ -11,7 +11,6 @@
 #include "sobolev/hs_iterative.h"
 #include "sobolev/constraints.h"
 #include "spatial/convolution.h"
-#include "energy/barnes_hut_tpe_6d.h"
 
 #include <Eigen/SparseCholesky>
 
@@ -30,9 +29,9 @@ namespace rsurfaces
         std::cout << "Original barycenter = " << origBarycenter << std::endl;
         RecenterMesh();
         secretBarycenter = 0;
+        obstacleEnergy = 0;
 
         verticesMutated = false;
-        ncg = 0;
         lbfgs = 0;
         bqn_B = 0;
     }
@@ -41,6 +40,13 @@ namespace rsurfaces
     {
         energies.push_back(extraEnergy);
     }
+
+    void SurfaceFlow::AddObstacleEnergy(TPObstacleBarnesHut0 *obsEnergy)
+    {
+        obstacleEnergy = obsEnergy;
+        AddAdditionalEnergy(obstacleEnergy);
+    }
+
 
     void SurfaceFlow::UpdateEnergies()
     {
@@ -146,65 +152,6 @@ namespace rsurfaces
         return GetEnergyValue(energies);
     }
 
-    void SurfaceFlow::StepNCG()
-    {
-        long timeStart = currentTimeMilliseconds();
-
-        stepCount++;
-        std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
-        std::cout << "Using Hs NCG method..." << std::endl;
-        UpdateEnergies();
-
-        // Grab the tangent-point energy specifically
-        BarnesHutTPEnergy6D *bhEnergy = dynamic_cast<BarnesHutTPEnergy6D *>(energies[0]);
-
-        // Get the current L2 differential of energies
-        Eigen::MatrixXd l2diff, hsGrad;
-        l2diff.setZero(mesh->nVertices(), 3);
-        hsGrad = l2diff;
-        AssembleGradients(l2diff);
-        double l2DiffNorm = l2diff.norm();
-
-        std::cout << "l2 diff norm (outside) = " << l2DiffNorm << std::endl;
-
-        if (!ncg)
-        {
-            ncg = new Hs::HsNCG(bhEnergy, simpleConstraints);
-        }
-
-        std::unique_ptr<Hs::HsMetric> hs = GetHsMetric();
-
-        double hsGradNormBefore = ncg->UpdateConjugateDir(l2diff, *hs);
-        double gProjNorm = ncg->direction().norm();
-        double initGuess = guessStepSize(gProjNorm);
-
-        double gradDot = fabs((l2diff.transpose() * ncg->direction()).trace()) / (l2DiffNorm * gProjNorm);
-
-        // Take a line search step
-        LineSearch search(mesh, geom, energies);
-        search.BacktrackingLineSearch(ncg->direction(), initGuess, gradDot, false);
-
-        /*
-        // Check Wolfe condition
-        l2diff.setZero();
-        AddGradientsToMatrix(energies, l2diff);
-        // double l2DiffNormAfter = l2diff.norm();
-        Hs::HsMetric hs(bhEnergy, simpleConstraints);
-        hs.InvertMetricMat(l2diff, hsGrad);
-        double hsGradNormAfter = (l2diff.transpose() * hsGrad).trace();
-
-        if (hsGradNormAfter >= hsGradNormBefore)
-        {
-            std::cout << "Wolfe condition failed; resetting NCG memory" << std::endl;
-            ncg->ResetMemory();
-        }
-        */
-        geom->refreshQuantities();
-
-        long timeEnd = currentTimeMilliseconds();
-        std::cout << "  Total time for gradient step = " << (timeEnd - timeStart) << " ms" << std::endl;
-    }
-
     void SurfaceFlow::AssembleGradients(Eigen::MatrixXd &dest)
     {
         AddGradientsToMatrix(energies, dest);
@@ -212,8 +159,7 @@ namespace rsurfaces
 
     std::unique_ptr<Hs::HsMetric> SurfaceFlow::GetHsMetric()
     {
-        BarnesHutTPEnergy6D *bhEnergy = dynamic_cast<BarnesHutTPEnergy6D *>(energies[0]);
-        std::unique_ptr<Hs::HsMetric> hs(new Hs::HsMetric(bhEnergy, simpleConstraints, schurConstraints));
+        std::unique_ptr<Hs::HsMetric> hs(new Hs::HsMetric(energies[0], obstacleEnergy, simpleConstraints, schurConstraints));
         hs->disableNearField = disableNearField;
         return hs;
     }

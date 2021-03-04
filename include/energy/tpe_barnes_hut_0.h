@@ -3,8 +3,8 @@
 #include "rsurface_types.h"
 #include "surface_energy.h"
 #include "helpers.h"
-#include "block_cluster_tree2_types.h"
-#include "block_cluster_tree2.h"
+#include "optimized_bct_types.h"
+#include "optimized_bct.h"
 #include "derivative_assembler.h"
 
 namespace rsurfaces
@@ -14,19 +14,26 @@ namespace rsurfaces
     class TPEnergyBarnesHut0 : public SurfaceEnergy
     {
     public:
-        ~TPEnergyBarnesHut0(){};
-        
-        TPEnergyBarnesHut0( MeshPtr mesh_, GeomPtr geom_, std::shared_ptr<ClusterTree2> bvh_, mreal alpha_, mreal beta_, mreal theta_ )
+        TPEnergyBarnesHut0( MeshPtr mesh_, GeomPtr geom_, mreal alpha_, mreal beta_, mreal theta_)
         {
             mesh = mesh_;
             geom = geom_;
-            bvh = bvh_;
+            bvh = 0;
             alpha = alpha_;
             beta = beta_;
             theta = theta_;
             
             mreal intpart;
             use_int = (std::modf( alpha, &intpart) == 0.0) && (std::modf( beta/2, &intpart) == 0.0);
+
+            std::cout << "Constructed accelerated Barnes-Hut energy w/ exps (" << alpha << ", " << beta << ")" << std::endl;
+
+            Update();
+        }
+
+        ~TPEnergyBarnesHut0()
+        {
+            if (bvh) delete bvh;
         }
         
         // Returns the current value of the energy.
@@ -52,7 +59,7 @@ namespace rsurfaces
 
         // Get a pointer to the current BVH for this energy.
         // Return 0 if the energy doesn't use a BVH.
-        virtual BVHNode6D *GetBVH();
+        virtual OptimizedClusterTree *GetBVH();
 
         // Return the separation parameter for this energy.
         // Return 0 if this energy doesn't do hierarchical approximation.
@@ -62,13 +69,13 @@ namespace rsurfaces
         
     private:
         
-        MeshPtr mesh = nullptr;
-        GeomPtr geom = nullptr;
+        MeshPtr mesh;
+        GeomPtr geom;
         mreal alpha = 6.;
         mreal beta  = 12.;
         mreal theta = 0.5;
         
-        std::shared_ptr<ClusterTree2> bvh = nullptr;
+        OptimizedClusterTree* bvh;
         
         template<typename T1, typename T2>
         mreal Energy(T1 alpha, T2 betahalf);

@@ -1,7 +1,0 @@
-repel_mesh hisphere.obj 6 12
-constrain area 0.35 200
-constrain barycenter
-obstacle bunny.obj 0.1 centered
-iteration_limit 250
-allow_barycenter_shift
-

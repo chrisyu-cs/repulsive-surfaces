@@ -1,12 +1,13 @@
 #pragma once
 
-#include "block_cluster_tree2.h"
-#include "cluster_tree2.h"
+#include "optimized_bct.h"
+#include "optimized_cluster_tree.h"
+#include "sobolev/hs_operators.h"
 
 namespace rsurfaces
 {
 
-    inline std::shared_ptr<ClusterTree2> CreateOptimizedBVH(MeshPtr &mesh, GeomPtr &geom)
+    inline OptimizedClusterTree* CreateOptimizedBVH(MeshPtr &mesh, GeomPtr &geom)
     {
         int nVertices = mesh->nVertices();
         int nFaces = mesh->nFaces();
@@ -25,11 +26,15 @@ namespace rsurfaces
         
         int facecounter = 0;
 
-        for (auto face : mesh->faces()) // when I have to use a "." to reference into members of face then there is a lot of copying going on
+        for (auto face : mesh->faces())
         {
             int i = fInds[face];
 
             ordering[i] = i; // unless we know anything better, let's use the identity permutation.
+            if( static_cast<long long>(i) >= static_cast<long long>(nFaces) )
+            {
+                eprint("mesh->getFaceIndices() must be corrupted.");
+            }
             AvOp.outer[facecounter] = 3 * facecounter;
             facecounter++;
 
@@ -83,7 +88,7 @@ namespace rsurfaces
 
         // create a cluster tree
         int split_threashold = 8;
-        return std::make_shared<ClusterTree2>(
+        return new OptimizedClusterTree(
             &P_coords[0],      // coordinates used for clustering
             nFaces,            // number of primitives
             3,                 // dimension of ambient space
@@ -97,14 +102,17 @@ namespace rsurfaces
             DiffOp,            // the first-order differential operator belonging to the hi order term of the metric
             AvOp               // the zeroth-order differential operator belonging to the lo order term of the metric
         );
-    }
+    } // CreateOptimizedBVH
 
-    inline BlockClusterTree2 *CreateOptimizedBCT(MeshPtr &mesh, GeomPtr &geom, double alpha, double beta, double theta, bool exploit_symmetry_ = true, bool upper_triangular_ = false)
+    inline void UpdateOptimizedBVH(MeshPtr &mesh, GeomPtr &geom, OptimizedClusterTree * bvh)
     {
-        std::shared_ptr<ClusterTree2> bvh = CreateOptimizedBVH(mesh, geom);
-        
-        BlockClusterTree2 *bct = new BlockClusterTree2(
-            bvh,   // gets handed two pointers to instances of ClusterTree2
+        bvh->UpdateWithNewPositions(mesh, geom);
+    } // UpdateOptimizedBVH
+
+    inline OptimizedBlockClusterTree *CreateOptimizedBCTFromBVH(OptimizedClusterTree* bvh, double alpha, double beta, double theta, bool exploit_symmetry_ = true, bool upper_triangular_ = false)
+    {
+        OptimizedBlockClusterTree *bct = new OptimizedBlockClusterTree(
+            bvh,   // gets handed two pointers to instances of OptimizedClusterTree
             bvh,   // no problem with handing the same pointer twice; this is actually intended
             alpha, // first parameter of the energy (for the numerator)
             beta,  // second parameter of the energy (for the denominator)
@@ -114,5 +122,5 @@ namespace rsurfaces
         );
 
         return bct;
-    }
+    } // CreateOptimizedBCTFromBVH
 } // namespace rsurfaces

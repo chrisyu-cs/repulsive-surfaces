@@ -16,7 +16,7 @@ namespace rsurfaces
         void ProjectUnconstrainedHsIterative(const Hs::HsMetric &hs, const V &gradient, Dest &dest,
                                              Eigen::SparseMatrix<double> &constraintBlock)
         {
-            BlockClusterTree2 *bct = hs.getBlockClusterTree();
+            OptimizedBlockClusterTree *bct = hs.getBlockClusterTree();
 
             BCTMatrixReplacement fracL;
             fracL.addTree(bct);

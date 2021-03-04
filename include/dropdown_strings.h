@@ -15,8 +15,6 @@ namespace rsurfaces
     {
         switch (mode)
         {
-        case GradientMethod::HsNCG:
-            return "Hs-NCG";
         case GradientMethod::HsProjected:
             return "Hs-Projected (q&d)";
         case GradientMethod::HsProjectedIterative:

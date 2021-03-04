@@ -4,27 +4,34 @@
 #include "surface_energy.h"
 #include "helpers.h"
 #include "optimized_bct_types.h"
+#include "optimized_bct.h"
 #include "derivative_assembler.h"
+
 
 namespace rsurfaces
 {
 
-
-    class WillmoreEnergy : public SurfaceEnergy
+    // 0-th order multipole approximation of tangent-point energy
+    class TPObstacleMultipole0 : public SurfaceEnergy
     {
     public:
-        ~WillmoreEnergy(){};
+        ~TPObstacleMultipole0(){};
         
-        WillmoreEnergy( MeshPtr mesh_, GeomPtr geom_ )
+        TPObstacleMultipole0( MeshPtr mesh_, GeomPtr geom_, OptimizedBlockClusterTree * bct_, mreal alpha_, mreal beta_)
         {
-            H_initialized = false;
             mesh = mesh_;
             geom = geom_;
+            bct = bct_;
+            
+            alpha = alpha_;
+            beta = beta_;
+            
+            mreal intpart;
+            use_int = (std::modf( alpha, &intpart) == 0.0) && (std::modf( beta/2, &intpart) == 0.0);
         }
         
         // Returns the current value of the energy.
         virtual double Value();
-
         // Returns the current differential of the energy, stored in the given
         // V x 3 matrix, where each row holds the differential (a 3-vector) with
         // respect to the corresponding vertex.
@@ -51,15 +58,31 @@ namespace rsurfaces
         // Return 0 if this energy doesn't do hierarchical approximation.
         virtual double GetTheta();
         
-        void requireMeanCurvatureVectors();
+        OptimizedBlockClusterTree * GetBCT();
         
+        bool use_int = false;
     private:
         
         MeshPtr mesh = nullptr;
         GeomPtr geom = nullptr;
-        bool H_initialized = false;
-        Eigen::MatrixXd H;
-        Eigen::VectorXd H_squared;
+        OptimizedBlockClusterTree * bct = nullptr;
         
-    }; // WillmoreEnergy
+        mreal alpha = 6.;
+        mreal beta  = 12.;
+        
+        template<typename T1, typename T2>
+        mreal FarField( T1 alpha, T2 betahalf);
+        
+        template<typename T1, typename T2>
+        mreal NearField(T1 alpha, T2 betahalf);
+        
+        template<typename T1, typename T2>
+        mreal DFarField(T1 alpha, T2 betahalf);
+        
+        template<typename T1, typename T2>
+        mreal DNearField(T1 alpha, T2 betahalf);
+        
+        
+    }; // TPEnergyMultipole0
+
 } // namespace rsurfaces

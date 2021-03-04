@@ -3,8 +3,9 @@
 #include "rsurface_types.h"
 #include "matrix_utils.h"
 #include "constraints.h"
-#include "block_cluster_tree2.h"
+#include "optimized_bct.h"
 #include "hs_operators.h"
+#include "energy/tp_obstacle_barnes_hut_0.h"
 #include "sobolev/h1.h"
 #include "sobolev/all_constraints.h"
 #include "sobolev/sparse_factorization.h"
@@ -43,7 +44,8 @@ namespace rsurfaces
         {
         public:
             HsMetric(SurfaceEnergy *energy_);
-            HsMetric(SurfaceEnergy *energy_, std::vector<Constraints::SimpleProjectorConstraint *> &spcs,
+            HsMetric(SurfaceEnergy *energy_, TPObstacleBarnesHut0 *obstacleEnergy_,
+                     std::vector<Constraints::SimpleProjectorConstraint *> &spcs,
                      std::vector<ConstraintPack> &schurs);
             ~HsMetric();
 
@@ -116,7 +118,7 @@ namespace rsurfaces
                 }
             }
 
-            inline BVHNode6D *GetBVH() const
+            inline OptimizedClusterTree *GetBVH() const
             {
                 return bvh;
             }
@@ -170,17 +172,25 @@ namespace rsurfaces
             }
             void shiftBarycenterConstraint(Vector3 shift);
 
-            inline BlockClusterTree2 *getBlockClusterTree() const
+            inline OptimizedBlockClusterTree *getBlockClusterTree() const
             {
                 if (!optBCT)
                 {
                     Vector2 exps = energy->GetExponents();
-                    optBCT = CreateOptimizedBCT(mesh, geom, exps.x, exps.y, bh_theta);
+                    optBCT = CreateOptimizedBCTFromBVH(bvh, exps.x, exps.y, bh_theta);
                     optBCT->disableNearField = disableNearField;
                     if (disableNearField)
                     {
                         std::cout << "    * BCT near-field interactions are disabled." << std::endl;
                     }
+
+                    if (obstacleEnergy)
+                    {
+                        OptimizedClusterTree* obstacleBVH = obstacleEnergy->GetBVH();
+                        obstacleBCT = new OptimizedBlockClusterTree(bvh, obstacleBVH, exps.x, exps.y, bh_theta);
+                        optBCT->AddObstacleCorrection(obstacleBCT);
+                    }
+
                 }
                 return optBCT;
             }
@@ -199,7 +209,7 @@ namespace rsurfaces
             // Same as above but with the input/output being matrices
             void ProjectSparseMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double epsilon = 1e-10) const;
 
-            BVHNode6D *bvh;
+            OptimizedClusterTree *bvh;
             double bh_theta;
             double bct_theta;
 
@@ -207,10 +217,12 @@ namespace rsurfaces
             size_t newtonRows;
 
             SurfaceEnergy *energy;
+            TPObstacleBarnesHut0 *obstacleEnergy;
             bool usedDefaultConstraint;
 
             mutable SparseFactorization factorizedLaplacian;
-            mutable BlockClusterTree2 *optBCT;
+            mutable OptimizedBlockClusterTree *optBCT;
+            mutable OptimizedBlockClusterTree *obstacleBCT;
             mutable bool schurComplementComputed;
             mutable SchurComplement schurComplement;
         };

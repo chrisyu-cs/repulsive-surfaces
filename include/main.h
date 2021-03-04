@@ -6,14 +6,13 @@
 
 #include "polyscope/polyscope.h"
 #include "polyscope/surface_mesh.h"
-#include "energy/barnes_hut_tpe_6d.h"
 #include "scene_file.h"
 #include "geometrycentral/surface/meshio.h"
 
 #include "energy/squared_error.h"
 
 #include <mkl.h>
-#include "block_cluster_tree2.h"
+#include "optimized_bct.h"
 #include "energy/willmore_energy.h"
 #include "energy/tpe_multipole_0.h"
 #include "energy/tpe_barnes_hut_0.h"
@@ -37,16 +36,13 @@ namespace rsurfaces
         static MainApp *instance;
         MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow *flow_, polyscope::SurfaceMesh *psMesh_, std::string meshName_);
 
+        void CreateAndDestroyBVH();
         void TestWillmore();
-        void TestMultipole0();
+        void TestObstacle0();
         void TestBarnesHut0();
         void TestNewMVProduct();
-        void TestMVProduct();
         void TestIterative();
-        void BenchmarkBH();
-        void TestBarnesHut();
         void PlotGradients();
-        void PlotEnergyPerFace();
         void Scale2x();
         void TestNormalDeriv();
         void MeshImplicitSurface(ImplicitSurface *surface);
@@ -65,7 +61,7 @@ namespace rsurfaces
         UVDataPtr uvs;
         SurfaceFlow *flow;
         TPEKernel *kernel;
-        AllPairsTPEnergy *referenceEnergy;
+        TPEnergyAllPairs *referenceEnergy;
         
         polyscope::SurfaceMesh *psMesh;
         std::vector<polyscope::SurfaceMesh *> obstacles;

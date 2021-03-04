@@ -24,7 +24,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STR
   message("Using clang/gcc compiler flags")
   SET(BASE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Werror -Xpreprocessor -fopenmp ")
   SET(DISABLED_WARNINGS " -Wno-unknown-warning-option -Wno-pass-failed -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-copy -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field -Wno-range-loop-analysis")
-  #SET(BASE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Xpreprocessor -fopenmp -gline-tables-only -gcolumn-info")
+  #SET(BASE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Xpreprocessor -fopenmp -gline-tables-only -gcolumn-info -Rpass=loop-vectorize")
   #SET(DISABLED_WARNINGS " -Wno-unknown-warning-option -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-copy -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field -Wno-range-loop-analysis")
   SET(TRACE_INCLUDES " -H -Wno-error=unused-command-line-argument")
         
@@ -71,9 +71,6 @@ add_subdirectory(deps/polyscope)
 
 set(SRCS 
   src/energy/all_pairs_tpe.cpp
-  src/energy/all_pairs_with_bvh.cpp
-  src/energy/barnes_hut_newtonian.cpp
-  src/energy/barnes_hut_tpe_6d.cpp
   src/energy/boundary_length.cpp
   src/energy/coulomb.cpp
   src/energy/implicit_attractor.cpp
@@ -84,10 +81,13 @@ set(SRCS
   src/energy/total_volume_potential.cpp
   src/energy/tpe_kernel.cpp
   src/energy/squared_error.cpp
-  src/energy/static_obstacle.cpp
   src/energy/willmore_energy.cpp
   src/energy/tpe_multipole_0.cpp
   src/energy/tpe_barnes_hut_0.cpp
+  src/energy/tpe_all_pairs.cpp
+  src/energy/tp_obstacle_multipole_0.cpp
+  src/energy/tp_obstacle_barnes_hut_0.cpp
+  src/energy/tp_obstacle_all_pairs.cpp
   src/implicit/implicit_surface.cpp
   src/implicit/simple_surfaces.cpp
   src/marchingcubes/CIsoSurface.cpp
@@ -112,12 +112,10 @@ set(SRCS
   src/sobolev/constraints/vertex_pin.cpp
   src/spatial/bvh_6d.cpp
   src/spatial/bvh_data.cpp
-  src/spatial/bvh_flattened.cpp
   src/spatial/convolution_kernel.cpp
-  src/block_cluster_tree.cpp
-  src/block_cluster_tree2.cpp
-  src/block_cluster_tree2_types.cpp
-  src/cluster_tree2.cpp
+  src/optimized_bct_types.cpp
+  src/optimized_cluster_tree.cpp
+  src/optimized_bct.cpp
   src/fractional_laplacian.cpp
   src/interaction_data.cpp
   src/line_search.cpp

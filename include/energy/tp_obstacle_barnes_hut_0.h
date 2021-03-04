@@ -3,25 +3,41 @@
 #include "rsurface_types.h"
 #include "surface_energy.h"
 #include "helpers.h"
+#include "bct_constructors.h"
 #include "optimized_bct_types.h"
+#include "optimized_cluster_tree.h"
 #include "derivative_assembler.h"
 
 namespace rsurfaces
 {
 
-
-    class WillmoreEnergy : public SurfaceEnergy
+    // 0-th order multipole approximation of tangent-point energy
+    class TPObstacleBarnesHut0 : public SurfaceEnergy
     {
     public:
-        ~WillmoreEnergy(){};
-        
-        WillmoreEnergy( MeshPtr mesh_, GeomPtr geom_ )
+        TPObstacleBarnesHut0(MeshPtr mesh_, GeomPtr geom_, SurfaceEnergy *bvhSharedFrom_, MeshPtr &obsMesh, GeomPtr &obsGeom,
+                             mreal alpha_, mreal beta_, mreal theta_, double wt)
         {
-            H_initialized = false;
             mesh = mesh_;
             geom = geom_;
+            bvhSharedFrom = bvhSharedFrom_;
+            bvh = 0;
+            o_bvh = CreateOptimizedBVH(obsMesh, obsGeom);
+            alpha = alpha_;
+            beta = beta_;
+            theta = theta_;
+            weight = wt;
+
+            mreal intpart;
+            use_int = (std::modf(alpha, &intpart) == 0.0) && (std::modf(beta / 2, &intpart) == 0.0);
         }
-        
+
+        ~TPObstacleBarnesHut0()
+        {
+            if (o_bvh)
+                delete o_bvh;
+        }
+
         // Returns the current value of the energy.
         virtual double Value();
 
@@ -50,16 +66,28 @@ namespace rsurfaces
         // Return the separation parameter for this energy.
         // Return 0 if this energy doesn't do hierarchical approximation.
         virtual double GetTheta();
-        
-        void requireMeanCurvatureVectors();
-        
+
+        bool use_int = false;
+
     private:
-        
         MeshPtr mesh = nullptr;
         GeomPtr geom = nullptr;
-        bool H_initialized = false;
-        Eigen::MatrixXd H;
-        Eigen::VectorXd H_squared;
-        
-    }; // WillmoreEnergy
+        mreal alpha = 6.;
+        mreal beta = 12.;
+        mreal theta = 0.5;
+
+        SurfaceEnergy *bvhSharedFrom;
+        OptimizedClusterTree *bvh = nullptr;
+        OptimizedClusterTree *o_bvh = nullptr;
+
+        template <typename T1, typename T2>
+        mreal Energy(T1 alpha, T2 betahalf);
+
+        template <typename T1, typename T2>
+        mreal DEnergy(T1 alpha, T2 betahalf);
+
+        double weight;
+
+    }; // TPEnergyBarnesHut0
+
 } // namespace rsurfaces

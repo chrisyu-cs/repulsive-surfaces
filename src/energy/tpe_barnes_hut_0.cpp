@@ -1,5 +1,5 @@
-
 #include "energy/tpe_barnes_hut_0.h"
+#include "bct_constructors.h"
 
 namespace rsurfaces
 {
@@ -20,7 +20,49 @@ namespace rsurfaces
         }
     } // Value
 
+    // Update the energy to reflect the current state of the mesh. This could
+    // involve building a new BVH for Barnes-Hut energies, for instance.
+    void TPEnergyBarnesHut0::Update()
+    {
+        if (bvh)
+        {
+            delete bvh;
+        }
+        
+        bvh = CreateOptimizedBVH(mesh, geom);
+    }
 
+    // Get the mesh associated with this energy.
+    MeshPtr TPEnergyBarnesHut0::GetMesh()
+    {
+        return mesh;
+    }
+
+    // Get the geometry associated with this geometry.
+    GeomPtr TPEnergyBarnesHut0::GetGeom()
+    {
+        return geom;
+    }
+
+    // Get the exponents of this energy; only applies to tangent-point energies.
+    Vector2 TPEnergyBarnesHut0::GetExponents()
+    {
+        return Vector2{alpha, beta};
+    }
+
+    // Get a pointer to the current BVH for this energy.
+    // Return 0 if the energy doesn't use a BVH.
+    OptimizedClusterTree *TPEnergyBarnesHut0::GetBVH()
+    {
+        return bvh;
+    }
+
+    // Return the separation parameter for this energy.
+    // Return 0 if this energy doesn't do hierarchical approximation.
+    double TPEnergyBarnesHut0::GetTheta()
+    {
+        return theta;
+    }
 
     void TPEnergyBarnesHut0::Differential( Eigen::MatrixXd &output )
     {
@@ -180,49 +222,9 @@ namespace rsurfaces
 
         }
         
-        output = DerivativeAssembler( mesh, geom ) * buffer;
+        output += DerivativeAssembler( mesh, geom ) * buffer;
         
     } // Differential
-
-
-    // Update the energy to reflect the current state of the mesh. This could
-    // involve building a new BVH for Barnes-Hut energies, for instance.
-    void TPEnergyBarnesHut0::Update()
-    {
-        // Nothing needs to be done
-    }
-
-    // Get the mesh associated with this energy.
-    MeshPtr TPEnergyBarnesHut0::GetMesh()
-    {
-        return mesh;
-    }
-
-    // Get the geometry associated with this geometry.
-    GeomPtr TPEnergyBarnesHut0::GetGeom()
-    {
-        return geom;
-    }
-
-    // Get the exponents of this energy; only applies to tangent-point energies.
-    Vector2 TPEnergyBarnesHut0::GetExponents()
-    {
-        return Vector2{1, 0};
-    }
-
-    // Get a pointer to the current BVH for this energy.
-    // Return 0 if the energy doesn't use a BVH.
-    BVHNode6D *TPEnergyBarnesHut0::GetBVH()
-    {
-        return 0;
-    }
-
-    // Return the separation parameter for this energy.
-    // Return 0 if this energy doesn't do hierarchical approximation.
-    double TPEnergyBarnesHut0::GetTheta()
-    {
-        return 0;
-    }
 
 
 template<typename T1, typename T2>
@@ -395,7 +397,7 @@ mreal TPEnergyBarnesHut0::Energy(T1 alpha, T2 betahalf)
         sum += local_sum;
     }
     return sum;
-}; //BarnesHutEnergy0
+}; // Energy
 
 
 template<typename T1, typename T2>
@@ -656,7 +658,7 @@ mreal TPEnergyBarnesHut0::DEnergy(T1 alpha, T2 betahalf)
         }
     }
     return sum;
-}; //DBarnesHutEnergy0Helper
+}; // DEnergy
 
 
 } // namespace rsurfaces

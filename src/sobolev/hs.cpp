@@ -146,11 +146,14 @@ namespace rsurfaces
             disableNearField = false;
         }
 
-        HsMetric::HsMetric(SurfaceEnergy *energy_, std::vector<SimpleProjectorConstraint *> &spcs, std::vector<ConstraintPack> &schurs)
+        HsMetric::HsMetric(SurfaceEnergy *energy_, TPObstacleBarnesHut0* obstacleEnergy_,
+                           std::vector<SimpleProjectorConstraint *> &spcs,
+                           std::vector<ConstraintPack> &schurs)
             : simpleConstraints(spcs), newtonConstraints(schurs)
         {
             initFromEnergy(energy_);
             energy = energy_;
+            obstacleEnergy = obstacleEnergy_;
             usedDefaultConstraint = false;
             schurComplementComputed = false;
             precomputeSizes();
@@ -164,6 +167,8 @@ namespace rsurfaces
             bvh = energy_->GetBVH();
             bh_theta = energy_->GetTheta();
             optBCT = 0;
+            obstacleBCT = 0;
+            obstacleEnergy = 0;
         }
 
         void HsMetric::precomputeSizes()
@@ -172,10 +177,6 @@ namespace rsurfaces
             for (Constraints::SimpleProjectorConstraint *spc : simpleConstraints)
             {
                 simpleRows += spc->nRows();
-                if (dynamic_cast<Constraints::BarycenterConstraint3X *>(spc))
-                {
-                    std::cout << "TODO: swap barycenter for component version?" << std::endl;
-                }
             }
 
             newtonRows = 0;
@@ -187,9 +188,14 @@ namespace rsurfaces
 
         HsMetric::~HsMetric()
         {
+            std::cout << "* Destructing Hs metric" << std::endl;
             if (optBCT)
             {
                 delete optBCT;
+            }
+            if (obstacleBCT)
+            {
+                delete obstacleBCT;
             }
             if (usedDefaultConstraint)
             {

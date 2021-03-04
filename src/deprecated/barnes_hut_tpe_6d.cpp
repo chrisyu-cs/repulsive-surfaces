@@ -1,4 +1,4 @@
-#include "energy/barnes_hut_tpe_6d.h"
+#include "deprecated/barnes_hut_tpe_6d.h"
 #include "helpers.h"
 #include "surface_derivatives.h"
 #include "matrix_utils.h"
@@ -197,6 +197,7 @@ namespace rsurfaces
 
     void BarnesHutTPEnergy6D::Update()
     {
+        /*
         if (root)
         {
             delete root;
@@ -204,6 +205,8 @@ namespace rsurfaces
 
         root = Create6DBVHFromMeshFaces(kernel->mesh, kernel->geom);
         energyPerFace = geometrycentral::surface::FaceData<double>(*kernel->mesh);
+        */
+       throw std::runtime_error("deprecated");
     }
 
     MeshPtr BarnesHutTPEnergy6D::GetMesh()
@@ -221,9 +224,11 @@ namespace rsurfaces
         return Vector2{kernel->alpha, kernel->beta};
     }
 
-    BVHNode6D *BarnesHutTPEnergy6D::GetBVH()
+    OptimizedClusterTree *BarnesHutTPEnergy6D::GetBVH()
     {
-        return root;
+        // return root;
+        throw std::runtime_error("deprecated");
+        return 0;
     }
 
     double BarnesHutTPEnergy6D::GetTheta()
