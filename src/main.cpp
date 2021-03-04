@@ -600,93 +600,111 @@ namespace rsurfaces
         std::cout << "Using integer exponents." << std::endl;
 
         tic();
+        tpe_ex_11->Update();
         E_ex_11 = tpe_ex_11->Value();
         mreal t_ex_11 = toc();
         std::cout << "done 1" << std::endl;
 
         tic();
+        tpe_ex_12->Update();
         E_ex_12 = tpe_ex_12->Value();
         mreal t_ex_12 = toc();
         std::cout << "done 2" << std::endl;
 
         tic();
+        tpe_ex_22->Update();
         E_ex_22 = tpe_ex_22->Value();
         mreal t_ex_22 = toc();
         std::cout << "done 3" << std::endl;
 
         tic();
+        DE_ex_11.setZero();
         tpe_ex_11->Differential(DE_ex_11);
         mreal Dt_ex_11 = toc();
         std::cout << "done 4" << std::endl;
 
         tic();
+        DE_ex_12.setZero();
         tpe_ex_12->Differential(DE_ex_12);
         mreal Dt_ex_12 = toc();
         std::cout << "done 5" << std::endl;
 
         tic();
+        DE_ex_22.setZero();
         tpe_ex_22->Differential(DE_ex_22);
         mreal Dt_ex_22 = toc();
         std::cout << "done 6" << std::endl;
 
         //######################################
         tic();
+        tpe_bh_11->Update();
         E_bh_11 = tpe_bh_11->Value();
         mreal t_bh_11 = toc();
         std::cout << "done 7" << std::endl;
 
         tic();
+        tpe_bh_12->Update();
         E_bh_12 = tpe_bh_12->Value();
         mreal t_bh_12 = toc();
         std::cout << "done 8" << std::endl;
 
         tic();
+        tpe_bh_22->Update();
         E_bh_22 = tpe_bh_22->Value();
         mreal t_bh_22 = toc();
         std::cout << "done 9" << std::endl;
 
         tic();
+        DE_bh_11.setZero();
         tpe_bh_11->Differential(DE_bh_11);
         mreal Dt_bh_11 = toc();
         std::cout << "done 10" << std::endl;
 
         tic();
+        DE_bh_12.setZero();
         tpe_bh_12->Differential(DE_bh_12);
         mreal Dt_bh_12 = toc();
         std::cout << "done 11" << std::endl;
 
         tic();
+        DE_bh_22.setZero();
         tpe_bh_22->Differential(DE_bh_22);
         mreal Dt_bh_22 = toc();
         std::cout << "done 12" << std::endl;
 
         //######################################
         tic();
+//        tpe_fm_11->Update();
         E_fm_11 = tpe_fm_11->Value();
         mreal t_fm_11 = toc();
         std::cout << "done 13" << std::endl;
 
         tic();
+//        tpe_fm_12->Update();
         E_fm_12 = tpe_fm_12->Value();
         mreal t_fm_12 = toc();
         std::cout << "done 14" << std::endl;
 
         tic();
+//        tpe_fm_22->Update();
         E_fm_22 = tpe_fm_22->Value();
         mreal t_fm_22 = toc();
         std::cout << "done 15" << std::endl;
 
         tic();
+        DE_fm_11.setZero();
         tpe_fm_11->Differential(DE_fm_11);
         mreal Dt_fm_11 = toc();
         std::cout << "done 16" << std::endl;
 
         tic();
+        DE_fm_12.setZero();
         tpe_fm_12->Differential(DE_fm_12);
         mreal Dt_fm_12 = toc();
         std::cout << "done 17" << std::endl;
 
         tic();
+        DE_fm_22.setZero();
         tpe_fm_22->Differential(DE_fm_22);
         mreal Dt_fm_22 = toc();
         std::cout << "done 18" << std::endl;
@@ -785,52 +803,61 @@ namespace rsurfaces
         //        tic("Create BVH");
 
         double E, Ex;
-        Eigen::MatrixXd DE, DEx(mesh->nVertices(), 3);
+        Eigen::MatrixXd DE (mesh->nVertices(), 3);
+        Eigen::MatrixXd DEx(mesh->nVertices(), 3);
 
         auto tpe = std::make_shared<TPEnergyBarnesHut0>(mesh, geom, alpha, beta, theta);
         auto tpex = std::make_shared<TPEnergyAllPairs>(mesh, geom, alpha, beta);
 
-        std::cout << "Using integer exponents." << std::endl;
-
+        tpe->use_int = false;
+        std::cout << "Using double exponents." << std::endl;
+        
+        
         tic("Compute Value");
+        tpe->Update();
         E = tpe->Value();
         toc("Compute Value");
         std::cout << "  E = " << E << std::endl;
         tic("Compute Differential");
+        DE.setZero();
         tpe->Differential(DE);
         toc("Compute Differential");
 
+        std::cout << "  DE = " << DE(0, 0) << " , " << DE(0, 1) << " , " << DE(0, 2) << std::endl;
+        std::cout << "       " << DE(1, 0) << " , " << DE(1, 1) << " , " << DE(1, 2) << std::endl;
+        std::cout << "       " << DE(2, 0) << " , " << DE(2, 1) << " , " << DE(2, 2) << std::endl;
+        std::cout << "       " << DE(3, 0) << " , " << DE(3, 1) << " , " << DE(3, 2) << std::endl;
+        std::cout << "       " << DE(4, 0) << " , " << DE(4, 1) << " , " << DE(4, 2) << std::endl;
+
+        tpe->use_int = true;
+        std::cout << "Using integer exponents." << std::endl;
+
+        tic("Compute Value");
+        tpe->Update();
+        E = tpe->Value();
+        toc("Compute Value");
+        std::cout << "  E = " << E << std::endl;
+        tic("Compute Differential");
+        DE.setZero();
+        tpe->Differential(DE);
+        toc("Compute Differential");
+
+        std::cout << "  DE = " << DE(0, 0) << " , " << DE(0, 1) << " , " << DE(0, 2) << std::endl;
+        std::cout << "       " << DE(1, 0) << " , " << DE(1, 1) << " , " << DE(1, 2) << std::endl;
+        std::cout << "       " << DE(2, 0) << " , " << DE(2, 1) << " , " << DE(2, 2) << std::endl;
+        std::cout << "       " << DE(3, 0) << " , " << DE(3, 1) << " , " << DE(3, 2) << std::endl;
+        std::cout << "       " << DE(4, 0) << " , " << DE(4, 1) << " , " << DE(4, 2) << std::endl;
+
         tic("Compute Value (all pairs)");
+        tpex->Update();
         Ex = tpex->Value();
         toc("Compute Value (all pairs)");
         std::cout << "  Ex = " << Ex << std::endl;
         tic("Compute Differential (all pairs)");
+        DEx.setZero();
         tpex->Differential(DEx);
         toc("Compute Differential (all pairs)");
-
-        std::cout << "  DE = " << DE(0, 0) << " , " << DE(0, 1) << " , " << DE(0, 2) << std::endl;
-        std::cout << "       " << DE(1, 0) << " , " << DE(1, 1) << " , " << DE(1, 2) << std::endl;
-        std::cout << "       " << DE(2, 0) << " , " << DE(2, 1) << " , " << DE(2, 2) << std::endl;
-        std::cout << "       " << DE(3, 0) << " , " << DE(3, 1) << " , " << DE(3, 2) << std::endl;
-        std::cout << "       " << DE(4, 0) << " , " << DE(4, 1) << " , " << DE(4, 2) << std::endl;
-
-        tpe->use_int = false;
-        std::cout << "Using double exponents." << std::endl;
-
-        tic("Compute Value");
-        E = tpe->Value();
-        toc("Compute Value");
-        std::cout << "  E = " << E << std::endl;
-        tic("Compute Differential");
-        tpe->Differential(DE);
-        toc("Compute Differential");
-
-        std::cout << "  DE = " << DE(0, 0) << " , " << DE(0, 1) << " , " << DE(0, 2) << std::endl;
-        std::cout << "       " << DE(1, 0) << " , " << DE(1, 1) << " , " << DE(1, 2) << std::endl;
-        std::cout << "       " << DE(2, 0) << " , " << DE(2, 1) << " , " << DE(2, 2) << std::endl;
-        std::cout << "       " << DE(3, 0) << " , " << DE(3, 1) << " , " << DE(3, 2) << std::endl;
-        std::cout << "       " << DE(4, 0) << " , " << DE(4, 1) << " , " << DE(4, 2) << std::endl;
-
+        
         std::cout << "Energy value = " << E << std::endl;
         std::cout << "Diff. norm   = " << DE.norm() << std::endl;
 
@@ -892,9 +919,11 @@ namespace rsurfaces
 
             geom->refreshQuantities();
 
-            UpdateOptimizedBVH(mesh, geom, tpe->GetBVH());
-
+//            UpdateOptimizedBVH(mesh, geom, tpe->GetBVH());
+            tpe->Update();
             Et = tpe->Value();
+//            std::cout << "Et - E             = " << Et - E << std::endl;
+//            std::cout << "        t * DE * u = " << t * (DE.transpose() * u).trace() << std::endl;
             std::cout << "Et - E -t * DE * u = " << Et - E - t * (DE.transpose() * u).trace() << std::endl;
         }
 
