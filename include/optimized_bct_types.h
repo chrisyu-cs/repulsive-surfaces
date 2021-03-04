@@ -559,6 +559,12 @@ namespace rsurfaces
                         //                toc("MKL sparse matrix-vector multiplication" );
                     }
                 }
+                
+                stat = mkl_sparse_destroy(A);
+                if (stat)
+                {
+                    eprint("mkl_sparse_destroy returned stat = " + std::to_string(stat) );
+                }
             }
             else
             {
