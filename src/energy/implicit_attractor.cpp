@@ -4,12 +4,22 @@
 namespace rsurfaces
 {
 
-    ImplicitAttractor::ImplicitAttractor(MeshPtr mesh_, GeomPtr geom_, std::unique_ptr<ImplicitSurface> surface_, double w)
+    ImplicitAttractor::ImplicitAttractor(MeshPtr mesh_, GeomPtr geom_, std::unique_ptr<ImplicitSurface> surface_, UVDataPtr uvs_, double w)
         : surface(std::move(surface_))
     {
         weight = w;
         mesh = mesh_;
         geom = geom_;
+        uvs = uvs_;
+
+        if (uvs)
+        {
+            std::cout << "Using UVs to determine which vertices get attracted" << std::endl;
+        }
+        else
+        {
+            std::cout << "No UVs; attractor will attract all vertices" << std::endl;
+        }
     }
 
     double ImplicitAttractor::Value()
@@ -17,8 +27,11 @@ namespace rsurfaces
         double sum = 0;
         for (GCVertex v : mesh->vertices())
         {
-            double signDist = surface->SignedDistance(geom->inputVertexPositions[v]);
-            sum += (signDist * signDist);
+            if (shouldAttract(v))
+            {
+                double signDist = surface->SignedDistance(geom->inputVertexPositions[v]);
+                sum += (signDist * signDist);
+            }
         }
         return weight * sum;
     }
@@ -29,12 +42,15 @@ namespace rsurfaces
 
         for (GCVertex v : mesh->vertices())
         {
-            Vector3 gradDist = surface->GradientOfDistance(geom->inputVertexPositions[v]);
-            double signDist = surface->SignedDistance(geom->inputVertexPositions[v]);
+            if (shouldAttract(v))
+            {
+                Vector3 gradDist = surface->GradientOfDistance(geom->inputVertexPositions[v]);
+                double signDist = surface->SignedDistance(geom->inputVertexPositions[v]);
 
-            // d/dx D^2 = 2 * D * (d/dx D)
-            Vector3 gradE = 2 * signDist * gradDist;
-            MatrixUtils::addToRow(output, inds[v], weight * gradE);
+                // d/dx D^2 = 2 * D * (d/dx D)
+                Vector3 gradE = 2 * signDist * gradDist;
+                MatrixUtils::addToRow(output, inds[v], weight * gradE);
+            }
         }
     }
 

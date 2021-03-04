@@ -1203,7 +1203,7 @@ namespace rsurfaces
         else
         {
             std::cout << "Using implicit surface as attractor, with weight " << barrierData.weight << std::endl;
-            ImplicitAttractor *attractor = new ImplicitAttractor(mesh, geom, std::move(implUnique), barrierData.weight);
+            ImplicitAttractor* attractor = new ImplicitAttractor(mesh, geom, std::move(implUnique), uvs, barrierData.weight);
             flow->AddAdditionalEnergy(attractor);
         }
     }
@@ -1666,6 +1666,7 @@ struct MeshAndEnergy
     polyscope::SurfaceMesh *psMesh;
     rsurfaces::MeshPtr mesh;
     rsurfaces::GeomPtr geom;
+    rsurfaces::UVDataPtr uvs;
     std::string meshName;
 };
 
@@ -1713,6 +1714,7 @@ MeshAndEnergy initTPEOnMesh(std::string meshFile, double alpha, double beta)
 
     MeshPtr meshShared = std::move(u_mesh);
     GeomPtr geomShared = std::move(u_geometry);
+    UVDataPtr uvShared = std::move(uvs);
 
     geomShared->requireFaceNormals();
     geomShared->requireFaceAreas();
@@ -1722,7 +1724,7 @@ MeshAndEnergy initTPEOnMesh(std::string meshFile, double alpha, double beta)
 
     TPEKernel *tpe = new rsurfaces::TPEKernel(meshShared, geomShared, alpha, beta);
 
-    return MeshAndEnergy{tpe, psMesh, meshShared, geomShared, mesh_name};
+    return MeshAndEnergy{tpe, psMesh, meshShared, geomShared, (hasUVs) ? uvShared : 0, mesh_name};
 }
 
 rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::scene::SceneData &scene, bool useCoulomb)
@@ -1967,6 +1969,7 @@ int main(int argc, char **argv)
     MainApp::instance->realTimeLimit = data.realTimeLimit;
     MainApp::instance->methodChoice = data.defaultMethod;
     MainApp::instance->sceneData = data;
+    MainApp::instance->uvs = m.uvs;
 
     if (autologFlag)
     {
