@@ -31,6 +31,10 @@ namespace rsurfaces
             int i = fInds[face];
 
             ordering[i] = i; // unless we know anything better, let's use the identity permutation.
+            if( static_cast<long long>(i) >= static_cast<long long>(nFaces) )
+            {
+                eprint("mesh->getFaceIndices() must be corrupted.");
+            }
             AvOp.outer[facecounter] = 3 * facecounter;
             facecounter++;
 

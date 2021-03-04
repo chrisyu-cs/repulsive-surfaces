@@ -11,7 +11,10 @@ namespace rsurfaces
     public:
         Cluster2(){};
 
-        ~Cluster2(){};
+        ~Cluster2(){
+            delete left;
+            delete right;
+        };
 
         Cluster2(mint begin_, mint end_, mint depth_);
 
@@ -63,17 +66,17 @@ namespace rsurfaces
         mint buffer_dim = 0;
         //        mint moment_count = 22;
 
-        mint *restrict P_ext_pos = NULL;        // Reordering of primitives; crucial for communication with outside world
-        mint *restrict inverse_ordering = NULL; // Inverse ordering of the above; crucial for communication with outside world
+        mint *restrict P_ext_pos = nullptr;        // Reordering of primitives; crucial for communication with outside world
+        mint *restrict inverse_ordering = nullptr; // Inverse ordering of the above; crucial for communication with outside world
                                          //    A_Vector<mint> P_leaf;               // Index of the leaf cluster to which the primitive belongs
 
         // "C_" stands for "cluster", "P_" stands for "primitive"
 
-        mint *restrict C_begin = NULL;
-        mint *restrict C_end = NULL;
-        mint *restrict C_depth = NULL;
-        mint *restrict C_left = NULL;  // list of index of left children;  entry is -1 if no child is present
-        mint *restrict C_right = NULL; // list of index of right children; entry is -1 if no child is present
+        mint *restrict C_begin = nullptr;
+        mint *restrict C_end = nullptr;
+        mint *restrict C_depth = nullptr;
+        mint *restrict C_left = nullptr;  // list of index of left children;  entry is -1 if no child is present
+        mint *restrict C_right = nullptr; // list of index of right children; entry is -1 if no child is present
 
         // Primitive double data, stored in Structure of Arrays fashion
 
@@ -82,9 +85,9 @@ namespace rsurfaces
         A_Vector<mreal *> P_min;    //lower bounding box point, stored as dim x n matrix
         A_Vector<mreal *> P_max;    //upper bounding box point, stored as dim x n matrix
                                     //        A_Vector<mreal * restrict> P_moments;
-        mreal *restrict P_in = NULL;
-        mreal *restrict P_out = NULL;
-        //        mreal * restrict P_moment_buffer = NULL;
+        mreal *restrict P_in = nullptr;
+        mreal *restrict P_out = nullptr;
+        //        mreal * restrict P_moment_buffer = nullptr;
 
         // Cluster double data, stored in Structure of Arrays fashion
 
@@ -93,15 +96,15 @@ namespace rsurfaces
         A_Vector<mreal *> C_min;
         A_Vector<mreal *> C_max;
         //        A_Vector<mreal * restrict> C_moments;
-        mreal *restrict C_in = NULL;
-        mreal *restrict C_out = NULL;
-        //        mreal * restrict C_moment_buffer = NULL;
+        mreal *restrict C_in = nullptr;
+        mreal *restrict C_out = nullptr;
+        //        mreal * restrict C_moment_buffer = nullptr;
 
-        mreal *restrict C_squared_radius = NULL;
+        mreal *restrict C_squared_radius = nullptr;
 
-        mint *restrict leaf_clusters = NULL;
-        mint *restrict leaf_cluster_lookup = NULL;
-        mint *restrict leaf_cluster_ptr = NULL; // point to __end__ of each leaf cluster
+        mint *restrict leaf_clusters = nullptr;
+        mint *restrict leaf_cluster_lookup = nullptr;
+        mint *restrict leaf_cluster_ptr = nullptr; // point to __end__ of each leaf cluster
 
         A_Vector<A_Vector<mreal>> P_D_data;
         A_Vector<A_Vector<mreal>> C_D_data;

@@ -50,7 +50,7 @@ namespace rsurfaces
         split_threshold = std::max( a, split_threshold_);
     
 
-        P_coords = A_Vector<mreal * >( dim, NULL );
+        P_coords = A_Vector<mreal * >( dim, nullptr );
         #pragma omp parallel for
         for( mint k = 0; k < dim; ++k)
         {
@@ -243,14 +243,14 @@ namespace rsurfaces
                                            ) // reordering and computing bounding boxes
     {
 
-        P_data = A_Vector<mreal * > ( data_dim, NULL );
+        P_data = A_Vector<mreal * > ( data_dim, nullptr );
         for( mint k = 0; k < data_dim; ++ k )
         {
             P_data[k] = mreal_alloc( primitive_count );
         }
         
-        P_min = A_Vector<mreal * > ( dim, NULL );
-        P_max = A_Vector<mreal * > ( dim, NULL );
+        P_min = A_Vector<mreal * > ( dim, nullptr );
+        P_max = A_Vector<mreal * > ( dim, nullptr );
         for( mint k = 0; k < dim; ++ k )
         {
             P_min[k] = mreal_alloc( primitive_count );
@@ -259,7 +259,7 @@ namespace rsurfaces
         
         P_D_data = A_Vector<A_Vector<mreal>> ( thread_count );
         
-//        P_moments = A_Vector<mreal * restrict> ( moment_count, NULL );
+//        P_moments = A_Vector<mreal * restrict> ( moment_count, nullptr );
 //        for( mint k = 0; k < moment_count; ++ k )
 //        {
 //            P_moments[k] = mreal_alloc( primitive_count );
@@ -315,15 +315,15 @@ namespace rsurfaces
 //            scratch[thread] = A_Vector<mreal> ( scratch_size );
 //        }
         
-        C_data = A_Vector<mreal * > ( data_dim, NULL );
+        C_data = A_Vector<mreal * > ( data_dim, nullptr );
         for( mint k = 0; k < data_dim; ++ k )
         {
             C_data[k] = mreal_alloc( cluster_count, 0. );
         }
         
-        C_coords = A_Vector<mreal * > ( dim, NULL );
-        C_min = A_Vector<mreal * > ( dim, NULL );
-        C_max = A_Vector<mreal * > ( dim, NULL );
+        C_coords = A_Vector<mreal * > ( dim, nullptr );
+        C_min = A_Vector<mreal * > ( dim, nullptr );
+        C_max = A_Vector<mreal * > ( dim, nullptr );
         for( mint k = 0; k < dim; ++ k )
         {
             C_coords[k] = mreal_alloc( cluster_count, 0. );
@@ -333,7 +333,7 @@ namespace rsurfaces
         
         C_squared_radius = mreal_alloc( cluster_count );
         
-//        C_moments = A_Vector<mreal * restrict> ( moment_count, NULL );
+//        C_moments = A_Vector<mreal * restrict> ( moment_count, nullptr );
 //        for( mint k = 0; k < moment_count; ++ k )
 //        {
 //            C_moments[k] = mreal_alloc( cluster_count, 0. );
@@ -465,21 +465,14 @@ namespace rsurfaces
     void OptimizedClusterTree::ComputePrePost( MKLSparseMatrix & DiffOp, MKLSparseMatrix & AvOp )
     {
     //    tic("Create pre and post");
-        
-    //    // Eigen is insanely slow in multiplying pre and post processors.
-    //    // Converting to MKL version.
 
-        
-        //    P_to_C = MKLSparseMatrix(cluster_count, primitive_count, &C_rp[0], &P_rp[0], &P_one[0]); // Copy!
-            
-        //    C_to_P = MKLSparseMatrix(primitive_count, cluster_count, &P_rp[0], &P_leaf[0], &P_one[0]); // Copy!
-
-        P_to_C = MKLSparseMatrix(cluster_count, primitive_count, primitive_count );
+        P_to_C = MKLSparseMatrix( cluster_count, primitive_count, primitive_count );
         P_to_C.outer[0] = 0;
-        
+
         C_to_P = MKLSparseMatrix(primitive_count, cluster_count, primitive_count );
         C_to_P.outer[primitive_count] = primitive_count;
         
+
         leaf_cluster_ptr = mint_alloc( leaf_cluster_count + 1  );
         leaf_cluster_ptr[0] = 0;
     //    P_leaf = A_Vector<mint>( primitive_count );
@@ -524,11 +517,10 @@ namespace rsurfaces
                 P_to_C.outer[C + 1] = P_to_C.outer[C] + C_end[C] - C_begin[C];
             }
         }
-        
-        MKLSparseMatrix hi_perm ( dim * primitive_count, dim * primitive_count, dim * primitive_count );
-        
+
+        auto hi_perm = MKLSparseMatrix( dim * primitive_count, dim * primitive_count, dim * primitive_count );
         hi_perm.outer[ dim * primitive_count ] = dim * primitive_count;
-        
+
         #pragma omp parallel for
         for( mint i = 0; i < primitive_count; ++i )
         {
@@ -541,11 +533,12 @@ namespace rsurfaces
                 hi_perm.values[ to ] = a;
             }
         }
+
         hi_perm.Multiply( DiffOp, hi_pre );
 
         hi_pre.Transpose( hi_post );
-        
-        MKLSparseMatrix lo_perm( primitive_count, primitive_count, C_to_P.outer, P_ext_pos, P_data[0] ); // Copy
+
+        auto lo_perm = MKLSparseMatrix( primitive_count, primitive_count, C_to_P.outer, P_ext_pos, P_data[0] ); // Copy
 
         lo_perm.Multiply( AvOp, lo_pre );
 

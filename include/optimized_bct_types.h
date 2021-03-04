@@ -132,12 +132,14 @@ namespace rsurfaces
     //template <typename T>
     //using A_Deque = std::deque<T>;
 
+
     struct PardisoData
     {
-        mint mtype = 11;           /* Matrix type */
-        mint * restrict perm = NULL;       /* Permutation */
-        mint * restrict iparm = NULL;      /* Integer parameter array for controlling pardiso */
-        A_Vector<void*> pt;        /* Pointer used internally by pardiso to store its data */
+        mint n = 0;
+        mint mtype = 11;                   /* Matrix type */
+        mint * restrict perm = nullptr;       /* Permutation */
+        mint * restrict iparm = nullptr;      /* Integer parameter array for controlling pardiso */
+        A_Vector<void*> pt;                /* Pointer used internally by pardiso to store its data */
     
         bool symfactorized = false;
         bool numfactorized = false;
@@ -148,16 +150,79 @@ namespace rsurfaces
             mint_free(perm);
             mint_free(iparm);
         };
-    };
+        
+        // Copy constructor
+        PardisoData( PardisoData const & P )
+        {
+            n = P.n;
+            mtype = P.mtype;
+            pt = P.pt;
+            symfactorized = P.symfactorized;
+            numfactorized = P.numfactorized;
+            if( P.perm )
+            {
+                const mint * const restrict ptr = P.perm;
+                perm = mint_alloc(n);
+                #pragma omp simd aligned( perm, ptr : ALIGN)
+                for( mint i = 0; i < n; ++i )
+                {
+                    perm[i] = ptr[i];
+                }
+            }
+            if( P.iparm )
+            {
+                const mint * const restrict ptr = P.iparm;
+                iparm = mint_alloc(64);
+                #pragma omp simd aligned( iparm, ptr : ALIGN)
+                for( mint i = 0; i < 64; ++i )
+                {
+                    iparm[i] = ptr[i];
+                }
+            }
+        }
+        
+        // Move constructor
+        PardisoData( PardisoData && P )
+        {
+            n = std::move(P.n);
+            mtype = std::move(P.mtype);
+            pt = std::move(P.pt);
+            symfactorized = std::move(P.symfactorized);
+            numfactorized = std::move(P.numfactorized);
+            
+            perm = std::move(P.perm);
+            iparm = std::move(P.iparm);
+            
+        }
+        
+        PardisoData &operator=(PardisoData P)
+        {
+            P.swap(*this);
+            return *this;
+        }
+    private:
+        void swap(PardisoData &P) throw()
+        {
+            std::swap(this->n, P.n);
+            std::swap(this->mtype, P.mtype);
+            std::swap(this->pt, P.pt);
+            std::swap(this->symfactorized, P.symfactorized);
+            std::swap(this->numfactorized, P.numfactorized);
+
+            std::swap(this->perm, P.perm);
+            std::swap(this->iparm, P.iparm);
+
+        }
+    }; // PardisoData
 
     struct MKLSparseMatrix //A container to hold generic sparse array data and to perform MKL matrix-matrix-multiplication routines
     {
         mint m = 0;
         mint n = 0;
         mint nnz = 0;
-        mint  * restrict outer = NULL;
-        mint  * restrict inner = NULL;
-        mreal * restrict values = NULL;
+        mint  * restrict outer = nullptr;
+        mint  * restrict inner = nullptr;
+        mreal * restrict values = nullptr;
         PardisoData P;
     
         matrix_descr descr;
@@ -166,9 +231,11 @@ namespace rsurfaces
     
         MKLSparseMatrix( const mint m_, const mint n_, const mint nnz_ )
         {
+//            print("MKLSparseMatrix( const mint m_, const mint n_, const mint nnz_ )");
             m = m_;
             n = n_;
             nnz = nnz_;
+            P.n = n;
         
             outer  =  mint_alloc( m + 1 );
             inner  =  mint_alloc( nnz );
@@ -183,10 +250,12 @@ namespace rsurfaces
     
         MKLSparseMatrix( const mint m_, const mint n_, mint * outer_, mint * inner_, mreal * values_ )
         {
+//            print("MKLSparseMatrix( const mint m_, const mint n_, mint * outer_, mint * inner_, mreal * values_ )");
             m = m_;
             n = n_;
             nnz = outer_[m];
-        
+            P.n = n;
+            
             outer  =  mint_alloc( m + 1 );
             inner  =  mint_alloc( nnz );
             values = mreal_alloc( nnz );
@@ -215,9 +284,12 @@ namespace rsurfaces
     
         MKLSparseMatrix( const mint m_, const mint n_, mint * outer_B, mint * outer_E, mint * inner_, mreal * values_ )
         {
+//            print("MKLSparseMatrix( const mint m_, const mint n_, mint * outer_B, mint * outer_E, mint * inner_, mreal * values_ )");
             m = m_;
             n = n_;
             nnz = outer_B[m];
+            P.n = n;
+            
             if(outer_B[0])
             {
                 eprint("in MKLSparseMatrix: outer_B[0] != 0.");
@@ -247,9 +319,77 @@ namespace rsurfaces
             P.mtype = 11;
         };
     
-        MKLSparseMatrix(){};
+
+        // Copy constructor
+        MKLSparseMatrix( MKLSparseMatrix const & B )
+        {
+//            print("MKLSparseMatrix copy constructor");
+            m = B.m;
+            n = B.n;
+            nnz = B.nnz;
+            
+            P = B.P;
+            
+            if(B.outer[0])
+            {
+                eprint("in MKLSparseMatrix &operator=(MKLSparseMatrix const &B): B.outer[0] != 0.");
+            }
+            
+            outer  =  mint_alloc( m + 1 );
+            inner  =  mint_alloc( nnz );
+            values = mreal_alloc( nnz );
+            
+            #pragma omp simd aligned( outer : ALIGN )
+            for( mint i = 0; i <= m; ++i)
+            {
+                outer[i] = B.outer[i];
+            }
+            
+            #pragma omp simd aligned( inner, values : ALIGN )
+            for( mint i = 0; i < nnz; ++i)
+            {
+                inner[i] = B.inner[i];
+                values[i] = B.values[i];
+            }
+            
+            descr.type = B.descr.type;
+            descr.diag = B.descr.diag;
+        }
+        
+        // Move constructor
+        MKLSparseMatrix( MKLSparseMatrix && B )
+        {
+//            print("MKLSparseMatrix move constructor");
+            m = B.m;
+            n = B.n;
+            nnz = B.nnz;
+            P = std::move(B.P);
+            
+            outer = std::move(B.outer);
+            inner = std::move(B.inner);
+            values = std::move(B.values);
+            
+            descr = std::move(B.descr);
+            
+        }
+        
+        // copy-and-swap idiom
+        MKLSparseMatrix &operator=(MKLSparseMatrix B)
+        {
+//            print("MKLSparseMatrix copy-and-swap");
+            B.swap(*this);
+            return *this;
+        }
+        
+        MKLSparseMatrix(){
+            descr.type = SPARSE_MATRIX_TYPE_GENERAL;
+            descr.diag = SPARSE_DIAG_NON_UNIT;
+        };
     
         ~MKLSparseMatrix(){
+            
+//            print("~MKLSparseMatrix()");
+//            PrintStats();
             if( P.symfactorized || P.numfactorized )
             {
                 mint phase = -1;
@@ -260,27 +400,116 @@ namespace rsurfaces
                 mint msglvl = 0;                /* Do not print statistical information to file */
                 mint maxfct = 1;                /* Maximum number of numerical factorizations */
                 pardiso (P.pt.data(), &maxfct, &mnum, &P.mtype, &phase, &n, values, outer, inner, P.perm, &nrhs, P.iparm, &msglvl, &ddum, &ddum, &error);
-            
-                mint_free( outer );
-                mint_free( inner );
-                mreal_free( values );
             }
+            
+            mint_free( outer );
+            mint_free( inner );
+            mreal_free( values );
         };
         
         
-        void PrintInfo()
+        void PrintStats()
         {
             print("##################################");
             valprint("m", m);
             valprint("n", n);
             valprint("nnz", nnz);
-            valprint("outer[0]", outer[0]);
-            valprint("outer[m]", outer[m]);
-            valprint("inner[0]", inner[0]);
-            valprint("inner[nnz]", inner[nnz-1]);
-            valprint("values[0]", values[0]);
-            valprint("values[nnz]", values[nnz-1]);
+            valprint("P.n", P.n);
+//            std::cout << "descr = " << descr << std::endl;
+            
+            if( outer )
+            {
+                valprint("outer[0]", outer[0]);
+                valprint("outer[m]", outer[m]);
+            }
+            if( inner )
+            {
+                valprint("inner[0]", inner[0]);
+                valprint("inner[nnz]", inner[nnz-1]);
+            }
+            if( values )
+            {
+                valprint("values[0]", values[0]);
+                valprint("values[nnz]", values[nnz-1]);
+            }
             print("##################################");
+        }
+        
+        void Check()
+        {
+            print(" ### MKLSparseMatrix::Check ### ");
+            valprint("m", m);
+            valprint("n", n);
+            valprint("nnz", nnz);
+            
+            bool failed = false;
+            
+            
+            if( outer )
+            {
+                if( outer[0] )
+                {
+                    eprint("outer[0] != 0");
+                    valprint("outer[0]", outer[0]);
+                    failed = true;
+                }
+
+                if( outer[m] != nnz )
+                {
+                    eprint("outer[m] != nnz");
+                    failed = true;
+                }
+            }
+            else
+            {
+                wprint("outer not initilized.");
+            }
+            
+            if( inner )
+            {
+                valprint("inner[0]", inner[0]);
+                valprint("inner[nnz]", inner[nnz-1]);
+            }
+            else
+            {
+                wprint("inner not initilized.");
+            }
+            if( values )
+            {
+                valprint("values[0]", values[0]);
+                valprint("values[nnz]", values[nnz-1]);
+            }
+            else
+            {
+                wprint("values not initilized.");
+            }
+            
+
+            if( outer && inner )
+            {
+                for( mint i = 0; i < m; ++ i)
+                {
+                    if( failed )
+                    {
+                        break;
+                    }
+                    for( mint k = outer[i]; k< outer[i+1]; ++k )
+                    {
+                        mint j = inner[k];
+                        
+                        if( j<0 || j >= n)
+                        {
+                            eprint("inner[" + std::to_string(k) + "] is out of bounds.");
+                            valprint("i", i);
+                            valprint("j = inner[k]", j);
+                            failed = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            print(" ### MKLSparseMatrix::Check finished ### ");
         }
     
         // TODO: Better error handling
@@ -297,7 +526,7 @@ namespace rsurfaces
             {
                 sparse_status_t stat;
             
-                sparse_matrix_t A = NULL;
+                sparse_matrix_t A = nullptr;
             
                 stat = mkl_sparse_d_create_csr ( &A, SPARSE_INDEX_BASE_ZERO, m, n, outer, outer + 1, inner, values );
                 if (stat)
@@ -333,49 +562,55 @@ namespace rsurfaces
             }
             else
             {
-                print("MKLSparseMatrix::Multiply: No nonzeroes found. Doing nothing.");
+                wprint("MKLSparseMatrix::Multiply: No nonzeroes found. Doing nothing.");
             }
         }
     
         void Multiply( MKLSparseMatrix & B, MKLSparseMatrix & C)
         {
+//            print("void Multiply( MKLSparseMatrix & B, MKLSparseMatrix & C)");
+            
             sparse_status_t stat;
-            sparse_matrix_t csrA = NULL;
-            sparse_matrix_t csrB = NULL;
-            sparse_matrix_t csrC = NULL;
+            sparse_matrix_t csrA = nullptr;
+            sparse_matrix_t csrB = nullptr;
+            sparse_matrix_t csrC = nullptr;
+
             stat = mkl_sparse_d_create_csr(&csrA, SPARSE_INDEX_BASE_ZERO, m, n, outer, outer + 1, inner, values );
             if (stat)
             {
                 eprint("in MKLSparseMatrix::Multiply: mkl_sparse_d_create_csr returned " + std::to_string(stat) );
             }
+
             stat = mkl_sparse_d_create_csr(&csrB, SPARSE_INDEX_BASE_ZERO, B.m, B.n, B.outer, B.outer +1 , B.inner, B.values );
             if (stat)
             {
                 eprint("in MKLSparseMatrix::Multiply: mkl_sparse_d_create_csr returned " + std::to_string(stat) );
             }
+
             stat = mkl_sparse_spmm(SPARSE_OPERATION_NON_TRANSPOSE, csrA, csrB, &csrC);
             if (stat)
             {
                 eprint("in MKLSparseMatrix::Multiply: mkl_sparse_spmm returned " + std::to_string(stat) );
             }
+
             mint rows_C;
             mint cols_C;
             
-            mint  * inner_C  = NULL;
-            mint  * outerB_C = NULL;
-            mint  * outerE_C = NULL;
-            mreal * values_C = NULL;
+            mint  * inner_C  = nullptr;
+            mint  * outerB_C = nullptr;
+            mint  * outerE_C = nullptr;
+            mreal * values_C = nullptr;
             
             sparse_index_base_t indexing = SPARSE_INDEX_BASE_ZERO;
-            
+
             stat = mkl_sparse_d_export_csr( csrC, &indexing, &rows_C, &cols_C, &outerB_C, &outerE_C, &inner_C, &values_C );
             if (stat)
             {
                 eprint("in MKLSparseMatrix::Multiply: mkl_sparse_d_export_csr returned " + std::to_string(stat) );
             }
-            
+
             C = MKLSparseMatrix( rows_C, cols_C, outerB_C, outerE_C, inner_C, values_C ); // Copy!
-            
+
             mkl_sparse_destroy(csrA);
             mkl_sparse_destroy(csrB);
             mkl_sparse_destroy(csrC);
@@ -386,8 +621,8 @@ namespace rsurfaces
         {
             
             sparse_status_t stat;
-            sparse_matrix_t csrA = NULL;
-            sparse_matrix_t csrAT = NULL;
+            sparse_matrix_t csrA = nullptr;
+            sparse_matrix_t csrAT = nullptr;
             
             stat = mkl_sparse_d_create_csr(&csrA, SPARSE_INDEX_BASE_ZERO, m, n, outer, outer + 1, inner, values );
             if (stat)
@@ -402,10 +637,10 @@ namespace rsurfaces
             mint rows_AT;
             mint cols_AT;
             
-            mint  * inner_AT  = NULL;
-            mint  * outerB_AT = NULL;
-            mint  * outerE_AT = NULL;
-            mreal * values_AT = NULL;
+            mint  * inner_AT  = nullptr;
+            mint  * outerB_AT = nullptr;
+            mint  * outerE_AT = nullptr;
+            mreal * values_AT = nullptr;
             
             sparse_index_base_t indexing = SPARSE_INDEX_BASE_ZERO;
             
@@ -567,6 +802,21 @@ namespace rsurfaces
             P.iparm[11] = 0;
             return error;
         } // LinearSolveMatrix
+        
+        private:
+        void swap(MKLSparseMatrix &B) throw()
+        {
+            std::swap(this->m, B.m);
+            std::swap(this->n, B.n);
+            std::swap(this->nnz, B.nnz);
+            
+            std::swap(this->outer, B.outer);
+            std::swap(this->inner, B.inner);
+            std::swap(this->values, B.values);
+            std::swap(this->P, B.P);
+            std::swap(this->descr, B.descr);
+        }
+        
     }; // MKLSparseMatrix
 
 
