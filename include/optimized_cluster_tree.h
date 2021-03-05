@@ -12,8 +12,8 @@ namespace rsurfaces
         Cluster2(){};
 
         ~Cluster2(){
-            delete left;
-            delete right;
+//            delete left;
+//            delete right;
         };
 
         Cluster2(mint begin_, mint end_, mint depth_);

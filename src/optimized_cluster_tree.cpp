@@ -221,6 +221,9 @@ namespace rsurfaces
                 Serialize( C->right, C_right[ID], leaf_before_count + C->left->descendant_leaf_count, free_thread_count - free_thread_count/2 );
             }
             #pragma omp taskwait
+            
+            delete C->left;
+            delete C->right;
         }
         else
         {
@@ -229,9 +232,6 @@ namespace rsurfaces
             
             leaf_clusters[leaf_before_count] = ID;
             leaf_cluster_lookup[ID] = leaf_before_count;
-            
-            delete C->left;
-            delete C->right;
         }
     }; //Serialize
 
