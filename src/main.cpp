@@ -1882,10 +1882,7 @@ int main(int argc, char **argv)
     args::ValueFlagList<std::string> obstacleFiles(parser, "obstacles", "Obstacles to add", {'o'});
     args::Flag autologFlag(parser, "autolog", "Automatically start the flow, log performance, and exit when done.", {"autolog"});
     args::Flag coulombFlag(parser, "coulomb", "Use a coulomb energy instead of the tangent-point energy.", {"coulomb"});
-
-    int default_threads = omp_get_max_threads();
-    std::cout << "OMP autodetected " << default_threads << " threads." << std::endl;
-    omp_set_num_threads(default_threads / 2 + 2);
+    args::ValueFlag<int> threadFlag(parser, "threads", "How many threads to use in parallel.", {"threads"});
 
     polyscope::options::programName = "Repulsive Surfaces";
     polyscope::options::groundPlaneEnabled = false;
@@ -1913,6 +1910,19 @@ int main(int argc, char **argv)
     {
         std::cerr << "Please specify a mesh file as argument" << std::endl;
         return EXIT_FAILURE;
+    }
+
+    if (threadFlag)
+    {
+        int nThreads = args::get(threadFlag);
+        std::cout << "Using " << nThreads << " threads as specified." << std::endl;
+        omp_set_num_threads(nThreads);
+    }
+    else
+    {
+        int default_threads = omp_get_max_threads() / 2 + 2;
+        omp_set_num_threads(default_threads);
+        std::cout << "Defaulting to " << default_threads << " threads." << std::endl;
     }
 
     double theta = 0.5;
