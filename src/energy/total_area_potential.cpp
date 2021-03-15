@@ -37,13 +37,6 @@ namespace rsurfaces
         }
     }
 
-    // Update the energy to reflect the current state of the mesh. This could
-    // involve building a new BVH for Barnes-Hut energies, for instance.
-    void TotalAreaPotential::Update()
-    {
-        // Nothing needs to be done
-    }
-
     // Get the mesh associated with this energy.
     MeshPtr TotalAreaPotential::GetMesh()
     {

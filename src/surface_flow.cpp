@@ -159,7 +159,7 @@ namespace rsurfaces
 
     std::unique_ptr<Hs::HsMetric> SurfaceFlow::GetHsMetric()
     {
-        std::unique_ptr<Hs::HsMetric> hs(new Hs::HsMetric(energies[0], obstacleEnergy, simpleConstraints, schurConstraints));
+        std::unique_ptr<Hs::HsMetric> hs(new Hs::HsMetric(energies, obstacleEnergy, simpleConstraints, schurConstraints));
         hs->disableNearField = disableNearField;
         return hs;
     }

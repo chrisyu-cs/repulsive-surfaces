@@ -54,11 +54,6 @@ namespace rsurfaces
         }
     }
 
-    void ImplicitAttractor::Update()
-    {
-        // Nothing to do
-    }
-
     MeshPtr ImplicitAttractor::GetMesh()
     {
         return mesh;

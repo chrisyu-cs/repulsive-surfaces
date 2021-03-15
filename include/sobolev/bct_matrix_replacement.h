@@ -2,6 +2,7 @@
 
 #include "rsurface_types.h"
 #include "optimized_bct.h"
+#include "metric_term.h"
 #include "sobolev/hs.h"
 
 class BCTMatrixReplacement;
@@ -64,11 +65,6 @@ public:
     // Custom API:
     BCTMatrixReplacement() {}
 
-    void addTree(rsurfaces::OptimizedBlockClusterTree *bct_)
-    {
-        bct = bct_;
-    }
-
     void addConstraintBlock(const Eigen::SparseMatrix<double> &C_)
     {
         C = &C_;
@@ -77,11 +73,6 @@ public:
     void addMetric(const rsurfaces::Hs::HsMetric *hs_)
     {
         hs = hs_;
-    }
-
-    const rsurfaces::OptimizedBlockClusterTree *getTree() const
-    {
-        return bct;
     }
 
     const rsurfaces::Hs::HsMetric *getHs() const
@@ -95,7 +86,6 @@ public:
     }
 
 private:
-    mutable rsurfaces::OptimizedBlockClusterTree *bct;
     const Eigen::SparseMatrix<double> *C;
     const rsurfaces::Hs::HsMetric *hs;
 };
@@ -185,17 +175,18 @@ namespace Eigen
                 assert(alpha == Scalar(1) && "scaling is not implemented");
                 EIGEN_ONLY_USED_FOR_DEBUG(alpha);
 
-                const rsurfaces::OptimizedBlockClusterTree *bct = lhs.getTree();
+                const rsurfaces::Hs::HsMetric* hs = lhs.getHs();
 
-                Eigen::VectorXd product(3 * lhs.getHs()->mesh->nVertices() + lhs.getConstraintBlock().rows());
+                Eigen::VectorXd product(3 * hs->mesh->nVertices() + lhs.getConstraintBlock().rows());
                 product.setZero();
 
-                bct->MultiplyV3(rhs, product, rsurfaces::BCTKernelType::HighOrder, true);
-                if (!bct->disableNearField)
+                Eigen::VectorXd rhsCopy = rhs;
+
+                for (rsurfaces::MetricTerm* term : hs->getMetricTerms())
                 {
-                    bct->MultiplyV3(rhs, product, rsurfaces::BCTKernelType::LowOrder, true);
+                    term->MultiplyAdd(rhsCopy, product);
                 }
-                rsurfaces::MultiplyConstraintBlock(lhs.getHs()->mesh, rhs, product, lhs.getConstraintBlock(), true);
+                rsurfaces::MultiplyConstraintBlock(hs->mesh, rhsCopy, product, lhs.getConstraintBlock(), true);
 
                 dst += product;
             }

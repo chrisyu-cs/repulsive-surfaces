@@ -131,28 +131,19 @@ namespace rsurfaces
             return (beta - 2.0) / alpha;
         }
 
-        HsMetric::HsMetric(SurfaceEnergy *energy_)
-        {
-            initFromEnergy(energy_);
-            energy = energy_;
-            // If no constraints are supplied, then we add our own barycenter
-            // constraint as a default
-            simpleConstraints.push_back(new Constraints::BarycenterConstraint3X(mesh, geom));
-            // Remember to delete our constraint if we made our own
-            usedDefaultConstraint = true;
-            schurComplementComputed = false;
-            allowBarycenterShift = false;
-            precomputeSizes();
-            disableNearField = false;
-        }
-
-        HsMetric::HsMetric(SurfaceEnergy *energy_, TPObstacleBarnesHut0* obstacleEnergy_,
+        HsMetric::HsMetric(std::vector<SurfaceEnergy*> energies, TPObstacleBarnesHut0* obstacleEnergy_,
                            std::vector<SimpleProjectorConstraint *> &spcs,
                            std::vector<ConstraintPack> &schurs)
             : simpleConstraints(spcs), newtonConstraints(schurs)
         {
-            initFromEnergy(energy_);
-            energy = energy_;
+            energy = energies[0];
+            initFromEnergy(energy);
+
+            for (size_t i = 1; i < energies.size(); i++)
+            {
+                extraEnergies.push_back(energies[i]);
+            }
+
             obstacleEnergy = obstacleEnergy_;
             usedDefaultConstraint = false;
             schurComplementComputed = false;
@@ -189,20 +180,17 @@ namespace rsurfaces
         HsMetric::~HsMetric()
         {
             std::cout << "* Destructing Hs metric" << std::endl;
-            if (optBCT)
-            {
-                delete optBCT;
-            }
-            if (obstacleBCT)
-            {
-                delete obstacleBCT;
-            }
             if (usedDefaultConstraint)
             {
                 for (size_t i = 0; i < simpleConstraints.size(); i++)
                 {
                     delete simpleConstraints[i];
                 }
+            }
+
+            for (size_t i = 0; i < metricTerms.size(); i++)
+            {
+                delete metricTerms[i];
             }
         }
 

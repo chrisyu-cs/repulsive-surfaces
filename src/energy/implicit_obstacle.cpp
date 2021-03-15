@@ -39,11 +39,6 @@ namespace rsurfaces
         }
     }
 
-    void ImplicitObstacle::Update()
-    {
-        // Nothing to do
-    }
-
     MeshPtr ImplicitObstacle::GetMesh()
     {
         return mesh;

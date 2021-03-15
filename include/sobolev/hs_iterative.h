@@ -2,6 +2,7 @@
 
 #include "sobolev/hs.h"
 #include "bct_matrix_replacement.h"
+#include "metric_term.h"
 
 #include <unsupported/Eigen/IterativeSolvers>
 
@@ -16,10 +17,7 @@ namespace rsurfaces
         void ProjectUnconstrainedHsIterative(const Hs::HsMetric &hs, const V &gradient, Dest &dest,
                                              Eigen::SparseMatrix<double> &constraintBlock)
         {
-            OptimizedBlockClusterTree *bct = hs.getBlockClusterTree();
-
             BCTMatrixReplacement fracL;
-            fracL.addTree(bct);
             fracL.addConstraintBlock(constraintBlock);
             fracL.addMetric(&hs);
 

@@ -187,14 +187,6 @@ namespace rsurfaces
         
     } // Differential
 
-
-    // Update the energy to reflect the current state of the mesh. This could
-    // involve building a new BVH for Barnes-Hut energies, for instance.
-    void TPEnergyMultipole0::Update()
-    {
-        throw std::runtime_error("Multipole energy not supported for flow");
-    }
-
     // Get the mesh associated with this energy.
     MeshPtr TPEnergyMultipole0::GetMesh()
     {

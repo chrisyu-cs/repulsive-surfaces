@@ -1,9 +1,7 @@
 #pragma once
 
-#include "energy/all_pairs_tpe.h"
 #include "energy/squared_error.h"
 #include "energy/boundary_length.h"
-#include "energy/static_obstacle.h"
 #include "energy/total_area_potential.h"
 #include "energy/total_volume_potential.h"
 #include "energy/soft_area_constraint.h"
