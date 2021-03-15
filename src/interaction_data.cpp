@@ -88,7 +88,7 @@ namespace rsurfaces
         }
 
         // We have to sort b_inner to be compatible with the CSR format.
-        #pragma omp parallel for
+        #pragma omp parallel for num_threads(thread_count)
         for( mint i = 0; i < b_m; ++i )
         {
             if(  b_outer[i+1] > b_outer[i] )
@@ -144,7 +144,7 @@ namespace rsurfaces
         // TODO: b_row_counters is needed only for computing block_ptr, which is only required for VBSR format (which we do not implement here).
         // TODO: Anyways, I leave it as uncommented code for potential later use.
         
-        #pragma omp parallel for
+        #pragma omp parallel for num_threads(thread_count)
         for( mint b_i = 0; b_i < b_m; ++b_i )
         {
             mint b_row_counter = 0;
@@ -218,7 +218,7 @@ namespace rsurfaces
 //        toc("Allocate nonzero values");
         
         // Computing inner for CSR format.
-        #pragma omp parallel for
+        #pragma omp parallel for num_threads(thread_count)
         for( mint b_i = 0; b_i < b_m; ++ b_i )                  // we are going to loop over all rows in block fashion
         {
             // for each row i, write the column indices consecutively
@@ -255,7 +255,7 @@ namespace rsurfaces
 
         // Creation of block pointers. Can be used for VBSR. Included here for debugging and for performance tests.
         
-        #pragma omp parallel for
+        #pragma omp parallel for num_threads(thread_count)
         for( mint b_i = 0; b_i < b_m; ++b_i )
         {
             //        mint entries_before = b_row_counters[ b_i ];
@@ -268,7 +268,7 @@ namespace rsurfaces
             entries_before_block_row[b_i+1] += entries_before_block_row[b_i];
         }
         
-        #pragma omp parallel for
+        #pragma omp parallel for num_threads(thread_count)
         for( mint b_i = 0; b_i < b_m; ++b_i )
         {
             mint entries_before_kth_block = entries_before_block_row[b_i];

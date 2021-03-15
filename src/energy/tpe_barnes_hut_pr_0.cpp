@@ -13,38 +13,38 @@ namespace rsurfaces
         
         mint nthreads = bvh->thread_count;
         
-        // Dunno why "restrict" helps with P_data. It is actually a lie here when S = T.
-        mreal const * const restrict P_A  = bvh->P_data[0];
-        mreal const * const restrict P_X1 = bvh->P_data[1];
-        mreal const * const restrict P_X2 = bvh->P_data[2];
-        mreal const * const restrict P_X3 = bvh->P_data[3];
-        mreal const * const restrict P_P11 = bvh->P_data[4];
-        mreal const * const restrict P_P12 = bvh->P_data[5];
-        mreal const * const restrict P_P13 = bvh->P_data[6];
-        mreal const * const restrict P_P22 = bvh->P_data[7];
-        mreal const * const restrict P_P23 = bvh->P_data[8];
-        mreal const * const restrict P_P33 = bvh->P_data[9];
+        // Dunno why "restrict" helps with P_near. It is actually a lie here when S = T.
+        mreal const * restrict const P_A  = bvh->P_near[0];
+        mreal const * restrict const P_X1 = bvh->P_near[1];
+        mreal const * restrict const P_X2 = bvh->P_near[2];
+        mreal const * restrict const P_X3 = bvh->P_near[3];
+        mreal const * restrict const P_P11 = bvh->P_near[4];
+        mreal const * restrict const P_P12 = bvh->P_near[5];
+        mreal const * restrict const P_P13 = bvh->P_near[6];
+        mreal const * restrict const P_P22 = bvh->P_near[7];
+        mreal const * restrict const P_P23 = bvh->P_near[8];
+        mreal const * restrict const P_P33 = bvh->P_near[9];
 
-        mreal const * const restrict C_min1 = bvh->C_min[0];
-        mreal const * const restrict C_min2 = bvh->C_min[1];
-        mreal const * const restrict C_min3 = bvh->C_min[2];
+        mreal const * restrict const C_min1 = bvh->C_min[0];
+        mreal const * restrict const C_min2 = bvh->C_min[1];
+        mreal const * restrict const C_min3 = bvh->C_min[2];
         
-        mreal const * const restrict C_max1 = bvh->C_max[0];
-        mreal const * const restrict C_max2 = bvh->C_max[1];
-        mreal const * const restrict C_max3 = bvh->C_max[2];
+        mreal const * restrict const C_max1 = bvh->C_max[0];
+        mreal const * restrict const C_max2 = bvh->C_max[1];
+        mreal const * restrict const C_max3 = bvh->C_max[2];
         
-        mreal const * const restrict C_A  = bvh->C_data[0];
-        mreal const * const restrict C_X1 = bvh->C_data[1];
-        mreal const * const restrict C_X2 = bvh->C_data[2];
-        mreal const * const restrict C_X3 = bvh->C_data[3];
+        mreal const * restrict const C_A  = bvh->C_far[0];
+        mreal const * restrict const C_X1 = bvh->C_far[1];
+        mreal const * restrict const C_X2 = bvh->C_far[2];
+        mreal const * restrict const C_X3 = bvh->C_far[3];
 
-        mint  const * const restrict C_left  = bvh->C_left;
-        mint  const * const restrict C_right = bvh->C_right;
-        mint  const * const restrict C_begin = bvh->C_begin;
-        mint  const * const restrict C_end   = bvh->C_end;
-        mreal const * const restrict C_r2    = bvh->C_squared_radius;
+        mint  const * restrict const C_left  = bvh->C_left;
+        mint  const * restrict const C_right = bvh->C_right;
+        mint  const * restrict const C_begin = bvh->C_begin;
+        mint  const * restrict const C_end   = bvh->C_end;
+        mreal const * restrict const C_r2    = bvh->C_squared_radius;
         
-        mint  const * const restrict leaf = bvh->leaf_clusters;
+        mint  const * restrict const leaf = bvh->leaf_clusters;
         
         A_Vector<A_Vector<mint>> thread_stack ( nthreads );
         
@@ -207,39 +207,39 @@ namespace rsurfaces
         
         mint nthreads = bvh->thread_count;
         
-        // Dunno why "restrict" helps with P_data. It is actually a lie here when S = T.
-        mreal const * const restrict P_A  = bvh->P_data[0];
-        mreal const * const restrict P_X1 = bvh->P_data[1];
-        mreal const * const restrict P_X2 = bvh->P_data[2];
-        mreal const * const restrict P_X3 = bvh->P_data[3];
-        mreal const * const restrict P_P11 = bvh->P_data[4];
-        mreal const * const restrict P_P12 = bvh->P_data[5];
-        mreal const * const restrict P_P13 = bvh->P_data[6];
-        mreal const * const restrict P_P22 = bvh->P_data[7];
-        mreal const * const restrict P_P23 = bvh->P_data[8];
-        mreal const * const restrict P_P33 = bvh->P_data[9];
+        // Dunno why "restrict" helps with P_near. It is actually a lie here when S = T.
+        mreal const * restrict const P_A  = bvh->P_near[0];
+        mreal const * restrict const P_X1 = bvh->P_near[1];
+        mreal const * restrict const P_X2 = bvh->P_near[2];
+        mreal const * restrict const P_X3 = bvh->P_near[3];
+        mreal const * restrict const P_P11 = bvh->P_near[4];
+        mreal const * restrict const P_P12 = bvh->P_near[5];
+        mreal const * restrict const P_P13 = bvh->P_near[6];
+        mreal const * restrict const P_P22 = bvh->P_near[7];
+        mreal const * restrict const P_P23 = bvh->P_near[8];
+        mreal const * restrict const P_P33 = bvh->P_near[9];
 
-        mreal const * const restrict C_min1 = bvh->C_min[0];
-        mreal const * const restrict C_min2 = bvh->C_min[1];
-        mreal const * const restrict C_min3 = bvh->C_min[2];
+        mreal const * restrict const C_min1 = bvh->C_min[0];
+        mreal const * restrict const C_min2 = bvh->C_min[1];
+        mreal const * restrict const C_min3 = bvh->C_min[2];
         
-        mreal const * const restrict C_max1 = bvh->C_max[0];
-        mreal const * const restrict C_max2 = bvh->C_max[1];
-        mreal const * const restrict C_max3 = bvh->C_max[2];
+        mreal const * restrict const C_max1 = bvh->C_max[0];
+        mreal const * restrict const C_max2 = bvh->C_max[1];
+        mreal const * restrict const C_max3 = bvh->C_max[2];
         
-        mreal const * const restrict C_A  = bvh->C_data[0];
-        mreal const * const restrict C_X1 = bvh->C_data[1];
-        mreal const * const restrict C_X2 = bvh->C_data[2];
-        mreal const * const restrict C_X3 = bvh->C_data[3];
+        mreal const * restrict const C_A  = bvh->C_far[0];
+        mreal const * restrict const C_X1 = bvh->C_far[1];
+        mreal const * restrict const C_X2 = bvh->C_far[2];
+        mreal const * restrict const C_X3 = bvh->C_far[3];
 
         
-        mint  const * const restrict C_left  = bvh->C_left;
-        mint  const * const restrict C_right = bvh->C_right;
-        mint  const * const restrict C_begin = bvh->C_begin;
-        mint  const * const restrict C_end   = bvh->C_end;
-        mreal const * const restrict C_r2    = bvh->C_squared_radius;
+        mint  const * restrict const C_left  = bvh->C_left;
+        mint  const * restrict const C_right = bvh->C_right;
+        mint  const * restrict const C_begin = bvh->C_begin;
+        mint  const * restrict const C_end   = bvh->C_end;
+        mreal const * restrict const C_r2    = bvh->C_squared_radius;
         
-        mint  const * const restrict leaf = bvh->leaf_clusters;
+        mint  const * restrict const leaf = bvh->leaf_clusters;
         
         A_Vector<A_Vector<mint>> thread_stack ( nthreads );
         
@@ -250,8 +250,8 @@ namespace rsurfaces
             
             A_Vector<mint> * stack = &thread_stack[thread];
             
-            mreal * const restrict P_U = &bvh->P_D_data[thread][0];
-            mreal * const restrict C_U = &bvh->C_D_data[thread][0];
+            mreal * restrict const P_U = &bvh->P_D_near[thread][0];
+            mreal * restrict const C_U = &bvh->C_D_far[thread][0];
             
             stack->clear();
             stack->push_back(0);
@@ -494,12 +494,17 @@ namespace rsurfaces
 
     void TPEnergyBarnesHut_Projectors0::Differential( Eigen::MatrixXd &output )
     {
-        if( bvh->data_dim != 10)
+        if( bvh->near_dim != 10)
         {
-            eprint("in TPEnergyBarnesHut_Projectors0::Differential: data_dim != 10");
+            eprint("in TPEnergyBarnesHut_Projectors0::Differential: near_dim != 10");
+        }
+        if( bvh->far_dim != 10)
+        {
+            eprint("in TPEnergyBarnesHut_Projectors0::Differential: far_dim != 10");
         }
         
-        EigenMatrixRM P_D_data ( bvh->primitive_count , bvh->data_dim );
+        EigenMatrixRM P_D_near( bvh->primitive_count , bvh->near_dim );
+        EigenMatrixRM P_D_far ( bvh->primitive_count , bvh->far_dim );
         
         bvh->CleanseD();
         
@@ -517,9 +522,10 @@ namespace rsurfaces
             DEnergy( real_alphahalf, real_betahalf );
         }
         
-        bvh->CollectDerivatives( P_D_data.data() );
-        
-        AssembleDerivativeFromACPData( mesh, geom, P_D_data, output, weight );
+        bvh->CollectDerivatives( P_D_near.data(), P_D_far.data() );
+                
+        AssembleDerivativeFromACPData( mesh, geom, P_D_near, output, weight );
+        AssembleDerivativeFromACPData( mesh, geom, P_D_far, output, weight );
         
     } // Differential
     
