@@ -187,6 +187,8 @@ namespace rsurfaces
         mreal theta2 = theta * theta;
         mreal sum = 0.;
         
+        mint far_dim = bvh->far_dim;
+        
         mint nthreads = bvh->thread_count;
         
         // Dunno why "restrict" helps with P_near. It is actually a lie here when S = T.
@@ -321,15 +323,6 @@ namespace rsurfaces
                                                  -
                                                  H * ( v1 * x1 + v2 * x2 + v3 * x3 )
                                                  );
-                        C_U[ 7 * C + 0 ] += a * (
-                                                 density
-                                                 -
-                                                 F * ( n1 * y1 + n2 * y2 + n3 * y3 )
-                                                 +
-                                                 H * ( v1 * y1 + v2 * y2 + v3 * y3 )
-                                                 );
-                        
-                        
                         P_U[ 7 * i + 1 ] += b  * Z1;
                         P_U[ 7 * i + 2 ] += b  * Z2;
                         P_U[ 7 * i + 3 ] += b  * Z3;
@@ -337,9 +330,16 @@ namespace rsurfaces
                         P_U[ 7 * i + 5 ] += bF * v2;
                         P_U[ 7 * i + 6 ] += bF * v3;
                         
-                        C_U[ 7 * C + 1 ] -= a  * Z1;
-                        C_U[ 7 * C + 2 ] -= a  * Z2;
-                        C_U[ 7 * C + 3 ] -= a  * Z3;
+                        C_U[ far_dim * C + 0 ] += a * (
+                                                 density
+                                                 -
+                                                 F * ( n1 * y1 + n2 * y2 + n3 * y3 )
+                                                 +
+                                                 H * ( v1 * y1 + v2 * y2 + v3 * y3 )
+                                                 );
+                        C_U[ far_dim * C + 1 ] -= a  * Z1;
+                        C_U[ far_dim * C + 2 ] -= a  * Z2;
+                        C_U[ far_dim * C + 3 ] -= a  * Z3;
                     }
                 }
                 else
@@ -407,15 +407,6 @@ namespace rsurfaces
                                                              -
                                                              H * ( v1 * x1 + v2 * x2 + v3 * x3 )
                                                              );
-                                    P_U[ 7 * j + 0 ] += a * (
-                                                             density
-                                                             -
-                                                             F * ( n1 * y1 + n2 * y2 + n3 * y3 )
-                                                             +
-                                                             H * ( v1 * y1 + v2 * y2 + v3 * y3 )
-                                                             );
-                                    
-                                    
                                     P_U[ 7 * i + 1 ] += b  * Z1;
                                     P_U[ 7 * i + 2 ] += b  * Z2;
                                     P_U[ 7 * i + 3 ] += b  * Z3;
@@ -423,6 +414,13 @@ namespace rsurfaces
                                     P_U[ 7 * i + 5 ] += bF * v2;
                                     P_U[ 7 * i + 6 ] += bF * v3;
                                     
+                                    P_U[ 7 * j + 0 ] += a * (
+                                                             density
+                                                             -
+                                                             F * ( n1 * y1 + n2 * y2 + n3 * y3 )
+                                                             +
+                                                             H * ( v1 * y1 + v2 * y2 + v3 * y3 )
+                                                             );
                                     P_U[ 7 * j + 1 ] -= a  * Z1;
                                     P_U[ 7 * j + 2 ] -= a  * Z2;
                                     P_U[ 7 * j + 3 ] -= a  * Z3;
@@ -460,11 +458,6 @@ namespace rsurfaces
             eprint("in TPEnergyBarnesHut0::Differential: near_dim != 7");
             valprint("bvh->near_dim",bvh->near_dim);
         }
-        if( bvh->far_dim != 7)
-        {
-            eprint("in TPEnergyBarnesHut0::Differential: far_dim != 7");
-            valprint("bvh->far_dim",bvh->far_dim);
-        }
         
         EigenMatrixRM P_D_near( bvh->primitive_count, bvh->near_dim );
         EigenMatrixRM P_D_far ( bvh->primitive_count, bvh->far_dim );
@@ -488,7 +481,15 @@ namespace rsurfaces
         bvh->CollectDerivatives( P_D_near.data(), P_D_far.data() );
                 
         AssembleDerivativeFromACNData( mesh, geom, P_D_near, output, weight );
-        AssembleDerivativeFromACNData( mesh, geom, P_D_far, output, weight );
+
+        if( bvh->far_dim == 10)
+        {
+            AssembleDerivativeFromACPData( mesh, geom, P_D_far, output, weight );
+        }
+        else
+        {
+            AssembleDerivativeFromACNData( mesh, geom, P_D_far, output, weight );
+        }
         
     } // Differential
     

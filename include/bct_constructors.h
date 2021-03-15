@@ -7,7 +7,7 @@
 namespace rsurfaces
 {
 
-    inline OptimizedClusterTree * CreateOptimizedBVH(MeshPtr &mesh, GeomPtr &geom)
+    inline OptimizedClusterTree * CreateOptimizedBVH_Normals(MeshPtr &mesh, GeomPtr &geom)
     {
         int vertex_count = mesh->nVertices();
         int primitive_count = mesh->nFaces();
@@ -17,7 +17,7 @@ namespace rsurfaces
         int dim = 3;
         int near_dim = 1 + dim + dim;
         int far_dim  = 1 + dim + dim;
-        
+
         double athird = 1. / 3.;
 
         std::vector<int> ordering(primitive_count);
@@ -26,10 +26,10 @@ namespace rsurfaces
 
         MKLSparseMatrix AvOp = MKLSparseMatrix( primitive_count, vertex_count, 3 * primitive_count ); // This is a sparse matrix in CSR format.
         AvOp.outer[primitive_count] = 3 * primitive_count;
-        
+
         std::vector<double> P_near(near_dim * primitive_count);
         std::vector<double> P_far (far_dim * primitive_count);
-        
+
         for (auto face : mesh->faces())
         {
             int i = fInds[face];
@@ -39,7 +39,7 @@ namespace rsurfaces
             {
                 eprint("mesh->getFaceIndices() must be corrupted.");
             }
-            
+
             GCHalfedge he = face.halfedge();
 
             int i0 = vInds[he.vertex()];
@@ -57,11 +57,11 @@ namespace rsurfaces
             P_far[far_dim * i + 1] = P_near[near_dim * i + 1] = P_coords[3 * i + 0];
             P_far[far_dim * i + 2] = P_near[near_dim * i + 2] = P_coords[3 * i + 1];
             P_far[far_dim * i + 3] = P_near[near_dim * i + 3] = P_coords[3 * i + 2];
-            
+
             mreal n1 = geom->faceNormals[face].x;
             mreal n2 = geom->faceNormals[face].y;
             mreal n3 = geom->faceNormals[face].z;
-            
+
             P_far[far_dim * i + 4] = P_near[near_dim * i + 4] = n1;
             P_far[far_dim * i + 5] = P_near[near_dim * i + 5] = n2;
             P_far[far_dim * i + 6] = P_near[near_dim * i + 6] = n3;
@@ -81,18 +81,18 @@ namespace rsurfaces
             AvOp.inner[3 * i + 0] = i0;
             AvOp.inner[3 * i + 1] = i1;
             AvOp.inner[3 * i + 2] = i2;
-        
+
             AvOp.values[3 * i + 0] = athird;
             AvOp.values[3 * i + 1] = athird;
             AvOp.values[3 * i + 2] = athird;
 
             std::sort( AvOp.inner + 3 * i, AvOp.inner + 3 * (i + 1) );
         }
-        
+
         EigenMatrixCSR DiffOp0 = Hs::BuildDfOperator(mesh, geom); // This is a sparse matrix in CSC!!! format.
-        
+
         DiffOp0.makeCompressed();
-        
+
         MKLSparseMatrix DiffOp = MKLSparseMatrix( DiffOp0.rows(), DiffOp0.cols(), DiffOp0.outerIndexPtr(), DiffOp0.innerIndexPtr(), DiffOp0.valuePtr() ); // This is a sparse matrix in CSR format.
 
         // create a cluster tree
@@ -113,17 +113,18 @@ namespace rsurfaces
             DiffOp,            // the first-order differential operator belonging to the hi order term of the metric
             AvOp               // the zeroth-order differential operator belonging to the lo order term of the metric
         );
-    } // CreateOptimizedBVH
+    } // CreateOptimizedBVH_Normls
 
     inline void UpdateOptimizedBVH(MeshPtr &mesh, GeomPtr &geom, OptimizedClusterTree * bvh)
     {
         bvh->UpdateWithNewPositions(mesh, geom);
     } // UpdateOptimizedBVH
     
-    inline OptimizedClusterTree * CreateOptimizedBVH_Hybrid(MeshPtr &mesh, GeomPtr &geom)
+    inline OptimizedClusterTree * CreateOptimizedBVH(MeshPtr &mesh, GeomPtr &geom)
     {
         int vertex_count = mesh->nVertices();
         int primitive_count = mesh->nFaces();
+        int primitive_length = 3;
         FaceIndices fInds = mesh->getFaceIndices();
         VertexIndices vInds = mesh->getVertexIndices();
 
@@ -131,14 +132,14 @@ namespace rsurfaces
         int near_dim = 1 + dim + dim;
         int far_dim = 1 + dim + dim * (dim + 1)/2;
         
-        double athird = 1. / 3.;
+        double athird = 1. / primitive_length;
 
         std::vector<int> ordering(primitive_count);
-        std::vector<double> P_coords(3 * primitive_count);
-        std::vector<double> P_hull_coords(9 * primitive_count);
+        std::vector<double> P_coords(primitive_count * dim );
+        std::vector<double> P_hull_coords(primitive_count * primitive_length * dim);
 
         MKLSparseMatrix AvOp = MKLSparseMatrix( primitive_count, vertex_count, 3 * primitive_count ); // This is a sparse matrix in CSR format.
-        AvOp.outer[primitive_count] = 3 * primitive_count;
+        AvOp.outer[primitive_count] = primitive_length * primitive_count;
         
         std::vector<double> P_near(near_dim * primitive_count);
         std::vector<double> P_far (far_dim * primitive_count);
@@ -162,14 +163,14 @@ namespace rsurfaces
             Vector3 p2 = geom->inputVertexPositions[i1];
             Vector3 p3 = geom->inputVertexPositions[i2];
 
-            P_coords[3 * i + 0] = athird * (p1.x + p2.x + p3.x);
-            P_coords[3 * i + 1] = athird * (p1.y + p2.y + p3.y);
-            P_coords[3 * i + 2] = athird * (p1.z + p2.z + p3.z);
+            P_coords[dim * i + 0] = athird * (p1.x + p2.x + p3.x);
+            P_coords[dim * i + 1] = athird * (p1.y + p2.y + p3.y);
+            P_coords[dim * i + 2] = athird * (p1.z + p2.z + p3.z);
 
             P_far[far_dim * i + 0] = P_near[near_dim * i + 0] = geom->faceAreas[face];
-            P_far[far_dim * i + 1] = P_near[near_dim * i + 1] = P_coords[3 * i + 0];
-            P_far[far_dim * i + 2] = P_near[near_dim * i + 2] = P_coords[3 * i + 1];
-            P_far[far_dim * i + 3] = P_near[near_dim * i + 3] = P_coords[3 * i + 2];
+            P_far[far_dim * i + 1] = P_near[near_dim * i + 1] = P_coords[dim * i + 0];
+            P_far[far_dim * i + 2] = P_near[near_dim * i + 2] = P_coords[dim * i + 1];
+            P_far[far_dim * i + 3] = P_near[near_dim * i + 3] = P_coords[dim * i + 2];
             
             mreal n1 = geom->faceNormals[face].x;
             mreal n2 = geom->faceNormals[face].y;
@@ -186,27 +187,27 @@ namespace rsurfaces
             P_far[far_dim * i + 8] = n2 * n3;
             P_far[far_dim * i + 9] = n3 * n3;
 
-            P_hull_coords[9 * i + 0] = p1.x;
-            P_hull_coords[9 * i + 1] = p1.y;
-            P_hull_coords[9 * i + 2] = p1.z;
-            P_hull_coords[9 * i + 3] = p2.x;
-            P_hull_coords[9 * i + 4] = p2.y;
-            P_hull_coords[9 * i + 5] = p2.z;
-            P_hull_coords[9 * i + 6] = p3.x;
-            P_hull_coords[9 * i + 7] = p3.y;
-            P_hull_coords[9 * i + 8] = p3.z;
+            P_hull_coords[primitive_length * dim * i + 0] = p1.x;
+            P_hull_coords[primitive_length * dim * i + 1] = p1.y;
+            P_hull_coords[primitive_length * dim * i + 2] = p1.z;
+            P_hull_coords[primitive_length * dim * i + 3] = p2.x;
+            P_hull_coords[primitive_length * dim * i + 4] = p2.y;
+            P_hull_coords[primitive_length * dim * i + 5] = p2.z;
+            P_hull_coords[primitive_length * dim * i + 6] = p3.x;
+            P_hull_coords[primitive_length * dim * i + 7] = p3.y;
+            P_hull_coords[primitive_length * dim * i + 8] = p3.z;
 
-            AvOp.outer[i] = 3 * i;
+            AvOp.outer[i] = primitive_length * i;
 
-            AvOp.inner[3 * i + 0] = i0;
-            AvOp.inner[3 * i + 1] = i1;
-            AvOp.inner[3 * i + 2] = i2;
+            AvOp.inner[primitive_length * i + 0] = i0;
+            AvOp.inner[primitive_length * i + 1] = i1;
+            AvOp.inner[primitive_length * i + 2] = i2;
         
-            AvOp.values[3 * i + 0] = athird;
-            AvOp.values[3 * i + 1] = athird;
-            AvOp.values[3 * i + 2] = athird;
+            AvOp.values[primitive_length * i + 0] = athird;
+            AvOp.values[primitive_length * i + 1] = athird;
+            AvOp.values[primitive_length * i + 2] = athird;
 
-            std::sort( AvOp.inner + 3 * i, AvOp.inner + 3 * (i + 1) );
+            std::sort( AvOp.inner + primitive_length * i, AvOp.inner + primitive_length * (i + 1) );
         }
         
         EigenMatrixCSR DiffOp0 = Hs::BuildDfOperator(mesh, geom); // This is a sparse matrix in CSC!!! format.
@@ -222,12 +223,12 @@ namespace rsurfaces
             primitive_count,            // number of primitives
             dim,                 // dimension of ambient space
             &P_hull_coords[0], // coordinates of the convex hull of each mesh element
-            3,                 // number of points in the convex hull of each mesh element (3 for triangle meshes, 2 for polylines)
+            primitive_length,                 // number of points in the convex hull of each mesh element (3 for triangle meshes, 2 for polylines)
             &P_near[0],        // area, barycenter, and normal of mesh element
             near_dim,                 // number of dofs of P_near per mesh element; it is 7 for polylines and triangle meshes in 3D.
             &P_far[0],        // area, barycenter, and projector of mesh element
             far_dim,                 // number of dofs of P_far per mesh element; it is 10 for polylines and triangle meshes in 3D.
-                                        dim * dim,             // some estimate for the buffer size per vertex and cluster (usually the square of the dimension of the embedding space
+            dim * dim,             // some estimate for the buffer size per vertex and cluster (usually the square of the dimension of the embedding space
             &ordering[0],      // some ordering of triangles
             split_threashold,  // create clusters only with at most this many mesh elements in it
             DiffOp,            // the first-order differential operator belonging to the hi order term of the metric
@@ -247,14 +248,14 @@ namespace rsurfaces
         FaceIndices fInds = mesh->getFaceIndices();
         VertexIndices vInds = mesh->getVertexIndices();
 
-        double athird = 1. / 3.;
+        double athird = 1. / primitive_length;
 
         std::vector<int> ordering(primitive_count);
-        std::vector<double> P_coords(3 * primitive_count);
-        std::vector<double> P_hull_coords(9 * primitive_count);
+        std::vector<double> P_coords(primitive_count * dim);
+        std::vector<double> P_hull_coords(primitive_count * primitive_length * dim);
 
-        MKLSparseMatrix AvOp = MKLSparseMatrix( primitive_count, vertex_count, 3 * primitive_count ); // This is a sparse matrix in CSR format.
-        AvOp.outer[primitive_count] = 3 * primitive_count;
+        MKLSparseMatrix AvOp = MKLSparseMatrix( primitive_count, vertex_count, primitive_length * primitive_count ); // This is a sparse matrix in CSR format.
+        AvOp.outer[primitive_count] = primitive_length * primitive_count;
         
         std::vector<double> P_near(near_dim * primitive_count);
         std::vector<double> P_far (far_dim * primitive_count);
@@ -278,18 +279,19 @@ namespace rsurfaces
             Vector3 p2 = geom->inputVertexPositions[i1];
             Vector3 p3 = geom->inputVertexPositions[i2];
 
-            P_coords[3 * i + 0] = athird * (p1.x + p2.x + p3.x);
-            P_coords[3 * i + 1] = athird * (p1.y + p2.y + p3.y);
-            P_coords[3 * i + 2] = athird * (p1.z + p2.z + p3.z);
+            P_coords[dim * i + 0] = athird * (p1.x + p2.x + p3.x);
+            P_coords[dim * i + 1] = athird * (p1.y + p2.y + p3.y);
+            P_coords[dim * i + 2] = athird * (p1.z + p2.z + p3.z);
 
             P_far[far_dim * i + 0] = P_near[near_dim * i + 0] = geom->faceAreas[face];
-            P_far[far_dim * i + 1] = P_near[near_dim * i + 1] = P_coords[3 * i + 0];
-            P_far[far_dim * i + 2] = P_near[near_dim * i + 2] = P_coords[3 * i + 1];
-            P_far[far_dim * i + 3] = P_near[near_dim * i + 3] = P_coords[3 * i + 2];
+            P_far[far_dim * i + 1] = P_near[near_dim * i + 1] = P_coords[dim * i + 0];
+            P_far[far_dim * i + 2] = P_near[near_dim * i + 2] = P_coords[dim * i + 1];
+            P_far[far_dim * i + 3] = P_near[near_dim * i + 3] = P_coords[dim * i + 2];
             
             mreal n1 = geom->faceNormals[face].x;
             mreal n2 = geom->faceNormals[face].y;
             mreal n3 = geom->faceNormals[face].z;
+            
             P_far[far_dim * i + 4] = P_near[near_dim * i + 4] = n1 * n1;
             P_far[far_dim * i + 5] = P_near[near_dim * i + 5] = n1 * n2;
             P_far[far_dim * i + 6] = P_near[near_dim * i + 6] = n1 * n3;
@@ -297,27 +299,27 @@ namespace rsurfaces
             P_far[far_dim * i + 8] = P_near[near_dim * i + 8] = n2 * n3;
             P_far[far_dim * i + 9] = P_near[near_dim * i + 9] = n3 * n3;
 
-            P_hull_coords[9 * i + 0] = p1.x;
-            P_hull_coords[9 * i + 1] = p1.y;
-            P_hull_coords[9 * i + 2] = p1.z;
-            P_hull_coords[9 * i + 3] = p2.x;
-            P_hull_coords[9 * i + 4] = p2.y;
-            P_hull_coords[9 * i + 5] = p2.z;
-            P_hull_coords[9 * i + 6] = p3.x;
-            P_hull_coords[9 * i + 7] = p3.y;
-            P_hull_coords[9 * i + 8] = p3.z;
+            P_hull_coords[primitive_length * dim * i + 0] = p1.x;
+            P_hull_coords[primitive_length * dim * i + 1] = p1.y;
+            P_hull_coords[primitive_length * dim * i + 2] = p1.z;
+            P_hull_coords[primitive_length * dim * i + 3] = p2.x;
+            P_hull_coords[primitive_length * dim * i + 4] = p2.y;
+            P_hull_coords[primitive_length * dim * i + 5] = p2.z;
+            P_hull_coords[primitive_length * dim * i + 6] = p3.x;
+            P_hull_coords[primitive_length * dim * i + 7] = p3.y;
+            P_hull_coords[primitive_length * dim * i + 8] = p3.z;
 
-            AvOp.outer[i] = 3 * i;
+            AvOp.outer[i] = primitive_length * i;
             
-            AvOp.inner[3 * i + 0] = i0;
-            AvOp.inner[3 * i + 1] = i1;
-            AvOp.inner[3 * i + 2] = i2;
+            AvOp.inner[primitive_length * i + 0] = i0;
+            AvOp.inner[primitive_length * i + 1] = i1;
+            AvOp.inner[primitive_length * i + 2] = i2;
         
-            AvOp.values[3 * i + 0] = athird;
-            AvOp.values[3 * i + 1] = athird;
-            AvOp.values[3 * i + 2] = athird;
+            AvOp.values[primitive_length * i + 0] = athird;
+            AvOp.values[primitive_length * i + 1] = athird;
+            AvOp.values[primitive_length * i + 2] = athird;
 
-            std::sort( AvOp.inner + 3 * i, AvOp.inner + 3 * (i + 1) );
+            std::sort( AvOp.inner + primitive_length * i, AvOp.inner + primitive_length * (i + 1) );
         }
         
         EigenMatrixCSR DiffOp0 = Hs::BuildDfOperator(mesh, geom); // This is a sparse matrix in CSC!!! format.
@@ -347,7 +349,7 @@ namespace rsurfaces
     } // CreateOptimizedBVH_Projectors
 
     
-    inline OptimizedBlockClusterTree *CreateOptimizedBCTFromBVH(OptimizedClusterTree* bvh, double alpha, double beta, double theta, bool exploit_symmetry_ = true, bool upper_triangular_ = false)
+    inline OptimizedBlockClusterTree * CreateOptimizedBCTFromBVH(OptimizedClusterTree* bvh, double alpha, double beta, double theta, bool exploit_symmetry_ = true, bool upper_triangular_ = false)
     {
         OptimizedBlockClusterTree *bct = new OptimizedBlockClusterTree(
             bvh,   // gets handed two pointers to instances of OptimizedClusterTree

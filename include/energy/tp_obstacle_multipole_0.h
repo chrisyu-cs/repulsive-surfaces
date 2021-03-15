@@ -27,8 +27,8 @@ namespace rsurfaces
             beta = beta_;
             weight = weight_;
             
-            mreal intpart;
-            use_int = (std::modf( alpha, &intpart) == 0.0) && (std::modf( beta/2, &intpart) == 0.0);
+            
+            use_int = true;
         }
         
         // Returns the current value of the energy.
@@ -51,8 +51,7 @@ namespace rsurfaces
         
         OptimizedBlockClusterTree * GetBCT();
         
-        bool use_int = false;
-    
+        bool use_int = true;
     private:
         OptimizedBlockClusterTree * bct = nullptr;
         

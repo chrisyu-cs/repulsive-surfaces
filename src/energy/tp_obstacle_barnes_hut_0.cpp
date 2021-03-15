@@ -6,11 +6,12 @@ namespace rsurfaces
     template <typename T1, typename T2>
     mreal TPObstacleBarnesHut0::Energy(T1 alpha, T2 betahalf)
     {
+        
         T2 minus_betahalf = -betahalf;
         mreal theta2 = theta * theta;
 
         mint nthreads = bvh->thread_count;
-
+        
         mreal sum = 0.;
 
         {
@@ -390,12 +391,13 @@ namespace rsurfaces
         mreal beta = 2. * betahalf;
         mreal theta2 = theta * theta;
         mreal sum = 0.;
-
+        
         mint nthreads = bvh->thread_count;
 
         {
             auto S = bvh;
             auto T = o_bvh;
+            mint far_dim = S->far_dim;
             mreal const * restrict const  C_xmin1 = S->C_min[0];
             mreal const * restrict const  C_xmin2 = S->C_min[1];
             mreal const * restrict const  C_xmin3 = S->C_min[2];
@@ -646,6 +648,7 @@ namespace rsurfaces
         {
             auto S = o_bvh;
             auto T = bvh;
+            mint far_dim = T->far_dim;
             mreal const * restrict const  C_xmin1 = S->C_min[0];
             mreal const * restrict const  C_xmin2 = S->C_min[1];
             mreal const * restrict const  C_xmin3 = S->C_min[2];
@@ -804,10 +807,10 @@ namespace rsurfaces
                             dy2 -= a * Z2;
                             dy3 -= a * Z3;
                         }
-                        C_V[7 * C + 0] += db;
-                        C_V[7 * C + 1] += dy1;
-                        C_V[7 * C + 2] += dy2;
-                        C_V[7 * C + 3] += dy3;
+                        C_V[far_dim * C + 0] += db;
+                        C_V[far_dim * C + 1] += dy1;
+                        C_V[far_dim * C + 2] += dy2;
+                        C_V[far_dim * C + 3] += dy3;
                     }
                     else
                     {
@@ -919,10 +922,6 @@ namespace rsurfaces
         {
             eprint("in TPObstacleBarnesHut0::Differential: near_dim != 7");
         }
-        if( bvh->far_dim != 7)
-        {
-            eprint("in TPObstacleBarnesHut0::Differential: far_dim != 7");
-        }
         
         EigenMatrixRM P_D_near_( bvh->primitive_count, bvh->near_dim );
         EigenMatrixRM P_D_far_ ( bvh->primitive_count, bvh->far_dim );
@@ -946,8 +945,15 @@ namespace rsurfaces
         bvh->CollectDerivatives( P_D_near_.data(), P_D_far_.data() );
     
         AssembleDerivativeFromACNData( mesh, geom, P_D_near_, output, weight );
-        AssembleDerivativeFromACNData( mesh, geom, P_D_far_, output, weight );
-  
+        
+        if( bvh->far_dim == 10)
+        {
+            AssembleDerivativeFromACPData( mesh, geom, P_D_far_, output, weight );
+        }
+        else
+        {
+            AssembleDerivativeFromACNData( mesh, geom, P_D_far_, output, weight );
+        }
     } // Differential
     
     // Update the energy to reflect the current state of the mesh. This could
