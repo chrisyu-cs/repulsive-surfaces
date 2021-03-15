@@ -17,7 +17,7 @@ namespace rsurfaces
     public:
         ~TPEnergyMultipole0(){};
         
-        TPEnergyMultipole0( MeshPtr mesh_, GeomPtr geom_, OptimizedBlockClusterTree * bct_, mreal alpha_, mreal beta_)
+        TPEnergyMultipole0( MeshPtr mesh_, GeomPtr geom_, OptimizedBlockClusterTree * bct_, mreal alpha_, mreal beta_, mreal weight_)
         {
             mesh = mesh_;
             geom = geom_;
@@ -25,6 +25,7 @@ namespace rsurfaces
             
             alpha = alpha_;
             beta = beta_;
+            weight = weight_;
             
             mreal intpart;
             use_int = (std::modf( alpha, &intpart) == 0.0) && (std::modf( beta/2, &intpart) == 0.0);
@@ -69,6 +70,7 @@ namespace rsurfaces
         
         mreal alpha = 6.;
         mreal beta  = 12.;
+        mreal weight = 1.;
         
         template<typename T1, typename T2>
         mreal FarField( T1 alpha, T2 betahalf);
