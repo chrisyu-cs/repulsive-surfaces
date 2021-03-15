@@ -11,27 +11,28 @@ namespace rsurfaces
 {
 
     // 0-th order multipole approximation of tangent-point energy
-    class TPEnergyBarnesHut0_Projectors : public SurfaceEnergy
+    class TPEnergyBarnesHut_Projectors0 : public SurfaceEnergy
     {
     public:
-        TPEnergyBarnesHut0_Projectors( MeshPtr mesh_, GeomPtr geom_, mreal alpha_, mreal beta_, mreal theta_)
+        TPEnergyBarnesHut_Projectors0( MeshPtr mesh_, GeomPtr geom_, mreal alpha_, mreal beta_, mreal theta_, mreal weight_ = 1. )
         {
             mesh = mesh_;
             geom = geom_;
             bvh = 0;
             alpha = alpha_;
             beta = beta_;
+            weight = weight_;
             theta = theta_;
             
             mreal intpart;
-            use_int = (std::modf( alpha, &intpart) == 0.0) && (std::modf( beta/2, &intpart) == 0.0);
+            use_int = (std::modf( alpha/2, &intpart) == 0.0) && (std::modf( beta/2, &intpart) == 0.0);
 
             std::cout << "Constructed accelerated Barnes-Hut energy w/ exps (" << alpha << ", " << beta << ")" << std::endl;
 
             Update();
         }
 
-        ~TPEnergyBarnesHut0_Projectors()
+        ~TPEnergyBarnesHut_Projectors0()
         {
             if (bvh) delete bvh;
         }
@@ -73,6 +74,7 @@ namespace rsurfaces
         GeomPtr geom;
         mreal alpha = 6.;
         mreal beta  = 12.;
+        mreal weight = 1.;
         mreal theta = 0.5;
         
         OptimizedClusterTree* bvh;
