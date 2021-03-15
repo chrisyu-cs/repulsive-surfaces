@@ -496,7 +496,7 @@ namespace rsurfaces
 
     void MainApp::TestObstacle0()
     {
-        std::cout << std::setprecision(16);
+        std::cout << std::setprecision(8);
         std::cout << "\n  =====                   =====  " << std::endl;
         std::cout << "=======   TestObstacle0   =======" << std::endl;
         std::cout << "  =====                   =====  " << std::endl;
@@ -513,6 +513,7 @@ namespace rsurfaces
         auto geom1 = rsurfaces::MainApp::instance->geom;
 
         // Load obstacle
+//        std::string filename = "../scenes/Bunny/bunny-10p.obj";
         std::string filename = "../scenes/Bunny/bunny.obj";
         std::unique_ptr<HalfedgeMesh> umesh;
         std::unique_ptr<VertexPositionGeometry> ugeom;
@@ -847,12 +848,13 @@ namespace rsurfaces
 
         //######################################
 
-        int w = 21;
+        int w1 = 21;
+        int w  = 13;
 //
 //        std::string line = "--------------------------------------------------------------------------------------------------------------------------------------------------------------------";
         std::string line = std::string( 3 * (7-1) +  w * 7, '-');
         std::cout   << std::left;
-        std::cout   << std::setw(w) << ""
+        std::cout   << std::setw(w1) << ""
                     << " | " << std::setw(w) << "exact"
                     << " | " << std::setw(w) << "pr"
                     << " | " << std::setw(w) << "BH"
@@ -863,7 +865,7 @@ namespace rsurfaces
 
         std::cout   << line << std::endl;
 
-        std::cout   << std::setw(w) << "  E_11 "
+        std::cout   << std::setw(w1) << "  E_11 "
                     << " | " << std::setw(w) << E_ex_11
                     << " | " << std::setw(w) << E_ex_pr_11
                     << " | " << std::setw(w) << E_bh_11
@@ -872,7 +874,7 @@ namespace rsurfaces
                     << " | " << std::setw(w) << E_fm_pr_11
                     << std::endl;
 
-        std::cout   << std::setw(w) << "  E_12 "
+        std::cout   << std::setw(w1) << "  E_12 "
                     << " | " << std::setw(w) << E_ex_12
                     << " | " << std::setw(w) << E_ex_pr_12
                     << " | " << std::setw(w) << E_bh_12
@@ -881,7 +883,7 @@ namespace rsurfaces
                     << " | " << std::setw(w) << E_fm_pr_12
                     << std::endl;
 
-        std::cout   << std::setw(w) << "  E_22 "
+        std::cout   << std::setw(w1) << "  E_22 "
                     << " | " << std::setw(w) << E_ex_22
                     << " | " << std::setw(w) << E_ex_pr_22
                     << " | " << std::setw(w) << E_bh_22
@@ -892,7 +894,7 @@ namespace rsurfaces
         
         
         std::cout   << "\n";
-        std::cout   << std::setw(w) << ""
+        std::cout   << std::setw(w1) << ""
                     << " | " << std::setw(w) << "exact"
                     << " | " << std::setw(w) << "pr"
                     << " | " << std::setw(w) << "BH"
@@ -903,7 +905,7 @@ namespace rsurfaces
 
         std::cout   << line << std::endl;
 
-        std::cout   << std::setw(w) << "  E_11 error (%) "
+        std::cout   << std::setw(w1) << "  E_11 error (%) "
                     << " | " << std::setw(w) << fabs(E_ex_11 / E_ex_11 - 1) * 100
                     << " | " << std::setw(w) << fabs(E_ex_pr_11 / E_ex_11 - 1) * 100
                     << " | " << std::setw(w) << fabs(E_bh_11 / E_ex_11 - 1) * 100
@@ -912,7 +914,7 @@ namespace rsurfaces
                     << " | " << std::setw(w) << fabs(E_fm_pr_11 / E_ex_11 - 1) * 100
                     << std::endl;
 
-        std::cout   << std::setw(w) << "  E_12 error (%) "
+        std::cout   << std::setw(w1) << "  E_12 error (%) "
                     << " | " << std::setw(w) << fabs(E_ex_12 / E_ex_12 - 1) * 100
                     << " | " << std::setw(w) << fabs(E_ex_pr_12 / E_ex_12 - 1) * 100
                     << " | " << std::setw(w) << fabs(E_bh_12 / E_ex_12 - 1) * 100
@@ -921,7 +923,7 @@ namespace rsurfaces
                     << " | " << std::setw(w) << fabs(E_fm_pr_12 / E_ex_12 - 1) * 100
                     << std::endl;
 
-        std::cout   << std::setw(w) << "  E_22 error (%) "
+        std::cout   << std::setw(w1) << "  E_22 error (%) "
                     << " | " << std::setw(w) << fabs(E_ex_22 / E_ex_22 - 1) * 100
                     << " | " << std::setw(w) << fabs(E_ex_pr_22 / E_ex_22 - 1) * 100
                     << " | " << std::setw(w) << fabs(E_bh_22 / E_ex_22 - 1) * 100
@@ -930,7 +932,7 @@ namespace rsurfaces
                     << " | " << std::setw(w) << fabs(E_fm_pr_22 / E_ex_22 - 1) * 100
                     << std::endl;
 
-        std::cout   << std::setw(w) << " DE_11 error (%) "
+        std::cout   << std::setw(w1) << " DE_11 error (%) "
                     << " | " << std::setw(w) << (DE_ex_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
                     << " | " << std::setw(w) << (DE_ex_pr_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
                     << " | " << std::setw(w) << (DE_bh_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
@@ -939,7 +941,7 @@ namespace rsurfaces
                     << " | " << std::setw(w) << (DE_fm_pr_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
                     << std::endl;
 
-        std::cout   << std::setw(w) << " DE_12 error (%) "
+        std::cout   << std::setw(w1) << " DE_12 error (%) "
                     << " | " << std::setw(w) << (DE_ex_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
                     << " | " << std::setw(w) << (DE_ex_pr_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
                     << " | " << std::setw(w) << (DE_bh_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
@@ -948,7 +950,7 @@ namespace rsurfaces
                     << " | " << std::setw(w) << (DE_fm_pr_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
                     << std::endl;
 
-        std::cout   << std::setw(w) << " DE_22 error (%) "
+        std::cout   << std::setw(w1) << " DE_22 error (%) "
                     << " | " << std::setw(w) << (DE_ex_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
                     << " | " << std::setw(w) << (DE_ex_pr_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
                     << " | " << std::setw(w) << (DE_bh_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
@@ -960,7 +962,7 @@ namespace rsurfaces
 
         std::cout   << "\n"
                     << std::endl;
-        std::cout   << std::setw(w) << ""
+        std::cout   << std::setw(w1) << ""
                     << " | " << std::setw(w) << "exact"
                     << " | " << std::setw(w) << "pr"
                     << " | " << std::setw(w) << "BH"
@@ -971,7 +973,7 @@ namespace rsurfaces
 
         std::cout   << line << std::endl;
 
-        std::cout   << std::setw(w) << "  E_11 time  (s) "
+        std::cout   << std::setw(w1) << "  E_11 time  (s) "
                     << " | " << std::setw(w) << t_ex_11
                     << " | " << std::setw(w) << t_ex_pr_11
                     << " | " << std::setw(w) << t_bh_11
@@ -980,7 +982,7 @@ namespace rsurfaces
                     << " | " << std::setw(w) << t_fm_pr_11
                     << std::endl;
         
-        std::cout   << std::setw(w) << "  E_12 time  (s) "
+        std::cout   << std::setw(w1) << "  E_12 time  (s) "
                     << " | " << std::setw(w) << t_ex_12
                     << " | " << std::setw(w) << t_ex_pr_12
                     << " | " << std::setw(w) << t_bh_12
@@ -989,7 +991,7 @@ namespace rsurfaces
                     << " | " << std::setw(w) << t_fm_pr_12
                     << std::endl;
         
-        std::cout   << std::setw(w) << "  E_22 time  (s) "
+        std::cout   << std::setw(w1) << "  E_22 time  (s) "
                     << " | " << std::setw(w) << t_ex_22
                     << " | " << std::setw(w) << t_ex_pr_22
                     << " | " << std::setw(w) << t_bh_22
@@ -998,7 +1000,7 @@ namespace rsurfaces
                     << " | " << std::setw(w) << t_fm_pr_22
                     << std::endl;
         
-        std::cout   << std::setw(w) << " DE_11 time  (s) "
+        std::cout   << std::setw(w1) << " DE_11 time  (s) "
                     << " | " << std::setw(w) << Dt_ex_11
                     << " | " << std::setw(w) << Dt_ex_pr_11
                     << " | " << std::setw(w) << Dt_bh_11
@@ -1007,7 +1009,7 @@ namespace rsurfaces
                     << " | " << std::setw(w) << Dt_fm_pr_11
                     << std::endl;
         
-        std::cout   << std::setw(w) << " DE_12 time  (s) "
+        std::cout   << std::setw(w1) << " DE_12 time  (s) "
                     << " | " << std::setw(w) << Dt_ex_12
                     << " | " << std::setw(w) << Dt_ex_pr_12
                     << " | " << std::setw(w) << Dt_bh_12
@@ -1016,7 +1018,7 @@ namespace rsurfaces
                     << " | " << std::setw(w) << Dt_fm_pr_12
                     << std::endl;
         
-        std::cout   << std::setw(w) << " DE_22 time  (s) "
+        std::cout   << std::setw(w1) << " DE_22 time  (s) "
                     << " | " << std::setw(w) << Dt_ex_22
                     << " | " << std::setw(w) << Dt_ex_pr_22
                     << " | " << std::setw(w) << Dt_bh_22

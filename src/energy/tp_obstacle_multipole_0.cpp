@@ -3,103 +3,6 @@
 
 namespace rsurfaces
 {
-
-    // Returns the current value of the energy.
-    double TPObstacleMultipole0::Value()
-    {
-        
-        if( use_int )
-        {
-            mint int_alpha = std::round(alpha);
-            mint int_betahalf = std::round(beta/2);
-            return weight * (FarField( int_alpha, int_betahalf ) + NearField (int_alpha, int_betahalf ));
-        }
-        else
-        {
-            mreal real_alpha = alpha;
-            mreal real_betahalf = beta/2;
-            return weight * (FarField( real_alpha, real_betahalf ) + NearField( real_alpha, real_betahalf ));
-        }
-    } // Value
-
-    // Returns the current differential of the energy, stored in the given
-    // V x 3 matrix, where each row holds the differential (a 3-vector) with
-    // respect to the corresponding vertex.
-    void TPObstacleMultipole0::Differential(Eigen::MatrixXd &output)
-    {
-        if( bct->S->data_dim != 7)
-        {
-            eprint("in TPEnergyBarnesHut_Projectors0::Differential: data_dim != 7");
-        }
-        
-        EigenMatrixRM P_D_data ( bct->S->primitive_count , bct->S->data_dim );
-        
-        bct->S->CleanseD();
-//        bct->T->CleanseD();
-        
-        if( use_int )
-        {
-            mint int_alpha = std::round(alpha);
-            mint int_betahalf = std::round(beta/2);
-            DNearField( int_alpha, int_betahalf );
-            DFarField ( int_alpha, int_betahalf );
-            
-        }
-        else
-        {
-            mreal real_alpha = alpha;
-            mreal real_betahalf = beta/2;
-            DNearField( real_alpha, real_betahalf );
-            DFarField ( real_alpha, real_betahalf );
-        }
-        
-        bct->S->CollectDerivatives( P_D_data.data() );
-        
-        AssembleDerivativeFromACNData( mesh, geom, P_D_data, output, weight );
-        
-    } // Differential
-
-
-    // Update the energy to reflect the current state of the mesh. This could
-    // involve building a new BVH for Barnes-Hut energies, for instance.
-    void TPObstacleMultipole0::Update()
-    {
-        // Nothing needs to be done
-    }
-
-    // Get the mesh associated with this energy.
-    MeshPtr TPObstacleMultipole0::GetMesh()
-    {
-        return mesh;
-    }
-
-    // Get the geometry associated with this geometry.
-    GeomPtr TPObstacleMultipole0::GetGeom()
-    {
-        return geom;
-    }
-
-    // Get the exponents of this energy; only applies to tangent-point energies.
-    Vector2 TPObstacleMultipole0::GetExponents()
-    {
-        return Vector2{bct->alpha, bct->beta};
-    }
-
-    // Get a pointer to the current BVH for this energy.
-    // Return 0 if the energy doesn't use a BVH.
-    OptimizedClusterTree *TPObstacleMultipole0::GetBVH()
-    {
-        return 0;
-    }
-
-    // Return the separation parameter for this energy.
-    // Return 0 if this energy doesn't do hierarchical approximation.
-    double TPObstacleMultipole0::GetTheta()
-    {
-        return sqrt(bct->theta2);
-    }
-
-
     template<typename T1, typename T2>
     mreal TPObstacleMultipole0::FarField( T1 alpha, T2 betahalf)
     {
@@ -108,27 +11,27 @@ namespace rsurfaces
         auto S = bct->S;
         auto T = bct->T;
         mint b_m = bct->far->b_m;
-        mint  const * const restrict b_outer = bct->far->b_outer;
-        mint  const * const restrict b_inner = bct->far->b_inner;
+        mint  const * restrict const b_outer = bct->far->b_outer;
+        mint  const * restrict const b_inner = bct->far->b_inner;
         mint nthreads = std::min( S->thread_count, T->thread_count);
         
-        // Dunno why "restrict" helps with P_data. It is actually a lie here when S = T.
+        // Dunno why "restrict" helps with P_near. It is actually a lie here when S = T.
         // Well, it isn't in the far field, because no cluster may interact with itself...
-        mreal const * const restrict A  = S->C_data[0];
-        mreal const * const restrict X1 = S->C_data[1];
-        mreal const * const restrict X2 = S->C_data[2];
-        mreal const * const restrict X3 = S->C_data[3];
-        mreal const * const restrict N1 = S->C_data[4];
-        mreal const * const restrict N2 = S->C_data[5];
-        mreal const * const restrict N3 = S->C_data[6];
+        mreal const * restrict const A  = S->C_far[0];
+        mreal const * restrict const X1 = S->C_far[1];
+        mreal const * restrict const X2 = S->C_far[2];
+        mreal const * restrict const X3 = S->C_far[3];
+        mreal const * restrict const N1 = S->C_far[4];
+        mreal const * restrict const N2 = S->C_far[5];
+        mreal const * restrict const N3 = S->C_far[6];
         
-        mreal const * const restrict B  = T->C_data[0];
-        mreal const * const restrict Y1 = T->C_data[1];
-        mreal const * const restrict Y2 = T->C_data[2];
-        mreal const * const restrict Y3 = T->C_data[3];
-        mreal const * const restrict M1 = T->C_data[4];
-        mreal const * const restrict M2 = T->C_data[5];
-        mreal const * const restrict M3 = T->C_data[6];
+        mreal const * restrict const B  = T->C_far[0];
+        mreal const * restrict const Y1 = T->C_far[1];
+        mreal const * restrict const Y2 = T->C_far[2];
+        mreal const * restrict const Y3 = T->C_far[3];
+        mreal const * restrict const M1 = T->C_far[4];
+        mreal const * restrict const M2 = T->C_far[5];
+        mreal const * restrict const M3 = T->C_far[6];
         
         mreal sum = 0.;
         
@@ -183,28 +86,28 @@ namespace rsurfaces
         mint b_m = bct->near->b_m;
         mint nthreads = std::min( S->thread_count, T->thread_count);
         
-        mint  const * const restrict b_row_ptr = S->leaf_cluster_ptr;
-        mint  const * const restrict b_col_ptr = T->leaf_cluster_ptr;
+        mint  const * restrict const b_row_ptr = S->leaf_cluster_ptr;
+        mint  const * restrict const b_col_ptr = T->leaf_cluster_ptr;
         
-        mint  const * const restrict b_outer   = bct->near->b_outer;
-        mint  const * const restrict b_inner   = bct->near->b_inner;
+        mint  const * restrict const b_outer   = bct->near->b_outer;
+        mint  const * restrict const b_inner   = bct->near->b_inner;
         
-        // Dunno why "restrict" helps with P_data. It is actually a lie here.
-        mreal const * const restrict A  = S->P_data[0];
-        mreal const * const restrict X1 = S->P_data[1];
-        mreal const * const restrict X2 = S->P_data[2];
-        mreal const * const restrict X3 = S->P_data[3];
-        mreal const * const restrict N1 = S->P_data[4];
-        mreal const * const restrict N2 = S->P_data[5];
-        mreal const * const restrict N3 = S->P_data[6];
+        // Dunno why "restrict" helps with P_near. It is actually a lie here.
+        mreal const * restrict const A  = S->P_near[0];
+        mreal const * restrict const X1 = S->P_near[1];
+        mreal const * restrict const X2 = S->P_near[2];
+        mreal const * restrict const X3 = S->P_near[3];
+        mreal const * restrict const N1 = S->P_near[4];
+        mreal const * restrict const N2 = S->P_near[5];
+        mreal const * restrict const N3 = S->P_near[6];
         
-        mreal const * const restrict B  = T->P_data[0];
-        mreal const * const restrict Y1 = T->P_data[1];
-        mreal const * const restrict Y2 = T->P_data[2];
-        mreal const * const restrict Y3 = T->P_data[3];
-        mreal const * const restrict M1 = T->P_data[4];
-        mreal const * const restrict M2 = T->P_data[5];
-        mreal const * const restrict M3 = T->P_data[6];
+        mreal const * restrict const B  = T->P_near[0];
+        mreal const * restrict const Y1 = T->P_near[1];
+        mreal const * restrict const Y2 = T->P_near[2];
+        mreal const * restrict const Y3 = T->P_near[3];
+        mreal const * restrict const M1 = T->P_near[4];
+        mreal const * restrict const M2 = T->P_near[5];
+        mreal const * restrict const M3 = T->P_near[6];
         
         mreal sum = 0.;
         #pragma omp parallel for num_threads( nthreads ) reduction( + : sum)
@@ -275,37 +178,37 @@ namespace rsurfaces
         auto T = bct->T;
 //        bool not_symmetric = !bct->is_symmetric;
         mint b_m = bct->far->b_m;
-        mint data_dim = std::min( S->data_dim, T->data_dim);
+
         mint nthreads = std::min( S->thread_count, T->thread_count);
         
-        mint  const * const restrict b_outer = bct->far->b_outer;
-        mint  const * const restrict b_inner = bct->far->b_inner;
+        mint  const * restrict const b_outer = bct->far->b_outer;
+        mint  const * restrict const b_inner = bct->far->b_inner;
         
         
-        // Dunno why "restrict" helps with C_data. It is actually a lie here.
-        mreal const * const restrict A  = S->C_data[0];
-        mreal const * const restrict X1 = S->C_data[1];
-        mreal const * const restrict X2 = S->C_data[2];
-        mreal const * const restrict X3 = S->C_data[3];
-        mreal const * const restrict N1 = S->C_data[4];
-        mreal const * const restrict N2 = S->C_data[5];
-        mreal const * const restrict N3 = S->C_data[6];
+        // Dunno why "restrict" helps with C_far. It is actually a lie here.
+        mreal const * restrict const A  = S->C_far[0];
+        mreal const * restrict const X1 = S->C_far[1];
+        mreal const * restrict const X2 = S->C_far[2];
+        mreal const * restrict const X3 = S->C_far[3];
+        mreal const * restrict const N1 = S->C_far[4];
+        mreal const * restrict const N2 = S->C_far[5];
+        mreal const * restrict const N3 = S->C_far[6];
         
-        mreal const * const restrict B  = T->C_data[0];
-        mreal const * const restrict Y1 = T->C_data[1];
-        mreal const * const restrict Y2 = T->C_data[2];
-        mreal const * const restrict Y3 = T->C_data[3];
-        mreal const * const restrict M1 = T->C_data[4];
-        mreal const * const restrict M2 = T->C_data[5];
-        mreal const * const restrict M3 = T->C_data[6];
+        mreal const * restrict const B  = T->C_far[0];
+        mreal const * restrict const Y1 = T->C_far[1];
+        mreal const * restrict const Y2 = T->C_far[2];
+        mreal const * restrict const Y3 = T->C_far[3];
+        mreal const * restrict const M1 = T->C_far[4];
+        mreal const * restrict const M2 = T->C_far[5];
+        mreal const * restrict const M3 = T->C_far[6];
         
     #pragma omp parallel for num_threads( nthreads ) reduction( + : sum )
         for( mint i = 0; i < b_m; ++i )
         {
             mint thread = omp_get_thread_num();
             
-            mreal * const restrict U = &S->C_D_data[thread][0];
-//            mreal * const restrict V = &T->C_D_data[thread][0];
+            mreal * restrict const U = &S->C_D_far[thread][0];
+//            mreal * restrict const V = &T->C_D_data[thread][0];
             
             mreal a  =  A[i];
             mreal x1 = X1[i];
@@ -386,16 +289,6 @@ namespace rsurfaces
                            H * ( v1 * x1 + v2 * x2 + v3 * x3 )
                            );
                 
-                //                    V[ data_dim * j ] += a * (
-                //                                              density
-                //                                              -
-                //                                              F * ( n1 * y1 + n2 * y2 + n3 * y3 )
-                //                                              -
-                //                                              G * ( m1 * (y1 + v1) + m2 * (y2 + v2) + m3 * (y3 + v3) )
-                //                                              +
-                //                                              H * ( v1 * y1 + v2 * y2 + v3 * y3 )
-                //                                              );
-                
                 dx1 += b  * Z1;
                 dx2 += b  * Z2;
                 dx3 += b  * Z3;
@@ -403,22 +296,15 @@ namespace rsurfaces
                 dn2 += bF * v2;
                 dn3 += bF * v3;
                 
-                //                    V[ data_dim * j + 1 ] -= a  * Z1;
-                //                    V[ data_dim * j + 2 ] -= a  * Z2;
-                //                    V[ data_dim * j + 3 ] -= a  * Z3;
-                //                    V[ data_dim * j + 4 ] += aG * v1;
-                //                    V[ data_dim * j + 5 ] += aG * v2;
-                //                    V[ data_dim * j + 6 ] += aG * v3;
-                
             } // for( mint k = b_outer[i]; k < b_outer[i+1]; ++k )
             
-            U[ data_dim * i     ] +=  da;
-            U[ data_dim * i + 1 ] += dx1;
-            U[ data_dim * i + 2 ] += dx2;
-            U[ data_dim * i + 3 ] += dx3;
-            U[ data_dim * i + 4 ] += dn1;
-            U[ data_dim * i + 5 ] += dn2;
-            U[ data_dim * i + 6 ] += dn3;
+            U[ 7 * i     ] +=  da;
+            U[ 7 * i + 1 ] += dx1;
+            U[ 7 * i + 2 ] += dx2;
+            U[ 7 * i + 3 ] += dx3;
+            U[ 7 * i + 4 ] += dn1;
+            U[ 7 * i + 5 ] += dn2;
+            U[ 7 * i + 6 ] += dn3;
             
             sum += block_sum;
         } // for( mint i = 0; i < b_m; ++i )
@@ -438,42 +324,42 @@ namespace rsurfaces
         
         auto S = bct->S;
         auto T = bct->T;
-
+        
         mint b_m = bct->near->b_m;
-        mint data_dim = std::min( S->data_dim, T->data_dim);
+        
         mint nthreads = std::min( S->thread_count, T->thread_count);
         
-        mint  const * const restrict b_row_ptr = S->leaf_cluster_ptr;
-        mint  const * const restrict b_col_ptr = T->leaf_cluster_ptr;
+        mint  const * restrict const b_row_ptr = S->leaf_cluster_ptr;
+        mint  const * restrict const b_col_ptr = T->leaf_cluster_ptr;
         
-        mint  const * const restrict b_outer = &bct->near->b_outer[0];
-        mint  const * const restrict b_inner = &bct->near->b_inner[0];
+        mint  const * restrict const b_outer = &bct->near->b_outer[0];
+        mint  const * restrict const b_inner = &bct->near->b_inner[0];
         
-        // Dunno why "restrict" helps with P_data. It is actually a lie here.
-        mreal const * const restrict A  = S->P_data[0];
-        mreal const * const restrict X1 = S->P_data[1];
-        mreal const * const restrict X2 = S->P_data[2];
-        mreal const * const restrict X3 = S->P_data[3];
-        mreal const * const restrict N1 = S->P_data[4];
-        mreal const * const restrict N2 = S->P_data[5];
-        mreal const * const restrict N3 = S->P_data[6];
+        // Dunno why "restrict" helps with P_near. It is actually a lie here.
+        mreal const * restrict const A  = S->P_near[0];
+        mreal const * restrict const X1 = S->P_near[1];
+        mreal const * restrict const X2 = S->P_near[2];
+        mreal const * restrict const X3 = S->P_near[3];
+        mreal const * restrict const N1 = S->P_near[4];
+        mreal const * restrict const N2 = S->P_near[5];
+        mreal const * restrict const N3 = S->P_near[6];
         
-        mreal const * const restrict B  = T->P_data[0];
-        mreal const * const restrict Y1 = T->P_data[1];
-        mreal const * const restrict Y2 = T->P_data[2];
-        mreal const * const restrict Y3 = T->P_data[3];
-        mreal const * const restrict M1 = T->P_data[4];
-        mreal const * const restrict M2 = T->P_data[5];
-        mreal const * const restrict M3 = T->P_data[6];
+        mreal const * restrict const B  = T->P_near[0];
+        mreal const * restrict const Y1 = T->P_near[1];
+        mreal const * restrict const Y2 = T->P_near[2];
+        mreal const * restrict const Y3 = T->P_near[3];
+        mreal const * restrict const M1 = T->P_near[4];
+        mreal const * restrict const M2 = T->P_near[5];
+        mreal const * restrict const M3 = T->P_near[6];
         
         
-        #pragma omp parallel for num_threads( nthreads ) reduction( +: sum )
+#pragma omp parallel for num_threads( nthreads ) reduction( +: sum )
         for( mint b_i = 0; b_i < b_m; ++b_i )
         {
             mint thread = omp_get_thread_num();
             
-            mreal * const restrict U = &S->P_D_data[thread][0];
-//            mreal * const restrict V = &T->P_D_data[thread][0];
+            mreal * restrict const U = &S->P_D_near[thread][0];
+            //            mreal * restrict const V = &T->P_D_data[thread][0];
             
             mint i_begin = b_row_ptr[b_i];
             mint i_end   = b_row_ptr[b_i+1];
@@ -558,39 +444,22 @@ namespace rsurfaces
                                    H * ( v1 * x1 + v2 * x2 + v3 * x3 )
                                    );
                         
-                        //                                V[ data_dim * j ] += a * (
-                        //                                                          density
-                        //                                                          -
-                        //                                                          F * ( n1 * y1 + n2 * y2 + n3 * y3 )
-                        //                                                          -
-                        //                                                          G * ( m1 * (y1 + v1) + m2 * (y2 + v2) + m3 * (y3 + v3) )
-                        //                                                          +
-                        //                                                          H * ( v1 * y1 + v2 * y2 + v3 * y3 )
-                        //                                                          );
-                        
                         dx1 += b  * Z1;
                         dx2 += b  * Z2;
                         dx3 += b  * Z3;
                         dn1 += bF * v1;
                         dn2 += bF * v2;
                         dn3 += bF * v3;
-                        
-                        //                                V[ data_dim * j + 1 ] -= a  * Z1;
-                        //                                V[ data_dim * j + 2 ] -= a  * Z2;
-                        //                                V[ data_dim * j + 3 ] -= a  * Z3;
-                        //                                V[ data_dim * j + 4 ] += aG * v1;
-                        //                                V[ data_dim * j + 5 ] += aG * v2;
-                        //                                V[ data_dim * j + 6 ] += aG * v3;
+        
                     } // for( mint j = j_begin; j < j_end; ++j )
                     
-                    
-                    U[ data_dim * i     ] +=  da;
-                    U[ data_dim * i + 1 ] += dx1;
-                    U[ data_dim * i + 2 ] += dx2;
-                    U[ data_dim * i + 3 ] += dx3;
-                    U[ data_dim * i + 4 ] += dn1;
-                    U[ data_dim * i + 5 ] += dn2;
-                    U[ data_dim * i + 6 ] += dn3;
+                    U[ 7 * i     ] +=  da;
+                    U[ 7 * i + 1 ] += dx1;
+                    U[ 7 * i + 2 ] += dx2;
+                    U[ 7 * i + 3 ] += dx3;
+                    U[ 7 * i + 4 ] += dn1;
+                    U[ 7 * i + 5 ] += dn2;
+                    U[ 7 * i + 6 ] += dn3;
                     
                 }// for( mint i = i_begin; i < i_end ; ++i )
             }// for( mint k = b_outer[b_i]; k < b_outer[b_i+1]; ++k )
@@ -598,5 +467,106 @@ namespace rsurfaces
         
         return sum;
     }; //DNearField
+        
+    // Returns the current value of the energy.
+    double TPObstacleMultipole0::Value()
+    {
+        
+        if( use_int )
+        {
+            mint int_alpha = std::round(alpha);
+            mint int_betahalf = std::round(beta/2);
+            return weight * (FarField( int_alpha, int_betahalf ) + NearField (int_alpha, int_betahalf ));
+        }
+        else
+        {
+            mreal real_alpha = alpha;
+            mreal real_betahalf = beta/2;
+            return weight * (FarField( real_alpha, real_betahalf ) + NearField( real_alpha, real_betahalf ));
+        }
+    } // Value
+
+    // Returns the current differential of the energy, stored in the given
+    // V x 3 matrix, where each row holds the differential (a 3-vector) with
+    // respect to the corresponding vertex.
+    void TPObstacleMultipole0::Differential(Eigen::MatrixXd &output)
+    {
+        if( bct->S->near_dim != 7)
+        {
+            eprint("in TPEnergyBarnesHut_Projectors0::Differential: near_dim != 7");
+        }
+        if( bct->S->far_dim != 7)
+        {
+            eprint("in TPEnergyBarnesHut_Projectors0::Differential: far_dim != 7");
+        }
+        
+        EigenMatrixRM P_D_near ( bct->S->primitive_count , bct->S->near_dim );
+        EigenMatrixRM P_D_far ( bct->S->primitive_count , bct->S->far_dim );
+        
+        bct->S->CleanseD();
+//        bct->T->CleanseD();
+        
+        if( use_int )
+        {
+            mint int_alpha = std::round(alpha);
+            mint int_betahalf = std::round(beta/2);
+            DNearField( int_alpha, int_betahalf );
+            DFarField ( int_alpha, int_betahalf );
+            
+        }
+        else
+        {
+            mreal real_alpha = alpha;
+            mreal real_betahalf = beta/2;
+            DNearField( real_alpha, real_betahalf );
+            DFarField ( real_alpha, real_betahalf );
+        }
+        
+        bct->S->CollectDerivatives( P_D_near.data(), P_D_far.data() );
+        
+        AssembleDerivativeFromACNData( mesh, geom, P_D_near, output, weight );
+        AssembleDerivativeFromACNData( mesh, geom, P_D_far, output, weight );
+        
+    } // Differential
+
+
+    // Update the energy to reflect the current state of the mesh. This could
+    // involve building a new BVH for Barnes-Hut energies, for instance.
+    void TPObstacleMultipole0::Update()
+    {
+        // Nothing needs to be done
+    }
+
+    // Get the mesh associated with this energy.
+    MeshPtr TPObstacleMultipole0::GetMesh()
+    {
+        return mesh;
+    }
+
+    // Get the geometry associated with this geometry.
+    GeomPtr TPObstacleMultipole0::GetGeom()
+    {
+        return geom;
+    }
+
+    // Get the exponents of this energy; only applies to tangent-point energies.
+    Vector2 TPObstacleMultipole0::GetExponents()
+    {
+        return Vector2{bct->alpha, bct->beta};
+    }
+
+    // Get a pointer to the current BVH for this energy.
+    // Return 0 if the energy doesn't use a BVH.
+    OptimizedClusterTree *TPObstacleMultipole0::GetBVH()
+    {
+        return 0;
+    }
+
+    // Return the separation parameter for this energy.
+    // Return 0 if this energy doesn't do hierarchical approximation.
+    double TPObstacleMultipole0::GetTheta()
+    {
+        return sqrt(bct->theta2);
+    }
 
 } // namespace rsurfaces

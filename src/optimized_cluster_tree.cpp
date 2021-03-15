@@ -15,37 +15,43 @@ namespace rsurfaces
 
     // Solving interface problems by using standard types. This way, things are easier to port. For example, I can call this from Mathematica for faster debugging.
     OptimizedClusterTree::OptimizedClusterTree(
-                const mreal * const P_coords_,              // coordinates per primitive used for clustering; assumed to be of size primitive_count x dim
-                const mint primitive_count_,
-                const mint dim_,
-                const mreal * const P_hull_coords_,         // points that define the convex hulls of primitives; assumed to be array of size primitive_count x hull_count x dim
-                const mint hull_count_,
-                const mreal * const P_data_,                // data used actual interaction computation; assumed to be of size primitive_count x data_dim. For a triangle mesh in 3D, we want to feed each triangles i), area ii) barycenter and iii) normal as a 1 + 3 + 3 = 7 vector
-                const mint data_dim_,
-//                const mreal * const P_moments_,
-//                const mint moment_count_,
-                const mint max_buffer_dim_,
-                const mint * const ordering_,               // A suggested preordering of primitives; this gets applied before the clustering begins in the hope that this may improve the sorting within a cluster --- at least in the top level(s). This could, e.g., be the ordering obtained by a tree for  similar data set.
-                const mint split_threshold_,                      // split a cluster if has this many or more primitives contained in it
-                MKLSparseMatrix & DiffOp,
-                MKLSparseMatrix & AvOp
+       const mreal * restrict const P_coords_, // coordinates per primitive used for clustering; assumed to be of size primitive_count x dim
+       const mint primitive_count_,
+       const mint dim_,
+       const mreal * restrict const P_hull_coords_, // points that define the convex hulls of primitives; assumed to be array of size primitive_count x hull_count x dim
+       const mint hull_count_,
+       const mreal * restrict const P_near_, // data used actual interaction computation; assumed to be of size primitive_count x near_dim. For a triangle mesh in 3D, we want to feed each triangles i), area ii) barycenter and iii) normal as a 1 + 3 + 3 = 7 vector
+       const mint near_dim_,
+       const mreal * restrict const P_far_, // data used actual interaction computation; assumed to be of size primitive_count x far_dim. For a triangle mesh in 3D, we want to feed each triangles i), area ii) barycenter and iii) orthoprojector onto normal space as a 1 + 3 + 6 = 10 vector
+       const mint far_dim_,
+       //                    const mreal * const restrict P_moments_,          // Interface to deal with higher order multipole expansion. Not used, yet.
+       //                    const mint moment_count_,
+       const mint max_buffer_dim_,
+       const mint * restrict const ordering_, // A suggested preordering of primitives; this gets applied before the clustering begins in the hope that this may improve the sorting within a cluster --- at least in the top level(s). This could, e.g., be the ordering obtained by a tree for  similar data set.
+       const mint split_threshold_,          // split a cluster if has this many or more primitives contained in it
+       MKLSparseMatrix &DiffOp,              // Asking now for MKLSparseMatrix instead of EigenMatrixCSR as input
+       MKLSparseMatrix &AvOp                 // Asking now for MKLSparseMatrix instead of EigenMatrixCSR as input
     )
     {
         primitive_count = primitive_count_;
         hull_count = hull_count_;
         dim = dim_;
-        data_dim = data_dim_;
+        near_dim = near_dim_;
+        far_dim = far_dim_;
 //        moment_count = moment_count_;
         max_buffer_dim = 0;
 
 //        scratch_size = 12;
 
+        mint nthreads;
         #pragma omp parallel
         {
-            tree_thread_count = std::max( static_cast<mint>(1), static_cast<mint>( omp_get_num_threads() ) );
-                 thread_count = std::max( static_cast<mint>(1), static_cast<mint>( omp_get_num_threads() ) );
+            nthreads = omp_get_num_threads();
         }
 
+        tree_thread_count = std::max( static_cast<mint>(1), nthreads );
+             thread_count = std::max( static_cast<mint>(1), nthreads );
+        
         mint a = 1;
         split_threshold = std::max( a, split_threshold_);
     
@@ -84,7 +90,10 @@ namespace rsurfaces
         leaf_cluster_count = root->descendant_leaf_count;
 
         // TODO: Create parallel tasks here.
-        RequireBuffers( std::max( dim * dim, max_buffer_dim_ ) );
+        {
+            mint s = std::max( dim * dim, far_dim);
+            RequireBuffers( std::max( s, max_buffer_dim_ ) );
+        }
         
         C_left  = mint_alloc ( cluster_count );
         C_right = mint_alloc ( cluster_count );
@@ -112,8 +121,8 @@ namespace rsurfaces
             inverse_ordering[P_ext_pos[i]] = i;
         }
 
-        ComputePrimitiveData( P_hull_coords_, P_data_ );
-//        ComputePrimitiveData( P_hull_coords_, P_data_, P_moments_ );
+        ComputePrimitiveData( P_hull_coords_, P_near_, P_far_ );
+//        ComputePrimitiveData( P_hull_coords_, P_near_, P_moments_ );
         
         ComputeClusterData();
 
@@ -237,16 +246,23 @@ namespace rsurfaces
 
 
     void OptimizedClusterTree::ComputePrimitiveData(
-                                           const mreal * const  restrict P_hull_coords_,
-                                           const mreal * const  restrict P_data_
+                                           const mreal * restrict const P_hull_coords_,
+                                           const mreal * restrict const  P_near_,
+                                           const mreal * restrict const  P_far_
 //                                           , const mreal * const  restrict P_moments_
                                            ) // reordering and computing bounding boxes
     {
 
-        P_data = A_Vector<mreal * > ( data_dim, nullptr );
-        for( mint k = 0; k < data_dim; ++ k )
+        P_near = A_Vector<mreal * > ( near_dim, nullptr );
+        for( mint k = 0; k < near_dim; ++ k )
         {
-            P_data[k] = mreal_alloc( primitive_count );
+            P_near[k] = mreal_alloc( primitive_count );
+        }
+        
+        P_far  = A_Vector<mreal * > ( far_dim , nullptr );
+        for( mint k = 0; k < far_dim; ++ k )
+        {
+            P_far [k] = mreal_alloc( primitive_count );
         }
         
         P_min = A_Vector<mreal * > ( dim, nullptr );
@@ -257,7 +273,8 @@ namespace rsurfaces
             P_max[k] = mreal_alloc( primitive_count );
         }
         
-        P_D_data = A_Vector<A_Vector<mreal>> ( thread_count );
+        P_D_near = A_Vector<A_Vector<mreal>> ( thread_count );
+        P_D_far  = A_Vector<A_Vector<mreal>> ( thread_count );
         
 //        P_moments = A_Vector<mreal * restrict> ( moment_count, nullptr );
 //        for( mint k = 0; k < moment_count; ++ k )
@@ -270,17 +287,23 @@ namespace rsurfaces
         #pragma omp parallel for shared( thread_count ) schedule( static, 1 )
         for( mint thread = 0; thread < thread_count; ++thread )
         {
-            P_D_data[thread] = A_Vector<mreal> ( primitive_count * data_dim );
+            P_D_near[thread] = A_Vector<mreal> ( primitive_count * near_dim );
+            P_D_far[thread]  = A_Vector<mreal> ( primitive_count * far_dim );
         }
         
-        #pragma omp parallel for  shared( P_data, P_ext_pos, P_min, P_min, P_data_, P_hull_coords_, data_dim, hull_size, dim )
+        #pragma omp parallel for  shared( P_near, P_far, P_ext_pos, P_min, P_min, P_near_, P_far_, P_hull_coords_, near_dim, far_dim, hull_size, dim )
         for( mint i = 0; i < primitive_count; ++i )
         {
             mreal min, max;
             mint j = P_ext_pos[i];
-            for( mint k = 0; k < data_dim; ++k )
+            for( mint k = 0; k < near_dim; ++k )
             {
-                P_data[k][i] = P_data_[ data_dim * j + k];
+                P_near[k][i] = P_near_[ near_dim * j + k];
+            }
+            
+            for( mint k = 0; k < far_dim; ++k )
+            {
+                P_far [k][i] = P_far_ [ far_dim  * j + k];
             }
             
 //            for( mint k = 0; k < moment_count; ++k )
@@ -315,10 +338,10 @@ namespace rsurfaces
 //            scratch[thread] = A_Vector<mreal> ( scratch_size );
 //        }
         
-        C_data = A_Vector<mreal * > ( data_dim, nullptr );
-        for( mint k = 0; k < data_dim; ++ k )
+        C_far = A_Vector<mreal * > ( far_dim, nullptr );
+        for( mint k = 0; k < far_dim; ++ k )
         {
-            C_data[k] = mreal_alloc( cluster_count, 0. );
+            C_far[k] = mreal_alloc( cluster_count, 0. );
         }
         
         C_coords = A_Vector<mreal * > ( dim, nullptr );
@@ -339,11 +362,11 @@ namespace rsurfaces
 //            C_moments[k] = mreal_alloc( cluster_count, 0. );
 //        }
         
-        C_D_data = A_Vector<A_Vector<mreal>> ( thread_count );
+        C_D_far = A_Vector<A_Vector<mreal>> ( thread_count );
         #pragma omp parallel for shared( thread_count ) schedule( static, 1 )
         for( mint thread = 0; thread < thread_count; ++thread )
         {
-            C_D_data[thread] = A_Vector<mreal> ( cluster_count * data_dim );
+            C_D_far[thread] = A_Vector<mreal> ( cluster_count * far_dim );
         }
     //    toc("Allocation");
         
@@ -379,18 +402,18 @@ namespace rsurfaces
             #pragma omp taskwait
 
             //weight
-            mreal L_weight = C_data[0][L];
-            mreal R_weight = C_data[0][R];
+            mreal L_weight = C_far[0][L];
+            mreal R_weight = C_far[0][R];
             mreal C_mass = L_weight + R_weight;
-            C_data[0][C] = C_mass;
+            C_far[0][C] = C_mass;
             
             mreal C_invmass = 1./C_mass;
             L_weight = L_weight * C_invmass;
             R_weight = R_weight * C_invmass;
         
-            for( mint k = 1, last = data_dim; k < last; ++k )
+            for( mint k = 1, last = far_dim; k < last; ++k )
             {
-                C_data[k][C] = L_weight * C_data[k][L]  + R_weight * C_data[k][R] ;
+                C_far[k][C] = L_weight * C_far[k][L]  + R_weight * C_far[k][R] ;
             }
             //clustering coordinates and bounding boxes
             for( mint k = 0, last = dim; k < last; ++k )
@@ -400,8 +423,8 @@ namespace rsurfaces
                 C_max[k][C] = mymax( C_max[k][L], C_max[k][R] );
             }
             
-//            ShiftMoments( L, C_data, C_moments, C, C_data, C_moments, &scratch[thread][0] );
-//            ShiftMoments( R, C_data, C_moments, C, C_data, C_moments, &scratch[thread][0] );
+//            ShiftMoments( L, C_far, C_moments, C, C_far, C_moments, &scratch[thread][0] );
+//            ShiftMoments( R, C_far, C_moments, C, C_far, C_moments, &scratch[thread][0] );
         }
         else
         {
@@ -414,19 +437,19 @@ namespace rsurfaces
             mreal C_mass = 0.;
             for( mint i = begin; i < end; ++i )
             {
-                C_mass += P_data[0][i];
+                C_mass += P_far[0][i];
             }
-            C_data[0][C] = C_mass;
+            C_far[0][C] = C_mass;
             mreal C_invmass = 1./C_mass;
             
             
             // weighting the coordinates
             for( mint i = begin; i < end; ++i )
             {
-                mreal P_weight = P_data[0][i] * C_invmass;
-                for( mint k = 1; k < data_dim; ++k )
+                mreal P_weight = P_far[0][i] * C_invmass;
+                for( mint k = 1; k < far_dim; ++k )
                 {
-                    C_data[k][C] += P_weight * P_data[k][i];
+                    C_far[k][C] += P_weight * P_far[k][i];
                 }
                 for( mint k = 0; k < dim; ++k )
                 {
@@ -437,7 +460,7 @@ namespace rsurfaces
 //            // moments
 //            for( mint i = begin; i < end; ++i )
 //            {
-//                ShiftMoments( i, P_data, P_moments, C, C_data, C_moments, &scratch[thread][0] );
+//                ShiftMoments( i, P_far, P_moments, C, C_far, C_moments, &scratch[thread][0] );
 //            }
             
             // bounding boxes
@@ -524,7 +547,7 @@ namespace rsurfaces
         #pragma omp parallel for
         for( mint i = 0; i < primitive_count; ++i )
         {
-            mreal a = P_data[0][i];
+            mreal a = P_far[0][i];
             for( mint k = 0; k < dim; ++k )
             {
                 mint to = dim * i + k;
@@ -538,7 +561,7 @@ namespace rsurfaces
 
         hi_pre.Transpose( hi_post );
 
-        auto lo_perm = MKLSparseMatrix( primitive_count, primitive_count, C_to_P.outer, P_ext_pos, P_data[0] ); // Copy
+        auto lo_perm = MKLSparseMatrix( primitive_count, primitive_count, C_to_P.outer, P_ext_pos, P_far[0] ); // Copy
 
         lo_perm.Multiply( AvOp, lo_pre );
 
@@ -593,16 +616,22 @@ namespace rsurfaces
         #pragma omp parallel for schedule(static, 1)
         for( mint thread = 0; thread < thread_count; ++thread )
         {
-            mreal * P = &P_D_data[thread][0];
-            mreal * C = &C_D_data[thread][0];
+            mreal * P = &P_D_near[thread][0];
+            mreal * Q = &P_D_far[thread][0];
+            mreal * C = &C_D_far[thread][0];
             
             #pragma omp simd aligned( P : ALIGN )
-            for( mint i = 0; i < primitive_count * data_dim; ++i )
+            for( mint i = 0; i < primitive_count * near_dim; ++i )
             {
                 P[i] = 0.;
             }
             #pragma omp simd aligned( C : ALIGN )
-            for( mint i = 0; i < cluster_count * data_dim; ++i )
+            for( mint i = 0; i < primitive_count * far_dim; ++i )
+            {
+                Q[i] = 0.;
+            }
+            #pragma omp simd aligned( C : ALIGN )
+            for( mint i = 0; i < cluster_count * far_dim; ++i )
             {
                 C[i] = 0.;
             }
@@ -801,114 +830,140 @@ namespace rsurfaces
 //        toc("Post");
     }; // Post
 
-
-void OptimizedClusterTree::CollectDerivatives( mreal * const restrict output )
-{
-    
-    RequireBuffers(data_dim);
-    
-    //    CleanseBuffers();
-    
-    //    tic("Accumulate cluster contributions");
-    #pragma omp parallel for
-    for( mint i = 0; i < primitive_count; ++i )
+    void OptimizedClusterTree::CollectDerivatives( mreal * restrict const P_D_near_output )
     {
-        // I did not find out how this can be really parallelized; P_D_data[thread] seems to be the obstruction.
-        //        #pragma omp simd aligned( P_out : ALIGN )
-        for( mint k = 0; k < data_dim; ++k )
+        //    tic("Accumulate primitive contributions");
+        #pragma omp parallel for num_threads( thread_count )
+        for( mint i = 0; i < primitive_count; ++i )
         {
-            mreal acc = 0.;
-            for( mint thread = 0; thread < thread_count; ++thread )
+            mint j = inverse_ordering[i];
+            // I did not find out how this can be really parallelized; P_D_near[thread] seems to be the obstruction.
+            //        #pragma omp simd aligned( P_out : ALIGN )
+            for( mint k = 0; k < near_dim; ++k )
             {
-                acc += P_D_data[thread][ data_dim * i + k ];
+                mreal acc = 0.;
+                for( mint thread = 0; thread < thread_count; ++thread )
+                {
+                    acc += P_D_near[thread][ near_dim * j + k ];
+                }
+                P_D_near_output[ near_dim * i + k ] = acc;
             }
-            P_out[ data_dim * i + k ] = acc;
         }
-    }
-    //    toc("Accumulate cluster contributions");
-    
-    //    tic("Accumulate primitive contributions");
-    #pragma omp parallel for
-    for( mint i = 0; i < cluster_count; ++i )
-    {
-        // I did not find out how this can be really parallelized; C_D_data[thread] seems to be the obstruction.
-        //        #pragma omp simd aligned( C_out : ALIGN )
-        for( mint k = 0; k < data_dim; ++k )
-        {
-            mreal acc = 0.;
-            for( mint thread = 0; thread < thread_count; ++thread )
-            {
-                acc += C_D_data[thread][ data_dim * i + k ];
-            }
-            C_out[ data_dim * i + k ]  = acc;
-        }
-    }
-    //    toc("Accumulate primitive contributions");
-    
-    //    tic("PercolateDown");
-    PercolateDown(0, thread_count );
-    //    toc("PercolateDown");
-    
-    //    tic("C_to_P.");
-    C_to_P.Multiply( C_out, P_out, data_dim, true);    // true -> add-into
-    //    toc("C_to_P.");
-    
-    //    tic("Reorder and copy to output");
-    #pragma omp parallel for
-    for( mint i = 0; i < primitive_count; ++i )
-    {
-        mint j = inverse_ordering[i];
+        //    toc("Accumulate primitive contributions");
         
-        #pragma omp simd aligned( P_out, output : ALIGN )
-        for( mint k = 0; k < data_dim; ++k )
-        {
-            output[ data_dim * i + k ] = P_out[ data_dim * j + k ];
-        }
-    }
-    //    toc("Reorder and copy to output");
+    } // CollectDerivatives
     
-} // CollectDerivatives
+    void OptimizedClusterTree::CollectDerivatives( mreal * restrict const P_D_near_output, mreal * restrict const P_D_far_output )
+    {
+        //    tic("Accumulate primitive contributions");
+        #pragma omp parallel for num_threads( thread_count )
+        for( mint i = 0; i < primitive_count; ++i )
+        {
+            mint j = inverse_ordering[i];
+            // I did not find out how this can be really parallelized; P_D_near[thread] seems to be the obstruction.
+            //        #pragma omp simd aligned( P_out : ALIGN )
+            for( mint k = 0; k < near_dim; ++k )
+            {
+                mreal acc = 0.;
+                for( mint thread = 0; thread < thread_count; ++thread )
+                {
+                    acc += P_D_near[thread][ near_dim * j + k ];
+                }
+                P_D_near_output[ near_dim * i + k ] = acc;
+            }
+        }
+        //    toc("Accumulate primitive contributions");
+        
+        RequireBuffers(far_dim);
+
+        //    tic("Accumulate cluster contributions");
+        #pragma omp parallel for num_threads( thread_count )
+        for( mint i = 0; i < cluster_count; ++i )
+        {
+            // I did not find out how this can be really parallelized; C_D_data[thread] seems to be the obstruction.
+            //        #pragma omp simd aligned( C_out : ALIGN )
+            for( mint k = 0; k < far_dim; ++k )
+            {
+                mreal acc = 0.;
+                for( mint thread = 0; thread < thread_count; ++thread )
+                {
+                    acc += C_D_far[thread][ far_dim * i + k ];
+                }
+                C_out[ far_dim * i + k ]  = acc;
+            }
+        }
+        //    toc("Accumulate cluster contributions");
+        
+        //    tic("PercolateDown");
+        PercolateDown(0, thread_count );
+        //    toc("PercolateDown");
+        
+        //    tic("C_to_P.");
+        C_to_P.Multiply( C_out, P_out, far_dim, false);
+        //    toc("C_to_P.");
+        
+        //    tic("Reorder and copy to output");
+        #pragma omp parallel for num_threads( thread_count )
+        for( mint i = 0; i < primitive_count; ++i )
+        {
+            mint j = inverse_ordering[i];
+            
+            #pragma omp simd aligned( P_out, P_D_far_output : ALIGN )
+            for( mint k = 0; k < far_dim; ++k )
+            {
+                P_D_far_output[ far_dim * i + k ] = P_out[ far_dim * j + k ];
+            }
+        }
+        //    toc("Reorder and copy to output");
+        
+    } // CollectDerivatives
 
 
-void OptimizedClusterTree::SemiStaticUpdate( const mreal * const restrict P_data_ ){
+void OptimizedClusterTree::SemiStaticUpdate( const mreal * restrict const P_near_, const mreal * restrict const P_far_ ){
     // Updates only the computational data like primitive/cluster areas, centers of mass and normals. All data related to clustering or multipole acceptance criteria remain are unchanged.
     
-    RequireBuffers( data_dim );
+    RequireBuffers( far_dim );
     
-    #pragma omp parallel for shared( P_data, P_ext_pos, P_data_, P_in, data_dim )
+    #pragma omp parallel for shared( P_near, P_far , P_ext_pos, P_near_, P_far_, P_in, near_dim, far_dim )
     for( mint i = 0; i < primitive_count; ++i )
     {
         mint j = P_ext_pos[i];
-        for( mint k = 0; k < data_dim; ++k )
+        
+        for( mint k = 0; k < near_dim; ++k )
         {
-            P_data[k][i] = P_data_[ data_dim * j + k];
+            P_near[k][i] = P_near_[ near_dim * j + k];
+        }
+        
+        for( mint k = 0; k < far_dim; ++k )
+        {
+            P_far[k][i] = P_far_[ far_dim * j + k];
         }
         
         //store 0-th moments in the primitive input buffer so that we can use P_to_C and PercolateUp.
-        mreal a = P_data_[ data_dim * j];
-        P_in[ data_dim * i] = a;
-        for( mint k = 1; k < data_dim; ++k )
+        mreal a = P_far_[ far_dim * j];
+        P_in[ far_dim * i] = a;
+        for( mint k = 1; k < far_dim; ++k )
         {
-            P_in[ data_dim * i + k] = a * P_data_[ data_dim * j + k];
+            P_in[far_dim * i + k] = a * P_far_[far_dim * j + k];
         }
     }
     
     // accumulate primitive input buffers in leaf clusters
-    P_to_C.Multiply(P_in, C_in, data_dim);
+    P_to_C.Multiply(P_in, C_in, far_dim);
     
     // upward pass, obviously
     PercolateUp( 0, thread_count );
     
-    // finally divide center and normal moments by area and store the result in C_data
-    #pragma omp parallel for shared( C_data, C_in, data_dim )
+    // finally divide center and normal moments by area and store the result in C_far
+    #pragma omp parallel for shared( C_far, C_in, far_dim )
     for( mint i = 0; i < cluster_count; ++i )
     {
-        mreal a = C_in[ data_dim * i];
-        C_data[0][i] = a;
+        mreal a = C_in[ far_dim * i];
+        C_far[0][i] = a;
         mreal ainv = 1./a;
-        for( mint k = 1; k < data_dim; ++k )
+        for( mint k = 1; k < far_dim; ++k )
         {
-            C_data[k][i] = ainv * C_in[ data_dim * i + k];
+            C_far[k][i] = ainv * C_in[ far_dim * i + k];
         }
     }
     

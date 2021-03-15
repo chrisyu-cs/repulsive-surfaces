@@ -4,104 +4,6 @@
 namespace rsurfaces
 {
 
-    // Returns the current value of the energy.
-    double TPEnergyAllPairs::Value()
-    {
-        
-        if( use_int )
-        {
-            mint int_alpha = std::round(alpha);
-            mint int_betahalf = std::round(beta/2);
-            return weight * Energy( int_alpha, int_betahalf );
-        }
-        else
-        {
-            mreal real_alpha = alpha;
-            mreal real_betahalf = beta/2;
-            return weight * Energy( real_alpha, real_betahalf );
-        }
-    } // Value
-
-    // Returns the current differential of the energy, stored in the given
-    // V x 3 matrix, where each row holds the differential (a 3-vector) with
-    // respect to the corresponding vertex.
-    void TPEnergyAllPairs::Differential(Eigen::MatrixXd &output)
-    {
-        if( bvh->data_dim != 7)
-        {
-            eprint("in TPEnergyAllPairs::Differential: data_dim != 7");
-        }
-        
-        EigenMatrixRM P_D_data ( bvh->primitive_count, bvh->data_dim );
-        
-        bvh->CleanseD();
-        
-        if( use_int )
-        {
-            mint int_alpha = std::round(alpha);
-            mint int_betahalf = std::round(beta/2);
-            DEnergy( int_alpha, int_betahalf );
-            
-        }
-        else
-        {
-            mreal real_alpha = alpha;
-            mreal real_betahalf = beta/2;
-            DEnergy( real_alpha, real_betahalf );
-        }
-        
-        bvh->CollectDerivatives( P_D_data.data() );
-    
-        AssembleDerivativeFromACNData( mesh, geom, P_D_data, output, weight );
-        
-    } // Differential
-
-
-    // Update the energy to reflect the current state of the mesh. This could
-    // involve building a new BVH for Barnes-Hut energies, for instance.
-    void TPEnergyAllPairs::Update()
-    {
-        if (bvh)
-        {
-            delete bvh;
-        }
-        
-        bvh = CreateOptimizedBVH(mesh, geom);
-    }
-
-    // Get the mesh associated with this energy.
-    MeshPtr TPEnergyAllPairs::GetMesh()
-    {
-        return mesh;
-    }
-
-    // Get the geometry associated with this geometry.
-    GeomPtr TPEnergyAllPairs::GetGeom()
-    {
-        return geom;
-    }
-
-    // Get the exponents of this energy; only applies to tangent-point energies.
-    Vector2 TPEnergyAllPairs::GetExponents()
-    {
-        return Vector2{alpha, beta};
-    }
-
-    // Get a pointer to the current BVH for this energy.
-    // Return 0 if the energy doesn't use a BVH.
-    OptimizedClusterTree *TPEnergyAllPairs::GetBVH()
-    {
-        return 0;
-    }
-
-    // Return the separation parameter for this energy.
-    // Return 0 if this energy doesn't do hierarchical approximation.
-    double TPEnergyAllPairs::GetTheta()
-    {
-        return 0.;
-    }
-
-
     template<typename T1, typename T2>
     mreal TPEnergyAllPairs::Energy(T1 alpha, T2 betahalf)
     {
@@ -112,22 +14,22 @@ namespace rsurfaces
         mint n = bvh->primitive_count;
         mint nthreads = bvh->thread_count;
         
-        // Dunno why "restrict" helps with P_data. It is actually a lie here.
-        mreal const * const restrict A  = bvh->P_data[0];
-        mreal const * const restrict X1 = bvh->P_data[1];
-        mreal const * const restrict X2 = bvh->P_data[2];
-        mreal const * const restrict X3 = bvh->P_data[3];
-        mreal const * const restrict N1 = bvh->P_data[4];
-        mreal const * const restrict N2 = bvh->P_data[5];
-        mreal const * const restrict N3 = bvh->P_data[6];
+        // Dunno why "restrict" helps with P_near. It is actually a lie here.
+        mreal const * restrict const A  = bvh->P_near[0];
+        mreal const * restrict const X1 = bvh->P_near[1];
+        mreal const * restrict const X2 = bvh->P_near[2];
+        mreal const * restrict const X3 = bvh->P_near[3];
+        mreal const * restrict const N1 = bvh->P_near[4];
+        mreal const * restrict const N2 = bvh->P_near[5];
+        mreal const * restrict const N3 = bvh->P_near[6];
         
-        mreal const * const restrict B  = bvh->P_data[0];
-        mreal const * const restrict Y1 = bvh->P_data[1];
-        mreal const * const restrict Y2 = bvh->P_data[2];
-        mreal const * const restrict Y3 = bvh->P_data[3];
-        mreal const * const restrict M1 = bvh->P_data[4];
-        mreal const * const restrict M2 = bvh->P_data[5];
-        mreal const * const restrict M3 = bvh->P_data[6];
+        mreal const * restrict const B  = bvh->P_near[0];
+        mreal const * restrict const Y1 = bvh->P_near[1];
+        mreal const * restrict const Y2 = bvh->P_near[2];
+        mreal const * restrict const Y3 = bvh->P_near[3];
+        mreal const * restrict const M1 = bvh->P_near[4];
+        mreal const * restrict const M2 = bvh->P_near[5];
+        mreal const * restrict const M3 = bvh->P_near[6];
         
         mreal sum = 0.;
         #pragma omp parallel for num_threads( nthreads ) reduction( + : sum)
@@ -181,34 +83,32 @@ namespace rsurfaces
 
         mint n = bvh->primitive_count;
         
-        mint data_dim = bvh->data_dim;
         mint nthreads = bvh->thread_count;
         
-        // Dunno why "restrict" helps with P_data. It is actually a lie here.
-        mreal const * const restrict A  = bvh->P_data[0];
-        mreal const * const restrict X1 = bvh->P_data[1];
-        mreal const * const restrict X2 = bvh->P_data[2];
-        mreal const * const restrict X3 = bvh->P_data[3];
-        mreal const * const restrict N1 = bvh->P_data[4];
-        mreal const * const restrict N2 = bvh->P_data[5];
-        mreal const * const restrict N3 = bvh->P_data[6];
+        // Dunno why "restrict" helps with P_near. It is actually a lie here.
+        mreal const * restrict const A  = bvh->P_near[0];
+        mreal const * restrict const X1 = bvh->P_near[1];
+        mreal const * restrict const X2 = bvh->P_near[2];
+        mreal const * restrict const X3 = bvh->P_near[3];
+        mreal const * restrict const N1 = bvh->P_near[4];
+        mreal const * restrict const N2 = bvh->P_near[5];
+        mreal const * restrict const N3 = bvh->P_near[6];
         
-        mreal const * const restrict B  = bvh->P_data[0];
-        mreal const * const restrict Y1 = bvh->P_data[1];
-        mreal const * const restrict Y2 = bvh->P_data[2];
-        mreal const * const restrict Y3 = bvh->P_data[3];
-        mreal const * const restrict M1 = bvh->P_data[4];
-        mreal const * const restrict M2 = bvh->P_data[5];
-        mreal const * const restrict M3 = bvh->P_data[6];
+        mreal const * restrict const B  = bvh->P_near[0];
+        mreal const * restrict const Y1 = bvh->P_near[1];
+        mreal const * restrict const Y2 = bvh->P_near[2];
+        mreal const * restrict const Y3 = bvh->P_near[3];
+        mreal const * restrict const M1 = bvh->P_near[4];
+        mreal const * restrict const M2 = bvh->P_near[5];
+        mreal const * restrict const M3 = bvh->P_near[6];
         
         #pragma omp parallel for num_threads( nthreads ) reduction( +: sum )
         for( mint i = 0; i < n ; ++i )
         {
-            
             mint thread = omp_get_thread_num();
             
-            mreal * const restrict U = &bvh->P_D_data[thread][0];
-            mreal * const restrict V = &bvh->P_D_data[thread][0];
+            mreal * restrict const U = &bvh->P_D_near[thread][0];
+            mreal * restrict const V = &bvh->P_D_near[thread][0];
             
             mreal  a = A [i];
             mreal x1 = X1[i];
@@ -284,15 +184,15 @@ namespace rsurfaces
                            H * ( v1 * x1 + v2 * x2 + v3 * x3 )
                            );
                 
-                V[ data_dim * j ] += a * (
-                                          density
-                                          -
-                                          F * ( n1 * y1 + n2 * y2 + n3 * y3 )
-                                          -
-                                          G * ( m1 * (y1 + v1) + m2 * (y2 + v2) + m3 * (y3 + v3) )
-                                          +
-                                          H * ( v1 * y1 + v2 * y2 + v3 * y3 )
-                                          );
+                V[ 7 * j ] += a * (
+                                   density
+                                   -
+                                   F * ( n1 * y1 + n2 * y2 + n3 * y3 )
+                                   -
+                                   G * ( m1 * (y1 + v1) + m2 * (y2 + v2) + m3 * (y3 + v3) )
+                                   +
+                                   H * ( v1 * y1 + v2 * y2 + v3 * y3 )
+                                   );
                 
                 dx1 += b  * Z1;
                 dx2 += b  * Z2;
@@ -301,26 +201,123 @@ namespace rsurfaces
                 dn2 += bF * v2;
                 dn3 += bF * v3;
                 
-                V[ data_dim * j + 1 ] -= a  * Z1;
-                V[ data_dim * j + 2 ] -= a  * Z2;
-                V[ data_dim * j + 3 ] -= a  * Z3;
-                V[ data_dim * j + 4 ] += aG * v1;
-                V[ data_dim * j + 5 ] += aG * v2;
-                V[ data_dim * j + 6 ] += aG * v3;
+                V[ 7 * j + 1 ] -= a  * Z1;
+                V[ 7 * j + 2 ] -= a  * Z2;
+                V[ 7 * j + 3 ] -= a  * Z3;
+                V[ 7 * j + 4 ] += aG * v1;
+                V[ 7 * j + 5 ] += aG * v2;
+                V[ 7 * j + 6 ] += aG * v3;
             }// for( mint j = begin; j < T_n; ++j )
             
             sum += i_sum;
             
-            U[ data_dim * i     ] +=  da;
-            U[ data_dim * i + 1 ] += dx1;
-            U[ data_dim * i + 2 ] += dx2;
-            U[ data_dim * i + 3 ] += dx3;
-            U[ data_dim * i + 4 ] += dn1;
-            U[ data_dim * i + 5 ] += dn2;
-            U[ data_dim * i + 6 ] += dn3;
+            U[ 7 * i     ] +=  da;
+            U[ 7 * i + 1 ] += dx1;
+            U[ 7 * i + 2 ] += dx2;
+            U[ 7 * i + 3 ] += dx3;
+            U[ 7 * i + 4 ] += dn1;
+            U[ 7 * i + 5 ] += dn2;
+            U[ 7 * i + 6 ] += dn3;
             
         }// for( mint i = 0; i < S_n ; ++i )
         return sum;
     }; //DEnergy
+    
+    // Returns the current value of the energy.
+    double TPEnergyAllPairs::Value()
+    {
+        
+        if( use_int )
+        {
+            mint int_alpha = std::round(alpha);
+            mint int_betahalf = std::round(beta/2);
+            return weight * Energy( int_alpha, int_betahalf );
+        }
+        else
+        {
+            mreal real_alpha = alpha;
+            mreal real_betahalf = beta/2;
+            return weight * Energy( real_alpha, real_betahalf );
+        }
+    } // Value
+
+    // Returns the current differential of the energy, stored in the given
+    // V x 3 matrix, where each row holds the differential (a 3-vector) with
+    // respect to the corresponding vertex.
+    void TPEnergyAllPairs::Differential(Eigen::MatrixXd &output)
+    {
+        if( bvh->near_dim != 7)
+        {
+            eprint("in TPEnergyAllPairs::Differential: near_dim != 7");
+        }
+        
+        bvh->CleanseD();
+        
+        if( use_int )
+        {
+            mint int_alpha = std::round(alpha);
+            mint int_betahalf = std::round(beta/2);
+            DEnergy( int_alpha, int_betahalf );
+            
+        }
+        else
+        {
+            mreal real_alpha = alpha;
+            mreal real_betahalf = beta/2;
+            DEnergy( real_alpha, real_betahalf );
+        }
+        
+        EigenMatrixRM P_D_near( bvh->primitive_count, bvh->near_dim );
+        
+        bvh->CollectDerivatives( P_D_near.data() );
+    
+        AssembleDerivativeFromACNData( mesh, geom, P_D_near, output, weight );
+        
+    } // Differential
+
+
+    // Update the energy to reflect the current state of the mesh. This could
+    // involve building a new BVH for Barnes-Hut energies, for instance.
+    void TPEnergyAllPairs::Update()
+    {
+        if (bvh)
+        {
+            delete bvh;
+        }
+        
+        bvh = CreateOptimizedBVH(mesh, geom);
+    }
+
+    // Get the mesh associated with this energy.
+    MeshPtr TPEnergyAllPairs::GetMesh()
+    {
+        return mesh;
+    }
+
+    // Get the geometry associated with this geometry.
+    GeomPtr TPEnergyAllPairs::GetGeom()
+    {
+        return geom;
+    }
+
+    // Get the exponents of this energy; only applies to tangent-point energies.
+    Vector2 TPEnergyAllPairs::GetExponents()
+    {
+        return Vector2{alpha, beta};
+    }
+
+    // Get a pointer to the current BVH for this energy.
+    // Return 0 if the energy doesn't use a BVH.
+    OptimizedClusterTree *TPEnergyAllPairs::GetBVH()
+    {
+        return 0;
+    }
+
+    // Return the separation parameter for this energy.
+    // Return 0 if this energy doesn't do hierarchical approximation.
+    double TPEnergyAllPairs::GetTheta()
+    {
+        return 0.;
+    }
 
 } // namespace rsurfaces

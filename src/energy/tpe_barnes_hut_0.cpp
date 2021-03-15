@@ -13,35 +13,35 @@ namespace rsurfaces
         
         mint nthreads = bvh->thread_count;
         
-        // Dunno why "restrict" helps with P_data. It is actually a lie here when S = T.
-        mreal const * const restrict P_A  = bvh->P_data[0];
-        mreal const * const restrict P_X1 = bvh->P_data[1];
-        mreal const * const restrict P_X2 = bvh->P_data[2];
-        mreal const * const restrict P_X3 = bvh->P_data[3];
-        mreal const * const restrict P_N1 = bvh->P_data[4];
-        mreal const * const restrict P_N2 = bvh->P_data[5];
-        mreal const * const restrict P_N3 = bvh->P_data[6];
+        // Dunno why "restrict" helps with P_near. It is actually a lie here when S = T.
+        mreal const * restrict const P_A  = bvh->P_near[0];
+        mreal const * restrict const P_X1 = bvh->P_near[1];
+        mreal const * restrict const P_X2 = bvh->P_near[2];
+        mreal const * restrict const P_X3 = bvh->P_near[3];
+        mreal const * restrict const P_N1 = bvh->P_near[4];
+        mreal const * restrict const P_N2 = bvh->P_near[5];
+        mreal const * restrict const P_N3 = bvh->P_near[6];
 
-        mreal const * const restrict C_min1 = bvh->C_min[0];
-        mreal const * const restrict C_min2 = bvh->C_min[1];
-        mreal const * const restrict C_min3 = bvh->C_min[2];
+        mreal const * restrict const C_min1 = bvh->C_min[0];
+        mreal const * restrict const C_min2 = bvh->C_min[1];
+        mreal const * restrict const C_min3 = bvh->C_min[2];
         
-        mreal const * const restrict C_max1 = bvh->C_max[0];
-        mreal const * const restrict C_max2 = bvh->C_max[1];
-        mreal const * const restrict C_max3 = bvh->C_max[2];
+        mreal const * restrict const C_max1 = bvh->C_max[0];
+        mreal const * restrict const C_max2 = bvh->C_max[1];
+        mreal const * restrict const C_max3 = bvh->C_max[2];
         
-        mreal const * const restrict C_A  = bvh->C_data[0];
-        mreal const * const restrict C_X1 = bvh->C_data[1];
-        mreal const * const restrict C_X2 = bvh->C_data[2];
-        mreal const * const restrict C_X3 = bvh->C_data[3];
+        mreal const * restrict const C_A  = bvh->C_far[0];
+        mreal const * restrict const C_X1 = bvh->C_far[1];
+        mreal const * restrict const C_X2 = bvh->C_far[2];
+        mreal const * restrict const C_X3 = bvh->C_far[3];
 
-        mint  const * const restrict C_left  = bvh->C_left;
-        mint  const * const restrict C_right = bvh->C_right;
-        mint  const * const restrict C_begin = bvh->C_begin;
-        mint  const * const restrict C_end   = bvh->C_end;
-        mreal const * const restrict C_r2    = bvh->C_squared_radius;
+        mint  const * restrict const C_left  = bvh->C_left;
+        mint  const * restrict const C_right = bvh->C_right;
+        mint  const * restrict const C_begin = bvh->C_begin;
+        mint  const * restrict const C_end   = bvh->C_end;
+        mreal const * restrict const C_r2    = bvh->C_squared_radius;
         
-        mint  const * const restrict leaf = bvh->leaf_clusters;
+        mint  const * restrict const leaf = bvh->leaf_clusters;
         
         A_Vector<A_Vector<mint>> thread_stack ( nthreads );
         
@@ -190,36 +190,36 @@ namespace rsurfaces
         
         mint nthreads = bvh->thread_count;
         
-        // Dunno why "restrict" helps with P_data. It is actually a lie here when S = T.
-        mreal const * const restrict P_A  = bvh->P_data[0];
-        mreal const * const restrict P_X1 = bvh->P_data[1];
-        mreal const * const restrict P_X2 = bvh->P_data[2];
-        mreal const * const restrict P_X3 = bvh->P_data[3];
-        mreal const * const restrict P_N1 = bvh->P_data[4];
-        mreal const * const restrict P_N2 = bvh->P_data[5];
-        mreal const * const restrict P_N3 = bvh->P_data[6];
+        // Dunno why "restrict" helps with P_near. It is actually a lie here when S = T.
+        mreal const * restrict const P_A  = bvh->P_near[0];
+        mreal const * restrict const P_X1 = bvh->P_near[1];
+        mreal const * restrict const P_X2 = bvh->P_near[2];
+        mreal const * restrict const P_X3 = bvh->P_near[3];
+        mreal const * restrict const P_N1 = bvh->P_near[4];
+        mreal const * restrict const P_N2 = bvh->P_near[5];
+        mreal const * restrict const P_N3 = bvh->P_near[6];
 
-        mreal const * const restrict C_min1 = bvh->C_min[0];
-        mreal const * const restrict C_min2 = bvh->C_min[1];
-        mreal const * const restrict C_min3 = bvh->C_min[2];
+        mreal const * restrict const C_min1 = bvh->C_min[0];
+        mreal const * restrict const C_min2 = bvh->C_min[1];
+        mreal const * restrict const C_min3 = bvh->C_min[2];
         
-        mreal const * const restrict C_max1 = bvh->C_max[0];
-        mreal const * const restrict C_max2 = bvh->C_max[1];
-        mreal const * const restrict C_max3 = bvh->C_max[2];
+        mreal const * restrict const C_max1 = bvh->C_max[0];
+        mreal const * restrict const C_max2 = bvh->C_max[1];
+        mreal const * restrict const C_max3 = bvh->C_max[2];
         
-        mreal const * const restrict C_A  = bvh->C_data[0];
-        mreal const * const restrict C_X1 = bvh->C_data[1];
-        mreal const * const restrict C_X2 = bvh->C_data[2];
-        mreal const * const restrict C_X3 = bvh->C_data[3];
+        mreal const * restrict const C_A  = bvh->C_far[0];
+        mreal const * restrict const C_X1 = bvh->C_far[1];
+        mreal const * restrict const C_X2 = bvh->C_far[2];
+        mreal const * restrict const C_X3 = bvh->C_far[3];
 
         
-        mint  const * const restrict C_left  = bvh->C_left;
-        mint  const * const restrict C_right = bvh->C_right;
-        mint  const * const restrict C_begin = bvh->C_begin;
-        mint  const * const restrict C_end   = bvh->C_end;
-        mreal const * const restrict C_r2    = bvh->C_squared_radius;
+        mint  const * restrict const C_left  = bvh->C_left;
+        mint  const * restrict const C_right = bvh->C_right;
+        mint  const * restrict const C_begin = bvh->C_begin;
+        mint  const * restrict const C_end   = bvh->C_end;
+        mreal const * restrict const C_r2    = bvh->C_squared_radius;
         
-        mint  const * const restrict leaf = bvh->leaf_clusters;
+        mint  const * restrict const leaf = bvh->leaf_clusters;
         
         A_Vector<A_Vector<mint>> thread_stack ( nthreads );
         
@@ -230,8 +230,8 @@ namespace rsurfaces
             
             A_Vector<mint> * stack = &thread_stack[thread];
             
-            mreal * const restrict P_U = &bvh->P_D_data[thread][0];
-            mreal * const restrict C_U = &bvh->C_D_data[thread][0];
+            mreal * restrict const P_U = &bvh->P_D_near[thread][0];
+            mreal * restrict const C_U = &bvh->C_D_far[thread][0];
             
             stack->clear();
             stack->push_back(0);
@@ -456,12 +456,19 @@ namespace rsurfaces
 
     void TPEnergyBarnesHut0::Differential( Eigen::MatrixXd &output )
     {
-        if( bvh->data_dim != 7)
+        if( bvh->near_dim != 7)
         {
-            eprint("in TPEnergyBarnesHut0::Differential: data_dim != 7");
+            eprint("in TPEnergyBarnesHut0::Differential: near_dim != 7");
+            valprint("bvh->near_dim",bvh->near_dim);
+        }
+        if( bvh->far_dim != 7)
+        {
+            eprint("in TPEnergyBarnesHut0::Differential: far_dim != 7");
+            valprint("bvh->far_dim",bvh->far_dim);
         }
         
-        EigenMatrixRM P_D_data ( bvh->primitive_count, bvh->data_dim );
+        EigenMatrixRM P_D_near( bvh->primitive_count, bvh->near_dim );
+        EigenMatrixRM P_D_far ( bvh->primitive_count, bvh->far_dim );
 
         bvh->CleanseD();
 
@@ -479,9 +486,10 @@ namespace rsurfaces
             DEnergy( real_alpha, real_betahalf );
         }
         
-        bvh->CollectDerivatives( P_D_data.data() );
-        
-        AssembleDerivativeFromACNData( mesh, geom, P_D_data, output, weight );
+        bvh->CollectDerivatives( P_D_near.data(), P_D_far.data() );
+                
+        AssembleDerivativeFromACNData( mesh, geom, P_D_near, output, weight );
+        AssembleDerivativeFromACNData( mesh, geom, P_D_far, output, weight );
         
     } // Differential
     

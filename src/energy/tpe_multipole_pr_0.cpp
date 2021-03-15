@@ -15,29 +15,29 @@ namespace rsurfaces
         mint  const * restrict const b_inner = bct->far->b_inner;
         mint nthreads = std::min( S->thread_count, T->thread_count);
         
-        // Dunno why "restrict" helps with P_data. It is actually a lie here when S = T.
+        // Dunno why "restrict" helps with P_near. It is actually a lie here when S = T.
         // Well, it isn't in the far field, because no cluster may interact with itself...
-        mreal const * restrict const A  = S->C_data[0];
-        mreal const * restrict const X1 = S->C_data[1];
-        mreal const * restrict const X2 = S->C_data[2];
-        mreal const * restrict const X3 = S->C_data[3];
-        mreal const * restrict const P11 = S->C_data[4];
-        mreal const * restrict const P12 = S->C_data[5];
-        mreal const * restrict const P13 = S->C_data[6];
-        mreal const * restrict const P22 = S->C_data[7];
-        mreal const * restrict const P23 = S->C_data[8];
-        mreal const * restrict const P33 = S->C_data[9];
+        mreal const * restrict const A  = S->C_far[0];
+        mreal const * restrict const X1 = S->C_far[1];
+        mreal const * restrict const X2 = S->C_far[2];
+        mreal const * restrict const X3 = S->C_far[3];
+        mreal const * restrict const P11 = S->C_far[4];
+        mreal const * restrict const P12 = S->C_far[5];
+        mreal const * restrict const P13 = S->C_far[6];
+        mreal const * restrict const P22 = S->C_far[7];
+        mreal const * restrict const P23 = S->C_far[8];
+        mreal const * restrict const P33 = S->C_far[9];
         
-        mreal const * restrict const B  = T->C_data[0];
-        mreal const * restrict const Y1 = T->C_data[1];
-        mreal const * restrict const Y2 = T->C_data[2];
-        mreal const * restrict const Y3 = T->C_data[3];
-        mreal const * restrict const Q11 = T->C_data[4];
-        mreal const * restrict const Q12 = T->C_data[5];
-        mreal const * restrict const Q13 = T->C_data[6];
-        mreal const * restrict const Q22 = T->C_data[7];
-        mreal const * restrict const Q23 = T->C_data[8];
-        mreal const * restrict const Q33 = T->C_data[9];
+        mreal const * restrict const B  = T->C_far[0];
+        mreal const * restrict const Y1 = T->C_far[1];
+        mreal const * restrict const Y2 = T->C_far[2];
+        mreal const * restrict const Y3 = T->C_far[3];
+        mreal const * restrict const Q11 = T->C_far[4];
+        mreal const * restrict const Q12 = T->C_far[5];
+        mreal const * restrict const Q13 = T->C_far[6];
+        mreal const * restrict const Q22 = T->C_far[7];
+        mreal const * restrict const Q23 = T->C_far[8];
+        mreal const * restrict const Q33 = T->C_far[9];
         
         mreal sum = 0.;
         
@@ -109,28 +109,28 @@ namespace rsurfaces
         mint  const * restrict const b_outer   = bct->near->b_outer;
         mint  const * restrict const b_inner   = bct->near->b_inner;
         
-        // Dunno why "restrict" helps with P_data. It is actually a lie here.
-        mreal const * restrict const A  = S->P_data[0];
-        mreal const * restrict const X1 = S->P_data[1];
-        mreal const * restrict const X2 = S->P_data[2];
-        mreal const * restrict const X3 = S->P_data[3];
-        mreal const * restrict const P11 = S->P_data[4];
-        mreal const * restrict const P12 = S->P_data[5];
-        mreal const * restrict const P13 = S->P_data[6];
-        mreal const * restrict const P22 = S->P_data[7];
-        mreal const * restrict const P23 = S->P_data[8];
-        mreal const * restrict const P33 = S->P_data[9];
+        // Dunno why "restrict" helps with P_near. It is actually a lie here.
+        mreal const * restrict const A  = S->P_near[0];
+        mreal const * restrict const X1 = S->P_near[1];
+        mreal const * restrict const X2 = S->P_near[2];
+        mreal const * restrict const X3 = S->P_near[3];
+        mreal const * restrict const P11 = S->P_near[4];
+        mreal const * restrict const P12 = S->P_near[5];
+        mreal const * restrict const P13 = S->P_near[6];
+        mreal const * restrict const P22 = S->P_near[7];
+        mreal const * restrict const P23 = S->P_near[8];
+        mreal const * restrict const P33 = S->P_near[9];
         
-        mreal const * restrict const B  = T->P_data[0];
-        mreal const * restrict const Y1 = T->P_data[1];
-        mreal const * restrict const Y2 = T->P_data[2];
-        mreal const * restrict const Y3 = T->P_data[3];
-        mreal const * restrict const Q11 = T->P_data[4];
-        mreal const * restrict const Q12 = T->P_data[5];
-        mreal const * restrict const Q13 = T->P_data[6];
-        mreal const * restrict const Q22 = T->P_data[7];
-        mreal const * restrict const Q23 = T->P_data[8];
-        mreal const * restrict const Q33 = T->P_data[9];
+        mreal const * restrict const B  = T->P_near[0];
+        mreal const * restrict const Y1 = T->P_near[1];
+        mreal const * restrict const Y2 = T->P_near[2];
+        mreal const * restrict const Y3 = T->P_near[3];
+        mreal const * restrict const Q11 = T->P_near[4];
+        mreal const * restrict const Q12 = T->P_near[5];
+        mreal const * restrict const Q13 = T->P_near[6];
+        mreal const * restrict const Q22 = T->P_near[7];
+        mreal const * restrict const Q23 = T->P_near[8];
+        mreal const * restrict const Q33 = T->P_near[9];
         
         mreal sum = 0.;
         #pragma omp parallel for num_threads( nthreads ) reduction( + : sum)
@@ -214,43 +214,42 @@ namespace rsurfaces
         auto T = bct->T;
 
         mint b_m = bct->far->b_m;
-        mint data_dim = std::min( S->data_dim, T->data_dim);
         mint nthreads = std::min( S->thread_count, T->thread_count);
         
         mint  const * restrict const b_outer = bct->far->b_outer;
         mint  const * restrict const b_inner = bct->far->b_inner;
         
         
-        // Dunno why "restrict" helps with C_data. It is actually a lie here.
-        mreal const * restrict const A  = S->C_data[0];
-        mreal const * restrict const X1 = S->C_data[1];
-        mreal const * restrict const X2 = S->C_data[2];
-        mreal const * restrict const X3 = S->C_data[3];
-        mreal const * restrict const P11 = S->C_data[4];
-        mreal const * restrict const P12 = S->C_data[5];
-        mreal const * restrict const P13 = S->C_data[6];
-        mreal const * restrict const P22 = S->C_data[7];
-        mreal const * restrict const P23 = S->C_data[8];
-        mreal const * restrict const P33 = S->C_data[9];
+        // Dunno why "restrict" helps with C_far. It is actually a lie here.
+        mreal const * restrict const A  = S->C_far[0];
+        mreal const * restrict const X1 = S->C_far[1];
+        mreal const * restrict const X2 = S->C_far[2];
+        mreal const * restrict const X3 = S->C_far[3];
+        mreal const * restrict const P11 = S->C_far[4];
+        mreal const * restrict const P12 = S->C_far[5];
+        mreal const * restrict const P13 = S->C_far[6];
+        mreal const * restrict const P22 = S->C_far[7];
+        mreal const * restrict const P23 = S->C_far[8];
+        mreal const * restrict const P33 = S->C_far[9];
         
-        mreal const * restrict const B  = T->C_data[0];
-        mreal const * restrict const Y1 = T->C_data[1];
-        mreal const * restrict const Y2 = T->C_data[2];
-        mreal const * restrict const Y3 = T->C_data[3];
-        mreal const * restrict const Q11 = T->C_data[4];
-        mreal const * restrict const Q12 = T->C_data[5];
-        mreal const * restrict const Q13 = T->C_data[6];
-        mreal const * restrict const Q22 = T->C_data[7];
-        mreal const * restrict const Q23 = T->C_data[8];
-        mreal const * restrict const Q33 = T->C_data[9];
+        mreal const * restrict const B  = T->C_far[0];
+        mreal const * restrict const Y1 = T->C_far[1];
+        mreal const * restrict const Y2 = T->C_far[2];
+        mreal const * restrict const Y3 = T->C_far[3];
+        mreal const * restrict const Q11 = T->C_far[4];
+        mreal const * restrict const Q12 = T->C_far[5];
+        mreal const * restrict const Q13 = T->C_far[6];
+        mreal const * restrict const Q22 = T->C_far[7];
+        mreal const * restrict const Q23 = T->C_far[8];
+        mreal const * restrict const Q33 = T->C_far[9];
         
     #pragma omp parallel for num_threads( nthreads ) reduction( + : sum )
         for( mint i = 0; i < b_m; ++i )
         {
             mint thread = omp_get_thread_num();
             
-            mreal * const restrict U = &S->C_D_data[thread][0];
-            mreal * const restrict V = &T->C_D_data[thread][0];
+            mreal * const restrict U = &S->C_D_far[thread][0];
+            mreal * const restrict V = &T->C_D_far[thread][0];
             
             mreal a  =  A[i];
             mreal x1 = X1[i];
@@ -357,32 +356,32 @@ namespace rsurfaces
                     dp23 += bF * v23;
                     dp33 += bF * v33;
                     
-                    V[ data_dim * j + 0 ] += a * ( E - dEdv1 * y1 - dEdv2 * y2 - dEdv3 * y3 - factor * rCosPsiAlpha );
-                    V[ data_dim * j + 1 ] += a * dEdv1;
-                    V[ data_dim * j + 2 ] += a * dEdv2;
-                    V[ data_dim * j + 3 ] += a * dEdv3;
-                    V[ data_dim * j + 4 ] += aG * v11;
-                    V[ data_dim * j + 5 ] += aG * v12;
-                    V[ data_dim * j + 6 ] += aG * v13;
-                    V[ data_dim * j + 7 ] += aG * v22;
-                    V[ data_dim * j + 8 ] += aG * v23;
-                    V[ data_dim * j + 9 ] += aG * v33;
+                    V[ 10 * j + 0 ] += a * ( E - dEdv1 * y1 - dEdv2 * y2 - dEdv3 * y3 - factor * rCosPsiAlpha );
+                    V[ 10 * j + 1 ] += a * dEdv1;
+                    V[ 10 * j + 2 ] += a * dEdv2;
+                    V[ 10 * j + 3 ] += a * dEdv3;
+                    V[ 10 * j + 4 ] += aG * v11;
+                    V[ 10 * j + 5 ] += aG * v12;
+                    V[ 10 * j + 6 ] += aG * v13;
+                    V[ 10 * j + 7 ] += aG * v22;
+                    V[ 10 * j + 8 ] += aG * v23;
+                    V[ 10 * j + 9 ] += aG * v33;
                     
                 } // if( i<= j )
             } // for( mint k = b_outer[i]; k < b_outer[i+1]; ++k )
   
             sum += block_sum;
             
-            U[ data_dim * i + 0 ] +=  da;
-            U[ data_dim * i + 1 ] += dx1;
-            U[ data_dim * i + 2 ] += dx2;
-            U[ data_dim * i + 3 ] += dx3;
-            U[ data_dim * i + 4 ] += dp11;
-            U[ data_dim * i + 5 ] += dp12;
-            U[ data_dim * i + 6 ] += dp13;
-            U[ data_dim * i + 7 ] += dp22;
-            U[ data_dim * i + 8 ] += dp23;
-            U[ data_dim * i + 9 ] += dp33;
+            U[ 10 * i + 0 ] +=  da;
+            U[ 10 * i + 1 ] += dx1;
+            U[ 10 * i + 2 ] += dx2;
+            U[ 10 * i + 3 ] += dx3;
+            U[ 10 * i + 4 ] += dp11;
+            U[ 10 * i + 5 ] += dp12;
+            U[ 10 * i + 6 ] += dp13;
+            U[ 10 * i + 7 ] += dp22;
+            U[ 10 * i + 8 ] += dp23;
+            U[ 10 * i + 9 ] += dp33;
             
         } // for( mint i = 0; i < b_m; ++i )
         
@@ -403,7 +402,6 @@ namespace rsurfaces
         auto T = bct->T;
         
         mint b_m = bct->near->b_m;
-        mint data_dim = std::min( S->data_dim, T->data_dim);
         mint nthreads = std::min( S->thread_count, T->thread_count);
         
         mint  const * restrict const b_row_ptr = S->leaf_cluster_ptr;
@@ -412,28 +410,28 @@ namespace rsurfaces
         mint  const * restrict const b_outer = &bct->near->b_outer[0];
         mint  const * restrict const b_inner = &bct->near->b_inner[0];
         
-        // Dunno why "restrict" helps with P_data. It is actually a lie here.
-        mreal const * restrict const A  = S->P_data[0];
-        mreal const * restrict const X1 = S->P_data[1];
-        mreal const * restrict const X2 = S->P_data[2];
-        mreal const * restrict const X3 = S->P_data[3];
-        mreal const * restrict const P11 = S->P_data[4];
-        mreal const * restrict const P12 = S->P_data[5];
-        mreal const * restrict const P13 = S->P_data[6];
-        mreal const * restrict const P22 = S->P_data[7];
-        mreal const * restrict const P23 = S->P_data[8];
-        mreal const * restrict const P33 = S->P_data[9];
+        // Dunno why "restrict" helps with P_near. It is actually a lie here.
+        mreal const * restrict const A  = S->P_near[0];
+        mreal const * restrict const X1 = S->P_near[1];
+        mreal const * restrict const X2 = S->P_near[2];
+        mreal const * restrict const X3 = S->P_near[3];
+        mreal const * restrict const P11 = S->P_near[4];
+        mreal const * restrict const P12 = S->P_near[5];
+        mreal const * restrict const P13 = S->P_near[6];
+        mreal const * restrict const P22 = S->P_near[7];
+        mreal const * restrict const P23 = S->P_near[8];
+        mreal const * restrict const P33 = S->P_near[9];
         
-        mreal const * restrict const B  = T->P_data[0];
-        mreal const * restrict const Y1 = T->P_data[1];
-        mreal const * restrict const Y2 = T->P_data[2];
-        mreal const * restrict const Y3 = T->P_data[3];
-        mreal const * restrict const Q11 = T->P_data[4];
-        mreal const * restrict const Q12 = T->P_data[5];
-        mreal const * restrict const Q13 = T->P_data[6];
-        mreal const * restrict const Q22 = T->P_data[7];
-        mreal const * restrict const Q23 = T->P_data[8];
-        mreal const * restrict const Q33 = T->P_data[9];
+        mreal const * restrict const B  = T->P_near[0];
+        mreal const * restrict const Y1 = T->P_near[1];
+        mreal const * restrict const Y2 = T->P_near[2];
+        mreal const * restrict const Y3 = T->P_near[3];
+        mreal const * restrict const Q11 = T->P_near[4];
+        mreal const * restrict const Q12 = T->P_near[5];
+        mreal const * restrict const Q13 = T->P_near[6];
+        mreal const * restrict const Q22 = T->P_near[7];
+        mreal const * restrict const Q23 = T->P_near[8];
+        mreal const * restrict const Q33 = T->P_near[9];
         
         
         #pragma omp parallel for num_threads( nthreads ) reduction( +: sum )
@@ -441,8 +439,8 @@ namespace rsurfaces
         {
             mint thread = omp_get_thread_num();
             
-            mreal * const restrict U = &S->P_D_data[thread][0];
-            mreal * const restrict V = &T->P_D_data[thread][0];
+            mreal * const restrict U = &S->P_D_near[thread][0];
+            mreal * const restrict V = &T->P_D_near[thread][0];
             
             mint i_begin = b_row_ptr[b_i];
             mint i_end   = b_row_ptr[b_i+1];
@@ -560,30 +558,30 @@ namespace rsurfaces
                                 dp23 += bF * v23;
                                 dp33 += bF * v33;
                                 
-                                V[ data_dim * j + 0 ] += a * ( E - dEdv1 * y1 - dEdv2 * y2 - dEdv3 * y3 - factor * rCosPsiAlpha );
-                                V[ data_dim * j + 1 ] += a * dEdv1;
-                                V[ data_dim * j + 2 ] += a * dEdv2;
-                                V[ data_dim * j + 3 ] += a * dEdv3;
-                                V[ data_dim * j + 4 ] += aG * v11;
-                                V[ data_dim * j + 5 ] += aG * v12;
-                                V[ data_dim * j + 6 ] += aG * v13;
-                                V[ data_dim * j + 7 ] += aG * v22;
-                                V[ data_dim * j + 8 ] += aG * v23;
-                                V[ data_dim * j + 9 ] += aG * v33;
+                                V[ 10 * j + 0 ] += a * ( E - dEdv1 * y1 - dEdv2 * y2 - dEdv3 * y3 - factor * rCosPsiAlpha );
+                                V[ 10 * j + 1 ] += a * dEdv1;
+                                V[ 10 * j + 2 ] += a * dEdv2;
+                                V[ 10 * j + 3 ] += a * dEdv3;
+                                V[ 10 * j + 4 ] += aG * v11;
+                                V[ 10 * j + 5 ] += aG * v12;
+                                V[ 10 * j + 6 ] += aG * v13;
+                                V[ 10 * j + 7 ] += aG * v22;
+                                V[ 10 * j + 8 ] += aG * v23;
+                                V[ 10 * j + 9 ] += aG * v33;
                             }
                         } // for( mint j = ( b_i != b_j ? j_begin : i + 1 ); j < j_end; ++j )
                         
                         
-                        U[ data_dim * i + 0 ] +=  da;
-                        U[ data_dim * i + 1 ] += dx1;
-                        U[ data_dim * i + 2 ] += dx2;
-                        U[ data_dim * i + 3 ] += dx3;
-                        U[ data_dim * i + 4 ] += dp11;
-                        U[ data_dim * i + 5 ] += dp12;
-                        U[ data_dim * i + 6 ] += dp13;
-                        U[ data_dim * i + 7 ] += dp22;
-                        U[ data_dim * i + 8 ] += dp23;
-                        U[ data_dim * i + 9 ] += dp33;
+                        U[ 10 * i + 0 ] +=  da;
+                        U[ 10 * i + 1 ] += dx1;
+                        U[ 10 * i + 2 ] += dx2;
+                        U[ 10 * i + 3 ] += dx3;
+                        U[ 10 * i + 4 ] += dp11;
+                        U[ 10 * i + 5 ] += dp12;
+                        U[ 10 * i + 6 ] += dp13;
+                        U[ 10 * i + 7 ] += dp22;
+                        U[ 10 * i + 8 ] += dp23;
+                        U[ 10 * i + 9 ] += dp33;
                         
                     }// for( mint i = i_begin; i < i_end ; ++i )
                 }// if( b_i <= b_j )
@@ -616,16 +614,25 @@ namespace rsurfaces
     // respect to the corresponding vertex.
     void TPEnergyMultipole_Projectors0::Differential(Eigen::MatrixXd &output)
     {
-        if( bct->S->data_dim != 10)
+        if( bct->S->near_dim != 10)
         {
-            eprint("in TPEnergyBarnesHut_Projectors0::Differential: S->data_dim != 10");
+            eprint("in TPEnergyBarnesHut_Projectors0::Differential: S->near_dim != 10");
         }
-        if( bct->T->data_dim != 10)
+        if( bct->T->near_dim != 10)
         {
-            eprint("in TPEnergyBarnesHut_Projectors0::Differential: T->data_dim != 10");
+            eprint("in TPEnergyBarnesHut_Projectors0::Differential: T->near_dim != 10");
+        }
+        if( bct->S->far_dim != 10)
+        {
+            eprint("in TPEnergyBarnesHut_Projectors0::Differential: S->far_dim != 10");
+        }
+        if( bct->T->far_dim != 10)
+        {
+            eprint("in TPEnergyBarnesHut_Projectors0::Differential: T->far_dim != 10");
         }
         
-        EigenMatrixRM P_D_data ( bct->S->primitive_count , bct->S->data_dim );
+        EigenMatrixRM P_D_near ( bct->S->primitive_count, bct->S->near_dim );
+        EigenMatrixRM P_D_far ( bct->S->primitive_count, bct->S->far_dim );
         
         bct->S->CleanseD();
         bct->T->CleanseD();
@@ -646,9 +653,10 @@ namespace rsurfaces
             DFarField ( real_alphahalf, real_betahalf );
         }
         
-        bct->S->CollectDerivatives( P_D_data.data() );
+        bct->S->CollectDerivatives( P_D_near.data(), P_D_far.data() );
                 
-        AssembleDerivativeFromACPData( mesh, geom, P_D_data, output, weight );
+        AssembleDerivativeFromACPData( mesh, geom, P_D_near, output, weight );
+        AssembleDerivativeFromACPData( mesh, geom, P_D_far, output, weight );
         
     } // Differential
 
