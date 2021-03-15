@@ -12,12 +12,12 @@ namespace rsurfaces
 {
 
     // 0-th order multipole approximation of tangent-point energy
-    class TPObstacleMultipole0 : public SurfaceEnergy
+    class TPObstacleMultipole_Normals0 : public SurfaceEnergy
     {
     public:
-        ~TPObstacleMultipole0(){};
+        ~TPObstacleMultipole_Normals0(){};
         
-        TPObstacleMultipole0( MeshPtr mesh_, GeomPtr geom_, OptimizedBlockClusterTree * bct_, mreal alpha_, mreal beta_, mreal weight_ )
+        TPObstacleMultipole_Normals0( MeshPtr mesh_, GeomPtr geom_, OptimizedBlockClusterTree * bct_, mreal alpha_, mreal beta_, mreal weight_ )
         {
             mesh = mesh_;
             geom = geom_;
@@ -27,8 +27,8 @@ namespace rsurfaces
             beta = beta_;
             weight = weight_;
             
-            
-            use_int = true;
+            mreal intpart;
+            use_int = (std::modf( alpha, &intpart) == 0.0) && (std::modf( beta/2, &intpart) == 0.0);
         }
         
         // Returns the current value of the energy.
@@ -61,7 +61,7 @@ namespace rsurfaces
         
         OptimizedBlockClusterTree * GetBCT();
         
-        bool use_int = true;
+        bool use_int = false;
     private:
         
         MeshPtr mesh = nullptr;

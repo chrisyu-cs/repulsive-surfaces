@@ -586,9 +586,6 @@ namespace rsurfaces
             eprint("in TPEnergyBarnesHut_Projectors0::Differential: T->far_dim != 10");
         }
         
-        EigenMatrixRM P_D_near_( bct->S->primitive_count , bct->S->near_dim );
-        EigenMatrixRM P_D_far_ ( bct->S->primitive_count , bct->S->far_dim );
-        
         bct->S->CleanseD();
 //        bct->T->CleanseD();
         
@@ -607,6 +604,9 @@ namespace rsurfaces
             DNearField( real_alphahalf, real_betahalf );
             DFarField ( real_alphahalf, real_betahalf );
         }
+        
+        EigenMatrixRM P_D_near_( bct->S->primitive_count , bct->S->near_dim );
+        EigenMatrixRM P_D_far_ ( bct->S->primitive_count , bct->S->far_dim );
         
         bct->S->CollectDerivatives( P_D_near_.data(), P_D_far_.data() );
         
