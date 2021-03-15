@@ -207,31 +207,68 @@ namespace rsurfaces
 
             double athird = 1. / 3.;
 
-            std::vector<double> P_data(7 * nFaces);
-
-            for (auto face : mesh->faces())
+            if( data_dim == 7)
             {
-                int i = fInds[face];
+                std::vector<double> P_data(7 * nFaces);
+                
+                for (auto face : mesh->faces())
+                {
+                    int i = fInds[face];
+                    
+                    GCHalfedge he = face.halfedge();
+                    
+                    int i0 = vInds[he.vertex()];
+                    int i1 = vInds[he.next().vertex()];
+                    int i2 = vInds[he.next().next().vertex()];
+                    Vector3 p1 = geom->inputVertexPositions[i0];
+                    Vector3 p2 = geom->inputVertexPositions[i1];
+                    Vector3 p3 = geom->inputVertexPositions[i2];
+                    
+                    P_data[7 * i + 0] = geom->faceAreas[face];
+                    P_data[7 * i + 1] = athird * (p1.x + p2.x + p3.x);
+                    P_data[7 * i + 2] = athird * (p1.y + p2.y + p3.y);
+                    P_data[7 * i + 3] = athird * (p1.z + p2.z + p3.z);
+                    P_data[7 * i + 4] = geom->faceNormals[face].x;
+                    P_data[7 * i + 5] = geom->faceNormals[face].y;
+                    P_data[7 * i + 6] = geom->faceNormals[face].z;
+                }
+                SemiStaticUpdate(&P_data[0]);
+            }
+            else
+            {
+                std::vector<double> P_data(10 * nFaces);
+                
+                for (auto face : mesh->faces())
+                {
+                    int i = fInds[face];
+                    
+                    GCHalfedge he = face.halfedge();
+                    
+                    int i0 = vInds[he.vertex()];
+                    int i1 = vInds[he.next().vertex()];
+                    int i2 = vInds[he.next().next().vertex()];
+                    Vector3 p1 = geom->inputVertexPositions[i0];
+                    Vector3 p2 = geom->inputVertexPositions[i1];
+                    Vector3 p3 = geom->inputVertexPositions[i2];
+                    
+                    P_data[10 * i + 0] = geom->faceAreas[face];
+                    P_data[10 * i + 1] = athird * (p1.x + p2.x + p3.x);
+                    P_data[10 * i + 2] = athird * (p1.y + p2.y + p3.y);
+                    P_data[10 * i + 3] = athird * (p1.z + p2.z + p3.z);
+                    mreal n1 = geom->faceNormals[face].x;
+                    mreal n2 = geom->faceNormals[face].y;
+                    mreal n3 = geom->faceNormals[face].z;
+                    P_data[10 * i + 4] = n1 * n1;
+                    P_data[10 * i + 5] = n1 * n2;
+                    P_data[10 * i + 6] = n1 * n3;
+                    P_data[10 * i + 7] = n2 * n2;
+                    P_data[10 * i + 8] = n2 * n3;
+                    P_data[10 * i + 9] = n3 * n3;
 
-                GCHalfedge he = face.halfedge();
-
-                int i0 = vInds[he.vertex()];
-                int i1 = vInds[he.next().vertex()];
-                int i2 = vInds[he.next().next().vertex()];
-                Vector3 p1 = geom->inputVertexPositions[i0];
-                Vector3 p2 = geom->inputVertexPositions[i1];
-                Vector3 p3 = geom->inputVertexPositions[i2];
-
-                P_data[7 * i + 0] = geom->faceAreas[face];
-                P_data[7 * i + 1] = athird * (p1.x + p2.x + p3.x);
-                P_data[7 * i + 2] = athird * (p1.y + p2.y + p3.y);
-                P_data[7 * i + 3] = athird * (p1.z + p2.z + p3.z);
-                P_data[7 * i + 4] = geom->faceNormals[face].x;
-                P_data[7 * i + 5] = geom->faceNormals[face].y;
-                P_data[7 * i + 6] = geom->faceNormals[face].z;
+                }
+                SemiStaticUpdate(&P_data[0]);
             }
 
-            SemiStaticUpdate(&P_data[0]);
         }
 
         void SplitCluster(Cluster2 *const C, const mint free_thread_count);

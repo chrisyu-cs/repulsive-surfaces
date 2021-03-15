@@ -569,50 +569,63 @@ namespace rsurfaces
         // the self-interaction energy of mesh1
         auto tpe_fm_11 = std::make_shared<TPEnergyMultipole0>(mesh1, geom1, bct11.get(), alpha, beta);
         auto tpe_bh_11 = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta);
+        
+        auto tpe_bh_pr_11 = std::make_shared<TPEnergyBarnesHut0_Projectors>(mesh1, geom1, alpha, beta, theta);
+        
         auto tpe_ex_11 = std::make_shared<TPEnergyAllPairs>(mesh1, geom1, alpha, beta);
+        auto tpe_pr_11 = std::make_shared<TPEnergyAllPairs_Projectors>(mesh1, geom1, alpha, beta);
 
         // the interaction energy between mesh1 and mesh2
         auto tpe_fm_12 = std::make_shared<TPObstacleMultipole0>(mesh1, geom1, bct12.get(), alpha, beta);
         auto tpe_bh_12 = std::make_shared<TPObstacleBarnesHut0>(mesh1, geom1, tpe_bh_11.get(), mesh2, geom2, alpha, beta, theta, 1);
         auto tpe_ex_12 = std::make_shared<TPObstacleAllPairs>(mesh1, geom1, tpe_bh_11.get(), mesh2, geom2, alpha, beta);
+        auto tpe_pr_12 = std::make_shared<TPObstacleAllPairs_Projectors>(mesh1, geom1, tpe_bh_pr_11.get(), mesh2, geom2, alpha, beta);
 
         // the self-interaction energy of mesh2; since mesh2 is the obstacle here, this is not needed in practice; I used this here only for test purposes and in order to see how much "work" is saved by this approach.
         auto tpe_fm_22 = std::make_shared<TPEnergyMultipole0>(mesh2, geom2, bct22.get(), alpha, beta);
         auto tpe_bh_22 = std::make_shared<TPEnergyBarnesHut0>(mesh2, geom2, alpha, beta, theta);
         auto tpe_ex_22 = std::make_shared<TPEnergyAllPairs>(mesh2, geom2, alpha, beta);
+        auto tpe_pr_22 = std::make_shared<TPEnergyAllPairs_Projectors>(mesh2, geom2, alpha, beta);
 
         // the energies tpe_**_11, tpe_**_12, tpe_**_22 are gauged such that their sum equals the tangent-point energy of the union of mesh1 and mesh2.
 
         double E_fm_11, E_fm_12, E_fm_22;
         double E_bh_11, E_bh_12, E_bh_22;
         double E_ex_11, E_ex_12, E_ex_22;
+        double E_pr_11, E_pr_12, E_pr_22;
 
         Eigen::MatrixXd DE_fm_11(mesh1->nVertices(), 3);
         Eigen::MatrixXd DE_fm_12(mesh1->nVertices(), 3);
         Eigen::MatrixXd DE_fm_22(mesh2->nVertices(), 3);
+        
         Eigen::MatrixXd DE_bh_11(mesh1->nVertices(), 3);
         Eigen::MatrixXd DE_bh_12(mesh1->nVertices(), 3);
         Eigen::MatrixXd DE_bh_22(mesh2->nVertices(), 3);
+        
         Eigen::MatrixXd DE_ex_11(mesh1->nVertices(), 3);
         Eigen::MatrixXd DE_ex_12(mesh1->nVertices(), 3);
-        Eigen::MatrixXd DE_ex_22(mesh1->nVertices(), 3);
+        Eigen::MatrixXd DE_ex_22(mesh2->nVertices(), 3);
+        
+        Eigen::MatrixXd DE_pr_11(mesh1->nVertices(), 3);
+        Eigen::MatrixXd DE_pr_12(mesh1->nVertices(), 3);
+        Eigen::MatrixXd DE_pr_22(mesh2->nVertices(), 3);
 
         std::cout << "Using integer exponents." << std::endl;
 
         tic();
-        tpe_ex_11->Update();
+//        tpe_ex_11->Update();
         E_ex_11 = tpe_ex_11->Value();
         mreal t_ex_11 = toc();
         std::cout << "done 1" << std::endl;
 
         tic();
-        tpe_ex_12->Update();
+//        tpe_ex_12->Update();
         E_ex_12 = tpe_ex_12->Value();
         mreal t_ex_12 = toc();
         std::cout << "done 2" << std::endl;
 
         tic();
-        tpe_ex_22->Update();
+//        tpe_ex_22->Update();
         E_ex_22 = tpe_ex_22->Value();
         mreal t_ex_22 = toc();
         std::cout << "done 3" << std::endl;
@@ -636,8 +649,50 @@ namespace rsurfaces
         std::cout << "done 6" << std::endl;
 
         //######################################
+        
         tic();
-        tpe_bh_11->Update();
+//        tpe_pr_11->Update();
+        E_pr_11 = tpe_pr_11->Value();
+        mreal t_pr_11 = toc();
+        std::cout << "done 1" << std::endl;
+
+        tic();
+        print("A");
+        tpe_pr_12->Update();
+        print("B");
+        E_pr_12 = tpe_pr_12->Value();
+        mreal t_pr_12 = toc();
+        std::cout << "done 2" << std::endl;
+
+        tic();
+//        tpe_pr_22->Update();
+        E_pr_22 = tpe_pr_22->Value();
+        mreal t_pr_22 = toc();
+        std::cout << "done 3" << std::endl;
+
+        tic();
+        DE_pr_11.setZero();
+        tpe_pr_11->Differential(DE_pr_11);
+        mreal Dt_pr_11 = toc();
+        std::cout << "done 4" << std::endl;
+
+        tic();
+        DE_pr_12.setZero();
+        tpe_pr_12->Differential(DE_pr_12);
+        mreal Dt_pr_12 = toc();
+        std::cout << "done 5" << std::endl;
+
+        tic();
+        DE_pr_22.setZero();
+        tpe_pr_22->Differential(DE_pr_22);
+        mreal Dt_pr_22 = toc();
+        std::cout << "done 6" << std::endl;
+
+        //######################################
+        
+        
+        tic();
+//        tpe_bh_11->Update();
         E_bh_11 = tpe_bh_11->Value();
         mreal t_bh_11 = toc();
         std::cout << "done 7" << std::endl;
@@ -649,7 +704,7 @@ namespace rsurfaces
         std::cout << "done 8" << std::endl;
 
         tic();
-        tpe_bh_22->Update();
+//        tpe_bh_22->Update();
         E_bh_22 = tpe_bh_22->Value();
         mreal t_bh_22 = toc();
         std::cout << "done 9" << std::endl;
@@ -713,72 +768,109 @@ namespace rsurfaces
 
         int w = 22;
 
-        std::cout << std::left;
-        std::cout << std::setw(w) << ""
-                  << " | " << std::setw(w) << "exact"
-                  << " | " << std::setw(w) << "BH"
-                  << " | " << std::setw(w) << "FMM" << std::endl;
+        std::cout   << std::left;
+        std::cout   << std::setw(w) << ""
+                    << " | " << std::setw(w) << "exact"
+                    << " | " << std::setw(w) << "pr"
+                    << " | " << std::setw(w) << "BH"
+                    << " | " << std::setw(w) << "FMM" << std::endl;
 
-        std::cout << "------------------------------------------------------------------------------------------------" << std::endl;
+        std::cout   << "-------------------------------------------------------------------------------------------------------------------------" << std::endl;
 
-        std::cout << std::setw(w) << "  E_11 error (%) "
-                  << " | " << std::setw(w) << fabs(E_ex_11 / E_ex_11 - 1) * 100
-                  << " | " << std::setw(w) << fabs(E_bh_11 / E_ex_11 - 1) * 100
-                  << " | " << std::setw(w) << fabs(E_fm_11 / E_ex_11 - 1) * 100
-                  << std::endl;
+        std::cout   << std::setw(w) << "  E_11 error (%) "
+                    << " | " << std::setw(w) << fabs(E_ex_11 / E_ex_11 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_pr_11 / E_ex_11 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_bh_11 / E_ex_11 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_fm_11 / E_ex_11 - 1) * 100
+                    << std::endl;
 
-        std::cout << std::setw(w) << "  E_12 error (%) "
-                  << " | " << std::setw(w) << fabs(E_ex_12 / E_ex_12 - 1) * 100
-                  << " | " << std::setw(w) << fabs(E_bh_12 / E_ex_12 - 1) * 100
-                  << " | " << std::setw(w) << fabs(E_fm_12 / E_ex_12 - 1) * 100
-                  << std::endl;
+        std::cout   << std::setw(w) << "  E_12 error (%) "
+                    << " | " << std::setw(w) << fabs(E_ex_12 / E_ex_12 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_pr_12 / E_ex_12 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_bh_12 / E_ex_12 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_fm_12 / E_ex_12 - 1) * 100
+                    << std::endl;
 
-        std::cout << std::setw(w) << "  E_22 error (%) "
-                  << " | " << std::setw(w) << fabs(E_ex_12 / E_ex_12 - 1) * 100
-                  << " | " << std::setw(w) << fabs(E_bh_22 / E_ex_22 - 1) * 100
-                  << " | " << std::setw(w) << fabs(E_fm_22 / E_ex_22 - 1) * 100
-                  << std::endl;
+        std::cout   << std::setw(w) << "  E_22 error (%) "
+                    << " | " << std::setw(w) << fabs(E_ex_22 / E_ex_22 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_pr_22 / E_ex_22 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_bh_22 / E_ex_22 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_fm_22 / E_ex_22 - 1) * 100
+                    << std::endl;
 
-        std::cout << std::setw(w) << " DE_11 error (%) "
-                  << " | " << std::setw(w) << (DE_ex_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
-                  << " | " << std::setw(w) << (DE_bh_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
-                  << " | " << std::setw(w) << (DE_fm_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
-                  << std::endl;
+        std::cout   << std::setw(w) << " DE_11 error (%) "
+                    << " | " << std::setw(w) << (DE_ex_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
+                    << " | " << std::setw(w) << (DE_pr_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
+                    << " | " << std::setw(w) << (DE_bh_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
+                    << " | " << std::setw(w) << (DE_fm_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
+                    << std::endl;
 
-        std::cout << std::setw(w) << " DE_12 error (%) "
-                  << " | " << std::setw(w) << (DE_ex_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
-                  << " | " << std::setw(w) << (DE_bh_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
-                  << " | " << std::setw(w) << (DE_fm_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
-                  << std::endl;
+        std::cout   << std::setw(w) << " DE_12 error (%) "
+                    << " | " << std::setw(w) << (DE_ex_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
+                    << " | " << std::setw(w) << (DE_pr_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
+                    << " | " << std::setw(w) << (DE_bh_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
+                    << " | " << std::setw(w) << (DE_fm_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
+                    << std::endl;
 
-        std::cout << std::setw(w) << " DE_22 error (%) "
-                  << " | " << std::setw(w) << (DE_ex_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
-                  << " | " << std::setw(w) << (DE_bh_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
-                  << " | " << std::setw(w) << (DE_fm_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
-                  << std::endl;
+        std::cout   << std::setw(w) << " DE_22 error (%) "
+                    << " | " << std::setw(w) << (DE_ex_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
+                    << " | " << std::setw(w) << (DE_pr_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
+                    << " | " << std::setw(w) << (DE_bh_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
+                    << " | " << std::setw(w) << (DE_fm_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
+                    << std::endl;
 
-        std::cout << "\n"
-                  << std::endl;
-        std::cout << std::setw(w) << ""
-                  << " | " << std::setw(w) << "exact"
-                  << " | " << std::setw(w) << "BH"
-                  << " | " << std::setw(w) << "FMM"
-                  << std::endl;
+        std::cout   << "\n"
+                    << std::endl;
+        std::cout   << std::setw(w) << ""
+                    << " | " << std::setw(w) << "exact"
+                    << " | " << std::setw(w) << "pr"
+                    << " | " << std::setw(w) << "BH"
+                    << " | " << std::setw(w) << "FMM"
+                    << std::endl;
 
-        std::cout << "------------------------------------------------------------------------------------------------" << std::endl;
+        std::cout   << "-------------------------------------------------------------------------------------------------------------------------" << std::endl;
 
-        std::cout << std::setw(w) << "  E_11 time  (s) "
-                  << " | " << std::setw(w) << t_ex_11 << " | " << std::setw(w) << t_bh_11 << " | " << std::setw(w) << t_fm_11 << std::endl;
-        std::cout << std::setw(w) << "  E_12 time  (s) "
-                  << " | " << std::setw(w) << t_ex_12 << " | " << std::setw(w) << t_bh_12 << " | " << std::setw(w) << t_fm_12 << std::endl;
-        std::cout << std::setw(w) << "  E_22 time  (s) "
-                  << " | " << std::setw(w) << t_ex_22 << " | " << std::setw(w) << t_bh_22 << " | " << std::setw(w) << t_fm_22 << std::endl;
-        std::cout << std::setw(w) << " DE_11 time  (s) "
-                  << " | " << std::setw(w) << Dt_ex_11 << " | " << std::setw(w) << Dt_bh_11 << " | " << std::setw(w) << Dt_fm_11 << std::endl;
-        std::cout << std::setw(w) << " DE_12 time  (s) "
-                  << " | " << std::setw(w) << Dt_ex_12 << " | " << std::setw(w) << Dt_bh_12 << " | " << std::setw(w) << Dt_fm_12 << std::endl;
-        std::cout << std::setw(w) << " DE_22 time  (s) "
-                  << " | " << std::setw(w) << Dt_ex_22 << " | " << std::setw(w) << Dt_bh_22 << " | " << std::setw(w) << Dt_fm_22 << std::endl;
+        std::cout   << std::setw(w) << "  E_11 time  (s) "
+                    << " | " << std::setw(w) << t_ex_11
+                    << " | " << std::setw(w) << t_pr_11
+                    << " | " << std::setw(w) << t_bh_11
+                    << " | " << std::setw(w) << t_fm_11
+                    << std::endl;
+        
+        std::cout   << std::setw(w) << "  E_12 time  (s) "
+                    << " | " << std::setw(w) << t_ex_12
+                    << " | " << std::setw(w) << t_pr_12
+                    << " | " << std::setw(w) << t_bh_12
+                    << " | " << std::setw(w) << t_fm_12
+                    << std::endl;
+        
+        std::cout   << std::setw(w) << "  E_22 time  (s) "
+                    << " | " << std::setw(w) << t_ex_22
+                    << " | " << std::setw(w) << t_pr_22
+                    << " | " << std::setw(w) << t_bh_22
+                    << " | " << std::setw(w) << t_fm_22
+                    << std::endl;
+        
+        std::cout   << std::setw(w) << " DE_11 time  (s) "
+                    << " | " << std::setw(w) << Dt_ex_11
+                    << " | " << std::setw(w) << Dt_pr_11
+                    << " | " << std::setw(w) << Dt_bh_11
+                    << " | " << std::setw(w) << Dt_fm_11
+                    << std::endl;
+        
+        std::cout   << std::setw(w) << " DE_12 time  (s) "
+                    << " | " << std::setw(w) << Dt_ex_12
+                    << " | " << std::setw(w) << Dt_pr_12
+                    << " | " << std::setw(w) << Dt_bh_12
+                    << " | " << std::setw(w) << Dt_fm_12
+                    << std::endl;
+        
+        std::cout   << std::setw(w) << " DE_22 time  (s) "
+                    << " | " << std::setw(w) << Dt_ex_22
+                    << " | " << std::setw(w) << Dt_pr_22
+                    << " | " << std::setw(w) << Dt_bh_22
+                    << " | " << std::setw(w) << Dt_fm_22
+                    << std::endl;
 
         delete bvh1;
     } // TestObstacle0
