@@ -575,15 +575,14 @@ namespace rsurfaces
         // the self-interaction energy of mesh1
         auto tpe_fm_11 = std::make_shared<TPEnergyMultipole0>(mesh1, geom1, bct11.get(), alpha, beta);
         auto tpe_bh_11 = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta);
-        
         auto tpe_bh_pr_11 = std::make_shared<TPEnergyBarnesHut0_Projectors>(mesh1, geom1, alpha, beta, theta);
-        
         auto tpe_ex_11 = std::make_shared<TPEnergyAllPairs>(mesh1, geom1, alpha, beta);
         auto tpe_pr_11 = std::make_shared<TPEnergyAllPairs_Projectors>(mesh1, geom1, alpha, beta);
 
         // the interaction energy between mesh1 and mesh2
         auto tpe_fm_12 = std::make_shared<TPObstacleMultipole0>(mesh1, geom1, bct12.get(), alpha, beta);
-        auto tpe_bh_12 = std::make_shared<TPObstacleBarnesHut0>(mesh1, geom1, tpe_bh_11.get(), mesh2, geom2, alpha, beta, theta, 1);
+        auto tpe_bh_12 = std::make_shared<TPObstacleBarnesHut0>(mesh1, geom1, tpe_bh_11.get(), mesh2, geom2, alpha, beta, theta);
+        auto tpe_bh_pr_12 = std::make_shared<TPObstacleBarnesHut0_Projectors>(mesh1, geom1, tpe_bh_pr_11.get(), mesh2, geom2, alpha, beta, theta);
         auto tpe_ex_12 = std::make_shared<TPObstacleAllPairs>(mesh1, geom1, tpe_bh_11.get(), mesh2, geom2, alpha, beta);
         auto tpe_pr_12 = std::make_shared<TPObstacleAllPairs_Projectors>(mesh1, geom1, tpe_bh_pr_11.get(), mesh2, geom2, alpha, beta);
 
@@ -619,19 +618,16 @@ namespace rsurfaces
         std::cout << "Using integer exponents." << std::endl;
 
         tic();
-//        tpe_ex_11->Update();
         E_ex_11 = tpe_ex_11->Value();
         mreal t_ex_11 = toc();
         std::cout << "done 1" << std::endl;
 
         tic();
-//        tpe_ex_12->Update();
         E_ex_12 = tpe_ex_12->Value();
         mreal t_ex_12 = toc();
         std::cout << "done 2" << std::endl;
 
         tic();
-//        tpe_ex_22->Update();
         E_ex_22 = tpe_ex_22->Value();
         mreal t_ex_22 = toc();
         std::cout << "done 3" << std::endl;
@@ -657,21 +653,17 @@ namespace rsurfaces
         //######################################
         
         tic();
-//        tpe_pr_11->Update();
         E_pr_11 = tpe_pr_11->Value();
         mreal t_pr_11 = toc();
         std::cout << "done 1" << std::endl;
 
         tic();
-        print("A");
-        tpe_pr_12->Update();
-        print("B");
+//        tpe_pr_12->Update();
         E_pr_12 = tpe_pr_12->Value();
         mreal t_pr_12 = toc();
         std::cout << "done 2" << std::endl;
 
         tic();
-//        tpe_pr_22->Update();
         E_pr_22 = tpe_pr_22->Value();
         mreal t_pr_22 = toc();
         std::cout << "done 3" << std::endl;
@@ -698,19 +690,17 @@ namespace rsurfaces
         
         
         tic();
-//        tpe_bh_11->Update();
         E_bh_11 = tpe_bh_11->Value();
         mreal t_bh_11 = toc();
         std::cout << "done 7" << std::endl;
 
         tic();
-        tpe_bh_12->Update();
+//        tpe_bh_12->Update();
         E_bh_12 = tpe_bh_12->Value();
         mreal t_bh_12 = toc();
         std::cout << "done 8" << std::endl;
 
         tic();
-//        tpe_bh_22->Update();
         E_bh_22 = tpe_bh_22->Value();
         mreal t_bh_22 = toc();
         std::cout << "done 9" << std::endl;
@@ -735,19 +725,16 @@ namespace rsurfaces
 
         //######################################
         tic();
-        //        tpe_fm_11->Update();
         E_fm_11 = tpe_fm_11->Value();
         mreal t_fm_11 = toc();
         std::cout << "done 13" << std::endl;
 
         tic();
-        //        tpe_fm_12->Update();
         E_fm_12 = tpe_fm_12->Value();
         mreal t_fm_12 = toc();
         std::cout << "done 14" << std::endl;
 
         tic();
-        //        tpe_fm_22->Update();
         E_fm_22 = tpe_fm_22->Value();
         mreal t_fm_22 = toc();
         std::cout << "done 15" << std::endl;
