@@ -17,8 +17,6 @@ namespace rsurfaces
     public:
         TPEnergyAllPairs( MeshPtr mesh_, GeomPtr geom_, mreal alpha_, mreal beta_)
         {
-            mesh = mesh_;
-            geom = geom_;
             bvh = 0;
             
             alpha = alpha_;
@@ -44,13 +42,7 @@ namespace rsurfaces
         // Update the energy to reflect the current state of the mesh. This could
         // involve building a new BVH for Barnes-Hut energies, for instance.
         virtual void Update();
-
-        // Get the mesh associated with this energy.
-        virtual MeshPtr GetMesh();
-
-        // Get the geometry associated with this geometry.
-        virtual GeomPtr GetGeom();
-
+        
         // Get the exponents of this energy; only applies to tangent-point energies.
         virtual Vector2 GetExponents();
 
@@ -65,10 +57,8 @@ namespace rsurfaces
         OptimizedBlockClusterTree * GetBCT();
         
         bool use_int = false;
-    private:
         
-        MeshPtr mesh = nullptr;
-        GeomPtr geom = nullptr;
+    private:
         OptimizedClusterTree* bvh = nullptr;
         
         mreal alpha = 6.;

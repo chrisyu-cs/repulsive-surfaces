@@ -57,18 +57,6 @@ namespace rsurfaces
         originalPositions[v] = newPos;
     }
     
-    // Get the mesh associated with this energy.
-    MeshPtr SquaredError::GetMesh()
-    {
-        return mesh;
-    }
-
-    // Get the geometry associated with this geometry.
-    GeomPtr SquaredError::GetGeom()
-    {
-        return geom;
-    }
-
     // Get the exponents of this energy; only applies to tangent-point energies.
     Vector2 SquaredError::GetExponents()
     {

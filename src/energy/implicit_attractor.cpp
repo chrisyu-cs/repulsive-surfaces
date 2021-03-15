@@ -54,16 +54,6 @@ namespace rsurfaces
         }
     }
 
-    MeshPtr ImplicitAttractor::GetMesh()
-    {
-        return mesh;
-    }
-
-    GeomPtr ImplicitAttractor::GetGeom()
-    {
-        return geom;
-    }
-
     Vector2 ImplicitAttractor::GetExponents()
     {
         return Vector2{0, 2};

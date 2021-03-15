@@ -39,16 +39,6 @@ namespace rsurfaces
         }
     }
 
-    MeshPtr ImplicitObstacle::GetMesh()
-    {
-        return mesh;
-    }
-
-    GeomPtr ImplicitObstacle::GetGeom()
-    {
-        return geom;
-    }
-
     Vector2 ImplicitObstacle::GetExponents()
     {
         return Vector2{0, 2};

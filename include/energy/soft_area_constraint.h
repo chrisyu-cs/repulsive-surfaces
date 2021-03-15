@@ -20,12 +20,6 @@ namespace rsurfaces
         // respect to the corresponding vertex.
         virtual void Differential(Eigen::MatrixXd &output);
 
-        // Get the mesh associated with this energy.
-        virtual MeshPtr GetMesh();
-
-        // Get the geometry associated with this geometry.
-        virtual GeomPtr GetGeom();
-
         // Get the exponents of this energy; only applies to tangent-point energies.
         virtual Vector2 GetExponents();
 
@@ -37,9 +31,7 @@ namespace rsurfaces
         // Return 0 if this energy doesn't do hierarchical approximation.
         virtual double GetTheta();
 
-    private: 
-        MeshPtr mesh;
-        GeomPtr geom;
+    private:
         double initialArea;
         double weight;
     };

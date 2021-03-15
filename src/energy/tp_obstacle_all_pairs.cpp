@@ -194,18 +194,6 @@ namespace rsurfaces
         
     } // Differential
 
-    // Get the mesh associated with this energy.
-    MeshPtr TPObstacleAllPairs::GetMesh()
-    {
-        return mesh;
-    }
-
-    // Get the geometry associated with this geometry.
-    GeomPtr TPObstacleAllPairs::GetGeom()
-    {
-        return geom;
-    }
-
     // Get the exponents of this energy; only applies to tangent-point energies.
     Vector2 TPObstacleAllPairs::GetExponents()
     {

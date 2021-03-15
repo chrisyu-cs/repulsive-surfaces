@@ -19,12 +19,6 @@ namespace rsurfaces {
         // V x 3 matrix, where each row holds the differential (a 3-vector) with
         // respect to the corresponding vertex.
         virtual void Differential(Eigen::MatrixXd &output);
-        
-        // Get the mesh associated with this energy.
-        virtual MeshPtr GetMesh();
-
-        // Get the geometry associated with this geometry.
-        virtual GeomPtr GetGeom();
 
         // Get the exponents of this energy; only applies to tangent-point energies.
         virtual Vector2 GetExponents();
@@ -42,9 +36,7 @@ namespace rsurfaces {
         // In some cases, we might require positions to be modified externally
         VertexDataWrapper originalPositions;
 
-    private: 
-        MeshPtr mesh;
-        GeomPtr geom;
+    private:
         double weight;
     };
 }

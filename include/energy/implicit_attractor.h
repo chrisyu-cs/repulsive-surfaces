@@ -12,16 +12,12 @@ namespace rsurfaces
 
         virtual double Value();
         virtual void Differential(Eigen::MatrixXd &output);
-        virtual MeshPtr GetMesh();
-        virtual GeomPtr GetGeom();
         virtual Vector2 GetExponents();
         virtual OptimizedClusterTree *GetBVH();
         virtual double GetTheta();
 
         private:
         double weight;
-        MeshPtr mesh;
-        GeomPtr geom;
         UVDataPtr uvs;
         std::unique_ptr<ImplicitSurface> surface;
 

@@ -49,18 +49,6 @@ namespace rsurfaces
             MatrixUtils::addToRow(output, inds[v_i], weight * geom->vertexDualAreas[v_i] * sumDerivs);
         }
     }
-    
-    // Get the mesh associated with this energy.
-    MeshPtr SoftAreaConstraint::GetMesh()
-    {
-        return mesh;
-    }
-
-    // Get the geometry associated with this geometry.
-    GeomPtr SoftAreaConstraint::GetGeom()
-    {
-        return geom;
-    }
 
     // Get the exponents of this energy; only applies to tangent-point energies.
     Vector2 SoftAreaConstraint::GetExponents()

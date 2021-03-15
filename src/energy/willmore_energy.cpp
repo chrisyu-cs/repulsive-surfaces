@@ -410,19 +410,7 @@ namespace rsurfaces
         
         output = DerivativeAssembler( mesh, geom ) * buffer;
     } // Differential
-
-    // Get the mesh associated with this energy.
-    MeshPtr WillmoreEnergy::GetMesh()
-    {
-        return mesh;
-    }
-
-    // Get the geometry associated with this geometry.
-    GeomPtr WillmoreEnergy::GetGeom()
-    {
-        return geom;
-    }
-
+    
     // Get the exponents of this energy; only applies to tangent-point energies.
     Vector2 WillmoreEnergy::GetExponents()
     {

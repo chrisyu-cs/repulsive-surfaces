@@ -28,26 +28,42 @@ namespace rsurfaces
         virtual void Update() {}
         
         // Get the mesh associated with this energy.
-        virtual MeshPtr GetMesh() = 0;
+        virtual MeshPtr GetMesh()
+        {
+            return mesh;
+        }
         
         // Get the geometry associated with this geometry.
-        virtual GeomPtr GetGeom() = 0;
+        virtual GeomPtr GetGeom()
+        {
+            return geom;
+        }
         
         // Get the exponents of this energy; only applies to tangent-point energies.
         virtual Vector2 GetExponents() = 0;
         
         // Get a pointer to the current BVH for this energy.
         // Return 0 if the energy doesn't use a BVH.
-        virtual OptimizedClusterTree *GetBVH() = 0;
+        virtual OptimizedClusterTree *GetBVH()
+        {
+            return 0;
+        }
         
         // Return the separation parameter for this energy.
         // Return 0 if this energy doesn't do hierarchical approximation.
-        virtual double GetTheta() = 0;
+        virtual double GetTheta()
+        {
+            return 0;
+        }
 
         // Add the metric term associated with this energy term, if applicable.
         // If no special energy term is needed, does nothing.
         // For Hs and obstacle terms, this also does nothing -- the metric is
         // specially constructed elsewhere.
         virtual void AddMetricTerm(std::vector<MetricTerm*> &terms) {}
+
+    protected:
+        MeshPtr mesh = 0;
+        GeomPtr geom = 0;
     };
 } // namespace rsurfaces
