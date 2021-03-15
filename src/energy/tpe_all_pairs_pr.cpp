@@ -273,13 +273,13 @@ namespace rsurfaces
         {
             mint int_alphahalf = std::round(alpha/2);
             mint int_betahalf = std::round(beta/2);
-            return Energy( int_alphahalf, int_betahalf );
+            return weight * Energy( int_alphahalf, int_betahalf );
         }
         else
         {
             mreal real_alphahalf = alpha/2;
             mreal real_betahalf = beta/2;
-            return Energy( real_alphahalf, real_betahalf );
+            return weight * Energy( real_alphahalf, real_betahalf );
         }
     } // Value
 
@@ -313,7 +313,7 @@ namespace rsurfaces
         
         bvh->CollectDerivatives( P_D_data.data() );
         
-        AssembleDerivativeFromACPData( mesh, geom, P_D_data, output );
+        AssembleDerivativeFromACPData( mesh, geom, P_D_data, output, weight );
         
     } // Differential
 

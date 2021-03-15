@@ -569,14 +569,14 @@ namespace rsurfaces
         // the self-interaction energy of mesh1
         auto tpe_fm_11 = std::make_shared<TPEnergyMultipole0>(mesh1, geom1, bct11.get(), alpha, beta);
         auto tpe_bh_11 = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta);
-        auto tpe_bh_pr_11 = std::make_shared<TPEnergyBarnesHut0_Projectors>(mesh1, geom1, alpha, beta, theta);
+        auto tpe_bh_pr_11 = std::make_shared<TPEnergyBarnesHut_Projectors0>(mesh1, geom1, alpha, beta, theta);
         auto tpe_ex_11 = std::make_shared<TPEnergyAllPairs>(mesh1, geom1, alpha, beta);
         auto tpe_pr_11 = std::make_shared<TPEnergyAllPairs_Projectors>(mesh1, geom1, alpha, beta);
 
         // the interaction energy between mesh1 and mesh2
         auto tpe_fm_12 = std::make_shared<TPObstacleMultipole0>(mesh1, geom1, bct12.get(), alpha, beta);
         auto tpe_bh_12 = std::make_shared<TPObstacleBarnesHut0>(mesh1, geom1, tpe_bh_11.get(), mesh2, geom2, alpha, beta, theta);
-        auto tpe_bh_pr_12 = std::make_shared<TPObstacleBarnesHut0_Projectors>(mesh1, geom1, tpe_bh_pr_11.get(), mesh2, geom2, alpha, beta, theta);
+        auto tpe_bh_pr_12 = std::make_shared<TPObstacleBarnesHut_Projectors0>(mesh1, geom1, tpe_bh_pr_11.get(), mesh2, geom2, alpha, beta, theta);
         auto tpe_ex_12 = std::make_shared<TPObstacleAllPairs>(mesh1, geom1, tpe_bh_11.get(), mesh2, geom2, alpha, beta);
         auto tpe_pr_12 = std::make_shared<TPObstacleAllPairs_Projectors>(mesh1, geom1, tpe_bh_pr_11.get(), mesh2, geom2, alpha, beta);
 
