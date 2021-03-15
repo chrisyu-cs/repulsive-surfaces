@@ -12,29 +12,29 @@ namespace rsurfaces
 {
 
     // 0-th order multipole approximation of tangent-point energy
-    class TPObstacleBarnesHut0 : public SurfaceEnergy
+    class TPObstacleBarnesHut_Projectors0 : public SurfaceEnergy
     {
     public:
-        TPObstacleBarnesHut0(MeshPtr mesh_, GeomPtr geom_, SurfaceEnergy *bvhSharedFrom_, MeshPtr &obsMesh, GeomPtr &obsGeom,
+        TPObstacleBarnesHut_Projectors0(MeshPtr mesh_, GeomPtr geom_, SurfaceEnergy *bvhSharedFrom_, MeshPtr &obsMesh, GeomPtr &obsGeom,
                              mreal alpha_, mreal beta_, mreal theta_, mreal weight_ = 1.)
         {
             mesh = mesh_;
             geom = geom_;
             bvh = 0;
             bvhSharedFrom = bvhSharedFrom_;
-            o_bvh = CreateOptimizedBVH(obsMesh, obsGeom);
+            o_bvh = CreateOptimizedBVH_Projectors(obsMesh, obsGeom);
             alpha = alpha_;
             beta = beta_;
             theta = theta_;
             weight = weight_;
 
             mreal intpart;
-            use_int = (std::modf(alpha, &intpart) == 0.0) && (std::modf(beta / 2, &intpart) == 0.0);
+            use_int = (std::modf(alpha/2, &intpart) == 0.0) && (std::modf(beta / 2, &intpart) == 0.0);
             
             Update();
         }
 
-        ~TPObstacleBarnesHut0()
+        ~TPObstacleBarnesHut_Projectors0()
         {
             if (o_bvh)
             {
@@ -78,6 +78,7 @@ namespace rsurfaces
         GeomPtr geom = nullptr;
         mreal alpha = 6.;
         mreal beta = 12.;
+        mreal weight = 1.;
         mreal theta = 0.5;
 
         SurfaceEnergy * bvhSharedFrom;
@@ -89,8 +90,6 @@ namespace rsurfaces
 
         template <typename T1, typename T2>
         mreal DEnergy(T1 alpha, T2 betahalf);
-
-        mreal weight = 1.;
 
     }; // TPEnergyBarnesHut0
 

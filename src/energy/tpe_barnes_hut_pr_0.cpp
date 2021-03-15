@@ -1,4 +1,4 @@
-#include "energy/tpe_barnes_hut_0_pr.h"
+#include "energy/tpe_barnes_hut_pr_0.h"
 #include "bct_constructors.h"
 
 namespace rsurfaces
@@ -482,16 +482,47 @@ namespace rsurfaces
         {
             mint int_alphahalf = std::round(alpha/2);
             mint int_betahalf = std::round(beta/2);
-            return Energy( int_alphahalf, int_betahalf );
+            return weight * Energy( int_alphahalf, int_betahalf );
         }
         else
         {
             mreal real_alphahalf = alpha/2;
             mreal real_betahalf = beta/2;
-            return Energy( real_alphahalf, real_betahalf );
+            return weight * Energy( real_alphahalf, real_betahalf );
         }
     } // Value
 
+    void TPEnergyBarnesHut0_Projectors::Differential( Eigen::MatrixXd &output )
+    {
+        EigenMatrixRM P_D_data ( bvh->primitive_count , bvh->data_dim );
+        
+        if( bvh->data_dim != 10)
+        {
+            eprint("in TPEnergyBarnesHut0_Projectors::Differential: data_dim != 10");
+        }
+        
+        bvh->CleanseD();
+        
+        if( use_int )
+        {
+            mint int_alphahalf = std::round(alpha/2);
+            mint int_betahalf = std::round(beta/2);
+            DEnergy( int_alphahalf, int_betahalf );
+            
+        }
+        else
+        {
+            mreal real_alphahalf = alpha/2;
+            mreal real_betahalf = beta/2;
+            DEnergy( real_alphahalf, real_betahalf );
+        }
+        
+        bvh->CollectDerivatives( P_D_data.data() );
+        
+        AssembleDerivativeFromACPData( mesh, geom, P_D_data, output, weight );
+        
+    } // Differential
+    
     // Update the energy to reflect the current state of the mesh. This could
     // involve building a new BVH for Barnes-Hut energies, for instance.
     void TPEnergyBarnesHut0_Projectors::Update()
@@ -535,46 +566,6 @@ namespace rsurfaces
     {
         return theta;
     }
-
-    void TPEnergyBarnesHut0_Projectors::Differential( Eigen::MatrixXd &output )
-    {
-        
-        auto V_coords = getVertexPositions( mesh, geom );
-        auto primitives = getPrimitiveIndices( mesh, geom );
-        
-        mint vertex_count = V_coords.rows();
-        mint dim = V_coords.cols();
-        mint primitive_count = primitives.rows();
-        mint primitive_length = primitives.cols();
-        
-        EigenMatrixRM P_D_data ( bvh->primitive_count , bvh->data_dim );
-        
-        if( bvh->data_dim != 10)
-        {
-            eprint("in TPEnergyBarnesHut0_Projectors::Differential: data_dim != 10");
-        }
-        
-        bvh->CleanseD();
-        
-        if( use_int )
-        {
-            mint int_alphahalf = std::round(alpha/2);
-            mint int_betahalf = std::round(beta/2);
-            DEnergy( int_alphahalf, int_betahalf );
-            
-        }
-        else
-        {
-            mreal real_alphahalf = alpha/2;
-            mreal real_betahalf = beta/2;
-            DEnergy( real_alphahalf, real_betahalf );
-        }
-        
-        bvh->CollectDerivatives( P_D_data.data() );
-        
-        AssembleDerivativeFromACPData( mesh, geom, P_D_data, output );
-        
-    } // Differential
 
 
 //template<typename T1, typename T2>
