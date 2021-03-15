@@ -16,24 +16,30 @@ namespace rsurfaces
     class TPObstacleAllPairs : public SurfaceEnergy
     {
     public:
-        TPObstacleAllPairs( MeshPtr mesh_, GeomPtr geom_, SurfaceEnergy *bvhSharedFrom_, MeshPtr &obsMesh, GeomPtr &obsGeom, mreal alpha_, mreal beta_)
+        TPObstacleAllPairs( MeshPtr mesh_, GeomPtr geom_, SurfaceEnergy *bvhSharedFrom_, MeshPtr &obsMesh, GeomPtr &obsGeom, mreal alpha_, mreal beta_, mreal weight_  = 1.)
         {
             mesh = mesh_;
             geom = geom_;
             bvh = 0;
             bvhSharedFrom = bvhSharedFrom_;
             o_bvh = CreateOptimizedBVH(obsMesh, obsGeom);
-            
             alpha = alpha_;
             beta = beta_;
+            
+            weight = weight_;
+            
             mreal intpart;
             use_int = (std::modf( alpha, &intpart) == 0.0) && (std::modf( beta/2, &intpart) == 0.0);
+            
+            Update();
         }
 
         ~TPObstacleAllPairs()
         {
             if (o_bvh)
+            {
                 delete o_bvh;
+            }
         }
         
         // Returns the current value of the energy.
@@ -54,6 +60,7 @@ namespace rsurfaces
         // Return 0 if this energy doesn't do hierarchical approximation.
         virtual double GetTheta();
         
+        virtual void Update();
         OptimizedBlockClusterTree * GetBCT();
         
         bool use_int = false;
@@ -72,7 +79,7 @@ namespace rsurfaces
         template<typename T1, typename T2>
         mreal DEnergy(T1 alpha, T2 betahalf);
 
-        
+        mreal weight = 1.;
         
     }; // TPEnergyMultipole0
 

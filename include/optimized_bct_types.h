@@ -31,6 +31,7 @@ namespace rsurfaces
     void  mreal_free(mreal * ptr);
     mint * mint_alloc(size_t size);
     mint * mint_alloc(size_t size, mint init);
+    mint * mint_iota(size_t size, mint step = 1);
     void  mint_free(mint * ptr);
 
 

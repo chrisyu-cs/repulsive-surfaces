@@ -38,6 +38,17 @@ namespace rsurfaces
         }
         return ptr;
     }
+    
+    mint * mint_iota(size_t size, mint step)
+    {
+        mint * ptr = mint_alloc(size);
+        #pragma omp simd aligned( ptr : ALIGN )
+        for( size_t i = 0; i < size; i+=step )
+        {
+            ptr[i] = i;
+        }
+        return ptr;
+    }
 
     void  mint_free(mint * ptr)
     {

@@ -15,12 +15,14 @@ namespace rsurfaces
     class TPEnergyAllPairs : public SurfaceEnergy
     {
     public:
-        TPEnergyAllPairs( MeshPtr mesh_, GeomPtr geom_, mreal alpha_, mreal beta_)
+        TPEnergyAllPairs( MeshPtr mesh_, GeomPtr geom_, mreal alpha_, mreal beta_,  mreal weight_ = 1.)
         {
             bvh = 0;
-            
             alpha = alpha_;
             beta = beta_;
+            weight = weight_;
+            
+            
             mreal intpart;
             use_int = (std::modf( alpha, &intpart) == 0.0) && (std::modf( beta/2, &intpart) == 0.0);
 
@@ -63,14 +65,13 @@ namespace rsurfaces
         
         mreal alpha = 6.;
         mreal beta  = 12.;
+        mreal weight = 1.;
         
         template<typename T1, typename T2>
         mreal Energy( T1 alpha, T2 betahalf);
         
         template<typename T1, typename T2>
         mreal DEnergy(T1 alpha, T2 betahalf);
-
-        
         
     }; // TPEnergyMultipole0
 

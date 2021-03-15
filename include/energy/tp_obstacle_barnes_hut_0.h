@@ -16,26 +16,30 @@ namespace rsurfaces
     {
     public:
         TPObstacleBarnesHut0(MeshPtr mesh_, GeomPtr geom_, SurfaceEnergy *bvhSharedFrom_, MeshPtr &obsMesh, GeomPtr &obsGeom,
-                             mreal alpha_, mreal beta_, mreal theta_, double wt)
+                             mreal alpha_, mreal beta_, mreal theta_, mreal weight_ = 1.)
         {
             mesh = mesh_;
             geom = geom_;
-            bvhSharedFrom = bvhSharedFrom_;
             bvh = 0;
+            bvhSharedFrom = bvhSharedFrom_;
             o_bvh = CreateOptimizedBVH(obsMesh, obsGeom);
             alpha = alpha_;
             beta = beta_;
             theta = theta_;
-            weight = wt;
+            weight = weight_;
 
             mreal intpart;
             use_int = (std::modf(alpha, &intpart) == 0.0) && (std::modf(beta / 2, &intpart) == 0.0);
+            
+            Update();
         }
 
         ~TPObstacleBarnesHut0()
         {
             if (o_bvh)
+            {
                 delete o_bvh;
+            }
         }
 
         // Returns the current value of the energy.
@@ -68,9 +72,9 @@ namespace rsurfaces
         mreal beta = 12.;
         mreal theta = 0.5;
 
-        SurfaceEnergy *bvhSharedFrom;
-        OptimizedClusterTree *bvh = nullptr;
-        OptimizedClusterTree *o_bvh = nullptr;
+        SurfaceEnergy * bvhSharedFrom;
+        OptimizedClusterTree * bvh = nullptr;
+        OptimizedClusterTree * o_bvh = nullptr;
 
         template <typename T1, typename T2>
         mreal Energy(T1 alpha, T2 betahalf);
@@ -78,7 +82,7 @@ namespace rsurfaces
         template <typename T1, typename T2>
         mreal DEnergy(T1 alpha, T2 betahalf);
 
-        double weight;
+        mreal weight = 1.;
 
     }; // TPEnergyBarnesHut0
 

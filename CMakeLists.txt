@@ -83,10 +83,13 @@ set(SRCS
   src/energy/willmore_energy.cpp
   src/energy/tpe_multipole_0.cpp
   src/energy/tpe_barnes_hut_0.cpp
+  src/energy/tpe_barnes_hut_0_pr.cpp
   src/energy/tpe_all_pairs.cpp
+  src/energy/tpe_all_pairs_pr.cpp
   src/energy/tp_obstacle_multipole_0.cpp
   src/energy/tp_obstacle_barnes_hut_0.cpp
   src/energy/tp_obstacle_all_pairs.cpp
+  src/energy/tp_obstacle_all_pairs_pr.cpp
   src/implicit/implicit_surface.cpp
   src/implicit/simple_surfaces.cpp
   src/marchingcubes/CIsoSurface.cpp
