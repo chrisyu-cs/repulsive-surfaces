@@ -3,103 +3,7 @@
 
 namespace rsurfaces
 {
-
-    // Returns the current value of the energy.
-    double TPEnergyMultipole0::Value()
-    {
-        
-        if( use_int )
-        {
-            mint int_alpha = std::round(alpha);
-            mint int_betahalf = std::round(beta/2);
-            return weight * (FarField( int_alpha, int_betahalf ) + NearField (int_alpha, int_betahalf ));
-        }
-        else
-        {
-            mreal real_alpha = alpha;
-            mreal real_betahalf = beta/2;
-            return weight * (FarField( real_alpha, real_betahalf ) + NearField( real_alpha, real_betahalf ));
-        }
-    } // Value
-
-    // Returns the current differential of the energy, stored in the given
-    // V x 3 matrix, where each row holds the differential (a 3-vector) with
-    // respect to the corresponding vertex.
-    void TPEnergyMultipole0::Differential(Eigen::MatrixXd &output)
-    {
-        if( bct->S->data_dim != 7)
-        {
-            eprint("in TPEnergyBarnesHut_Projectors0::Differential: data_dim != 7");
-        }
-        
-        EigenMatrixRM P_D_data ( bct->S->primitive_count , bct->S->data_dim );
-        
-        bct->S->CleanseD();
-        bct->T->CleanseD();
-        
-        if( use_int )
-        {
-            mint int_alpha = std::round(alpha);
-            mint int_betahalf = std::round(beta/2);
-            DNearField( int_alpha, int_betahalf );
-            DFarField ( int_alpha, int_betahalf );
-            
-        }
-        else
-        {
-            mreal real_alpha = alpha;
-            mreal real_betahalf = beta/2;
-            DNearField( real_alpha, real_betahalf );
-            DFarField ( real_alpha, real_betahalf );
-        }
-        
-        bct->S->CollectDerivatives( P_D_data.data() );
-                
-        AssembleDerivativeFromACNData( mesh, geom, P_D_data, output, weight );
-        
-    } // Differential
-
-
-    // Update the energy to reflect the current state of the mesh. This could
-    // involve building a new BVH for Barnes-Hut energies, for instance.
-    void TPEnergyMultipole0::Update()
-    {
-        throw std::runtime_error("Multipole energy not supported for flow");
-    }
-
-    // Get the mesh associated with this energy.
-    MeshPtr TPEnergyMultipole0::GetMesh()
-    {
-        return mesh;
-    }
-
-    // Get the geometry associated with this geometry.
-    GeomPtr TPEnergyMultipole0::GetGeom()
-    {
-        return geom;
-    }
-
-    // Get the exponents of this energy; only applies to tangent-point energies.
-    Vector2 TPEnergyMultipole0::GetExponents()
-    {
-        return Vector2{1, 0};
-    }
-
-    // Get a pointer to the current BVH for this energy.
-    // Return 0 if the energy doesn't use a BVH.
-    OptimizedClusterTree *TPEnergyMultipole0::GetBVH()
-    {
-        return 0;
-    }
-
-    // Return the separation parameter for this energy.
-    // Return 0 if this energy doesn't do hierarchical approximation.
-    double TPEnergyMultipole0::GetTheta()
-    {
-        return sqrt(bct->theta2);
-    }
-
-
+    
     template<typename T1, typename T2>
     mreal TPEnergyMultipole0::FarField( T1 alpha, T2 betahalf)
     {
@@ -623,4 +527,100 @@ namespace rsurfaces
         return sum;
     }; //DNearField
 
+
+    // Returns the current value of the energy.
+    double TPEnergyMultipole0::Value()
+    {
+        
+        if( use_int )
+        {
+            mint int_alpha = std::round(alpha);
+            mint int_betahalf = std::round(beta/2);
+            return weight * (FarField( int_alpha, int_betahalf ) + NearField (int_alpha, int_betahalf ));
+        }
+        else
+        {
+            mreal real_alpha = alpha;
+            mreal real_betahalf = beta/2;
+            return weight * (FarField( real_alpha, real_betahalf ) + NearField( real_alpha, real_betahalf ));
+        }
+    } // Value
+
+    // Returns the current differential of the energy, stored in the given
+    // V x 3 matrix, where each row holds the differential (a 3-vector) with
+    // respect to the corresponding vertex.
+    void TPEnergyMultipole0::Differential(Eigen::MatrixXd &output)
+    {
+        if( bct->S->data_dim != 7)
+        {
+            eprint("in TPEnergyBarnesHut_Projectors0::Differential: data_dim != 7");
+        }
+        
+        EigenMatrixRM P_D_data ( bct->S->primitive_count , bct->S->data_dim );
+        
+        bct->S->CleanseD();
+        bct->T->CleanseD();
+        
+        if( use_int )
+        {
+            mint int_alpha = std::round(alpha);
+            mint int_betahalf = std::round(beta/2);
+            DNearField( int_alpha, int_betahalf );
+            DFarField ( int_alpha, int_betahalf );
+            
+        }
+        else
+        {
+            mreal real_alpha = alpha;
+            mreal real_betahalf = beta/2;
+            DNearField( real_alpha, real_betahalf );
+            DFarField ( real_alpha, real_betahalf );
+        }
+        
+        bct->S->CollectDerivatives( P_D_data.data() );
+                
+        AssembleDerivativeFromACNData( mesh, geom, P_D_data, output, weight );
+        
+    } // Differential
+
+
+    // Update the energy to reflect the current state of the mesh. This could
+    // involve building a new BVH for Barnes-Hut energies, for instance.
+    void TPEnergyMultipole0::Update()
+    {
+        throw std::runtime_error("Multipole energy not supported for flow");
+    }
+
+    // Get the mesh associated with this energy.
+    MeshPtr TPEnergyMultipole0::GetMesh()
+    {
+        return mesh;
+    }
+
+    // Get the geometry associated with this geometry.
+    GeomPtr TPEnergyMultipole0::GetGeom()
+    {
+        return geom;
+    }
+
+    // Get the exponents of this energy; only applies to tangent-point energies.
+    Vector2 TPEnergyMultipole0::GetExponents()
+    {
+        return Vector2{alpha, beta};
+    }
+
+    // Get a pointer to the current BVH for this energy.
+    // Return 0 if the energy doesn't use a BVH.
+    OptimizedClusterTree * TPEnergyMultipole0::GetBVH()
+    {
+        return 0;
+    }
+
+    // Return the separation parameter for this energy.
+    // Return 0 if this energy doesn't do hierarchical approximation.
+    double TPEnergyMultipole0::GetTheta()
+    {
+        return sqrt(bct->theta2);
+    }
+    
 } // namespace rsurfaces

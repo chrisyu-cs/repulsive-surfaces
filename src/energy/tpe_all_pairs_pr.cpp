@@ -19,27 +19,27 @@ namespace rsurfaces
     
         
         // Dunno why "restrict" helps with P_data. It is actually a lie here.
-        mreal const * const restrict A  = S->P_data[0];
-        mreal const * const restrict X1 = S->P_data[1];
-        mreal const * const restrict X2 = S->P_data[2];
-        mreal const * const restrict X3 = S->P_data[3];
-        mreal const * const restrict P11 = S->P_data[4];
-        mreal const * const restrict P12 = S->P_data[5];
-        mreal const * const restrict P13 = S->P_data[6];
-        mreal const * const restrict P22 = S->P_data[7];
-        mreal const * const restrict P23 = S->P_data[8];
-        mreal const * const restrict P33 = S->P_data[9];
+        mreal const * restrict const A  = S->P_data[0];
+        mreal const * restrict const X1 = S->P_data[1];
+        mreal const * restrict const X2 = S->P_data[2];
+        mreal const * restrict const X3 = S->P_data[3];
+        mreal const * restrict const P11 = S->P_data[4];
+        mreal const * restrict const P12 = S->P_data[5];
+        mreal const * restrict const P13 = S->P_data[6];
+        mreal const * restrict const P22 = S->P_data[7];
+        mreal const * restrict const P23 = S->P_data[8];
+        mreal const * restrict const P33 = S->P_data[9];
         
-        mreal const * const restrict B  = T->P_data[0];
-        mreal const * const restrict Y1 = T->P_data[1];
-        mreal const * const restrict Y2 = T->P_data[2];
-        mreal const * const restrict Y3 = T->P_data[3];
-        mreal const * const restrict Q11 = T->P_data[4];
-        mreal const * const restrict Q12 = T->P_data[5];
-        mreal const * const restrict Q13 = T->P_data[6];
-        mreal const * const restrict Q22 = T->P_data[7];
-        mreal const * const restrict Q23 = T->P_data[8];
-        mreal const * const restrict Q33 = T->P_data[9];
+        mreal const * restrict const B  = T->P_data[0];
+        mreal const * restrict const Y1 = T->P_data[1];
+        mreal const * restrict const Y2 = T->P_data[2];
+        mreal const * restrict const Y3 = T->P_data[3];
+        mreal const * restrict const Q11 = T->P_data[4];
+        mreal const * restrict const Q12 = T->P_data[5];
+        mreal const * restrict const Q13 = T->P_data[6];
+        mreal const * restrict const Q22 = T->P_data[7];
+        mreal const * restrict const Q23 = T->P_data[8];
+        mreal const * restrict const Q33 = T->P_data[9];
         
         mreal sum = 0.;
         #pragma omp parallel for num_threads( nthreads ) reduction( + : sum)
@@ -105,27 +105,27 @@ namespace rsurfaces
         mint nthreads = std::min( S->thread_count, T->thread_count);
         
         // Dunno why "restrict" helps with P_data. It is actually a lie here.
-        mreal const * const restrict A  = S->P_data[0];
-        mreal const * const restrict X1 = S->P_data[1];
-        mreal const * const restrict X2 = S->P_data[2];
-        mreal const * const restrict X3 = S->P_data[3];
-        mreal const * const restrict P11 = S->P_data[4];
-        mreal const * const restrict P12 = S->P_data[5];
-        mreal const * const restrict P13 = S->P_data[6];
-        mreal const * const restrict P22 = S->P_data[7];
-        mreal const * const restrict P23 = S->P_data[8];
-        mreal const * const restrict P33 = S->P_data[9];
+        mreal const * restrict const A  = S->P_data[0];
+        mreal const * restrict const X1 = S->P_data[1];
+        mreal const * restrict const X2 = S->P_data[2];
+        mreal const * restrict const X3 = S->P_data[3];
+        mreal const * restrict const P11 = S->P_data[4];
+        mreal const * restrict const P12 = S->P_data[5];
+        mreal const * restrict const P13 = S->P_data[6];
+        mreal const * restrict const P22 = S->P_data[7];
+        mreal const * restrict const P23 = S->P_data[8];
+        mreal const * restrict const P33 = S->P_data[9];
         
-        mreal const * const restrict B  = T->P_data[0];
-        mreal const * const restrict Y1 = T->P_data[1];
-        mreal const * const restrict Y2 = T->P_data[2];
-        mreal const * const restrict Y3 = T->P_data[3];
-        mreal const * const restrict Q11 = T->P_data[4];
-        mreal const * const restrict Q12 = T->P_data[5];
-        mreal const * const restrict Q13 = T->P_data[6];
-        mreal const * const restrict Q22 = T->P_data[7];
-        mreal const * const restrict Q23 = T->P_data[8];
-        mreal const * const restrict Q33 = T->P_data[9];
+        mreal const * restrict const B  = T->P_data[0];
+        mreal const * restrict const Y1 = T->P_data[1];
+        mreal const * restrict const Y2 = T->P_data[2];
+        mreal const * restrict const Y3 = T->P_data[3];
+        mreal const * restrict const Q11 = T->P_data[4];
+        mreal const * restrict const Q12 = T->P_data[5];
+        mreal const * restrict const Q13 = T->P_data[6];
+        mreal const * restrict const Q22 = T->P_data[7];
+        mreal const * restrict const Q23 = T->P_data[8];
+        mreal const * restrict const Q33 = T->P_data[9];
         
         #pragma omp parallel for num_threads( nthreads ) reduction( +: sum )
         for( mint i = 0; i < m ; ++i )
