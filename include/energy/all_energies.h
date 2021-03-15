@@ -14,11 +14,12 @@
 
 #include "energy/tpe_multipole_0.h"
 #include "energy/tpe_barnes_hut_0.h"
-#include "energy/tpe_barnes_hut_0_pr.h"
+#include "energy/tpe_barnes_hut_pr_0.h"
 #include "energy/tpe_all_pairs.h"
 #include "energy/tpe_all_pairs_pr.h"
 
 #include "energy/tp_obstacle_multipole_0.h"
 #include "energy/tp_obstacle_barnes_hut_0.h"
+#include "energy/tp_obstacle_barnes_hut_pr_0.h"
 #include "energy/tp_obstacle_all_pairs.h"
 #include "energy/tp_obstacle_all_pairs_pr.h"
