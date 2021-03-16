@@ -104,13 +104,14 @@ namespace rsurfaces
             // Otherwise, accept the current step.
             else
             {
+                std::cout << "  * Energy: " << initialEnergy << " -> " << nextEnergy << std::endl;
                 break;
             }
         }
 
         if (delta <= LS_STEP_THRESHOLD)
         {
-            std::cout << "* Failed to find a non-trivial step after " << numBacktracks << " backtracks" << std::endl;
+            std::cout << "  * Failed to find a non-trivial step after " << numBacktracks << " backtracks" << std::endl;
             // Restore initial positions if step size goes to 0
             RestorePositions();
             return 0;
