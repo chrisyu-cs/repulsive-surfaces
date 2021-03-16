@@ -31,10 +31,6 @@ namespace rsurfaces
         // Get the exponents of this energy; only applies to tangent-point energies.
         virtual Vector2 GetExponents();
 
-        // Update the energy to reflect the current state of the mesh. This could
-        // involve building a new BVH for Barnes-Hut energies, for instance.
-        virtual void Update();
-        
         // Willmore energy should add a bi-Laplacian term.
         virtual void AddMetricTerm(std::vector<MetricTerm*> &terms);
 

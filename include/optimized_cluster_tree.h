@@ -205,27 +205,27 @@ namespace rsurfaces
 
         inline void UpdateWithNewPositions(MeshPtr &mesh, GeomPtr &geom)
         {
-            int nVertices = mesh->nVertices();
-            int nFaces = mesh->nFaces();
+            mint nVertices = mesh->nVertices();
+            mint nFaces = mesh->nFaces();
             FaceIndices fInds = mesh->getFaceIndices();
             VertexIndices vInds = mesh->getVertexIndices();
 
-            double athird = 1. / 3.;
+            mreal athird = 1. / 3.;
 
-            if( far_dim == 7)
+            if( far_dim == 7 && near_dim == 7)
             {
-                std::vector<double> P_near_(7 * nFaces);
-                std::vector<double> P_far_(7 * nFaces);
+                std::vector<mreal> P_near_(7 * nFaces);
+                std::vector<mreal> P_far_(7 * nFaces);
                 
                 for (auto face : mesh->faces())
                 {
-                    int i = fInds[face];
+                    mint i = fInds[face];
                     
                     GCHalfedge he = face.halfedge();
                     
-                    int i0 = vInds[he.vertex()];
-                    int i1 = vInds[he.next().vertex()];
-                    int i2 = vInds[he.next().next().vertex()];
+                    mint i0 = vInds[he.vertex()];
+                    mint i1 = vInds[he.next().vertex()];
+                    mint i2 = vInds[he.next().next().vertex()];
                     Vector3 p1 = geom->inputVertexPositions[i0];
                     Vector3 p2 = geom->inputVertexPositions[i1];
                     Vector3 p3 = geom->inputVertexPositions[i2];
@@ -242,45 +242,83 @@ namespace rsurfaces
             }
             else
             {
-                std::vector<double> P_near_(7 * nFaces);
-                std::vector<double> P_far_(10 * nFaces);
-                
-                for (auto face : mesh->faces())
+                if( far_dim == 10 && near_dim == 10)
                 {
-                    int i = fInds[face];
+                    std::vector<mreal> P_near_(10 * nFaces);
+                    std::vector<mreal> P_far_(10 * nFaces);
                     
-                    GCHalfedge he = face.halfedge();
-                    
-                    int i0 = vInds[he.vertex()];
-                    int i1 = vInds[he.next().vertex()];
-                    int i2 = vInds[he.next().next().vertex()];
-                    Vector3 p1 = geom->inputVertexPositions[i0];
-                    Vector3 p2 = geom->inputVertexPositions[i1];
-                    Vector3 p3 = geom->inputVertexPositions[i2];
-                    
-                    P_far_[10 * i + 0] = P_near_[7 * i + 0] = geom->faceAreas[face];
-                    P_far_[10 * i + 0] = P_near_[7 * i + 0] = athird * (p1.x + p2.x + p3.x);
-                    P_far_[10 * i + 0] = P_near_[7 * i + 0] = athird * (p1.y + p2.y + p3.y);
-                    P_far_[10 * i + 0] = P_near_[7 * i + 0] = athird * (p1.z + p2.z + p3.z);
-                    mreal n1 = geom->faceNormals[face].x;
-                    mreal n2 = geom->faceNormals[face].y;
-                    mreal n3 = geom->faceNormals[face].z;
-                    
-                    P_near_[7 * i + 4] = n1;
-                    P_near_[7 * i + 5] = n2;
-                    P_near_[7 * i + 6] = n3;
-                    
-                    P_far_[10 * i + 4] = n1 * n1;
-                    P_far_[10 * i + 5] = n1 * n2;
-                    P_far_[10 * i + 6] = n1 * n3;
-                    P_far_[10 * i + 7] = n2 * n2;
-                    P_far_[10 * i + 8] = n2 * n3;
-                    P_far_[10 * i + 9] = n3 * n3;
-
+                    for (auto face : mesh->faces())
+                    {
+                        mint i = fInds[face];
+                        
+                        GCHalfedge he = face.halfedge();
+                        
+                        mint i0 = vInds[he.vertex()];
+                        mint i1 = vInds[he.next().vertex()];
+                        mint i2 = vInds[he.next().next().vertex()];
+                        Vector3 p1 = geom->inputVertexPositions[i0];
+                        Vector3 p2 = geom->inputVertexPositions[i1];
+                        Vector3 p3 = geom->inputVertexPositions[i2];
+                        
+                        P_far_[10 * i + 0] = P_near_[10 * i + 0] = geom->faceAreas[face];
+                        P_far_[10 * i + 0] = P_near_[10 * i + 0] = athird * (p1.x + p2.x + p3.x);
+                        P_far_[10 * i + 0] = P_near_[10 * i + 0] = athird * (p1.y + p2.y + p3.y);
+                        P_far_[10 * i + 0] = P_near_[10 * i + 0] = athird * (p1.z + p2.z + p3.z);
+                        
+                        mreal n1 = geom->faceNormals[face].x;
+                        mreal n2 = geom->faceNormals[face].y;
+                        mreal n3 = geom->faceNormals[face].z;
+                        
+                        P_near_[10 * i + 4] = P_far_[10 * i + 4] = n1 * n1;
+                        P_near_[10 * i + 4] = P_far_[10 * i + 5] = n1 * n2;
+                        P_near_[10 * i + 4] = P_far_[10 * i + 6] = n1 * n3;
+                        P_near_[10 * i + 4] = P_far_[10 * i + 7] = n2 * n2;
+                        P_near_[10 * i + 4] = P_far_[10 * i + 8] = n2 * n3;
+                        P_near_[10 * i + 4] = P_far_[10 * i + 9] = n3 * n3;
+                    }
                 }
-                SemiStaticUpdate( &P_near_[0], &P_far_[0] );
-            }
+                else
+                {
+                    std::vector<mreal> P_near_(7 * nFaces);
+                    std::vector<mreal> P_far_(10 * nFaces);
+                    
+                    for (auto face : mesh->faces())
+                    {
+                        mint i = fInds[face];
+                        
+                        GCHalfedge he = face.halfedge();
+                        
+                        mint i0 = vInds[he.vertex()];
+                        mint i1 = vInds[he.next().vertex()];
+                        mint i2 = vInds[he.next().next().vertex()];
+                        Vector3 p1 = geom->inputVertexPositions[i0];
+                        Vector3 p2 = geom->inputVertexPositions[i1];
+                        Vector3 p3 = geom->inputVertexPositions[i2];
+                        
+                        P_far_[10 * i + 0] = P_near_[7 * i + 0] = geom->faceAreas[face];
+                        P_far_[10 * i + 0] = P_near_[7 * i + 0] = athird * (p1.x + p2.x + p3.x);
+                        P_far_[10 * i + 0] = P_near_[7 * i + 0] = athird * (p1.y + p2.y + p3.y);
+                        P_far_[10 * i + 0] = P_near_[7 * i + 0] = athird * (p1.z + p2.z + p3.z);
+                        
+                        mreal n1 = geom->faceNormals[face].x;
+                        mreal n2 = geom->faceNormals[face].y;
+                        mreal n3 = geom->faceNormals[face].z;
+                        
+                        P_near_[7 * i + 4] = n1;
+                        P_near_[7 * i + 5] = n2;
+                        P_near_[7 * i + 6] = n3;
+                        
+                        P_far_[10 * i + 4] = n1 * n1;
+                        P_far_[10 * i + 5] = n1 * n2;
+                        P_far_[10 * i + 6] = n1 * n3;
+                        P_far_[10 * i + 7] = n2 * n2;
+                        P_far_[10 * i + 8] = n2 * n3;
+                        P_far_[10 * i + 9] = n3 * n3;
 
+                    }
+                    SemiStaticUpdate( &P_near_[0], &P_far_[0] );
+                }
+            }
         }
 
         void SplitCluster(Cluster2 * const C, const mint free_thread_count);
