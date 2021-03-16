@@ -80,12 +80,16 @@ namespace rsurfaces
 
     void MainApp::TakeOptimizationStep(bool remeshAfter, bool showAreaRatios)
     {
+        ptic("MainApp::TakeOptimizationStep");
+        
         if (logPerformance && numSteps == 0)
         {
             logPerformanceLine();
         }
 
         long beforeStep = currentTimeMilliseconds();
+        
+        ptic("Switch");
         switch (methodChoice)
         {
         case GradientMethod::HsProjected:
@@ -125,7 +129,8 @@ namespace rsurfaces
         default:
             throw std::runtime_error("Unknown gradient method type.");
         }
-
+        ptoc("Switch");
+        
         if (remeshAfter)
         {
             bool doCollapse = (numSteps % 1 == 0);
@@ -139,9 +144,12 @@ namespace rsurfaces
             {
                 std::cout << "Vertices were not mutated this step." << std::endl;
             }
-
+            ptic("mesh->compress()");
             mesh->compress();
+            ptoc("mesh->compress()");
+            ptic("MainApp::instance->reregisterMesh();");
             MainApp::instance->reregisterMesh();
+            ptoc("MainApp::instance->reregisterMesh();");
         }
         else
         {
@@ -170,6 +178,7 @@ namespace rsurfaces
 
             psMesh->addVertexScalarQuantity("Area ratios", areaRatio);
         }
+        ptoc("MainApp::TakeOptimizationStep");
     }
 
     void MainApp::updateMeshPositions()
@@ -502,6 +511,13 @@ namespace rsurfaces
 
     void MainApp::TestObstacle0()
     {
+        int threads;
+        #pragma omp parallel
+        {
+            threads = omp_get_num_threads();
+        }
+        ClearProfile("./TestObstacle0_" + std::to_string(threads)+ ".tsv");
+        
         std::cout << std::setprecision(8);
         std::cout << "\n  =====                   =====  " << std::endl;
         std::cout << "=======   TestObstacle0   =======" << std::endl;
@@ -1108,6 +1124,13 @@ namespace rsurfaces
                     << std::endl;
 
         delete bvh1;
+        
+//        std::ofstream file;
+//        file.open("./Profile.tsv");
+//        WriteProfile(file);
+//        file.close();
+        
+        
     } // TestObstacle0
 
     void MainApp::TestBarnesHut0()

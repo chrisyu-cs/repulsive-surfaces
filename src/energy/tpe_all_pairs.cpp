@@ -7,6 +7,8 @@ namespace rsurfaces
     template<typename T1, typename T2>
     mreal TPEnergyAllPairs::Energy(T1 alpha, T2 betahalf)
     {
+        ptic("TPEnergyAllPairs::Energy");
+        
         T2 minus_betahalf = -betahalf;
         
         auto S = bvh;
@@ -67,6 +69,7 @@ namespace rsurfaces
             }
             sum += A[i] * i_sum;
         }
+        ptoc("TPEnergyAllPairs::Energy");
         return sum;
     }; // Energy
 
@@ -74,6 +77,7 @@ namespace rsurfaces
     template<typename T1, typename T2>
     mreal TPEnergyAllPairs::DEnergy(T1 alpha, T2 betahalf)
     {
+        ptic("TPEnergyAllPairs::DEnergy");
         T1 alpha_minus_2 = alpha - 2;
         T2 minus_betahalf_minus_1 = -betahalf - 1;
         
@@ -220,25 +224,33 @@ namespace rsurfaces
             U[ 7 * i + 6 ] += dn3;
             
         }// for( mint i = 0; i < S_n ; ++i )
+        ptoc("TPEnergyAllPairs::DEnergy");
         return sum;
     }; //DEnergy
     
     // Returns the current value of the energy.
     double TPEnergyAllPairs::Value()
     {
+        ptic("TPEnergyAllPairs::Value");
+        
+        mreal value = 0.;
         
         if( use_int )
         {
             mint int_alpha = std::round(alpha);
             mint int_betahalf = std::round(beta/2);
-            return weight * Energy( int_alpha, int_betahalf );
+            value = weight * Energy( int_alpha, int_betahalf );
         }
         else
         {
             mreal real_alpha = alpha;
             mreal real_betahalf = beta/2;
-            return weight * Energy( real_alpha, real_betahalf );
+            value = weight * Energy( real_alpha, real_betahalf );
         }
+        
+        ptoc("TPEnergyAllPairs::Value");
+        
+        return value;
     } // Value
 
     // Returns the current differential of the energy, stored in the given
@@ -246,6 +258,8 @@ namespace rsurfaces
     // respect to the corresponding vertex.
     void TPEnergyAllPairs::Differential(Eigen::MatrixXd &output)
     {
+        ptic("TPEnergyAllPairs::Differential");
+        
         if( bvh->near_dim != 7)
         {
             eprint("in TPEnergyAllPairs::Differential: near_dim != 7");
@@ -273,6 +287,8 @@ namespace rsurfaces
     
         AssembleDerivativeFromACNData( mesh, geom, P_D_near, output, weight );
         
+        ptoc("TPEnergyAllPairs::Differential");
+        
     } // Differential
 
 
@@ -280,12 +296,15 @@ namespace rsurfaces
     // involve building a new BVH for Barnes-Hut energies, for instance.
     void TPEnergyAllPairs::Update()
     {
+        ptic("TPEnergyAllPairs::Update");
         if (bvh)
         {
             delete bvh;
         }
         
         bvh = CreateOptimizedBVH(mesh, geom);
+        
+        ptoc("TPEnergyAllPairs::Update");
     }
 
     // Get the exponents of this energy; only applies to tangent-point energies.

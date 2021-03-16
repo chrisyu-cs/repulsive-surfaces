@@ -6,6 +6,7 @@ namespace rsurfaces
     // General initialization; delays the computation of the sparse block matrix pattern to a later point.
     InteractionData::InteractionData( A_Vector<A_Deque<mint>> & idx, A_Vector<A_Deque<mint>> & jdx, const mint m_, const mint n_, bool upper_triangular_ )
     {
+        ptic("InteractionData::InteractionData");
         thread_count = std::min( idx.size(), jdx.size());
         upper_triangular = upper_triangular_;
         b_m = m = m_;
@@ -96,14 +97,14 @@ namespace rsurfaces
                 std::sort( b_inner + b_outer[i], b_inner + b_outer[i+1] );
             }
         }
+        ptoc("InteractionData::InteractionData");
     }; // InteractionData Constructor
 
 
     // Allocate nonzero values for CSR matrices
     void InteractionData::PrepareCSR()
     {
-//        tic("PrepareCSR()");
-    //    tic("Allocate nonzero values");
+        ptic("InteractionData::PrepareCSR");
         #pragma omp parallel
         {
             #pragma omp single
@@ -123,14 +124,13 @@ namespace rsurfaces
                 #pragma omp taskwait
             }
         }
-//        toc("PrepareCSR()");
-    //    toc("Allocate nonzero values");
+        ptoc("InteractionData::PrepareCSR");
     }
 
     // Allocate nonzero values _and_ compute block date for blocked matrices in CSR matrices
     void InteractionData::PrepareCSR( mint b_m_, mint * b_row_ptr_, mint b_n_, mint * b_col_ptr_ )
     {
-//        tic("PrepareCSR( mint b_m_, mint * b_row_ptr_, mint b_n_, mint * b_col_ptr_ )");
+        ptic("InteractionData::PrepareCSR( mint b_m_, mint * b_row_ptr_, mint b_n_, mint * b_col_ptr_ )");
         b_m = b_m_;
         b_n = b_n_;
         
@@ -286,11 +286,12 @@ namespace rsurfaces
             }
         }
         
-//        toc("PrepareCSR( mint b_m_, mint * b_row_ptr_, mint b_n_, mint * b_col_ptr_ )");
+        ptoc("InteractionData::PrepareCSR( mint b_m_, mint * b_row_ptr_, mint b_n_, mint * b_col_ptr_ )");
     }
 
     void InteractionData::ApplyKernel_CSR_MKL( mreal * values, mreal * T_input, mreal * S_output, mint cols, mreal factor ) // sparse matrix-vector multiplication using mkl_sparse_d_mm
     {
+        ptic("InteractionData::ApplyKernel_CSR_MKL");
         if( T_input && S_output && OuterPtrB()[m] > 0 && values )
         {
             // Creation of handle for a sparse matrix in CSR format. This has almost no overhead. (Should be similar to Eigen's Map.)
@@ -349,6 +350,7 @@ namespace rsurfaces
                 }
             }
         }
+        ptoc("InteractionData::ApplyKernel_CSR_MKL");
     }; // ApplyKernel_CSR_MKL
 
     void InteractionData::ApplyKernel_CSR_Eigen( mreal * values, mreal * T_input, mreal * S_output, mint cols, mreal factor ) // sparse matrix-vector multiplication using Eigen

@@ -6,6 +6,7 @@
 
 #include "sobolev/all_constraints.h"
 #include "energy/all_energies.h"
+#include "profiler.h"
 
 namespace rsurfaces
 {

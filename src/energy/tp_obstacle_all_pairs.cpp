@@ -5,6 +5,8 @@ namespace rsurfaces
     template<typename T1, typename T2>
     mreal TPObstacleAllPairs::Energy(T1 alpha, T2 betahalf)
     {
+        ptic("TPObstacleAllPairs::Energy");
+        
         T2 minus_betahalf = -betahalf;
 
         mint nthreads = bvh->thread_count;
@@ -69,6 +71,9 @@ namespace rsurfaces
             }
             sum += A[i] * i_sum;
         }
+        
+        ptoc("TPObstacleAllPairs::Energy");
+        
         return sum;
     }; // Energy
 
@@ -76,6 +81,9 @@ namespace rsurfaces
     template<typename T1, typename T2>
     mreal TPObstacleAllPairs::DEnergy(T1 alpha, T2 betahalf)
     {
+        
+        ptic("TPObstacleAllPairs::DEnergy");
+        
         T1 alpha_minus_2 = alpha - 2;
         T2 minus_betahalf_minus_1 = -betahalf - 1;
         
@@ -208,12 +216,18 @@ namespace rsurfaces
             
         }// for( mint i = 0; i < n ; ++i )
         
+        ptoc("TPObstacleAllPairs::DEnergy");
+        
         return sum;
     }; //DEnergy
 
     // Returns the current value of the energy.
     double TPObstacleAllPairs::Value()
     {
+        ptic("TPObstacleAllPairs::Value");
+        
+        mreal value = 0.;
+        
         bvh = bvhSharedFrom->GetBVH();
         if (!bvh)
         {
@@ -224,14 +238,18 @@ namespace rsurfaces
         {
             mint int_alpha = std::round(alpha);
             mint int_betahalf = std::round(beta/2);
-            return weight * Energy( int_alpha, int_betahalf );
+            value = weight * Energy( int_alpha, int_betahalf );
         }
         else
         {
             mreal real_alpha = alpha;
             mreal real_betahalf = beta/2;
-            return weight * Energy( real_alpha, real_betahalf );
+            value = weight * Energy( real_alpha, real_betahalf );
         }
+        
+        ptoc("TPObstacleAllPairs::Value");
+        
+        return value;
     } // Value
 
     // Returns the current differential of the energy, stored in the given
@@ -239,6 +257,8 @@ namespace rsurfaces
     // respect to the corresponding vertex.
     void TPObstacleAllPairs::Differential(Eigen::MatrixXd &output)
     {
+        ptic("TPObstacleAllPairs::Differential");
+        
         bvh = bvhSharedFrom->GetBVH();
         if (!bvh)
         {
@@ -272,6 +292,7 @@ namespace rsurfaces
     
         AssembleDerivativeFromACNData( mesh, geom, P_D_near_, output, weight );
         
+        ptoc("TPObstacleAllPairs::Differential");
     } // Differential
 
 
@@ -279,6 +300,8 @@ namespace rsurfaces
     // involve building a new BVH for Barnes-Hut energies, for instance.
     void TPObstacleAllPairs::Update()
     {
+        ptic("TPObstacleAllPairs::Update");
+        
         // Invalidate the old BVH pointer
         bvh = 0;
         // bvhSharedFrom is responsible for reallocating it in its Update() function
@@ -287,6 +310,8 @@ namespace rsurfaces
         {
             throw std::runtime_error("Obstacle energy is sharing BVH from an energy that has no BVH.");
         }
+        
+        ptoc("TPObstacleAllPairs::Update");
     }
 
     // Get the exponents of this energy; only applies to tangent-point energies.

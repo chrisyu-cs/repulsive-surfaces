@@ -5,7 +5,7 @@ namespace rsurfaces
 
     OptimizedBlockClusterTree::OptimizedBlockClusterTree(OptimizedClusterTree* S_, OptimizedClusterTree* T_, const mreal alpha_, const mreal beta_, const mreal theta_, bool exploit_symmetry_, bool upper_triangular_)
     {
-        // tic("Initializing OptimizedBlockClusterTree");
+        ptic("OptimizedBlockClusterTree::OptimizedBlockClusterTree");
         S = S_;
         T = T_;
         alpha = alpha_;
@@ -40,7 +40,7 @@ namespace rsurfaces
         // TODO: The following line should be moved to InternalMultiply in order to delay matrix creation to a time when it is actually needed. Otherwise, using the BCT for line search (evaluating only the energy), the time for creating the matrices would be wasted.
         RequireMetrics();
 
-        
+        ptoc("OptimizedBlockClusterTree::OptimizedBlockClusterTree");
     }; // Constructor
 
     //######################################################################################################################################
@@ -49,13 +49,14 @@ namespace rsurfaces
 
     void OptimizedBlockClusterTree::CreateBlockClusters()
     {
+        ptic("OptimizedBlockClusterTree::CreateBlockClusters");
         auto thread_sep_idx = A_Vector<A_Deque<mint>>(tree_thread_count);
         auto thread_sep_jdx = A_Vector<A_Deque<mint>>(tree_thread_count);
 
         auto thread_nonsep_idx = A_Vector<A_Deque<mint>>(tree_thread_count);
         auto thread_nonsep_jdx = A_Vector<A_Deque<mint>>(tree_thread_count);
 
-        // tic("SplitBlockCluster");
+        ptic("SplitBlockCluster");
 
         #pragma omp parallel num_threads(tree_thread_count) shared(thread_sep_idx, thread_sep_jdx, thread_nonsep_idx, thread_nonsep_jdx)
         {
@@ -74,17 +75,13 @@ namespace rsurfaces
             nonsep_blockcluster_count += thread_nonsep_idx[thread].size();
         }
 
-        // toc("SplitBlockCluster");
+        ptoc("SplitBlockCluster");
 
-        // tic("Far field");
         far  = std::make_shared<InteractionData> ( thread_sep_idx, thread_sep_jdx, S->cluster_count, T->cluster_count, upper_triangular );
-        // toc("Far field");
 
-        // tic("Near field");
         near = std::make_shared<InteractionData> ( thread_nonsep_idx, thread_nonsep_jdx, S->leaf_cluster_count, T->leaf_cluster_count, upper_triangular );
-        // toc("Near field");
 
-
+        ptoc("OptimizedBlockClusterTree::CreateBlockClusters");
     }; //CreateBlockClusters
 
     void OptimizedBlockClusterTree::SplitBlockCluster(
@@ -94,7 +91,8 @@ namespace rsurfaces
         A_Vector<A_Deque<mint>> &nsep_j,
         const mint i,
         const mint j,
-        const mint free_thread_count)
+        const mint free_thread_count
+    )
     {
         //    std::pair<mint,mint> minmax;
         mint thread = omp_get_thread_num();
@@ -293,6 +291,7 @@ namespace rsurfaces
 
     void OptimizedBlockClusterTree::RequireMetrics()
     {
+        ptic("OptimizedBlockClusterTree::RequireMetrics");
         if( !metrics_initialized )
         {
             
@@ -320,10 +319,12 @@ namespace rsurfaces
             metrics_initialized = true;
 //          print("Done: RequireMetrics.");
         }
+        ptoc("OptimizedBlockClusterTree::RequireMetrics");
     } // RequireMetrics
 
     void OptimizedBlockClusterTree::FarFieldInteraction()
     {
+        ptic("OptimizedBlockClusterTree::FarFieldInteraction");
         mint b_m = far->b_m;
         mint const * restrict const b_outer = far->b_outer;
         mint const * restrict const b_inner = far->b_inner;
@@ -485,10 +486,12 @@ namespace rsurfaces
                 }
             }
         }
+        ptoc("OptimizedBlockClusterTree::FarFieldInteraction");
     }; //FarFieldInteraction
 
     void OptimizedBlockClusterTree::NearFieldInteractionCSR()
     {
+        ptic("OptimizedBlockClusterTree::NearFieldInteractionCSR");
         mint b_m = near->b_m;
         // Getting the pointers first to reduce indexing within the loops. Together with const + restrict, this gains about 5% runtime improvement.
         mint const * restrict const b_row_ptr = &near->b_row_ptr[0];
@@ -721,6 +724,7 @@ namespace rsurfaces
                 }
             }
         }
+        ptoc("OptimizedBlockClusterTree::NearFieldInteractionCSR");
     }; //NearFieldInteractionCSR
 
     //######################################################################################################################################
@@ -734,6 +738,7 @@ namespace rsurfaces
 
     void OptimizedBlockClusterTree::Multiply(Eigen::VectorXd &input, Eigen::VectorXd &output, const mint cols, BCTKernelType type, bool addToResult) const
     {
+        ptic("OptimizedBlockClusterTree::Multiply(Eigen::VectorXd &input, Eigen::VectorXd &output, const mint cols, BCTKernelType type, bool addToResult)");
         // Version for vectors of cols-dimensional vectors. Input and out are assumed to be stored in interleave format.
         // E.g., for a list {v1, v2, v3,...} of  cols = 3-vectors, we expect { v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z, ... }
 
@@ -764,6 +769,8 @@ namespace rsurfaces
                 eprint(" in OptimizedBlockClusterTree::Multiply: input vector is to short because" + std::to_string(output.size()) + " < " + std::to_string(cols) + " * " + std::to_string(n) + ".");
             }
         }
+        
+        ptoc("OptimizedBlockClusterTree::Multiply(Eigen::VectorXd &input, Eigen::VectorXd &output, const mint cols, BCTKernelType type, bool addToResult)");
     }
 
     //######################################################################################################################################
@@ -772,10 +779,9 @@ namespace rsurfaces
 
     void OptimizedBlockClusterTree::Multiply(Eigen::MatrixXd &input, Eigen::MatrixXd &output, BCTKernelType type, bool addToResult) const
     {
+        ptic("OptimizedBlockClusterTree::Multiply(Eigen::MatrixXd &input, Eigen::MatrixXd &output, BCTKernelType type, bool addToResult)");
         // Top level routine for the user.
         // Optimized for in and output in row major order.
-
-        //    tic("Multiply");
 
         // toc("ComputeDiagonals");
         //    tic("T->Pre");
@@ -790,12 +796,12 @@ namespace rsurfaces
         S->Post(output, type, addToResult);
         //    toc("S->Post");
 
-        //    toc("Multiply");
+        ptoc("OptimizedBlockClusterTree::Multiply(Eigen::MatrixXd &input, Eigen::MatrixXd &output, BCTKernelType type, bool addToResult)");
     }; // Multiply
 
     void OptimizedBlockClusterTree::InternalMultiply(BCTKernelType type) const
     {
-
+        ptic("OptimizedBlockClusterTree::InternalMultiply");
         // TODO: Make it so that RequireMetrics can be called here to initialize the actual matrices only when they are needed.
 //        RequireMetrics();
 
@@ -864,11 +870,14 @@ namespace rsurfaces
                 cblas_daxpy( cols, diag[i], T->P_in + (cols * i), 1, S->P_out + (cols * i), 1 );
             }
         }
+        
+        ptoc("OptimizedBlockClusterTree::InternalMultiply");
     }; // InternalMultiply
 
     // TODO: Needs to be adjusted when S and T are not the same!!!
     void OptimizedBlockClusterTree::ComputeDiagonals()
     {
+        ptic("OptimizedBlockClusterTree::ComputeDiagonals");
         if( true )
         {
             S->RequireBuffers(1);
@@ -948,6 +957,76 @@ namespace rsurfaces
             
             mreal_free(ainv);
         }
+        ptoc("OptimizedBlockClusterTree::ComputeDiagonals");
     }; // ComputeDiagonals
 
+
+    void OptimizedBlockClusterTree::AddObstacleCorrection( OptimizedBlockClusterTree * bct12)
+    {
+        ptic("OptimizedBlockClusterTree::AddObstacleCorrection");
+        // Suppose that bct11 = this;
+        // The joint bct of the union of mesh1 and mesh2 can be written in block matrix for as
+        //  bct = {
+        //            { bct11, bct12 },
+        //            { bct21, bct22 }
+        //        },
+        // where bct11 and bct22 are the instances of OptimizedBlockClusterTree of mesh1 and mesh2, respectively, bct12 is cross interaction OptimizedBlockClusterTree of mesh1 and mesh2, and bct21 is the transpose of bct12.
+        // However, the according matrix (on the space of dofs on the primitives) would be
+        //  A   = {
+        //            { A11 + diag( A12 * one2 ) , A12                      },
+        //            { A21                      , A22 + diag( A21 * one1 ) }
+        //        },
+        // where one1 and one2 are all-1-vectors on the primitives of mesh1 and mesh2, respectively.
+        // OptimizedBlockClusterTree::AddObstacleCorrection is supposed to compute diag( A12 * one2 ) and to add it to the diagonal of A11.
+        // Then the bct11->Multiply will also multiply with the obstacle.
+        
+        if( (S == T) && (T == bct12->S) )
+        {
+            RequireMetrics();
+            bct12->RequireMetrics();
+
+            if( fr_factor != bct12->fr_factor )
+            {
+                wprint("AddToDiagonal: The values of fr_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+            }
+            if( hi_factor != bct12->hi_factor )
+            {
+                wprint("AddToDiagonal: The values of hi_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+            }
+            if( lo_factor != bct12->lo_factor )
+            {
+                wprint("AddToDiagonal: The values of lo_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+            }
+            
+            mint n = T->primitive_count;
+            
+            mreal * restrict const fr_target = fr_diag;
+            mreal * restrict const hi_target = hi_diag;
+            mreal * restrict const lo_target = lo_diag;
+            
+            mreal const * restrict const fr_source = bct12->fr_diag;
+            mreal const * restrict const hi_source = bct12->hi_diag;
+            mreal const * restrict const lo_source = bct12->lo_diag;
+            
+            #pragma omp parallel for simd aligned( fr_target, hi_target, lo_target, fr_source, hi_source, lo_source : ALIGN )
+            for( mint i = 0; i < n; ++ i)
+            {
+                fr_target[i] += fr_source[i];
+                hi_target[i] += hi_source[i];
+                lo_target[i] += lo_source[i];
+            }
+        }
+        else
+        {
+            if( S != T )
+            {
+                eprint("AddToDiagonal: Instance of OptimizedBlockClusterTree is not symmetric. Doing nothing.");
+            }
+            if( S != bct12->S )
+            {
+                eprint("AddToDiagonal: The two instances of OptimizedBlockClusterTree are not compatible. Doing nothing.");
+            }
+        }
+        ptoc("OptimizedBlockClusterTree::AddObstacleCorrection");
+    }
 } // namespace rsurfaces
