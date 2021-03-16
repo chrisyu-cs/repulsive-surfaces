@@ -257,6 +257,8 @@ namespace rsurfaces
 
     void SurfaceFlow::StepProjectedGradient()
     {
+        ptic("SurfaceFlow::StepProjectedGradient");
+        
         long timeStart = currentTimeMilliseconds();
         stepCount++;
         std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
@@ -326,10 +328,14 @@ namespace rsurfaces
 
         long timeEnd = currentTimeMilliseconds();
         std::cout << "  Total time for gradient step = " << (timeEnd - timeStart) << " ms" << std::endl;
+        
+        ptoc("SurfaceFlow::StepProjectedGradient");
     }
 
     void SurfaceFlow::StepProjectedGradientIterative()
     {
+        ptic("SurfaceFlow::StepProjectedGradientIterative");
+        
         long timeStart = currentTimeMilliseconds();
         stepCount++;
         std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
@@ -399,6 +405,8 @@ namespace rsurfaces
 
         long timeEnd = currentTimeMilliseconds();
         std::cout << "  Total time for gradient step = " << (timeEnd - timeStart) << " ms" << std::endl;
+        
+        ptoc("SurfaceFlow::StepProjectedGradientIterative");
     }
 
     size_t SurfaceFlow::addConstraintTriplets(std::vector<Triplet> &triplets, bool includeSchur)

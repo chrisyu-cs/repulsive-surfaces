@@ -73,6 +73,8 @@ namespace rsurfaces
 
         inline Eigen::SparseMatrix<double> BuildDfOperator(const MeshPtr &mesh, const GeomPtr &geom)
         {
+            ptic("BuildDfOperator");
+            
             FaceIndices fInds = mesh->getFaceIndices();
             VertexIndices vInds = mesh->getVertexIndices();
 
@@ -116,12 +118,17 @@ namespace rsurfaces
 
             Eigen::SparseMatrix<double> Df(3 * mesh->nFaces(), mesh->nVertices());
             Df.setFromTriplets(triplets.begin(), triplets.end());
+            
+            ptoc("BuildDfOperator");
+            
             return Df;
         }
 
         template <typename V, typename VF>
         void ApplyMidOperator(const MeshPtr &mesh, const GeomPtr &geom, V &a, VF &out)
         {
+            ptic("ApplyMidOperator");
+            
             FaceIndices fInds = mesh->getFaceIndices();
             VertexIndices vInds = mesh->getVertexIndices();
 
@@ -139,12 +146,15 @@ namespace rsurfaces
                 }
                 out(fInds[face]) += total;
             }
+            
+            ptoc("ApplyMidOperator");
         }
 
         template <typename V, typename VF>
         void ApplyMidOperatorTranspose(const MeshPtr &mesh, const GeomPtr &geom, VF &a, V &out)
         {
-
+            ptic("ApplyMidOperatorTranspose");
+            
             FaceIndices fInds = mesh->getFaceIndices();
             VertexIndices vInds = mesh->getVertexIndices();
 
@@ -162,6 +172,8 @@ namespace rsurfaces
                 }
                 out(vInds[vert]) += total;
             }
+            
+            ptoc("ApplyMidOperatorTranspose");
         }
     } // namespace Hs
 } // namespace rsurfaces

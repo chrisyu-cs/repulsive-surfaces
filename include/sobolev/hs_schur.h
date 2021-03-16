@@ -61,6 +61,8 @@ namespace rsurfaces
         template <typename Inverse>
         void ProjectSchurConstraints(const HsMetric &hs, int newtonSteps)
         {
+            ptic("ProjectSchurConstraints");
+            
             size_t nRows = hs.Schur<Inverse>().M_A.rows();
             int nIters = 0;
             Eigen::VectorXd vals(nRows);
@@ -112,6 +114,8 @@ namespace rsurfaces
                 double corrError = vals.lpNorm<Eigen::Infinity>();
                 std::cout << "  * Corrected error " << constraintError << " -> " << corrError << std::endl;
             }
+            
+            ptoc("ProjectSchurConstraints");
         }
     } // namespace Hs
 

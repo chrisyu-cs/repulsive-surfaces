@@ -6,6 +6,7 @@ namespace rsurfaces
     template <typename T1, typename T2>
     mreal TPObstacleBarnesHut0::Energy(T1 alpha, T2 betahalf)
     {
+        ptic("TPObstacleBarnesHut0::Energy");
         
         T2 minus_betahalf = -betahalf;
         mreal theta2 = theta * theta;
@@ -378,13 +379,16 @@ namespace rsurfaces
             }
         }
 
+        ptoc("TPObstacleBarnesHut0::Energy");
+        
         return sum;
     }; //Energy
 
     template <typename T1, typename T2>
     mreal TPObstacleBarnesHut0::DEnergy(T1 alpha, T2 betahalf)
     {
-
+        ptic("TPObstacleBarnesHut0::DEnergy");
+        
         T1 alpha_minus_2 = alpha - 2;
         T2 minus_betahalf_minus_1 = -betahalf - 1;
 
@@ -886,11 +890,17 @@ namespace rsurfaces
             }
         }
         
+        ptoc("TPObstacleBarnesHut0::DEnergy");
+        
         return sum;
     }; // DEnergy
     
     double TPObstacleBarnesHut0::Value()
     {
+        ptic("TPObstacleBarnesHut0::Value");
+        
+        mreal value = 0.;
+        
         bvh = bvhSharedFrom->GetBVH();
         if (!bvh)
         {
@@ -900,18 +910,24 @@ namespace rsurfaces
         {
             mint int_alpha = std::round(alpha);
             mint int_betahalf = std::round(beta / 2);
-            return weight * Energy(int_alpha, int_betahalf);
+            value = weight * Energy(int_alpha, int_betahalf);
         }
         else
         {
             mreal real_alpha = alpha;
             mreal real_betahalf = beta / 2;
-            return weight * Energy(real_alpha, real_betahalf);
+            value = weight * Energy(real_alpha, real_betahalf);
         }
+        
+        ptoc("TPObstacleBarnesHut0::Value");
+        
+        return value;
     } // Value
 
     void TPObstacleBarnesHut0::Differential(Eigen::MatrixXd &output)
     {
+        ptic("TPObstacleBarnesHut0::Differential");
+        
         bvh = bvhSharedFrom->GetBVH();
         if (!bvh)
         {
@@ -954,12 +970,17 @@ namespace rsurfaces
         {
             AssembleDerivativeFromACNData( mesh, geom, P_D_far_, output, weight );
         }
+        
+        ptoc("TPObstacleBarnesHut0::Differential");
+        
     } // Differential
     
     // Update the energy to reflect the current state of the mesh. This could
     // involve building a new BVH for Barnes-Hut energies, for instance.
     void TPObstacleBarnesHut0::Update()
     {
+        ptic("TPObstacleBarnesHut0::Update");
+        
         // Invalidate the old BVH pointer
         bvh = 0;
         // bvhSharedFrom is responsible for reallocating it in its Update() function
@@ -968,6 +989,8 @@ namespace rsurfaces
         {
             throw std::runtime_error("Obstacle energy is sharing BVH from an energy that has no BVH.");
         }
+        
+        ptoc("TPObstacleBarnesHut0::Update");
     }
 
     // Get the mesh associated with this energy.

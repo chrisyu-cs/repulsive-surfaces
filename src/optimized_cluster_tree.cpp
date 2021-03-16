@@ -33,6 +33,7 @@ namespace rsurfaces
        MKLSparseMatrix &AvOp                 // Asking now for MKLSparseMatrix instead of EigenMatrixCSR as input
     )
     {
+        ptic("OptimizedClusterTree::OptimizedClusterTree");
         primitive_count = primitive_count_;
         hull_count = hull_count_;
         dim = dim_;
@@ -76,6 +77,7 @@ namespace rsurfaces
             }
         }
         
+        ptic("SplitCluster");
         Cluster2 * root = new Cluster2 ( 0, primitive_count, 0 );
 
         #pragma omp parallel num_threads(tree_thread_count)  shared( root, P_coords, P_ext_pos, tree_thread_count)
@@ -85,7 +87,10 @@ namespace rsurfaces
                 SplitCluster( root, tree_thread_count );
             }
         }
-
+        ptoc("SplitCluster");
+        
+        ptic("Serialize");
+        
         cluster_count = root->descendant_count;
         leaf_cluster_count = root->descendant_leaf_count;
 
@@ -120,7 +125,8 @@ namespace rsurfaces
         {
             inverse_ordering[P_ext_pos[i]] = i;
         }
-
+        ptoc("Serialize");
+        
         ComputePrimitiveData( P_hull_coords_, P_near_, P_far_ );
 //        ComputePrimitiveData( P_hull_coords_, P_near_, P_moments_ );
         
@@ -128,6 +134,7 @@ namespace rsurfaces
 
         ComputePrePost( DiffOp, AvOp );
 
+        ptoc("OptimizedClusterTree::OptimizedClusterTree");
     }; //Constructor
 
 
@@ -252,7 +259,8 @@ namespace rsurfaces
 //                                           , const mreal * const  restrict P_moments_
                                            ) // reordering and computing bounding boxes
     {
-
+        ptic("OptimizedClusterTree::ComputePrimitiveData");
+        
         P_near = A_Vector<mreal * > ( near_dim, nullptr );
         for( mint k = 0; k < near_dim; ++ k )
         {
@@ -325,12 +333,14 @@ namespace rsurfaces
                 P_max[k][i] = max;
             }
         }
+        
+        ptoc("OptimizedClusterTree::ComputePrimitiveData");
     } //ComputePrimitiveData
 
     void OptimizedClusterTree::ComputeClusterData()
     {
         
-    //    tic("Allocation");
+        ptic("OptimizedClusterTree::ComputeClusterData");
         
 //        scratch = A_Vector<A_Vector<mreal>> ( thread_count );
 //        for( mint thread = 0; thread < thread_count; ++thread )
@@ -368,7 +378,6 @@ namespace rsurfaces
         {
             C_D_far[thread] = A_Vector<mreal> ( cluster_count * far_dim );
         }
-    //    toc("Allocation");
         
         // using the already serialized cluster tree
         #pragma omp parallel  shared( thread_count )
@@ -378,6 +387,8 @@ namespace rsurfaces
                 computeClusterData( 0, thread_count );
             }
         }
+        
+        ptoc("OptimizedClusterTree::ComputeClusterData");
     }; //ComputeClusterData
 
 
@@ -487,7 +498,7 @@ namespace rsurfaces
 
     void OptimizedClusterTree::ComputePrePost( MKLSparseMatrix & DiffOp, MKLSparseMatrix & AvOp )
     {
-    //    tic("Create pre and post");
+        ptic("OptimizedClusterTree::ComputePrePost");
 
         P_to_C = MKLSparseMatrix( cluster_count, primitive_count, primitive_count );
         P_to_C.outer[0] = 0;
@@ -566,6 +577,8 @@ namespace rsurfaces
         lo_perm.Multiply( AvOp, lo_pre );
 
         lo_pre.Transpose( lo_post );
+        
+        ptoc("OptimizedClusterTree::ComputePrePost");
     } // ComputePrePost
 
     void OptimizedClusterTree::RequireBuffers( const mint cols )
@@ -695,7 +708,6 @@ namespace rsurfaces
 
     void OptimizedClusterTree::Pre( Eigen::MatrixXd & input, BCTKernelType type )
     {
-     
         mint cols = input.cols();
     //    tic("Eigen map + copy");
         EigenMatrixRM input_wrapper = EigenMatrixRM( input );
@@ -706,6 +718,7 @@ namespace rsurfaces
 
     void OptimizedClusterTree::Pre( mreal * input, const mint cols, BCTKernelType type )
     {
+        ptic("OptimizedClusterTree::Pre");
         MKLSparseMatrix * pre;
         
         switch (type)
@@ -736,19 +749,21 @@ namespace rsurfaces
         }
         
         // Caution: Some magic is going on here high order term...
-    //    tic("MKL pre");
+        ptic("pre->Multiply");
     //     Apply diff/averaging operate, reorder and multiply by weights.
         pre->Multiply( input, P_in, cols );
-    //    toc("MKL pre");
+        ptoc("pre->Multiply");
         
-    //    tic("P_to_C");
+        ptic("P_to_C.Multiply");
         // Accumulate into leaf clusters.
         P_to_C.Multiply( P_in, C_in, buffer_dim );  // Beware: The derivative operator increases the number of columns!
-    //    toc("P_to_C");
+        ptoc("P_to_C.Multiply");
         
-    //    tic("PercolateUp");
+        ptic("OptimizedClusterTree::PercolateUp");
         PercolateUp( 0, thread_count );
-    //    toc("PercolateUp");
+        ptoc("OptimizedClusterTree::PercolateUp");
+    
+        ptoc("OptimizedClusterTree::Pre");
     }; // Pre
 
     void OptimizedClusterTree::Post( Eigen::MatrixXd & output, BCTKernelType type, bool addToResult )
@@ -773,7 +788,7 @@ namespace rsurfaces
 
     void OptimizedClusterTree::Post( mreal * output, const mint cols, BCTKernelType type, bool addToResult )
     {
-//        tic("Post");
+        ptic("Post");
         MKLSparseMatrix * post;
         
         mint expected_dim = buffer_dim;
@@ -813,26 +828,26 @@ namespace rsurfaces
             wprint("Expected number of columns  = " + std::to_string( expected_dim ) + " is greater than requested number of columns " + std::to_string( cols ) + ". Truncating output. Result is very likely unexpected." );
         }
         
-//        tic("PercolateDown");
+        ptic("PercolateDown");
         PercolateDown( 0, thread_count );
-//        toc("PercolateDown");
+        ptoc("PercolateDown");
         
         // Add data from leaf clusters into data on primitives
-//        tic("C_to_P");
+        ptic("C_to_P.Multiply");
         C_to_P.Multiply( C_out, P_out, buffer_dim, true );  // Beware: The derivative operator increases the number of columns!
-//        toc("C_to_P");
+        ptoc("C_to_P.Multiply");
         
         // Multiply by weights, restore external ordering, and apply transpose of diff/averaging operator.
-//        tic("MKL post");
+        ptic("post->Multiply");
         post->Multiply( P_out, output, cols, false );
-//        toc("MKL post");
+        ptoc("post->Multiply");
         
-//        toc("Post");
+        ptoc("Post");
     }; // Post
 
     void OptimizedClusterTree::CollectDerivatives( mreal * restrict const P_D_near_output )
     {
-        //    tic("Accumulate primitive contributions");
+        ptic("OptimizedClusterTree::CollectDerivatives( mreal * restrict const P_D_near_output )");
         #pragma omp parallel for num_threads( thread_count )
         for( mint i = 0; i < primitive_count; ++i )
         {
@@ -849,13 +864,14 @@ namespace rsurfaces
                 P_D_near_output[ near_dim * i + k ] = acc;
             }
         }
-        //    toc("Accumulate primitive contributions");
+        ptoc("OptimizedClusterTree::CollectDerivatives( mreal * restrict const P_D_near_output )");
         
     } // CollectDerivatives
     
     void OptimizedClusterTree::CollectDerivatives( mreal * restrict const P_D_near_output, mreal * restrict const P_D_far_output )
     {
-        //    tic("Accumulate primitive contributions");
+        ptic("OptimizedClusterTree::CollectDerivatives");
+        
         #pragma omp parallel for num_threads( thread_count )
         for( mint i = 0; i < primitive_count; ++i )
         {
@@ -894,15 +910,14 @@ namespace rsurfaces
         }
         //    toc("Accumulate cluster contributions");
         
-        //    tic("PercolateDown");
+        ptic("PercolateDown");
         PercolateDown(0, thread_count );
-        //    toc("PercolateDown");
+        ptoc("PercolateDown");
         
-        //    tic("C_to_P.");
+        ptic("C_to_P.Multiply");
         C_to_P.Multiply( C_out, P_out, far_dim, false);
-        //    toc("C_to_P.");
+        ptoc("C_to_P.Multiply");
         
-        //    tic("Reorder and copy to output");
         #pragma omp parallel for num_threads( thread_count )
         for( mint i = 0; i < primitive_count; ++i )
         {
@@ -914,13 +929,16 @@ namespace rsurfaces
                 P_D_far_output[ far_dim * i + k ] = P_out[ far_dim * j + k ];
             }
         }
-        //    toc("Reorder and copy to output");
+        
+        ptoc("OptimizedClusterTree::CollectDerivatives");
         
     } // CollectDerivatives
 
 
 void OptimizedClusterTree::SemiStaticUpdate( const mreal * restrict const P_near_, const mreal * restrict const P_far_ ){
     // Updates only the computational data like primitive/cluster areas, centers of mass and normals. All data related to clustering or multipole acceptance criteria remain are unchanged.
+    
+    ptic("OptimizedClusterTree::SemiStaticUpdate");
     
     RequireBuffers( far_dim );
     
@@ -949,10 +967,14 @@ void OptimizedClusterTree::SemiStaticUpdate( const mreal * restrict const P_near
     }
     
     // accumulate primitive input buffers in leaf clusters
+    ptic("P_to_C.Multiply");
     P_to_C.Multiply(P_in, C_in, far_dim);
+    ptoc("P_to_C.Multiply");
     
+    ptic("PercolateUp");
     // upward pass, obviously
     PercolateUp( 0, thread_count );
+    ptoc("PercolateUp");
     
     // finally divide center and normal moments by area and store the result in C_far
     #pragma omp parallel for shared( C_far, C_in, far_dim )
@@ -966,6 +988,8 @@ void OptimizedClusterTree::SemiStaticUpdate( const mreal * restrict const P_near
             C_far[k][i] = ainv * C_in[ far_dim * i + k];
         }
     }
+    
+    ptoc("OptimizedClusterTree::SemiStaticUpdate");
     
 } // SemiStaticUpdate
 

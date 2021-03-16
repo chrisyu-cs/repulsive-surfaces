@@ -10,6 +10,7 @@
 #include "line_search.h"
 #include "sobolev/hs_ncg.h"
 #include "sobolev/lbfgs.h"
+#include "profiler.h"
 
 namespace rsurfaces
 {

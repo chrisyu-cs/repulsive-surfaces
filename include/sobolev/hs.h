@@ -230,6 +230,8 @@ namespace rsurfaces
         template <typename V, typename Dst>
         void HsMetric::ProjectSparse(const V &gradientCol, Dst &dest, double epsilon) const
         {
+            ptic("HsMetric::ProjectSparse");
+            
             size_t nRows = topLeftNumRows();
 
             if (!factorizedLaplacian.initialized)
@@ -270,11 +272,15 @@ namespace rsurfaces
 
             // Multiply by L^{-1} again by solving Lx = b
             dest = factorizedLaplacian.Solve(mid);
+            
+            ptoc("HsMetric::ProjectSparse");
         }
 
         template <typename Inverse, typename HsPtr>
         void GetSchurComplement(const HsPtr hs, SchurComplement &dest)
         {
+            ptic("GetSchurComplement");
+            
             size_t nVerts = hs->mesh->nVertices();
             size_t compNRows = 0;
             size_t bigNRows = hs->topLeftNumRows();
@@ -331,6 +337,8 @@ namespace rsurfaces
 
             // Now we've multiplied A^{-1} C^T, so just multiply this with C and negate it
             dest.M_A = -dest.C * dest.Ainv_CT;
+            
+            ptoc("GetSchurComplement");
         }
 
         class SparseInverse

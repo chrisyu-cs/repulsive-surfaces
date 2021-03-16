@@ -16,6 +16,8 @@ namespace rsurfaces
         void ProjectUnconstrainedHsIterative(const Hs::HsMetric &hs, const V &gradient, Dest &dest,
                                              Eigen::SparseMatrix<double> &constraintBlock)
         {
+            ptic("ProjectUnconstrainedHsIterative");
+            
             OptimizedBlockClusterTree *bct = hs.getBlockClusterTree();
 
             BCTMatrixReplacement fracL;
@@ -34,6 +36,8 @@ namespace rsurfaces
             std::cout << "  * GMRES converged in " << cg.iterations() << " iterations, final residual = " << cg.error() << std::endl;
 
             dest = temp;
+            
+            ptoc("ProjectUnconstrainedHsIterative");
         }
 
         template <typename V, typename Dest>

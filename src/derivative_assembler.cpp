@@ -5,7 +5,7 @@ namespace rsurfaces
 {
     Eigen::Matrix<mreal, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> getVertexPositions( MeshPtr mesh, GeomPtr geom )
     {
-//        tic("getVertexPositions");
+        ptic("getVertexPositions");
         geom->requireVertexPositions();
         mint n = mesh->nVertices();
         Eigen::Matrix<mreal, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> result ( n, 3 );
@@ -18,13 +18,13 @@ namespace rsurfaces
             result( i, 2 ) = x[2];
             
         }
-//        toc("getVertexPositions");
+        ptoc("getVertexPositions");
         return result;
     }
     
     Eigen::Matrix<mint, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>  getPrimitiveIndices( MeshPtr mesh, GeomPtr geom )
     {
-//        tic("getPrimitiveIndices");
+        ptic("getPrimitiveIndices");
         mint n = mesh->nFaces();
         VertexIndices vInds = mesh->getVertexIndices();
         FaceIndices fInds = mesh->getFaceIndices();
@@ -41,7 +41,7 @@ namespace rsurfaces
             result( i, 2 ) = vInds[he.next().next().vertex()];
             
         }
-//        toc("getPrimitiveIndices");
+        ptoc("getPrimitiveIndices");
         return result;
     }
     
@@ -81,6 +81,7 @@ namespace rsurfaces
 
     void AssembleDerivative( Eigen::Matrix<mint, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> const & primitives, Eigen::MatrixXd const & buffer, Eigen::MatrixXd & output, mreal weight )
     {
+        ptic("AssembleDerivative");
         mint vertex_count = output.rows();
         mint primitive_count = primitives.rows();
         mint primitive_length = primitives.cols();
@@ -106,10 +107,14 @@ namespace rsurfaces
         mint_free(outer);
         mint_free(inner);
         mreal_free(values);
+        
+        ptoc("AssembleDerivative");
     }
     
     void AssembleDerivativeFromACNData( MeshPtr mesh, GeomPtr geom, EigenMatrixRM const & P_D_data, Eigen::MatrixXd & output, mreal weight )
     {
+        ptic("AssembleDerivativeFromACNData");
+        
         auto V_coords = getVertexPositions( mesh, geom );
         auto primitives = getPrimitiveIndices( mesh, geom );
         
@@ -245,12 +250,16 @@ namespace rsurfaces
         }
         
         AssembleDerivative( primitives, buffer, output, weight );
+        
+        ptoc("AssembleDerivativeFromACNData");
     }// AssembleDerivativeFromACNData
     
     
     
     void AssembleDerivativeFromACPData( MeshPtr mesh, GeomPtr geom, EigenMatrixRM const & P_D_data, Eigen::MatrixXd & output, mreal weight )
     {
+        ptic("AssembleDerivativeFromACPData");
+        
         auto V_coords = getVertexPositions( mesh, geom );
         auto primitives = getPrimitiveIndices( mesh, geom );
         
@@ -433,6 +442,8 @@ namespace rsurfaces
         }
         
         AssembleDerivative( primitives, buffer, output, weight );
+        
+        ptoc("AssembleDerivativeFromACPData");
         
     }// AssembleDerivativeFromACPData
     

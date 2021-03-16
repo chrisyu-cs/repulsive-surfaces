@@ -7,6 +7,7 @@ namespace rsurfaces
     template<typename T1, typename T2>
     mreal TPEnergyBarnesHut0::Energy(T1 alpha, T2 betahalf)
     {
+        ptic("TPEnergyBarnesHut0::Energy");
         
         T2 minus_betahalf = -betahalf;
         mreal theta2 = theta*theta;
@@ -173,6 +174,8 @@ namespace rsurfaces
             
             sum += local_sum;
         }
+        
+        ptoc("TPEnergyBarnesHut0::Energy");
         return sum;
     }; // Energy
 
@@ -180,7 +183,7 @@ namespace rsurfaces
     template<typename T1, typename T2>
     mreal TPEnergyBarnesHut0::DEnergy(T1 alpha, T2 betahalf)
     {
-        
+        ptic("TPEnergyBarnesHut0::DEnergy");
         T1 alpha_minus_2 = alpha - 2;
         T2 minus_betahalf_minus_1 = -betahalf - 1;
         
@@ -432,28 +435,38 @@ namespace rsurfaces
                 }
             }
         }
+        
+        ptoc("TPEnergyBarnesHut0::DEnergy");
+        
         return sum;
     }; // DEnergy
     
     double TPEnergyBarnesHut0::Value()
     {
+        ptic("TPEnergyBarnesHut0::Value");
+        
+        mreal value = 0.;
         
         if( use_int )
         {
             mint int_alpha = std::round(alpha);
             mint int_betahalf = std::round(beta/2);
-            return weight * Energy( int_alpha, int_betahalf );
+            value = weight * Energy( int_alpha, int_betahalf );
         }
         else
         {
             mreal real_alpha = alpha;
             mreal real_betahalf = beta/2;
-            return weight * Energy( real_alpha, real_betahalf );
+            value = weight * Energy( real_alpha, real_betahalf );
         }
+        ptoc("TPEnergyBarnesHut0::Value");
+        
+        return value;
     } // Value
 
     void TPEnergyBarnesHut0::Differential( Eigen::MatrixXd &output )
     {
+        ptic("TPEnergyBarnesHut0::Differential");
         if( bvh->near_dim != 7)
         {
             eprint("in TPEnergyBarnesHut0::Differential: near_dim != 7");
@@ -491,19 +504,21 @@ namespace rsurfaces
         {
             AssembleDerivativeFromACNData( mesh, geom, P_D_far, output, weight );
         }
-        
+        ptoc("TPEnergyBarnesHut0::Differential");
     } // Differential
     
     // Update the energy to reflect the current state of the mesh. This could
     // involve building a new BVH for Barnes-Hut energies, for instance.
     void TPEnergyBarnesHut0::Update()
     {
+        ptic("TPEnergyBarnesHut0::Update");
         if (bvh)
         {
             delete bvh;
         }
         
         bvh = CreateOptimizedBVH(mesh, geom);
+        ptoc("TPEnergyBarnesHut0::Update");
     }
 
     // Get the mesh associated with this energy.

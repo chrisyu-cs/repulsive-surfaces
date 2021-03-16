@@ -15,6 +15,7 @@
 #include <eigen3/Eigen/Sparse>
 #include <iostream>
 #include "bct_kernel_type.h"
+#include "profiler.h"
 
 #define restrict __restrict
 #define ALIGN 32
