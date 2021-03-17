@@ -513,7 +513,7 @@ namespace rsurfaces
 
         // Load obstacle
         std::string filename = "../scenes/Bunny/bunny.obj";
-        std::unique_ptr<HalfedgeMesh> umesh;
+        std::unique_ptr<SurfaceMesh> umesh;
         std::unique_ptr<VertexPositionGeometry> ugeom;
         std::tie(umesh, ugeom) = readManifoldSurfaceMesh(filename);
         ugeom->requireVertexDualAreas();
@@ -521,7 +521,7 @@ namespace rsurfaces
         std::string mesh_name = polyscope::guessNiceNameFromPath(filename);
         polyscope::SurfaceMesh *psMesh = polyscope::registerSurfaceMesh(mesh_name, ugeom->inputVertexPositions, umesh->getFaceVertexList(), polyscopePermutations(*umesh));
         // mesh2 and geom2 represent the pinned obstacle
-        std::shared_ptr<HalfedgeMesh> mesh2 = std::move(umesh);
+        std::shared_ptr<SurfaceMesh> mesh2 = std::move(umesh);
         std::shared_ptr<VertexPositionGeometry> geom2 = std::move(ugeom);
 
         tic("Create bvh1");
@@ -1675,12 +1675,12 @@ MeshAndEnergy initTPEOnMesh(std::string meshFile, double alpha, double beta)
     using namespace rsurfaces;
     std::cout << "Initializing tangent-point energy with (" << alpha << ", " << beta << ")" << std::endl;
 
-    std::unique_ptr<HalfedgeMesh> u_mesh;
+    std::unique_ptr<SurfaceMesh> u_mesh;
     std::unique_ptr<VertexPositionGeometry> u_geometry;
     std::unique_ptr<CornerData<Vector2>> uvs;
 
     // Load mesh
-    std::tie(u_mesh, u_geometry, uvs) = readParameterizedManifoldSurfaceMesh(meshFile);
+    std::tie(u_mesh, u_geometry, uvs) = readParameterizedSurfaceMesh(meshFile);
     std::string mesh_name = polyscope::guessNiceNameFromPath(meshFile);
 
     std::cout << "Read " << uvs->size() << " UV coordinates" << std::endl;
