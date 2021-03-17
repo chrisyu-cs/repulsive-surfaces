@@ -1,4 +1,3 @@
-
 #include "energy/tp_obstacle_all_pairs.h"
 
 namespace rsurfaces
@@ -194,26 +193,6 @@ namespace rsurfaces
         output = DerivativeAssembler( mesh, geom ) * buffer;
         
     } // Differential
-
-
-    // Update the energy to reflect the current state of the mesh. This could
-    // involve building a new BVH for Barnes-Hut energies, for instance.
-    void TPObstacleAllPairs::Update()
-    {
-        // Nothing needs to be done
-    }
-
-    // Get the mesh associated with this energy.
-    MeshPtr TPObstacleAllPairs::GetMesh()
-    {
-        return mesh;
-    }
-
-    // Get the geometry associated with this geometry.
-    GeomPtr TPObstacleAllPairs::GetGeom()
-    {
-        return geom;
-    }
 
     // Get the exponents of this energy; only applies to tangent-point energies.
     Vector2 TPObstacleAllPairs::GetExponents()

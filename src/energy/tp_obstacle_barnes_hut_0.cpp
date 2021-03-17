@@ -33,18 +33,6 @@ namespace rsurfaces
         }
     }
 
-    // Get the mesh associated with this energy.
-    MeshPtr TPObstacleBarnesHut0::GetMesh()
-    {
-        return mesh;
-    }
-
-    // Get the geometry associated with this geometry.
-    GeomPtr TPObstacleBarnesHut0::GetGeom()
-    {
-        return geom;
-    }
-
     // Get the exponents of this energy; only applies to tangent-point energies.
     Vector2 TPObstacleBarnesHut0::GetExponents()
     {

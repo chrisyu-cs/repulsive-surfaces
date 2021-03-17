@@ -964,151 +964,6 @@ namespace rsurfaces
         delete willmore;
     } // TestWillmore
 
-    void MainApp::TestNewMVProduct()
-    {
-
-        auto mesh = rsurfaces::MainApp::instance->mesh;
-        auto geom = rsurfaces::MainApp::instance->geom;
-        size_t nVertices = mesh->nVertices();
-
-        // Use the differential of the energy as the test case
-        SurfaceEnergy *energy = flow->BaseEnergy();
-        energy->Update();
-        Eigen::MatrixXd gradient(nVertices, 3);
-        energy->Differential(gradient);
-        Eigen::VectorXd gVec(3 * nVertices);
-        MatrixUtils::MatrixIntoColumn(gradient, gVec);
-        Vector2 exps = energy->GetExponents();
-        double s = 2 - Hs::get_s(exps.x, exps.y);
-        Hs::HsMetric hs(energy);
-        std::cout << "Dense fractional Laplacian (s = " << s << "):" << std::endl;
-        Eigen::MatrixXd dense, dense_small;
-        dense_small.setZero(nVertices, nVertices);
-        dense.setZero(3 * nVertices, 3 * nVertices);
-        // Build dense fractional Laplacian
-        long fracStart = currentTimeMilliseconds();
-        hs.FillMatrixFracOnly(dense_small, s, mesh, geom);
-        MatrixUtils::TripleMatrix(dense_small, dense);
-        // Multiply it
-        Eigen::VectorXd denseRes = dense * gVec;
-        long constructStart = currentTimeMilliseconds();
-
-        OptimizedClusterTree *bvh = CreateOptimizedBVH(mesh, geom);
-        OptimizedBlockClusterTree *bct = CreateOptimizedBCTFromBVH(bvh, exps.x, exps.y, 0.5);
-
-        //        tic("DFarFieldEnergyHelper");
-        //        mreal EFar = bct->DFarFieldEnergyHelper();
-        //        toc("DFarFieldEnergyHelper");
-        //
-        //        tic("DNearFieldEnergyHelper");
-        //        mreal ENear = bct->DNearFieldEnergyHelper();
-        //        toc("DNearFieldEnergyHelper");
-        //
-        //        print( "Multipole energy  = " + std::to_string( EFar + ENear ) );
-
-        long constructEnd = currentTimeMilliseconds();
-
-        Eigen::VectorXd fastRes;
-        fastRes.setZero(nVertices * 3);
-        bct->MultiplyV3(gVec, fastRes, BCTKernelType::FractionalOnly);
-        long multiplyEnd = currentTimeMilliseconds();
-
-        std::cout << "Construction time = " << (constructEnd - constructStart) << " ms" << std::endl;
-        std::cout << "Multiplication time = " << (multiplyEnd - constructEnd) << " ms" << std::endl;
-
-        Eigen::VectorXd diff = denseRes - fastRes;
-        double error = 100 * diff.norm() / denseRes.norm();
-        std::cout << "Dense multiply norm = " << denseRes.norm() << std::endl;
-        std::cout << "Hierarchical multiply norm = " << fastRes.norm() << std::endl;
-        std::cout << "Relative error = " << error << " percent" << std::endl;
-        std::cout << "Dot product of directions = " << denseRes.dot(fastRes) / (denseRes.norm() * fastRes.norm()) << std::endl;
-
-        // Reset for high-order term
-        denseRes.setZero();
-        fastRes.setZero();
-        dense_small.setZero();
-        dense.setZero();
-        s = Hs::get_s(exps.x, exps.y);
-
-        std::cout << "High-order term (s = " << s << "):" << std::endl;
-
-        // Build dense matrix for high-order term
-        long hiStart = currentTimeMilliseconds();
-        hs.FillMatrixHigh(dense_small, s, mesh, geom);
-        MatrixUtils::TripleMatrix(dense_small, dense);
-        // Multiply it
-        denseRes = dense * gVec;
-        long hiEnd = currentTimeMilliseconds();
-
-        bct->MultiplyV3(gVec, fastRes, BCTKernelType::HighOrder);
-        std::cout << "Multiplication time = " << (multiplyEnd - constructEnd) << " ms" << std::endl;
-
-        diff = denseRes - fastRes;
-        error = 100 * diff.norm() / denseRes.norm();
-        std::cout << "Dense multiply norm = " << denseRes.norm() << std::endl;
-        std::cout << "Hierarchical multiply norm = " << fastRes.norm() << std::endl;
-        std::cout << "Relative error = " << error << " percent" << std::endl;
-        std::cout << "Dot product of directions = " << denseRes.dot(fastRes) / (denseRes.norm() * fastRes.norm()) << std::endl;
-
-        delete bct;
-        delete bvh;
-    } // TestNewMVProduct
-
-    void MainApp::TestIterative()
-    {
-        geom->refreshQuantities();
-
-        // Constraints::TotalAreaConstraint *c = new Constraints::TotalAreaConstraint(mesh, geom);
-        // schurConstraints.push_back(ConstraintPack{c, 0, 0});
-
-        long gradientStartTime = currentTimeMilliseconds();
-        // Use the differential of the energy as the test case
-        SurfaceEnergy *energy = flow->BaseEnergy();
-        energy->Update();
-        Eigen::MatrixXd gradient(mesh->nVertices(), 3);
-        energy->Differential(gradient);
-        long gradientEndTime = currentTimeMilliseconds();
-
-        Vector3 avg = averageOfMatrixRows(geom, mesh, gradient);
-
-        Hs::HsMetric hs(energy);
-
-        Eigen::VectorXd gVec;
-        gVec.setZero(hs.getNumRows());
-        MatrixUtils::MatrixIntoColumn(gradient, gVec);
-
-        std::cout << "Extended gradient vector has " << gVec.rows() << " rows" << std::endl;
-
-        Eigen::VectorXd denseRes = gVec;
-        denseRes.setZero();
-        Eigen::VectorXd iterativeRes = denseRes;
-
-        std::cout << "Projecting using dense system..." << std::endl;
-        long denseStart = currentTimeMilliseconds();
-        Eigen::MatrixXd dense = hs.GetHsMatrixConstrained(false);
-        std::cout << "Computed dense matrix" << std::endl;
-        MatrixUtils::SolveDenseSystem(dense, gVec, denseRes);
-        long denseEnd = currentTimeMilliseconds();
-        std::cout << "Finished in " << (denseEnd - denseStart) << " ms." << std::endl;
-
-        std::cout << "Projecting using iterative method..." << std::endl;
-        iterativeRes.setZero();
-        long iterStart = currentTimeMilliseconds();
-        Hs::ProjectUnconstrainedHsIterative(hs, gVec, iterativeRes);
-        long iterEnd = currentTimeMilliseconds();
-        std::cout << "Finished in " << (iterEnd - iterStart) << " ms." << std::endl;
-
-        Eigen::VectorXd diff = iterativeRes - denseRes;
-        double error = diff.norm() / denseRes.norm() * 100;
-
-        std::cout << "Dense norm = " << denseRes.norm() << std::endl;
-        std::cout << "Iterative norm = " << iterativeRes.norm() << std::endl;
-        std::cout << "Relative error = " << error << " percent" << std::endl;
-        std::cout << "Dot product of directions = " << denseRes.dot(iterativeRes) / (denseRes.norm() * iterativeRes.norm()) << std::endl;
-
-        std::cout << "Computed gradient in " << (gradientEndTime - gradientStartTime) << " ms" << std::endl;
-    }
-
     class VectorInit
     {
     public:
@@ -1504,16 +1359,6 @@ void customCallback()
         MainApp::instance->TestBarnesHut0();
     }
     ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
-    if (ImGui::Button("Test new MV product", ImVec2{ITEM_WIDTH, 0}))
-    {
-        MainApp::instance->TestNewMVProduct();
-    }
-
-    if (ImGui::Button("Test iterative", ImVec2{ITEM_WIDTH, 0}))
-    {
-        MainApp::instance->TestIterative();
-    }
-    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
     if (ImGui::Button("Plot gradients", ImVec2{ITEM_WIDTH, 0}))
     {
         MainApp::instance->PlotGradients();
@@ -1740,7 +1585,7 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::sce
     else if (theta <= 0)
     {
         std::cout << "Theta was zero (or negative); using exact all-pairs energy." << std::endl;
-        energy = new AllPairsTPEnergy(m.kernel);
+        energy = new TPEnergyAllPairs(m.kernel->mesh, m.kernel->geom, m.kernel->alpha, m.kernel->beta);;
     }
     else
     {

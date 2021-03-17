@@ -20,16 +20,6 @@ namespace rsurfaces {
         // respect to the corresponding vertex.
         virtual void Differential(Eigen::MatrixXd &output);
 
-        // Update the energy to reflect the current state of the mesh. This could
-        // involve building a new BVH for Barnes-Hut energies, for instance.
-        virtual void Update();
-
-        // Get the mesh associated with this energy.
-        virtual MeshPtr GetMesh();
-
-        // Get the geometry associated with this geometry.
-        virtual GeomPtr GetGeom();
-
         // Get the exponents of this energy; only applies to tangent-point energies.
         virtual Vector2 GetExponents();
 
@@ -46,9 +36,7 @@ namespace rsurfaces {
         // In some cases, we might require positions to be modified externally
         VertexDataWrapper originalPositions;
 
-    private: 
-        MeshPtr mesh;
-        GeomPtr geom;
+    private:
         double weight;
     };
 }

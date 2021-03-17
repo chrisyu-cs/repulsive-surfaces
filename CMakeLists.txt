@@ -70,7 +70,6 @@ add_subdirectory(deps/polyscope)
 # == Build our project stuff
 
 set(SRCS 
-  src/energy/all_pairs_tpe.cpp
   src/energy/boundary_length.cpp
   src/energy/coulomb.cpp
   src/energy/implicit_attractor.cpp
@@ -110,8 +109,6 @@ set(SRCS
   src/sobolev/constraints/total_volume.cpp
   src/sobolev/constraints/vertex_normal.cpp
   src/sobolev/constraints/vertex_pin.cpp
-  src/spatial/bvh_6d.cpp
-  src/spatial/bvh_data.cpp
   src/spatial/convolution_kernel.cpp
   src/optimized_bct_types.cpp
   src/optimized_cluster_tree.cpp
@@ -121,6 +118,7 @@ set(SRCS
   src/line_search.cpp
   src/main.cpp
   src/matrix_utils.cpp
+  src/metric_term.cpp
   src/obj_writer.cpp
   src/scene_file.cpp
   src/surface_derivatives.cpp

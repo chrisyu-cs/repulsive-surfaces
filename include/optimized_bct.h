@@ -134,7 +134,73 @@ namespace rsurfaces
 
         void ComputeDiagonals();
         
-        void AddObstacleCorrection( OptimizedBlockClusterTree * bct12);
+        template<typename OptBCTPtr>
+        void AddObstacleCorrection(OptBCTPtr bct12)
+        {
+            // Suppose that bct11 = this;
+            // The joint bct of the union of mesh1 and mesh2 can be written in block matrix for as
+            //  bct = {
+            //            { bct11, bct12 },
+            //            { bct21, bct22 }
+            //        },
+            // where bct11 and bct22 are the instances of OptimizedBlockClusterTree of mesh1 and mesh2, respectively, bct12 is cross interaction OptimizedBlockClusterTree of mesh1 and mesh2, and bct21 is the transpose of bct12.
+            // However, the according matrix (on the space of dofs on the primitives) would be
+            //  A   = {
+            //            { A11 + diag( A12 * one2 ) , A12                      },
+            //            { A21                      , A22 + diag( A21 * one1 ) }
+            //        },
+            // where one1 and one2 are all-1-vectors on the primitives of mesh1 and mesh2, respectively.
+            // OptimizedBlockClusterTree::AddObstacleCorrection is supposed to compute diag( A12 * one2 ) and to add it to the diagonal of A11.
+            // Then the bct11->Multiply will also multiply with the obstacle.
+            
+            if( (S == T) && (T == bct12->S) )
+            {
+                RequireMetrics();
+                bct12->RequireMetrics();
+
+                if( fr_factor != bct12->fr_factor )
+                {
+                    wprint("AddToDiagonal: The values of fr_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+                }
+                if( hi_factor != bct12->hi_factor )
+                {
+                    wprint("AddToDiagonal: The values of hi_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+                }
+                if( lo_factor != bct12->lo_factor )
+                {
+                    wprint("AddToDiagonal: The values of lo_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+                }
+                
+                mint n = T->primitive_count;
+                
+                mreal * restrict const fr_target = fr_diag;
+                mreal * restrict const hi_target = hi_diag;
+                mreal * restrict const lo_target = lo_diag;
+                
+                mreal const * restrict const fr_source = bct12->fr_diag;
+                mreal const * restrict const hi_source = bct12->hi_diag;
+                mreal const * restrict const lo_source = bct12->lo_diag;
+                
+                #pragma omp parallel for simd aligned( fr_target, hi_target, lo_target, fr_source, hi_source, lo_source : ALIGN )
+                for( mint i = 0; i < n; ++ i)
+                {
+                    fr_target[i] += fr_source[i];
+                    hi_target[i] += hi_source[i];
+                    lo_target[i] += lo_source[i];
+                }
+            }
+            else
+            {
+                if( S != T )
+                {
+                    eprint("AddToDiagonal: Instance of OptimizedBlockClusterTree is not symmetric. Doing nothing.");
+                }
+                if( S != bct12->S )
+                {
+                    eprint("AddToDiagonal: The two instances of OptimizedBlockClusterTree are not compatible. Doing nothing.");
+                }
+            }
+        }
         
         void PrintStats(){
             std::cout << "\n==== OptimizedBlockClusterTree Stats ====" << std::endl;
