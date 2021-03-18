@@ -611,7 +611,7 @@ namespace rsurfaces
         {
         case BCTKernelType::FractionalOnly:
         {
-            far_factor = fr_near_factor;
+            far_factor = fr_far_factor;
             near_factor = fr_near_factor;
             if( is_symmetric ){ diag = fr_diag; };
             near_values = near->fr_values;
@@ -620,7 +620,7 @@ namespace rsurfaces
         }
         case BCTKernelType::HighOrder:
         {
-            far_factor = hi_near_factor;
+            far_factor = hi_far_factor;
             near_factor = hi_near_factor;
             if( is_symmetric ){ diag = hi_diag; };
             near_values = near->hi_values;
@@ -629,7 +629,7 @@ namespace rsurfaces
         }
         case BCTKernelType::LowOrder:
         {
-            far_factor = lo_near_factor;
+            far_factor = lo_far_factor;
             near_factor = lo_near_factor;
             if( is_symmetric ){ diag = lo_diag; };
             near_values = near->lo_values;
@@ -746,7 +746,6 @@ namespace rsurfaces
         }
     }; // ComputeDiagonals
 
-
     void OptimizedBlockClusterTree::AddObstacleCorrection( OptimizedBlockClusterTree * bct12)
     {
         // Suppose that bct11 = this;
@@ -825,4 +824,5 @@ namespace rsurfaces
             }
         }
     }
+
 } // namespace rsurfaces

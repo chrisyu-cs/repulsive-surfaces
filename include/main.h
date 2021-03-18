@@ -40,8 +40,6 @@ namespace rsurfaces
         void TestWillmore();
         void TestObstacle0();
         void TestBarnesHut0();
-        void TestNewMVProduct();
-        void TestIterative();
         void PlotGradients();
         void Scale2x();
         void TestNormalDeriv();

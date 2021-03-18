@@ -50,25 +50,6 @@ namespace rsurfaces
         }
     }
 
-    // Update the energy to reflect the current state of the mesh. This could
-    // involve building a new BVH for Barnes-Hut energies, for instance.
-    void BoundaryLengthPenalty::Update()
-    {
-        // Nothing to do
-    }
-
-    // Get the mesh associated with this energy.
-    MeshPtr BoundaryLengthPenalty::GetMesh()
-    {
-        return mesh;
-    }
-
-    // Get the geometry associated with this geometry.
-    GeomPtr BoundaryLengthPenalty::GetGeom()
-    {
-        return geom;
-    }
-
     // Get the exponents of this energy; only applies to tangent-point energies.
     Vector2 BoundaryLengthPenalty::GetExponents()
     {

@@ -44,25 +44,6 @@ namespace rsurfaces
         }
     }
 
-    // Update the energy to reflect the current state of the mesh. This could
-    // involve building a new BVH for Barnes-Hut energies, for instance.
-    void SoftVolumeConstraint::Update()
-    {
-        // Nothing needs to be done
-    }
-
-    // Get the mesh associated with this energy.
-    MeshPtr SoftVolumeConstraint::GetMesh()
-    {
-        return mesh;
-    }
-
-    // Get the geometry associated with this geometry.
-    GeomPtr SoftVolumeConstraint::GetGeom()
-    {
-        return geom;
-    }
-
     // Get the exponents of this energy; only applies to tangent-point energies.
     Vector2 SoftVolumeConstraint::GetExponents()
     {

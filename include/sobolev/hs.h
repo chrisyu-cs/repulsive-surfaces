@@ -10,12 +10,15 @@
 #include "sobolev/all_constraints.h"
 #include "sobolev/sparse_factorization.h"
 #include "bct_constructors.h"
+#include "metric_term.h"
 
 #include <Eigen/Sparse>
 
 namespace rsurfaces
 {
     using Constraints::ConstraintBase;
+
+    typedef std::shared_ptr<OptimizedBlockClusterTree> BCTPtr;
 
     namespace Hs
     {
@@ -43,8 +46,7 @@ namespace rsurfaces
         class HsMetric
         {
         public:
-            HsMetric(SurfaceEnergy *energy_);
-            HsMetric(SurfaceEnergy *energy_, TPObstacleBarnesHut0 *obstacleEnergy_,
+            HsMetric(std::vector<SurfaceEnergy*> energies, TPObstacleBarnesHut0 *obstacleEnergy_,
                      std::vector<Constraints::SimpleProjectorConstraint *> &spcs,
                      std::vector<ConstraintPack> &schurs);
             ~HsMetric();
@@ -172,27 +174,16 @@ namespace rsurfaces
             }
             void shiftBarycenterConstraint(Vector3 shift);
 
-            inline OptimizedBlockClusterTree *getBlockClusterTree() const
+            inline std::vector<MetricTerm*>& getMetricTerms() const
             {
-                if (!optBCT)
+                if (metricTerms.size() == 0)
                 {
-                    Vector2 exps = energy->GetExponents();
-                    optBCT = CreateOptimizedBCTFromBVH(bvh, exps.x, exps.y, bh_theta);
-                    optBCT->disableNearField = disableNearField;
-                    if (disableNearField)
-                    {
-                        std::cout << "    * BCT near-field interactions are disabled." << std::endl;
-                    }
-
-                    if (obstacleEnergy)
-                    {
-                        OptimizedClusterTree* obstacleBVH = obstacleEnergy->GetBVH();
-                        obstacleBCT = new OptimizedBlockClusterTree(bvh, obstacleBVH, exps.x, exps.y, bh_theta);
-                        optBCT->AddObstacleCorrection(obstacleBCT);
-                    }
-
+                    // Add the main Hs metric term
+                    metricTerms.push_back(new BCTMetricTerm(getBlockClusterTree()));
+                    // Can add more metric terms based on extra energies below here
+                    
                 }
-                return optBCT;
+                return metricTerms;
             }
 
             bool disableNearField = false;
@@ -209,6 +200,30 @@ namespace rsurfaces
             // Same as above but with the input/output being matrices
             void ProjectSparseMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double epsilon = 1e-10) const;
 
+            inline BCTPtr getBlockClusterTree() const
+            {
+                if (!optBCT)
+                {
+                    Vector2 exps = energy->GetExponents();
+                    optBCT = BCTPtr(CreateOptimizedBCTFromBVH(bvh, exps.x, exps.y, bh_theta));
+                    optBCT->disableNearField = disableNearField;
+                    if (disableNearField)
+                    {
+                        std::cout << "    * BCT near-field interactions are disabled." << std::endl;
+                    }
+
+                    if (obstacleEnergy)
+                    {
+                        OptimizedClusterTree* obstacleBVH = obstacleEnergy->GetBVH();
+                        obstacleBCT = BCTPtr(new OptimizedBlockClusterTree(bvh, obstacleBVH, exps.x, exps.y, bh_theta));
+                        optBCT->AddObstacleCorrection(obstacleBCT);
+                    }
+
+                }
+                return optBCT;
+            }
+
+            mutable std::vector<MetricTerm*> metricTerms;
             OptimizedClusterTree *bvh;
             double bh_theta;
             double bct_theta;
@@ -217,12 +232,14 @@ namespace rsurfaces
             size_t newtonRows;
 
             SurfaceEnergy *energy;
+            std::vector<SurfaceEnergy*> extraEnergies;
+
             TPObstacleBarnesHut0 *obstacleEnergy;
             bool usedDefaultConstraint;
 
             mutable SparseFactorization factorizedLaplacian;
-            mutable OptimizedBlockClusterTree *optBCT;
-            mutable OptimizedBlockClusterTree *obstacleBCT;
+            mutable BCTPtr optBCT;
+            mutable BCTPtr obstacleBCT;
             mutable bool schurComplementComputed;
             mutable SchurComplement schurComplement;
         };

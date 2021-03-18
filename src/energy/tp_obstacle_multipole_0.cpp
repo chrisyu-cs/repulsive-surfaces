@@ -187,26 +187,6 @@ namespace rsurfaces
         
     } // Differential
 
-
-    // Update the energy to reflect the current state of the mesh. This could
-    // involve building a new BVH for Barnes-Hut energies, for instance.
-    void TPObstacleMultipole0::Update()
-    {
-        // Nothing needs to be done
-    }
-
-    // Get the mesh associated with this energy.
-    MeshPtr TPObstacleMultipole0::GetMesh()
-    {
-        return mesh;
-    }
-
-    // Get the geometry associated with this geometry.
-    GeomPtr TPObstacleMultipole0::GetGeom()
-    {
-        return geom;
-    }
-
     // Get the exponents of this energy; only applies to tangent-point energies.
     Vector2 TPObstacleMultipole0::GetExponents()
     {
