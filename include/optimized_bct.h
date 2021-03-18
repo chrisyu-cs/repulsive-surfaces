@@ -64,9 +64,13 @@ namespace rsurfaces
 
         // Scaling parameters for the matrix-vector product.
         // E.g. one can perform  u = hi_factor * A_hi * v. With MKL, this comes at no cost, because it is fused into the matrix multiplications anyways.
-        mreal hi_factor = 1.;
-        mreal lo_factor = 1.;
-        mreal fr_factor = 1.;
+        mreal hi_far_factor = 1.;
+        mreal lo_far_factor = 1.;
+        mreal fr_far_factor = 1.;
+        
+        mreal hi_near_factor = 1.;
+        mreal lo_near_factor = 1.;
+        mreal fr_near_factor = 1.;
 
         // Product of the kernel matrix with the constant-1-vector.
         // Need to be updated if hi_factor, lo_factor, or fr_factor are changed!
