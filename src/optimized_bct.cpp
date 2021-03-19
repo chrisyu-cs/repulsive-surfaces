@@ -599,7 +599,8 @@ namespace rsurfaces
         mreal * near_values = NULL;
         mreal * far_values = NULL;
 
-        mreal factor = 1.;
+        mreal far_factor = 1.;
+        mreal near_factor = 1.;
 
         mint cols = T->buffer_dim;
 
@@ -610,7 +611,8 @@ namespace rsurfaces
         {
         case BCTKernelType::FractionalOnly:
         {
-            factor = fr_factor;
+            far_factor = fr_far_factor;
+            near_factor = fr_near_factor;
             if( is_symmetric ){ diag = fr_diag; };
             near_values = near->fr_values;
             far_values = far->fr_values;
@@ -618,7 +620,8 @@ namespace rsurfaces
         }
         case BCTKernelType::HighOrder:
         {
-            factor = hi_factor;
+            far_factor = hi_far_factor;
+            near_factor = hi_near_factor;
             if( is_symmetric ){ diag = hi_diag; };
             near_values = near->hi_values;
             far_values = far->hi_values;
@@ -626,7 +629,8 @@ namespace rsurfaces
         }
         case BCTKernelType::LowOrder:
         {
-            factor = lo_factor;
+            far_factor = lo_far_factor;
+            near_factor = lo_near_factor;
             if( is_symmetric ){ diag = lo_diag; };
             near_values = near->lo_values;
             far_values = far->lo_values;
@@ -642,11 +646,11 @@ namespace rsurfaces
 
         // TODO: In case of S != T, we have to replace each call with one call to ApplyKernel_CSR_MKL and one to (a yet to be written) ApplyKernelTranspose_CSR_MKL
 
-        //    near->ApplyKernel_CSR_Eigen( near_values, T->P_in, S->P_out, cols, -2.0 * factor );
-        //     far->ApplyKernel_CSR_Eigen(  far_values, T->C_in, S->C_out, cols, -2.0 * factor );
+        //    near->ApplyKernel_CSR_Eigen( near_values, T->P_in, S->P_out, cols, -2.0 * near_factor );
+        //     far->ApplyKernel_CSR_Eigen(  far_values, T->C_in, S->C_out, cols, -2.0 * far_factor );
 
-        near->ApplyKernel_CSR_MKL( near_values, T->P_in, S->P_out, cols, -2.0 * factor );
-         far->ApplyKernel_CSR_MKL(  far_values, T->C_in, S->C_out, cols, -2.0 * factor );
+        near->ApplyKernel_CSR_MKL( near_values, T->P_in, S->P_out, cols, -2.0 * near_factor );
+         far->ApplyKernel_CSR_MKL(  far_values, T->C_in, S->C_out, cols, -2.0 * far_factor );
 
         //     Adding product of diagonal matrix of "diags".
         if ( diag ){
@@ -692,8 +696,8 @@ namespace rsurfaces
 
 
             // The factor of 2. in the last argument stems from the symmetry of the kernel
-            far->ApplyKernel_CSR_MKL(  far->fr_values, T->C_in, S->C_out, 1, 2. * fr_factor );
-           near->ApplyKernel_CSR_MKL( near->fr_values, T->P_in, S->P_out, 1, 2. * fr_factor );
+            far->ApplyKernel_CSR_MKL(  far->fr_values, T->C_in, S->C_out, 1, 2. * fr_far_factor );
+           near->ApplyKernel_CSR_MKL( near->fr_values, T->P_in, S->P_out, 1, 2. * fr_near_factor );
 
             S->PercolateDown( 0 , S->thread_count );
             S->C_to_P.Multiply( S->C_out, S->P_out, 1, true);
@@ -714,8 +718,8 @@ namespace rsurfaces
             }
 
 
-            far->ApplyKernel_CSR_MKL(  far->hi_values, T->C_in, S->C_out, 1, 2. * hi_factor );
-           near->ApplyKernel_CSR_MKL( near->hi_values, T->P_in, S->P_out, 1, 2. * hi_factor );
+            far->ApplyKernel_CSR_MKL(  far->hi_values, T->C_in, S->C_out, 1, 2. * hi_far_factor );
+           near->ApplyKernel_CSR_MKL( near->hi_values, T->P_in, S->P_out, 1, 2. * hi_near_factor );
 
             S->PercolateDown( 0 , S->thread_count );
             S->C_to_P.Multiply( S->C_out, S->P_out, 1, true);
@@ -726,8 +730,8 @@ namespace rsurfaces
                 hi_diag[i] =  ainv[i] * data[i];
             }
 
-            far->ApplyKernel_CSR_MKL(  far->lo_values, T->C_in, S->C_out, 1, 2. * lo_factor );
-           near->ApplyKernel_CSR_MKL( near->lo_values, T->P_in, S->P_out, 1, 2. * lo_factor );
+            far->ApplyKernel_CSR_MKL(  far->lo_values, T->C_in, S->C_out, 1, 2. * lo_far_factor );
+           near->ApplyKernel_CSR_MKL( near->lo_values, T->P_in, S->P_out, 1, 2. * lo_near_factor );
 
             S->PercolateDown( 0 , S->thread_count );
             S->C_to_P.Multiply( S->C_out, S->P_out, 1, true);
@@ -741,4 +745,84 @@ namespace rsurfaces
             mreal_free(ainv);
         }
     }; // ComputeDiagonals
+
+    void OptimizedBlockClusterTree::AddObstacleCorrection( OptimizedBlockClusterTree * bct12)
+    {
+        // Suppose that bct11 = this;
+        // The joint bct of the union of mesh1 and mesh2 can be written in block matrix for as
+        //  bct = {
+        //            { bct11, bct12 },
+        //            { bct21, bct22 }
+        //        },
+        // where bct11 and bct22 are the instances of OptimizedBlockClusterTree of mesh1 and mesh2, respectively, bct12 is cross interaction OptimizedBlockClusterTree of mesh1 and mesh2, and bct21 is the transpose of bct12.
+        // However, the according matrix (on the space of dofs on the primitives) would be
+        //  A   = {
+        //            { A11 + diag( A12 * one2 ) , A12                      },
+        //            { A21                      , A22 + diag( A21 * one1 ) }
+        //        },
+        // where one1 and one2 are all-1-vectors on the primitives of mesh1 and mesh2, respectively.
+        // OptimizedBlockClusterTree::AddObstacleCorrection is supposed to compute diag( A12 * one2 ) and to add it to the diagonal of A11.
+        // Then the bct11->Multiply will also multiply with the obstacle.
+        
+        if( (S == T) && (T == bct12->S) )
+        {
+            RequireMetrics();
+            bct12->RequireMetrics();
+
+            if( fr_near_factor != bct12->fr_near_factor )
+            {
+                wprint("AddToDiagonal: The values of fr_near_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+            }
+            if( fr_far_factor != bct12->fr_far_factor )
+            {
+                wprint("AddToDiagonal: The values of fr_far_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+            }
+            if( hi_near_factor != bct12->hi_near_factor )
+            {
+                wprint("AddToDiagonal: The values of hi_near_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+            }
+            if( hi_far_factor != bct12->hi_far_factor )
+            {
+                wprint("AddToDiagonal: The values of hi_far_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+            }
+            if( lo_near_factor != bct12->lo_near_factor )
+            {
+                wprint("AddToDiagonal: The values of lo_near_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+            }
+            if( lo_far_factor != bct12->lo_far_factor )
+            {
+                wprint("AddToDiagonal: The values of lo_far_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+            }
+            
+            mint n = T->primitive_count;
+            
+            mreal * restrict const fr_target = fr_diag;
+            mreal * restrict const hi_target = hi_diag;
+            mreal * restrict const lo_target = lo_diag;
+            
+            mreal const * restrict const fr_source = bct12->fr_diag;
+            mreal const * restrict const hi_source = bct12->hi_diag;
+            mreal const * restrict const lo_source = bct12->lo_diag;
+            
+            #pragma omp parallel for simd aligned( fr_target, hi_target, lo_target, fr_source, hi_source, lo_source : ALIGN )
+            for( mint i = 0; i < n; ++ i)
+            {
+                fr_target[i] += fr_source[i];
+                hi_target[i] += hi_source[i];
+                lo_target[i] += lo_source[i];
+            }
+        }
+        else
+        {
+            if( S != T )
+            {
+                eprint("AddToDiagonal: Instance of OptimizedBlockClusterTree is not symmetric. Doing nothing.");
+            }
+            if( S != bct12->S )
+            {
+                eprint("AddToDiagonal: The two instances of OptimizedBlockClusterTree are not compatible. Doing nothing.");
+            }
+        }
+    }
+
 } // namespace rsurfaces
