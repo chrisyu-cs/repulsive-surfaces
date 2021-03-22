@@ -70,7 +70,9 @@ namespace rsurfaces
         L2Projected,
         AQP,
         H1_LBFGS,
-        BQN_LBFGS
+        BQN_LBFGS,
+        H2Projected,
+        Willmore
     };
 
     struct MassNormalPoint

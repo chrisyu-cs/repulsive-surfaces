@@ -94,6 +94,7 @@ set(SRCS
   src/remeshing/dynamic_remesher.cpp
   src/remeshing/remeshing.cpp
   src/sobolev/h1.cpp
+  src/sobolev/h2.cpp
   src/sobolev/hs.cpp
   src/sobolev/hs_iterative.cpp
   src/sobolev/hs_ncg.cpp

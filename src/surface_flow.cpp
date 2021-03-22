@@ -4,6 +4,7 @@
 
 #include "sobolev/h1.h"
 #include "sobolev/h1_lbfgs.h"
+#include "sobolev/h2.h"
 #include "sobolev/l2_lbfgs.h"
 #include "sobolev/bqn_lbfgs.h"
 #include "sobolev/hs.h"
@@ -748,6 +749,66 @@ namespace rsurfaces
         long timeEnd = currentTimeMilliseconds();
         std::cout << "  Total time for gradient step = " << (timeEnd - timeStart) << " ms" << std::endl;
     }
+
+    void SurfaceFlow::StepH2Projected()
+    {
+        long timeStart = currentTimeMilliseconds();
+        stepCount++;
+        std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
+        std::cout << "Using H2 projected gradient..." << std::endl;
+        UpdateEnergies();
+
+        // Assemble sum of L2 differentials of all energies involved
+        // (including tangent-point energy)
+        Eigen::MatrixXd l2diff;
+        l2diff.setZero(mesh->nVertices(), 3);
+        AssembleGradients(l2diff);
+        double gNorm = l2diff.norm();
+
+        // Get bi-Laplacian triplets
+        std::vector<Triplet> biTriplets, biTriplets3x;
+        H2::getTriplets(biTriplets, mesh, geom, 0);
+        MatrixUtils::TripleTriplets(biTriplets, biTriplets3x);
+        size_t nConstraintRows = addConstraintTriplets(biTriplets3x, true);
+
+        // Build tripled matrix
+        size_t dims = 3 * mesh->nVertices() + nConstraintRows;
+        Eigen::SparseMatrix<double> biLaplacian(dims, dims);
+        biLaplacian.setFromTriplets(biTriplets3x.begin(), biTriplets3x.end()); 
+
+        // Pre-factorize it
+        SparseFactorization factorizedL;
+        factorizedL.Compute(biLaplacian);
+
+        // Reshape the gradient into a column
+        Eigen::VectorXd gradientVec;
+        gradientVec.setZero(dims);
+        MatrixUtils::MatrixIntoColumn(l2diff, gradientVec);
+
+        // Solve for the H2 gradient
+        gradientVec = factorizedL.Solve(gradientVec);
+        Eigen::MatrixXd gradientProj;
+        gradientProj.setZero(l2diff.rows(), l2diff.cols());
+        MatrixUtils::ColumnIntoMatrix(gradientVec, gradientProj);
+
+        // Take the step using line search
+        double gProjNorm = gradientProj.norm();
+        double gradDot = (l2diff.transpose() * gradientProj).trace() / (gNorm * gProjNorm);
+        double initGuess = guessStepSize(gProjNorm);
+        std::cout << "  * Initial step size guess = " << initGuess << std::endl;
+        LineSearch search(mesh, geom, energies);
+        double delta = search.BacktrackingLineSearch(gradientProj, initGuess, gradDot);
+
+        // Do corrective constraint projection by reusing the metric
+        H1::ProjectConstraints(mesh, geom, simpleConstraints, schurConstraints, factorizedL, 1);
+
+        incrementSchurConstraints();
+        geom->refreshQuantities();
+
+        long timeEnd = currentTimeMilliseconds();
+        std::cout << "  Total time for gradient step = " << (timeEnd - timeStart) << " ms" << std::endl;
+    }
+
 
     void SurfaceFlow::RecenterMesh()
     {

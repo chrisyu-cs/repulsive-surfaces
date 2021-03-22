@@ -57,7 +57,7 @@ namespace rsurfaces
         }
 
         // Add the metric term associated with this energy term, if applicable.
-        // If no special energy term is needed, does nothing.
+        // If no special metric term is needed, does nothing.
         // For Hs and obstacle terms, this also does nothing -- the metric is
         // specially constructed elsewhere.
         virtual void AddMetricTerm(std::vector<MetricTerm*> &terms) {}

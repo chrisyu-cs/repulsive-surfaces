@@ -107,7 +107,8 @@ self-intersections are already present.
 
 Sets the initial method to be the given method. If not specified, the flow
 will use "hs" by default. Available other names are "aqp", "bqn", "h1",
-and "h1-lbfgs".
+"h1-lbfgs", "h2", and "willmore". Using "willmore" will replace the
+tangent-point energy with Willmore energy and use H2 flow.
 
 	log <logfile.csv>
 

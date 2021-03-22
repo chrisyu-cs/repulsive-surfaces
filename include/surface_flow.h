@@ -27,9 +27,9 @@ namespace rsurfaces
         void StepProjectedGradientIterative();
         void StepH1LBFGS();
         void StepBQN();
-
         void StepH1ProjGrad();
         void StepAQP(double invKappa);
+        void StepH2Projected();
 
         SurfaceEnergy *BaseEnergy();
 

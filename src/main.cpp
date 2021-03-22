@@ -27,6 +27,7 @@
 #include "obj_writer.h"
 #include "dropdown_strings.h"
 #include "energy/coulomb.h"
+#include "energy/willmore_energy.h"
 
 #include "bct_constructors.h"
 
@@ -115,6 +116,10 @@ namespace rsurfaces
             break;
         case GradientMethod::BQN_LBFGS:
             flow->StepBQN();
+            break;
+        case GradientMethod::H2Projected:
+        case GradientMethod::Willmore:
+            flow->StepH2Projected();
             break;
         default:
             throw std::runtime_error("Unknown gradient method type.");
@@ -674,19 +679,19 @@ namespace rsurfaces
 
         //######################################
         tic();
-//        tpe_fm_11->Update();
+        //        tpe_fm_11->Update();
         E_fm_11 = tpe_fm_11->Value();
         mreal t_fm_11 = toc();
         std::cout << "done 13" << std::endl;
 
         tic();
-//        tpe_fm_12->Update();
+        //        tpe_fm_12->Update();
         E_fm_12 = tpe_fm_12->Value();
         mreal t_fm_12 = toc();
         std::cout << "done 14" << std::endl;
 
         tic();
-//        tpe_fm_22->Update();
+        //        tpe_fm_22->Update();
         E_fm_22 = tpe_fm_22->Value();
         mreal t_fm_22 = toc();
         std::cout << "done 15" << std::endl;
@@ -803,7 +808,7 @@ namespace rsurfaces
         //        tic("Create BVH");
 
         double E, Ex;
-        Eigen::MatrixXd DE (mesh->nVertices(), 3);
+        Eigen::MatrixXd DE(mesh->nVertices(), 3);
         Eigen::MatrixXd DEx(mesh->nVertices(), 3);
 
         auto tpe = std::make_shared<TPEnergyBarnesHut0>(mesh, geom, alpha, beta, theta);
@@ -811,8 +816,7 @@ namespace rsurfaces
 
         tpe->use_int = false;
         std::cout << "Using double exponents." << std::endl;
-        
-        
+
         tic("Compute Value");
         tpe->Update();
         E = tpe->Value();
@@ -857,7 +861,7 @@ namespace rsurfaces
         DEx.setZero();
         tpex->Differential(DEx);
         toc("Compute Differential (all pairs)");
-        
+
         std::cout << "Energy value = " << E << std::endl;
         std::cout << "Diff. norm   = " << DE.norm() << std::endl;
 
@@ -919,11 +923,11 @@ namespace rsurfaces
 
             geom->refreshQuantities();
 
-//            UpdateOptimizedBVH(mesh, geom, tpe->GetBVH());
+            //            UpdateOptimizedBVH(mesh, geom, tpe->GetBVH());
             tpe->Update();
             Et = tpe->Value();
-//            std::cout << "Et - E             = " << Et - E << std::endl;
-//            std::cout << "        t * DE * u = " << t * (DE.transpose() * u).trace() << std::endl;
+            //            std::cout << "Et - E             = " << Et - E << std::endl;
+            //            std::cout << "        t * DE * u = " << t * (DE.transpose() * u).trace() << std::endl;
             std::cout << "Et - E -t * DE * u = " << Et - E - t * (DE.transpose() * u).trace() << std::endl;
         }
 
@@ -1058,7 +1062,7 @@ namespace rsurfaces
         else
         {
             std::cout << "Using implicit surface as attractor, with weight " << barrierData.weight << std::endl;
-            ImplicitAttractor* attractor = new ImplicitAttractor(mesh, geom, std::move(implUnique), uvs, barrierData.weight);
+            ImplicitAttractor *attractor = new ImplicitAttractor(mesh, geom, std::move(implUnique), uvs, barrierData.weight);
             flow->AddAdditionalEnergy(attractor);
         }
     }
@@ -1276,7 +1280,8 @@ void customCallback()
                                       GradientMethod::L2Projected,
                                       GradientMethod::AQP,
                                       GradientMethod::H1_LBFGS,
-                                      GradientMethod::BQN_LBFGS};
+                                      GradientMethod::BQN_LBFGS,
+                                      GradientMethod::H2Projected};
 
     selectFromDropdown("Method", methods, IM_ARRAYSIZE(methods), MainApp::instance->methodChoice);
 
@@ -1572,30 +1577,47 @@ MeshAndEnergy initTPEOnMesh(std::string meshFile, double alpha, double beta)
     return MeshAndEnergy{tpe, psMesh, meshShared, geomShared, (hasUVs) ? uvShared : 0, mesh_name};
 }
 
-rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::scene::SceneData &scene, bool useCoulomb)
+enum class EnergyOverride
+{
+    TangentPoint,
+    Coulomb,
+    Willmore
+};
+
+rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::scene::SceneData &scene, EnergyOverride eo)
 {
     using namespace rsurfaces;
 
     SurfaceEnergy *energy;
 
-    if (useCoulomb)
+    if (eo == EnergyOverride::Coulomb)
     {
+        std::cout << "Using Coulomb energy in place of tangent-point energy" << std::endl;
         energy = new CoulombEnergy(m.kernel, theta);
     }
-    else if (theta <= 0)
+    else if (eo == EnergyOverride::Willmore)
     {
-        std::cout << "Theta was zero (or negative); using exact all-pairs energy." << std::endl;
-        energy = new TPEnergyAllPairs(m.kernel->mesh, m.kernel->geom, m.kernel->alpha, m.kernel->beta);;
+        std::cout << "Using Willmore energy in place of tangent-point energy" << std::endl;
+        energy = new WillmoreEnergy(m.mesh, m.geom);
     }
     else
     {
-        std::cout << "Using Barnes-Hut energy with theta = " << theta << "." << std::endl;
-        TPEnergyBarnesHut0 *bh = new TPEnergyBarnesHut0(m.kernel->mesh, m.kernel->geom, m.kernel->alpha, m.kernel->beta, theta);
-        if (scene.disableNearField)
+        if (theta <= 0)
         {
-            throw std::runtime_error("disable_near_field has not yet been ported to the new energy.");
+            std::cout << "Theta was zero (or negative); using exact all-pairs energy." << std::endl;
+            energy = new TPEnergyAllPairs(m.kernel->mesh, m.kernel->geom, m.kernel->alpha, m.kernel->beta);
+            ;
         }
-        energy = bh;
+        else
+        {
+            std::cout << "Using Barnes-Hut energy with theta = " << theta << "." << std::endl;
+            TPEnergyBarnesHut0 *bh = new TPEnergyBarnesHut0(m.kernel->mesh, m.kernel->geom, m.kernel->alpha, m.kernel->beta, theta);
+            if (scene.disableNearField)
+            {
+                throw std::runtime_error("disable_near_field has not yet been ported to the new energy.");
+            }
+            energy = bh;
+        }
     }
 
     SurfaceFlow *flow = new SurfaceFlow(energy);
@@ -1814,7 +1836,18 @@ int main(int argc, char **argv)
     }
 
     MeshAndEnergy m = initTPEOnMesh(data.meshName, data.alpha, data.beta);
-    SurfaceFlow *flow = setUpFlow(m, theta, data, useCoulomb);
+
+    EnergyOverride eo = EnergyOverride::TangentPoint;
+    if (useCoulomb)
+    {
+        eo = EnergyOverride::Coulomb;
+    }
+    else if (data.defaultMethod == GradientMethod::Willmore)
+    {
+        eo = EnergyOverride::Willmore;
+    }
+
+    SurfaceFlow *flow = setUpFlow(m, theta, data, eo);
     flow->disableNearField = data.disableNearField;
 
     MainApp::instance = new MainApp(m.mesh, m.geom, flow, m.psMesh, m.meshName);

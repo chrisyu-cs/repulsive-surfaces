@@ -33,6 +33,10 @@ namespace rsurfaces
             return "H1-LBFGS (unconstrained)";
         case GradientMethod::BQN_LBFGS:
             return "BQN (unconstrained)";
+        case GradientMethod::H2Projected:
+            return "H2-Projected";
+        case GradientMethod::Willmore:
+            return "Willmore";
         default:
             throw std::runtime_error("Unknown method type.");
         }

@@ -83,6 +83,14 @@ namespace rsurfaces
             {
                 return GradientMethod::H1_LBFGS;
             }
+            else if (name == "h2")
+            {
+                return GradientMethod::H2Projected;
+            }
+            else if (name == "willmore")
+            {
+                return GradientMethod::Willmore;
+            }
             else
             {
                 throw std::runtime_error("Unknown method name " + name);

@@ -4,45 +4,39 @@ namespace rsurfaces
 {
     void WillmoreEnergy::requireMeanCurvatureVectors()
     {
-        if( ! H_initialized )
+        mint vertex_count = mesh->nVertices();
+        VertexIndices vInds = mesh->getVertexIndices();
+        
+        geom->requireVertexDualAreas();
+        geom->requireFaceAreas();
+        geom->requireCotanLaplacian();
+        geom->requireVertexPositions();
+        
+        auto x = Eigen::MatrixXd( vertex_count, 3 );
+                    
+        for( mint i = 0; i < vertex_count; ++i )
         {
-            H_initialized = true;
+            x( i, 0 ) = geom->inputVertexPositions[i][0];
+            x( i, 1 ) = geom->inputVertexPositions[i][1];
+            x( i, 2 ) = geom->inputVertexPositions[i][2];
+        }
+        
+        H = geom->cotanLaplacian * x;
+        
+        H_squared = Eigen::VectorXd( vertex_count );
+        
+        for( auto vertex : mesh->vertices() )
+        {
+            mint i = vInds[vertex];
             
-            mint vertex_count = mesh->nVertices();
-            VertexIndices vInds = mesh->getVertexIndices();
+            mreal factor = ( vertex.isBoundary() ) ? 0. : -0.5/ geom->vertexDualArea(vertex);
+            H( i, 0 ) *= factor;
+            H( i, 1 ) *= factor;
+            H( i, 2 ) *= factor;
             
-            geom->requireVertexDualAreas();
-            geom->requireFaceAreas();
-            geom->requireCotanLaplacian();
-            geom->requireVertexPositions();
-            
-            auto x = Eigen::MatrixXd( vertex_count, 3 );
-                        
-            for( mint i = 0; i < vertex_count; ++i )
-            {
-                x( i, 0 ) = geom->inputVertexPositions[i][0];
-                x( i, 1 ) = geom->inputVertexPositions[i][1];
-                x( i, 2 ) = geom->inputVertexPositions[i][2];
-            }
-            
-            H = geom->cotanLaplacian * x;
-            
-            H_squared = Eigen::VectorXd( vertex_count );
-            
-            for( auto vertex : mesh->vertices() )
-            {
-                mint i = vInds[vertex];
-                
-                mreal factor = ( vertex.isBoundary() ) ? 0. : -0.5/ geom->vertexDualArea(vertex);
-                H( i, 0 ) *= factor;
-                H( i, 1 ) *= factor;
-                H( i, 2 ) *= factor;
-                
-                H_squared(i) = H( i, 0 ) * H( i, 0 ) + H( i, 1 ) * H( i, 1 ) + H( i, 2 ) * H( i, 2 );
-            }
+            H_squared(i) = H( i, 0 ) * H( i, 0 ) + H( i, 1 ) * H( i, 1 ) + H( i, 2 ) * H( i, 2 );
         }
     }
-
 
     double WillmoreEnergy::Value()
     {
@@ -57,8 +51,6 @@ namespace rsurfaces
 
         return H_squared.dot(a);
     } // Value
-
-
 
     void WillmoreEnergy::Differential( Eigen::MatrixXd &output )
     {
@@ -417,18 +409,10 @@ namespace rsurfaces
         return Vector2{1, 0};
     }
 
-    // Get a pointer to the current BVH for this energy.
-    // Return 0 if the energy doesn't use a BVH.
-    OptimizedClusterTree *WillmoreEnergy::GetBVH()
+    void WillmoreEnergy::Update()
     {
-        return 0;
+        // Probably unneeded if H is recomputed every step
     }
 
-    // Return the separation parameter for this energy.
-    // Return 0 if this energy doesn't do hierarchical approximation.
-    double WillmoreEnergy::GetTheta()
-    {
-        return 0;
-    }
 
 } // namespace rsurfaces

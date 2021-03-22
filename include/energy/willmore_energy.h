@@ -17,7 +17,6 @@ namespace rsurfaces
         
         WillmoreEnergy( MeshPtr mesh_, GeomPtr geom_ )
         {
-            H_initialized = false;
             mesh = mesh_;
             geom = geom_;
         }
@@ -33,18 +32,13 @@ namespace rsurfaces
         // Get the exponents of this energy; only applies to tangent-point energies.
         virtual Vector2 GetExponents();
 
-        // Get a pointer to the current BVH for this energy.
-        // Return 0 if the energy doesn't use a BVH.
-        virtual OptimizedClusterTree *GetBVH();
-
-        // Return the separation parameter for this energy.
-        // Return 0 if this energy doesn't do hierarchical approximation.
-        virtual double GetTheta();
+        // Update the energy to reflect the current state of the mesh. This could
+        // involve building a new BVH for Barnes-Hut energies, for instance.
+        virtual void Update();
         
         void requireMeanCurvatureVectors();
         
     private:
-        bool H_initialized = false;
         Eigen::MatrixXd H;
         Eigen::VectorXd H_squared;
         

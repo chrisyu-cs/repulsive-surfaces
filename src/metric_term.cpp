@@ -1,22 +1,20 @@
 #include "metric_term.h"
 #include "matrix_utils.h"
-#include "sobolev/h1.h"
+#include "sobolev/h2.h"
 
 namespace rsurfaces
 {
     BiLaplacianMetricTerm::BiLaplacianMetricTerm(MeshPtr &mesh, GeomPtr &geom)
     {
         nMultiplyRows = 3 * mesh->nVertices();
+        std::vector<Triplet> biTriplets, biTriplets3x;
+        // Build the bi-Laplacian
+        H2::getTriplets(biTriplets, mesh, geom, 1e-10);
+        // Triple it to operate on vectors of length 3V
+        MatrixUtils::TripleTriplets(biTriplets, biTriplets3x);
 
-        Eigen::SparseMatrix<double> laplacian(nMultiplyRows, nMultiplyRows);
-        std::vector<Triplet> lTriplets;
-
-        // Build the Laplacian
-        H1::getTriplets(lTriplets, mesh, geom, 0, false);
-        laplacian.setFromTriplets(lTriplets.begin(), lTriplets.end());
-
-        // Multiply it with itself
-        biLaplacian = laplacian * laplacian;
+        biLaplacian.resize(nMultiplyRows, nMultiplyRows);
+        biLaplacian.setFromTriplets(biTriplets3x.begin(), biTriplets3x.end());
     }
 
     void BiLaplacianMetricTerm::MultiplyAdd(Eigen::VectorXd &vec, Eigen::VectorXd &result) const
