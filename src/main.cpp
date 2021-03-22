@@ -538,7 +538,7 @@ namespace rsurfaces
 //        std::string filename = "../scenes/Bunny/bunny-10p.obj";
         std::string filename = "../scenes/Bunny/bunny.obj";
         MeshUPtr umesh;
-        GeomUPtr ugeom;
+        GeomPtr ugeom;
         std::tie(umesh, ugeom) = readMesh(filename);
         ugeom->requireVertexDualAreas();
         ugeom->requireVertexNormals();
@@ -546,7 +546,7 @@ namespace rsurfaces
         polyscope::SurfaceMesh *psMesh = polyscope::registerSurfaceMesh(mesh_name, ugeom->inputVertexPositions, umesh->getFaceVertexList(), polyscopePermutations(*umesh));
         // mesh2 and geom2 represent the pinned obstacle
         MeshPtr mesh2 = std::move(umesh);
-        GeomPtr geom2 = std::move(ugeom);
+        std::shared_ptr<VertexPositionGeometry> geom2 = std::move(ugeom);
 
         mint primitive_count1 = mesh1->nVertices();
         mint primitive_count2 = mesh2->nVertices();
