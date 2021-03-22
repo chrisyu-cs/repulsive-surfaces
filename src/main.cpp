@@ -513,17 +513,15 @@ namespace rsurfaces
 
         // Load obstacle
         std::string filename = "../scenes/Bunny/bunny.obj";
-//        std::unique_ptr<SurfaceMesh> umesh;
         MeshUPtr umesh;
         GeomUPtr ugeom;
-        std::tie(umesh, ugeom) = readManifoldSurfaceMesh(filename);
+        std::tie(umesh, ugeom) = readMesh(filename);
         ugeom->requireVertexDualAreas();
         ugeom->requireVertexNormals();
         std::string mesh_name = polyscope::guessNiceNameFromPath(filename);
         polyscope::SurfaceMesh *psMesh = polyscope::registerSurfaceMesh(mesh_name, ugeom->inputVertexPositions, umesh->getFaceVertexList(), polyscopePermutations(*umesh));
         // mesh2 and geom2 represent the pinned obstacle
-        MeshPtr  mesh2 = std::move(umesh);
-//        std::shared_ptr<SurfaceMesh> mesh2 = std::move(umesh);
+        MeshPtr mesh2 = std::move(umesh);
         GeomPtr geom2 = std::move(ugeom);
 
         tic("Create bvh1");
@@ -980,7 +978,7 @@ namespace rsurfaces
         MeshUPtr obstacleMesh;
         GeomUPtr obstacleGeometry;
         // Load mesh
-        std::tie(obstacleMesh, obstacleGeometry) = readManifoldSurfaceMesh(filename);
+        std::tie(obstacleMesh, obstacleGeometry) = readMesh(filename);
 
         obstacleGeometry->requireVertexDualAreas();
         obstacleGeometry->requireVertexNormals();
@@ -1522,14 +1520,12 @@ MeshAndEnergy initTPEOnMesh(std::string meshFile, double alpha, double beta)
     using namespace rsurfaces;
     std::cout << "Initializing tangent-point energy with (" << alpha << ", " << beta << ")" << std::endl;
 
-//    std::unique_ptr<SurfaceMesh> u_mesh;
     MeshUPtr u_mesh;
     std::unique_ptr<VertexPositionGeometry> u_geometry;
     std::unique_ptr<CornerData<Vector2>> uvs;
 
     // Load mesh
-//    std::tie(u_mesh, u_geometry, uvs) = readParameterizedSurfaceMesh(meshFile);
-    std::tie(u_mesh, u_geometry, uvs) = readParameterizedManifoldSurfaceMesh(meshFile);
+    std::tie(u_mesh, u_geometry, uvs) = readParameterizedMesh(meshFile);
     std::string mesh_name = polyscope::guessNiceNameFromPath(meshFile);
 
     std::cout << "Read " << uvs->size() << " UV coordinates" << std::endl;
