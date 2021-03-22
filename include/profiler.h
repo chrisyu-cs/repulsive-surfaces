@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <vector>
+#include <deque>
 #include <iterator>
 #include <memory>
 #include <unistd.h>
