@@ -190,6 +190,11 @@ namespace rsurfaces
                     data.potentials.push_back(PotentialData{PotentialType::SoftVolumeConstraint, weight});
                     cout << "  * Adding soft volume potential (weight " << weight << ")" << endl;
                 }
+                else if (parts[1] == "willmore")
+                {
+                    data.potentials.push_back(PotentialData{PotentialType::Willmore, weight});
+                    cout << "  * Adding Willmore energy term (weight " << weight << ")" << endl;
+                }
             }
             else if (parts[0] == "iteration_limit")
             {

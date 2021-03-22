@@ -30,7 +30,8 @@ namespace rsurfaces
             Area,
             Volume,
             SoftAreaConstraint,
-            SoftVolumeConstraint
+            SoftVolumeConstraint,
+            Willmore
         };
 
         struct PotentialData

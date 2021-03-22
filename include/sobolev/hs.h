@@ -181,7 +181,10 @@ namespace rsurfaces
                     // Add the main Hs metric term
                     metricTerms.push_back(new BCTMetricTerm(getBlockClusterTree()));
                     // Can add more metric terms based on extra energies below here
-                    
+                    for (SurfaceEnergy* extra : extraEnergies)
+                    {
+                        extra->AddMetricTerm(metricTerms);
+                    }
                 }
                 return metricTerms;
             }

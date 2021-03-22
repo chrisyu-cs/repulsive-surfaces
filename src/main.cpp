@@ -1109,6 +1109,12 @@ namespace rsurfaces
             flow->AddAdditionalEnergy(softVol);
             break;
         }
+        case scene::PotentialType::Willmore:
+        {
+            WillmoreEnergy *willmore = new WillmoreEnergy(mesh, geom, weight);
+            flow->AddAdditionalEnergy(willmore);
+            break;
+        }
         default:
         {
             std::cout << "Unknown potential type." << std::endl;

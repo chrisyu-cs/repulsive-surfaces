@@ -8,17 +8,16 @@
 
 namespace rsurfaces
 {
-
-
     class WillmoreEnergy : public SurfaceEnergy
     {
     public:
         ~WillmoreEnergy(){};
         
-        WillmoreEnergy( MeshPtr mesh_, GeomPtr geom_ )
+        WillmoreEnergy( MeshPtr mesh_, GeomPtr geom_, double wt = 1. )
         {
             mesh = mesh_;
             geom = geom_;
+            weight = wt;
         }
         
         // Returns the current value of the energy.
@@ -36,11 +35,15 @@ namespace rsurfaces
         // involve building a new BVH for Barnes-Hut energies, for instance.
         virtual void Update();
         
+        // Willmore energy should add a bi-Laplacian term.
+        virtual void AddMetricTerm(std::vector<MetricTerm*> &terms);
+
         void requireMeanCurvatureVectors();
         
     private:
         Eigen::MatrixXd H;
         Eigen::VectorXd H_squared;
+        double weight;
         
     }; // WillmoreEnergy
 } // namespace rsurfaces

@@ -49,7 +49,7 @@ namespace rsurfaces
         
         Eigen::VectorXd a = geom->vertexDualAreas.toVector();
 
-        return H_squared.dot(a);
+        return weight * H_squared.dot(a);
     } // Value
 
     void WillmoreEnergy::Differential( Eigen::MatrixXd &output )
@@ -400,7 +400,7 @@ namespace rsurfaces
             buffer( 3 * i + 2, 2 ) = -(s276*v00) - s281*v01 - s266*v02 - s271*v10 - s286*v11 - s260*v12 - s254*v20 - s251*v21 - (((2*s247 + 2*s248)*s26)/4. - (s246*s35)/8.)*v22 - (s26*s89*weight)/4.;
         }
         
-        output = DerivativeAssembler( mesh, geom ) * buffer;
+        output += weight * DerivativeAssembler( mesh, geom ) * buffer;
     } // Differential
     
     // Get the exponents of this energy; only applies to tangent-point energies.
@@ -413,6 +413,14 @@ namespace rsurfaces
     {
         // Probably unneeded if H is recomputed every step
     }
+    
+    void WillmoreEnergy::AddMetricTerm(std::vector<MetricTerm*> &terms)
+    {
+        std::cout << "  * Adding bi-Laplacian to metric for Willmore energy" << std::endl;
+        BiLaplacianMetricTerm* term = new BiLaplacianMetricTerm(mesh, geom);
+        terms.push_back(term);
+    }
+
 
 
 } // namespace rsurfaces
