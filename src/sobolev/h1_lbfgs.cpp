@@ -31,16 +31,16 @@ namespace rsurfaces
     void H1_LBFGS::ApplyInnerProduct(Eigen::VectorXd &input, Eigen::VectorXd &output)
     {
         tempVector.setZero();
-        tempVector.block(0, 0, input.rows(), 1) = input;
+        tempVector.head(input.rows()) = input;
         tempVector = L * tempVector;
-        output = tempVector.block(0, 0, output.rows(), 1);
+        output = tempVector.head(output.rows());
     }
 
     void H1_LBFGS::ApplyInverseInnerProduct(Eigen::VectorXd &input, Eigen::VectorXd &output)
     {
         tempVector.setZero();
-        tempVector.block(0, 0, input.rows(), 1) = input;
+        tempVector.head(input.rows()) = input;
         MatrixUtils::SolveSparseSystem(L, tempVector, tempVector);
-        output = tempVector.block(0, 0, output.rows(), 1);
+        output = tempVector.head(output.rows());
     }
 }

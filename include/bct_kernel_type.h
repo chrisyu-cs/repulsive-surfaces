@@ -23,16 +23,16 @@ namespace rsurfaces
         if (addToResult)
         {
             // C * v goes into the bottom block of b
-            b.block(nV3, 0, nConstraints, 1) += C * v.block(0, 0, nV3, 1);
+            b.segment(nV3, nConstraints) += C * v.segment(0, nV3);
             // C^T * lambda goes into the top block of b
-            b.block(0, 0, nV3, 1) += C.transpose() * v.block(nV3, 0, nConstraints, 1);
+            b.segment(0, nV3) += C.transpose() * v.segment(nV3, nConstraints);
         }
         else
         {
             // C * v goes into the bottom block of b
-            b.block(nV3, 0, nConstraints, 1) = C * v.block(0, 0, nV3, 1);
+            b.segment(nV3, nConstraints) = C * v.segment(0, nV3);
             // C^T * lambda goes into the top block of b
-            b.block(0, 0, nV3, 1) = C.transpose() * v.block(nV3, 0, nConstraints, 1);
+            b.segment(0, nV3) = C.transpose() * v.segment(nV3, nConstraints);
         }
     }
 } // namespace rsurfaces

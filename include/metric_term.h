@@ -9,6 +9,7 @@ namespace rsurfaces
     {
         public:
         virtual ~MetricTerm() {}
+        // Multiply the metric term with vec, and add the product to result.
         virtual void MultiplyAdd(Eigen::VectorXd &vec, Eigen::VectorXd &result) const = 0;
     };
 
@@ -31,6 +32,17 @@ namespace rsurfaces
 
         private:
         std::shared_ptr<OptimizedBlockClusterTree> bct;
+    };
+
+    class BiLaplacianMetricTerm : public MetricTerm
+    {
+        public:
+        BiLaplacianMetricTerm(MeshPtr &mesh, GeomPtr &geom);
+        virtual void MultiplyAdd(Eigen::VectorXd &vec, Eigen::VectorXd &result) const;
+
+        private:
+        size_t nMultiplyRows;
+        Eigen::SparseMatrix<double> biLaplacian;
     };
 }
 
