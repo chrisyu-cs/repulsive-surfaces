@@ -162,17 +162,29 @@ namespace rsurfaces
                 RequireMetrics();
                 bct12->RequireMetrics();
 
-                if( fr_factor != bct12->fr_factor )
+                if( fr_near_factor != bct12->fr_near_factor )
                 {
-                    wprint("AddToDiagonal: The values of fr_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+                    wprint("AddToDiagonal: The values of fr_near_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
                 }
-                if( hi_factor != bct12->hi_factor )
+                if( fr_far_factor != bct12->fr_far_factor )
                 {
-                    wprint("AddToDiagonal: The values of hi_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+                    wprint("AddToDiagonal: The values of fr_far_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
                 }
-                if( lo_factor != bct12->lo_factor )
+                if( hi_near_factor != bct12->hi_near_factor )
                 {
-                    wprint("AddToDiagonal: The values of lo_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+                    wprint("AddToDiagonal: The values of hi_near_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+                }
+                if( hi_far_factor != bct12->hi_far_factor )
+                {
+                    wprint("AddToDiagonal: The values of hi_far_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+                }
+                if( lo_near_factor != bct12->lo_near_factor )
+                {
+                    wprint("AddToDiagonal: The values of lo_near_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+                }
+                if( lo_far_factor != bct12->lo_far_factor )
+                {
+                    wprint("AddToDiagonal: The values of lo_far_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
                 }
                 
                 mint n = T->primitive_count;
