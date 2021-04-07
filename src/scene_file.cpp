@@ -309,9 +309,10 @@ namespace rsurfaces
                     throw std::runtime_error("Implicit action must be either 'attract' or 'repel'.");
                 }
 
-                implData.weight = stod(parts[3]);
+                implData.power = stod(parts[3]);
+                implData.weight = stod(parts[4]);
 
-                for (size_t i = 4; i < parts.size(); i++)
+                for (size_t i = 5; i < parts.size(); i++)
                 {
                     implData.parameters.push_back(stod(parts[i]));
                 }

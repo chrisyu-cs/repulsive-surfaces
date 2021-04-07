@@ -1055,14 +1055,14 @@ namespace rsurfaces
         std::unique_ptr<ImplicitSurface> implUnique(implSurface);
         if (barrierData.repel)
         {
-            std::cout << "Using implicit surface as obstacle, with weight " << barrierData.weight << std::endl;
-            ImplicitObstacle *obstacle = new ImplicitObstacle(mesh, geom, std::move(implUnique), barrierData.weight);
+            std::cout << "Using implicit surface as obstacle, with power " << barrierData.power << " and weight " << barrierData.weight << std::endl;
+            ImplicitObstacle *obstacle = new ImplicitObstacle(mesh, geom, std::move(implUnique), barrierData.power, barrierData.weight);
             flow->AddAdditionalEnergy(obstacle);
         }
         else
         {
-            std::cout << "Using implicit surface as attractor, with weight " << barrierData.weight << std::endl;
-            ImplicitAttractor *attractor = new ImplicitAttractor(mesh, geom, std::move(implUnique), uvs, barrierData.weight);
+            std::cout << "Using implicit surface as attractor, with power " << barrierData.power << " and weight " << barrierData.weight << std::endl;
+            ImplicitAttractor *attractor = new ImplicitAttractor(mesh, geom, std::move(implUnique), uvs, barrierData.power, barrierData.weight);
             flow->AddAdditionalEnergy(attractor);
         }
     }

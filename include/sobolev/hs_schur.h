@@ -25,6 +25,7 @@ namespace rsurfaces
             Eigen::VectorXd Ainv_g = curCol;
             std::cout << "  Applying metric inverse for gradient..." << std::endl;
             Inverse::Apply(hs, Ainv_g, Ainv_g);
+            std::cout << "  Applied." << std::endl;
 
             // Now we compute the correction
             // Start from hsGradient = A^{-1} x
