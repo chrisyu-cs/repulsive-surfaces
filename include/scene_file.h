@@ -66,6 +66,7 @@ namespace rsurfaces
             ImplicitType type;
             std::vector<double> parameters;
             bool repel = true;
+            double power = 2;
             double weight = 1;
         };
 

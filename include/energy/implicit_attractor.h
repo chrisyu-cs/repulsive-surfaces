@@ -8,7 +8,7 @@ namespace rsurfaces
     class ImplicitAttractor : public SurfaceEnergy
     {
         public:
-        ImplicitAttractor(MeshPtr mesh_, GeomPtr geom_, std::unique_ptr<ImplicitSurface> surface_, UVDataPtr uvs_, double w);
+        ImplicitAttractor(MeshPtr mesh_, GeomPtr geom_, std::unique_ptr<ImplicitSurface> surface_, UVDataPtr uvs_, double power_, double w);
 
         virtual double Value();
         virtual void Differential(Eigen::MatrixXd &output);
@@ -18,6 +18,7 @@ namespace rsurfaces
 
         private:
         double weight;
+        double power;
         UVDataPtr uvs;
         std::unique_ptr<ImplicitSurface> surface;
 

@@ -4,9 +4,10 @@
 namespace rsurfaces
 {
 
-    ImplicitObstacle::ImplicitObstacle(MeshPtr mesh_, GeomPtr geom_, std::unique_ptr<ImplicitSurface> surface_, double w)
+    ImplicitObstacle::ImplicitObstacle(MeshPtr mesh_, GeomPtr geom_, std::unique_ptr<ImplicitSurface> surface_, double power_, double w)
         : surface(std::move(surface_))
     {
+        power = power_;
         weight = w;
         mesh = mesh_;
         geom = geom_;
@@ -18,7 +19,7 @@ namespace rsurfaces
         for (GCVertex v : mesh->vertices())
         {
             double signDist = surface->SignedDistance(geom->inputVertexPositions[v]);
-            sum += 1.0 / (signDist * signDist);
+            sum += 1.0 / pow(signDist, power);
         }
         return weight * sum;
     }
@@ -32,8 +33,8 @@ namespace rsurfaces
             Vector3 gradDist = surface->GradientOfDistance(geom->inputVertexPositions[v]);
             double signDist = surface->SignedDistance(geom->inputVertexPositions[v]);
 
-            // d/dx (1 / D^2) = -2 * (1 / D^3) * (d/dx D)
-            double coeff = -2 * (1.0 / (signDist * signDist * signDist));
+            // d/dx (1 / D^x) = -x * (1 / D^(x+1)) * (d/dx D)
+            double coeff = -power * (1.0 / pow(signDist, power + 1));
             Vector3 gradE = coeff * gradDist;
             MatrixUtils::addToRow(output, inds[v], weight * gradE);
         }

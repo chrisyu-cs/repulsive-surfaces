@@ -4,9 +4,10 @@
 namespace rsurfaces
 {
 
-    ImplicitAttractor::ImplicitAttractor(MeshPtr mesh_, GeomPtr geom_, std::unique_ptr<ImplicitSurface> surface_, UVDataPtr uvs_, double w)
+    ImplicitAttractor::ImplicitAttractor(MeshPtr mesh_, GeomPtr geom_, std::unique_ptr<ImplicitSurface> surface_, UVDataPtr uvs_, double power_, double w)
         : surface(std::move(surface_))
     {
+        power = power_;
         weight = w;
         mesh = mesh_;
         geom = geom_;
@@ -30,7 +31,7 @@ namespace rsurfaces
             if (shouldAttract(v))
             {
                 double signDist = surface->SignedDistance(geom->inputVertexPositions[v]);
-                sum += (signDist * signDist);
+                sum += pow(signDist, power);
             }
         }
         return weight * sum;
@@ -48,7 +49,7 @@ namespace rsurfaces
                 double signDist = surface->SignedDistance(geom->inputVertexPositions[v]);
 
                 // d/dx D^2 = 2 * D * (d/dx D)
-                Vector3 gradE = 2 * signDist * gradDist;
+                Vector3 gradE = power * pow(signDist, power - 1) * gradDist;
                 MatrixUtils::addToRow(output, inds[v], weight * gradE);
             }
         }

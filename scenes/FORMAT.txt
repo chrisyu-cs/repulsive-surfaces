@@ -59,7 +59,7 @@ will add the term 1000 * (mesh total area) to the objective.
 
 Implicit barriers:
 
-	implicit <surface name> <repel | attract> <weight> <specific parameters>
+	implicit <surface name> <repel | attract> <power> <weight> <specific parameters>
 
 Sets up an implicit surface as either an obstacle or an attractor. Obstacles
 repel other surfaces, while attractors attract other surfaces.
@@ -68,6 +68,9 @@ Valid names for the first parameter are "sphere", "torus", and "plane".
 
 The second parameter must be either "repel" or "attract", and will result
 in an obstacle or an attractor, respectively.
+
+The power parameter specifies the exponent of the repulsive or attractive
+potential, (1 / r^p for obstacles, r^p for attractors).
 
 The weight parameter is mandatory here (unlike with potentials).
 
