@@ -11,8 +11,8 @@
 #include <unistd.h>
 #include <string>
 #include <chrono>
-#include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/Sparse>
+#include <Eigen/Dense>
+#include <Eigen/Sparse>
 #include <iostream>
 #include "bct_kernel_type.h"
 

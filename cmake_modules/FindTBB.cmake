@@ -2,9 +2,6 @@
 
 if (EXISTS "/opt/intel/oneapi/tbb/latest")
 	set(TBBROOT_PATH "/opt/intel/oneapi/tbb/latest")
-else (EXISTS "/opt/intel/oneapi/tbb/latest")
-    find_path(TBB_LIBRARY_DIR, libtbb)
-    find_path(TBB_INCLUDE_DIR, tbb.h)
 endif (EXISTS "/opt/intel/oneapi/tbb/latest")
 
 # Stage 2: find include path and libraries
@@ -49,8 +46,12 @@ if (TBBROOT_PATH)
 	# find specific library files
 		
 	find_library(LIB_TBB tbb HINTS ${TBB_LIBRARY_DIR})
-
+else (TBBROOT_PATH)
+    find_path(TBB_LIBRARY_DIR tbb)
+    find_library(LIB_TBB tbb HINTS ${TBB_LIBRARY_DIR})
+    find_path(TBB_INCLUDE_DIR tbb.h)
 endif (TBBROOT_PATH)
+
 
 set(TBB_LIBRARY ${LIB_TBB})
 
