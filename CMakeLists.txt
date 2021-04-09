@@ -128,7 +128,6 @@ set(SRCS
   src/interaction_data.cpp
   src/line_search.cpp
   src/profiler.cpp
-  src/main.cpp
   src/matrix_utils.cpp
   src/obj_writer.cpp
   src/scene_file.cpp
@@ -136,6 +135,16 @@ set(SRCS
   src/surface_flow.cpp
   src/derivative_assembler.cpp
 	# add any other source files here
+)
+
+set(SRCS1
+  src/main.cpp
+    # add any other source files here
+)
+
+set(SRCS2
+  src/main2.cpp
+    # add any other source files here
 )
 
 find_package(OpenMP REQUIRED)
@@ -164,10 +173,7 @@ else()
     message(WARNING "Intel TBB not found")
 endif()
 
-
-
-# To change the name of your executable, change "gc_project" in the lines below to whatever you want
-add_executable(rsurfaces "${SRCS}")
+add_executable(rsurfaces "${SRCS}" "${SRCS1}")
 target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 target_link_libraries(rsurfaces geometry-central polyscope OpenMP::OpenMP_CXX)
 
@@ -180,4 +186,21 @@ if(TBB_FOUND)
 endif()
 
 target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include")
+
+
+add_executable(test "${SRCS}" "${SRCS2}")
+target_include_directories(test PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
+target_link_libraries(test geometry-central OpenMP::OpenMP_CXX)
+
+if(MKL_FOUND)
+    target_link_libraries(test "-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lpthread -lm -ldl")
+endif()
+
+if(TBB_FOUND)
+    target_link_libraries(test "-ltbb")
+endif()
+
+target_include_directories(test PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include")
+
+
 
