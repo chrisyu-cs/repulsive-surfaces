@@ -532,7 +532,7 @@ namespace rsurfaces
 //        std::string filename = "../scenes/Bunny/bunny-10p.obj";
         std::string filename = "../scenes/Bunny/bunny.obj";
         MeshUPtr umesh;
-        GeomPtr ugeom;
+        GeomUPtr ugeom;
         std::tie(umesh, ugeom) = readMesh(filename);
         ugeom->requireVertexDualAreas();
         ugeom->requireVertexNormals();
