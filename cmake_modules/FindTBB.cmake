@@ -17,13 +17,21 @@ if (TBBROOT_PATH)
 	
 	set(EXPECT_ICC_LIBPATH "$ENV{ICC_LIBPATH}")
 	
-	if (CMAKE_SYSTEM_NAME MATCHES "Linux")
-	    if (CMAKE_SIZEOF_VOID_P MATCHES 8)
-	        set(EXPECT_TBB_LIBPATH "${TBBROOT_PATH}/lib/intel64/gcc4.8")
-	    else (CMAKE_SIZEOF_VOID_P MATCHES 8)
-	        set(EXPECT_TBB_LIBPATH "${TBBROOT_PATH}/lib/ia32/gcc4.8")
-	    endif (CMAKE_SIZEOF_VOID_P MATCHES 8)
-	endif (CMAKE_SYSTEM_NAME MATCHES "Linux")
+    if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+        if (CMAKE_SIZEOF_VOID_P MATCHES 8)
+            if (EXISTS  "${TBBROOT_PATH}/lib/intel64/gcc4.8")
+                set(EXPECT_TBB_LIBPATH "${TBBROOT_PATH}/lib/intel64/gcc4.8")
+            else (EXISTS  "${TBBROOT_PATH}/lib/intel64/gcc4.8")
+                find_path(EXPECT_TBB_LIBPATH, tbb)
+            endif (EXISTS  "${TBBROOT_PATH}/lib/intel64/gcc4.8")
+        else (CMAKE_SIZEOF_VOID_P MATCHES 8)
+            if (EXISTS  "${TBBROOT_PATH}/lib/ia32/gcc4.8")
+                set(EXPECT_TBB_LIBPATH "${TBBROOT_PATH}/lib/ia32/gcc4.8")
+            else  (EXISTS  "${TBBROOT_PATH}/lib/ia32/gcc4.8")
+                find_path(EXPECT_TBB_LIBPATH, tbb)
+            endif  (EXISTS  "${TBBROOT_PATH}/lib/ia32/gcc4.8")
+        endif (CMAKE_SIZEOF_VOID_P MATCHES 8)
+    endif (CMAKE_SYSTEM_NAME MATCHES "Linux")
 	
 	# set include
 	
@@ -38,8 +46,12 @@ if (TBBROOT_PATH)
 	# find specific library files
 		
 	find_library(LIB_TBB tbb HINTS ${TBB_LIBRARY_DIR})
-
+else (TBBROOT_PATH)
+    find_path(TBB_LIBRARY_DIR tbb)
+    find_library(LIB_TBB tbb HINTS ${TBB_LIBRARY_DIR})
+    find_path(TBB_INCLUDE_DIR tbb.h)
 endif (TBBROOT_PATH)
+
 
 set(TBB_LIBRARY ${LIB_TBB})
 
