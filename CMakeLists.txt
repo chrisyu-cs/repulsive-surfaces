@@ -187,17 +187,16 @@ endif()
 
 target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include")
 
-
-add_executable(test "${SRCS}" "${SRCS2}")
-target_include_directories(test PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
-target_link_libraries(test geometry-central OpenMP::OpenMP_CXX)
+add_executable(runtest "${SRCS}" "${SRCS2}")
+target_include_directories(runtest PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
+target_link_libraries(runtest geometry-central OpenMP::OpenMP_CXX)
 
 if(MKL_FOUND)
-    target_link_libraries(test "-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lpthread -lm -ldl")
+    target_link_libraries(runtest "-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lpthread -lm -ldl")
 endif()
 
 if(TBB_FOUND)
-    target_link_libraries(test "-ltbb")
+    target_link_libraries(runtest "-ltbb")
 endif()
 
-target_include_directories(test PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include")
+target_include_directories(runtest PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include")
