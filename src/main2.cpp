@@ -1,8 +1,59 @@
 #include "main2.h"
 
+using namespace rsurfaces;
 using namespace geometrycentral;
 using namespace geometrycentral::surface;
 
+struct Benchmarker
+{
+    mint max_thread_count = 1;
+    mint thread_count = 1;
+
+    mint burn_ins = 0;
+    mint iterations = 1;
+
+    
+    mreal alpha = 6.;
+    mreal beta = 12.;
+    mreal theta = 0.5;
+    mreal chi = 0.5;
+    mreal weight = 1.;
+    
+    std::string obj1 = "../scenes/Bunny/bunny.obj";
+    
+    MeshPtr mesh1;
+    GeomPtr geom1;
+    
+    void Compute()
+    {
+        OptimizedClusterTree *bvh1 = CreateOptimizedBVH(mesh1, geom1);
+        auto bct11 = std::make_shared<OptimizedBlockClusterTree>(bvh1, bvh1, alpha, beta, theta);
+        
+//        bct11->PrintStats();
+        
+        auto tpe_11 = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
+        
+        mreal E_11;
+        Eigen::MatrixXd DE_11(mesh1->nVertices(), 3);
+        
+        E_11 = tpe_11->Value();
+        DE_11.setZero();
+        tpe_11->Differential(DE_11);
+        
+        delete bvh1;
+    }
+    
+    void PrintStats()
+    {
+        std::cout << "mesh = "<< obj1 << std::endl;
+    //    std::cout << "profile_file = "<< profile_file << std::endl;
+        std::cout << "threads = "<< thread_count << std::endl;
+        std::cout << "alpha = "<< alpha << std::endl;
+        std::cout << "beta  = "<< beta << std::endl;
+        std::cout << "theta = "<< theta << std::endl;
+        std::cout << "chi   = "<< chi << std::endl;
+    }
+};
 
 int main(int arg_count, char* arg_vec[])
 {
@@ -10,18 +61,13 @@ int main(int arg_count, char* arg_vec[])
     
     namespace po = boost::program_options;
     
-    std::string obj1 = "../scenes/Bunny/bunny.obj";
+    auto BM = Benchmarker();
     
-    int threads;
     #pragma omp parallel
     {
-        threads = omp_get_num_threads()/2;
+        BM.max_thread_count = omp_get_num_threads()/2;
     }
-    double alpha = 6.;
-    double beta = 12.;
-    double theta = 0.5;
-    double chi = 0.5;
-    double weight = 1.;
+
     
     po::options_description desc("Allowed options");
     
@@ -36,7 +82,10 @@ int main(int arg_count, char* arg_vec[])
             ("beta", po::value<mreal>(), "file name of mesh to use as variable")
             ("theta", po::value<mreal>(), "separation parameter for barnes-hut method")
             ("chi", po::value<mreal>(), "separation parameter for block cluster tree")
-            ("threads", po::value<int>(), "number of threads to be used")
+            ("threads", po::value<mint>(), "number of threads to be used")
+        
+            ("burn_ins", po::value<mint>(), "number of burn-in iterations to use")
+            ("iterations", po::value<mint>(), "number of iterations to use for the benchmark")
         ;
 
         po::variables_map var_map;
@@ -49,27 +98,33 @@ int main(int arg_count, char* arg_vec[])
         }
 
         if (var_map.count("mesh")) {
-            obj1 = var_map["mesh"].as<std::string>();
+            BM.obj1 = var_map["mesh"].as<std::string>();
         }
 //        if (var_map.count("profile_file")) {
 //            profile_file = var_map["profile_file"].as<std::string>();
 //        }
 
         if (var_map.count("theta")) {
-            theta = var_map["theta"].as<mreal>();
+            BM.theta = var_map["theta"].as<mreal>();
         }
         if (var_map.count("chi")) {
-            chi = var_map["chi"].as<mreal>();
+            BM.chi = var_map["chi"].as<mreal>();
         }
         if (var_map.count("alpha")) {
-            alpha = var_map["alpha"].as<mreal>();
+            BM.alpha = var_map["alpha"].as<mreal>();
         }
         if (var_map.count("beta")) {
-            beta = var_map["beta"].as<mreal>();
+            BM.beta = var_map["beta"].as<mreal>();
         }
 
         if (var_map.count("threads")) {
-            threads = var_map["threads"].as<int>();
+            BM.thread_count = var_map["threads"].as<mint>();
+        }
+        if (var_map.count("burn_ins")) {
+            BM.burn_ins = var_map["burn_ins"].as<mint>();
+        }
+        if (var_map.count("iterations")) {
+            BM.iterations = var_map["iterations"].as<mint>();
         }
     }
     catch(std::exception& e) {
@@ -79,42 +134,22 @@ int main(int arg_count, char* arg_vec[])
     catch(...) {
         std::cerr << "Exception of unknown type!\n";
     }
-    
-    omp_set_num_threads(threads);
 
-    std::cout << "mesh = "<< obj1 << std::endl;
-//    std::cout << "profile_file = "<< profile_file << std::endl;
-    std::cout << "threads = "<< threads << std::endl;
-    std::cout << "alpha = "<< alpha << std::endl;
-    std::cout << "beta  = "<< beta << std::endl;
-    std::cout << "theta = "<< theta << std::endl;
-    std::cout << "chi   = "<< chi << std::endl;
-    
-    std::string profile_file = "./Profile_" + std::to_string(threads) + ".tsv";
-    
 
-    ClearProfile(profile_file);
+    
     
     std::cout << std::setprecision(8);
-//    std::cout << "\n  =====                   =====  " << std::endl;
-//    std::cout << "=======   TestObstacle0   =======" << std::endl;
-//    std::cout << "  =====                   =====  " << std::endl;
-//    std::cout << "\n"
-//              << std::endl;
-//
-//
-//
+
     MeshUPtr u_mesh;
     GeomUPtr u_geom;
 
     // Load mesh1
-    std::cout << "Loading " << obj1 << " as variable." << std::endl;
-    std::tie(u_mesh, u_geom) = readMesh(obj1);
-    MeshPtr mesh1 = std::move(u_mesh);
-    GeomPtr geom1 = std::move(u_geom);
-    geom1->requireVertexDualAreas();
-    geom1->requireVertexNormals();
-    mint primitive_count1 = mesh1->nVertices();
+    std::cout << "Loading " << BM.obj1 << " as variable." << std::endl;
+    std::tie(u_mesh, u_geom) = readMesh(BM.obj1);
+    BM.mesh1 = std::move(u_mesh);
+    BM.geom1 = std::move(u_geom);
+    BM.geom1->requireVertexDualAreas();
+    BM.geom1->requireVertexNormals();
     
 //    // Load mesh2
 //    std::string obj2 = "../scenes/LungGrowing/sphere.obj";
@@ -126,20 +161,32 @@ int main(int arg_count, char* arg_vec[])
 //    geom2->requireVertexNormals();
 //    mint primitive_count2 = mesh2->nVertices();
 
-    OptimizedClusterTree *bvh1 = CreateOptimizedBVH(mesh1, geom1);
-    auto bct11 = std::make_shared<OptimizedBlockClusterTree>(bvh1, bvh1, alpha, beta, theta);
+    for( mint threads = 1; threads < BM.max_thread_count + 1; ++threads)
+    {
     
-    bct11->PrintStats();
-    
-    auto tpe_11 = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
-    
-    mreal E_11;
-    Eigen::MatrixXd DE_11(primitive_count1, 3);
+        BM.thread_count = threads;
+        omp_set_num_threads(BM.thread_count);
 
-    E_11 = tpe_11->Value();
-    DE_11.setZero();
-    tpe_11->Differential(DE_11);
+        ClearProfile("./Profile_" + std::to_string(BM.thread_count) + ".tsv");
+        
+        //burn-in
+        for( mint i = 0; i < BM.burn_ins; ++i)
+        {
+            std::cout << "burn_in " << i+1 << " / " << BM.burn_ins << std::endl;
+            BM.Compute();
 
+        }
+        
+        ClearProfile("./Profile_" + std::to_string(BM.thread_count) + ".tsv");
+        
+        //the actual test code
+        for( mint i = 0; i < BM.iterations; ++i)
+        {
+            std::cout << "iterations " << i+1 << " / " << BM.iterations << std::endl;
+            BM.Compute();
+
+        }
+    }
     
 //    tic("Create bvh1");
 //    OptimizedClusterTree *bvh1 = CreateOptimizedBVH(mesh1, geom1);
@@ -713,7 +760,7 @@ int main(int arg_count, char* arg_vec[])
 //                << " | " << std::setw(w) << Dt_fm_nl_22
 //                << std::endl;
 
-    delete bvh1;
+
 
     return EXIT_SUCCESS;
 }
