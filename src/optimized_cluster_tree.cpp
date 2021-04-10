@@ -500,20 +500,17 @@ namespace rsurfaces
     {
         ptic("OptimizedClusterTree::ComputePrePost");
 
-        print("A1");
         P_to_C = MKLSparseMatrix( cluster_count, primitive_count, primitive_count );
         P_to_C.outer[0] = 0;
 
-        print("A2");
         C_to_P = MKLSparseMatrix(primitive_count, cluster_count, primitive_count );
         C_to_P.outer[primitive_count] = primitive_count;
         
-        print("A3");
         leaf_cluster_ptr = mint_alloc( leaf_cluster_count + 1  );
         leaf_cluster_ptr[0] = 0;
     //    P_leaf = A_Vector<mint>( primitive_count );
 
-        print("A4");
+        ptic("loop 1");
         #pragma omp parallel for
         for( mint i = 0; i < leaf_cluster_count; ++i )
         {
@@ -526,13 +523,15 @@ namespace rsurfaces
                 C_to_P.inner[k] = leaf;
             }
         }
-        print("A5");
+        ptoc("loop 1");
+        
+        ptic("loop 2");
         {
             mreal * x = C_to_P.values;
             mreal * y = P_to_C.values;
             mint * i  = C_to_P.outer;
             mint * j  = P_to_C.inner;
-            #pragma omp simd aligned ( x, y, i, j  : ALIGN )
+            #pragma omp parallel for simd aligned ( x, y, i, j  : ALIGN )
             for( mint k = 0; k < primitive_count; ++k )
             {
                 x[k] = 1.;
@@ -542,7 +541,9 @@ namespace rsurfaces
                 j[k] = k;
             }
         }
-        print("A6");
+        ptoc("loop 2");
+
+        ptic("P_to_C.outer");
         for (mint C = 0; C < cluster_count; ++C)
         {
             if( C_left[C] >= 0)
@@ -554,11 +555,12 @@ namespace rsurfaces
                 P_to_C.outer[C + 1] = P_to_C.outer[C] + C_end[C] - C_begin[C];
             }
         }
-
-        print("A7");
+        ptoc("P_to_C.outer");
+        
         auto hi_perm = MKLSparseMatrix( dim * primitive_count, dim * primitive_count, dim * primitive_count );
         hi_perm.outer[ dim * primitive_count ] = dim * primitive_count;
 
+        ptic("hi_perm");
         #pragma omp parallel for
         for( mint i = 0; i < primitive_count; ++i )
         {
@@ -571,18 +573,28 @@ namespace rsurfaces
                 hi_perm.values[ to ] = a;
             }
         }
-
-        print("A8");
+        ptoc("hi_perm");
+        
+        ptic("hi_perm.Multiply");
         hi_perm.Multiply( DiffOp, hi_pre );
-        print("A9");
+        ptoc("hi_perm.Multiply");
+        
+        ptic("hi_pre.Transpose");
         hi_pre.Transpose( hi_post );
-        print("A10");
+        ptoc("hi_pre.Transpose");
+        
+        ptic("MKLSparseMatrix");
         auto lo_perm = MKLSparseMatrix( primitive_count, primitive_count, C_to_P.outer, P_ext_pos, P_far[0] ); // Copy
-        print("A11");
+        ptoc("MKLSparseMatrix");
+        
+        ptic("lo_perm.Multiply");
         lo_perm.Multiply( AvOp, lo_pre );
-        print("A12");
+        ptoc("lo_perm.Multiply");
+        
+        ptic("lo_pre.Transpose");
         lo_pre.Transpose( lo_post );
-        print("A13");
+        ptoc("lo_pre.Transpose");
+        
         ptoc("OptimizedClusterTree::ComputePrePost");
     } // ComputePrePost
 
