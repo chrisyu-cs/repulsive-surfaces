@@ -207,7 +207,7 @@ add_executable(runtest "${SRCS}" "${SRCS2}")
 target_include_directories(runtest PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 target_link_libraries(runtest geometry-central OpenMP::OpenMP_CXX)
 
-find_library(BOOST_OPTS_LIB boost_program_options-mt)
+find_library(BOOST_OPTS_LIB NAMES boost_program_options-mt boost_program_options)
 target_link_libraries(runtest ${BOOST_OPTS_LIB})
 
 if(MKL_FOUND)
