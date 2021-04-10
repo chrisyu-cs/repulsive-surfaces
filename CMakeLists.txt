@@ -62,14 +62,30 @@ else()
   message( FATAL_ERROR "Unrecognized compiler [${CMAKE_CXX_COMPILER_ID}]" )
 endif()
 
+if (APPLE)
+    set(CMAKE_THREAD_LIBS_INIT "-lpthread")
+    set(CMAKE_HAVE_THREADS_LIBRARY 1)
+    set(CMAKE_USE_WIN32_THREADS_INIT 0)
+    set(CMAKE_USE_PTHREADS_INIT 1)
+    set(THREADS_PREFER_PTHREAD_FLAG ON)
+endif (APPLE)
+
+set(BLA_VENDOR OpenBLAS)
+find_package( BLAS )
+#find_package(BLAS)
+#find_package(LAPACK)
+
+message("################")
 
 # == Deps
+
 add_subdirectory(deps/geometry-central)
+
 add_subdirectory(deps/polyscope)
 
 # == Build our project stuff
 
-set(SRCS 
+set(SRCS
   src/energy/all_pairs_tpe.cpp
   src/energy/boundary_length.cpp
   src/energy/coulomb.cpp
@@ -134,7 +150,7 @@ set(SRCS
   src/surface_derivatives.cpp
   src/surface_flow.cpp
   src/derivative_assembler.cpp
-	# add any other source files here
+    # add any other source files here
 )
 
 set(SRCS1
@@ -190,6 +206,9 @@ target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/li
 add_executable(runtest "${SRCS}" "${SRCS2}")
 target_include_directories(runtest PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 target_link_libraries(runtest geometry-central OpenMP::OpenMP_CXX)
+
+find_library(BOOST_OPTS_LIB boost_program_options-mt)
+target_link_libraries(runtest ${BOOST_OPTS_LIB})
 
 if(MKL_FOUND)
     target_link_libraries(runtest "-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lpthread -lm -ldl")
