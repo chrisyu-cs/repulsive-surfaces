@@ -349,14 +349,14 @@ namespace rsurfaces
     } // CreateOptimizedBVH_Projectors
 
     
-    inline OptimizedBlockClusterTree * CreateOptimizedBCTFromBVH(OptimizedClusterTree* bvh, double alpha, double beta, double theta, bool exploit_symmetry_ = true, bool upper_triangular_ = false)
+    inline OptimizedBlockClusterTree * CreateOptimizedBCTFromBVH(OptimizedClusterTree* bvh, double alpha, double beta, double chi, bool exploit_symmetry_ = true, bool upper_triangular_ = false)
     {
         OptimizedBlockClusterTree *bct = new OptimizedBlockClusterTree(
             bvh,   // gets handed two pointers to instances of OptimizedClusterTree
             bvh,   // no problem with handing the same pointer twice; this is actually intended
             alpha, // first parameter of the energy (for the numerator)
             beta,  // second parameter of the energy (for the denominator)
-            theta,  // separation parameter; different gauge for thetas as before are the block clustering is performed slightly differently from before
+            chi,  // separation parameter; different gauge for thetas as before are the block clustering is performed slightly differently from before
             exploit_symmetry_,
             upper_triangular_
         );

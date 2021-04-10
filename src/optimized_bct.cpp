@@ -363,7 +363,7 @@ namespace rsurfaces
             mreal const * restrict const Q33 = T->C_far[9];
             
             // Using i and j for cluster positions.
-            #pragma omp parallel for num_threads(thread_count)
+            #pragma omp parallel for num_threads(thread_count) RAGGED_SCHEDULE
             for (mint i = 0; i < b_m; ++i)
             {
                 mreal x1 = X1[i];
@@ -437,7 +437,7 @@ namespace rsurfaces
             
             
             // Using i and j for cluster positions.
-            //        #pragma omp parallel for num_threads(thread_count) schedule(guided, 8)
+            #pragma omp parallel for num_threads(thread_count) RAGGED_SCHEDULE
             for (mint i = 0; i < b_m; ++i)
             {
                 mreal x1 = X1[i];
@@ -534,7 +534,7 @@ namespace rsurfaces
             
             // Using b_i and b_j for block (leaf cluster) positions.
             // Using i and j for primitive positions.
-            #pragma omp parallel for num_threads(thread_count)
+            #pragma omp parallel for num_threads(thread_count) RAGGED_SCHEDULE
             for (mint b_i = 0; b_i < b_m; ++b_i) // we are going to loop over all rows in block fashion
             {
                 mint k_begin = b_outer[b_i];
@@ -642,7 +642,7 @@ namespace rsurfaces
             
             // Using b_i and b_j for block (leaf cluster) positions.
             // Using i and j for primitive positions.
-            #pragma omp parallel for num_threads(thread_count)
+            #pragma omp parallel for num_threads(thread_count) RAGGED_SCHEDULE
             for (mint b_i = 0; b_i < b_m; ++b_i) // we are going to loop over all rows in block fashion
             {
                 mint k_begin = b_outer[b_i];
@@ -864,8 +864,9 @@ namespace rsurfaces
 
         //     Adding product of diagonal matrix of "diags".
         if ( diag ){
+            mint last = std::min( S->primitive_count, T->primitive_count );    // A crude safe-guard protecting against out-of-bound access if S != T.
             #pragma omp parallel for
-            for( mint i = 0; i < std::min( S->primitive_count, T->primitive_count ); ++i )   // A crude safe-guard protecting against out-of-bound access if S != T.
+            for( mint i = 0; i < last; ++i )
             {
                 cblas_daxpy( cols, diag[i], T->P_in + (cols * i), 1, S->P_out + (cols * i), 1 );
             }

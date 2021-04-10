@@ -8,9 +8,10 @@ struct Benchmarker
 {
     mint max_thread_count = 1;
     mint thread_count = 1;
+    mint thread_steps = 1;
 
-    mint burn_ins = 0;
-    mint iterations = 1;
+    mint burn_ins = 1;
+    mint iterations = 3;
 
     
     mreal alpha = 6.;
@@ -20,27 +21,51 @@ struct Benchmarker
     mreal weight = 1.;
     
     std::string obj1 = "../scenes/Bunny/bunny.obj";
-    
+    std::string profile_name = "Profile";
+    std::string profile_path = ".";
     MeshPtr mesh1;
     GeomPtr geom1;
     
     void Compute()
     {
-        OptimizedClusterTree *bvh1 = CreateOptimizedBVH(mesh1, geom1);
-        auto bct11 = std::make_shared<OptimizedBlockClusterTree>(bvh1, bvh1, alpha, beta, theta);
-        
-//        bct11->PrintStats();
-        
-        auto tpe_11 = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
+        mint vertex_count1 = mesh1->nVertices();
         
         mreal E_11;
-        Eigen::MatrixXd DE_11(mesh1->nVertices(), 3);
+        Eigen::MatrixXd DE_11(vertex_count1, 3);
         
-        E_11 = tpe_11->Value();
+        
+//        OptimizedClusterTree *bvh1 = CreateOptimizedBVH(mesh1, geom1);
+        ptic("Energy");
+        auto tpe_bh_11 = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
+        E_11 = tpe_bh_11->Value();
         DE_11.setZero();
-        tpe_11->Differential(DE_11);
+        tpe_bh_11->Differential(DE_11);
+        ptoc("Energy");
         
-        delete bvh1;
+        Eigen::MatrixXd U(vertex_count1, 3);
+        U = getVertexPositions( mesh1, geom1 );
+        
+        Eigen::MatrixXd V(vertex_count1, 3);
+        V.setZero();
+        
+        ptic("Multiply");
+        auto bct11 = std::make_shared<OptimizedBlockClusterTree>(tpe_bh_11->GetBVH(), tpe_bh_11->GetBVH(), alpha, beta, chi);
+        for( mint k = 0; k < 20; ++k)
+        {
+            ptic("Multiply Fractional");
+            bct11->Multiply(V,U,BCTKernelType::FractionalOnly);
+            ptoc("Multiply Fractional");
+            
+            ptic("Multiply HighOrder");
+            bct11->Multiply(V,U,BCTKernelType::HighOrder);
+            ptoc("Multiply HighOrder");
+            
+            ptic("Multiply LowOrder");
+            bct11->Multiply(V,U,BCTKernelType::LowOrder);
+            ptoc("Multiply LowOrder");
+        }
+        ptoc("Multiply");
+//        delete bvh1;
     }
     
     void PrintStats()
@@ -65,7 +90,7 @@ int main(int arg_count, char* arg_vec[])
     
     #pragma omp parallel
     {
-        BM.max_thread_count = omp_get_num_threads()/2;
+        BM.thread_count = BM.max_thread_count = omp_get_num_threads()/2;
     }
 
     
@@ -77,12 +102,14 @@ int main(int arg_count, char* arg_vec[])
         desc.add_options()
             ("help", "produce help message")
             ("mesh", po::value<std::string>(), "file of mesh to use as variable")
-//            ("profile_file", po::value<std::string>(), "file of profile file")
+            ("profile_path", po::value<std::string>(), "path to store the profile")
+            ("profile_name", po::value<std::string>(), "file base name of profile file")
             ("alpha", po::value<mreal>(), "file name of mesh to use as variable")
             ("beta", po::value<mreal>(), "file name of mesh to use as variable")
             ("theta", po::value<mreal>(), "separation parameter for barnes-hut method")
             ("chi", po::value<mreal>(), "separation parameter for block cluster tree")
             ("threads", po::value<mint>(), "number of threads to be used")
+            ("thread_steps", po::value<mint>(), "number of threads to be used")
         
             ("burn_ins", po::value<mint>(), "number of burn-in iterations to use")
             ("iterations", po::value<mint>(), "number of iterations to use for the benchmark")
@@ -100,9 +127,12 @@ int main(int arg_count, char* arg_vec[])
         if (var_map.count("mesh")) {
             BM.obj1 = var_map["mesh"].as<std::string>();
         }
-//        if (var_map.count("profile_file")) {
-//            profile_file = var_map["profile_file"].as<std::string>();
-//        }
+        if (var_map.count("profile_name")) {
+            BM.profile_name = var_map["profile_name"].as<std::string>();
+        }
+        if (var_map.count("profile_path")) {
+            BM.profile_path = var_map["profile_path"].as<std::string>();
+        }
 
         if (var_map.count("theta")) {
             BM.theta = var_map["theta"].as<mreal>();
@@ -119,6 +149,10 @@ int main(int arg_count, char* arg_vec[])
 
         if (var_map.count("threads")) {
             BM.thread_count = var_map["threads"].as<mint>();
+            BM.max_thread_count = var_map["threads"].as<mint>();
+        }
+        if (var_map.count("thread_steps")) {
+            BM.thread_steps = var_map["thread_steps"].as<mint>();
         }
         if (var_map.count("burn_ins")) {
             BM.burn_ins = var_map["burn_ins"].as<mint>();
@@ -161,13 +195,16 @@ int main(int arg_count, char* arg_vec[])
 //    geom2->requireVertexNormals();
 //    mint primitive_count2 = mesh2->nVertices();
 
-    for( mint threads = 1; threads < BM.max_thread_count + 1; ++threads)
+    for( mint threads = 0; threads < BM.max_thread_count + 1; threads += BM.thread_steps )
     {
     
         BM.thread_count = threads;
         omp_set_num_threads(BM.thread_count);
 
-        ClearProfile("./Profile_" + std::to_string(BM.thread_count) + ".tsv");
+        std::cout << std::endl;
+        std::cout << "### threads =  " << BM.thread_count << std::endl;
+        
+        ClearProfile(BM.profile_path + "/" + BM.profile_name + "_" + std::to_string(BM.thread_count) + ".tsv");
         
         //burn-in
         for( mint i = 0; i < BM.burn_ins; ++i)
@@ -177,15 +214,18 @@ int main(int arg_count, char* arg_vec[])
 
         }
         
-        ClearProfile("./Profile_" + std::to_string(BM.thread_count) + ".tsv");
+        ClearProfile(BM.profile_path + "/" + BM.profile_name + "_" + std::to_string(BM.thread_count) + ".tsv");
         
         //the actual test code
         for( mint i = 0; i < BM.iterations; ++i)
         {
             std::cout << "iterations " << i+1 << " / " << BM.iterations << std::endl;
+            ptic("Iteration");
             BM.Compute();
+            ptoc("Iteration");
 
         }
+        std::cout << std::endl;
     }
     
 //    tic("Create bvh1");

@@ -15,11 +15,13 @@ namespace po = boost::program_options;
 #include "rsurface_types.h"
 #include "surface_flow.h"
 
+
 #include "remeshing/dynamic_remesher.h"
 #include "remeshing/remeshing.h"
 
 #include "scene_file.h"
 
+#include "bct_kernel_type.h"
 #include "optimized_bct.h"
 #include "bct_constructors.h"
 
@@ -27,6 +29,7 @@ namespace po = boost::program_options;
 
 
 #include "energy/all_energies.h"
+
 
 
 #define EIGEN_NO_DEBUG

@@ -7,6 +7,8 @@ namespace rsurfaces
     template<typename T1, typename T2>
     mreal TPEnergyMultipole0::FarField( T1 alphahalf, T2 betahalf)
     {
+        ptic("TPEnergyMultipole0::FarField");
+        
         T2 minus_betahalf = -betahalf;
         
         auto S = bct->S;
@@ -42,7 +44,7 @@ namespace rsurfaces
         
         mreal sum = 0.;
         
-        #pragma omp parallel for num_threads( nthreads ) reduction( + : sum )
+        #pragma omp parallel for num_threads( nthreads ) reduction( + : sum ) RAGGED_SCHEDULE
         for( mint i = 0; i < b_m; ++i )
         {
             mreal x1 = X1[i];
@@ -90,6 +92,9 @@ namespace rsurfaces
             
             sum += A[i] * block_sum;
         }
+        
+        ptoc("TPEnergyMultipole0::FarField");
+        
         return sum;
     } // FarField
 
@@ -97,6 +102,8 @@ namespace rsurfaces
     template<typename T1, typename T2>
     mreal TPEnergyMultipole0::NearField(T1 alpha, T2 betahalf)
     {
+        ptic("TPEnergyMultipole0::NearField");
+        
         T2 minus_betahalf = -betahalf;
         
         auto S = bct->S;
@@ -128,7 +135,7 @@ namespace rsurfaces
         mreal const * restrict const M3 = T->P_near[6];
         
         mreal sum = 0.;
-    #pragma omp parallel for num_threads( nthreads ) reduction( + : sum)
+        #pragma omp parallel for num_threads( nthreads ) reduction( + : sum ) RAGGED_SCHEDULE
         for( mint b_i = 0; b_i < b_m; ++b_i )
         {
             
@@ -186,12 +193,16 @@ namespace rsurfaces
                 }
             }
         }
+        
+        ptoc("TPEnergyMultipole0::NearField");
+        
         return sum;
     }; //NearField
 
     template<typename T1, typename T2>
     mreal TPEnergyMultipole0::DFarField(T1 alphahalf, T2 betahalf)
     {
+        ptic("TPEnergyMultipole0::DFarField");
         
         T1 alphahalf_minus_1 = alphahalf - 1;
         T2 minus_betahalf_minus_1 = -betahalf - 1;
@@ -233,7 +244,7 @@ namespace rsurfaces
         mreal const * restrict const Q23 = T->C_far[8];
         mreal const * restrict const Q33 = T->C_far[9];
         
-        #pragma omp parallel for num_threads( nthreads ) reduction( + : sum )
+        #pragma omp parallel for num_threads( nthreads ) reduction( + : sum ) RAGGED_SCHEDULE
         for( mint i = 0; i < b_m; ++i )
         {
             mint thread = omp_get_thread_num();
@@ -375,12 +386,16 @@ namespace rsurfaces
             
         } // for( mint i = 0; i < b_m; ++i )
         
+        ptoc("TPEnergyMultipole0::DFarField");
+        
         return sum;
     }; //DFarField
 
     template<typename T1, typename T2>
     mreal TPEnergyMultipole0::DNearField(T1 alpha, T2 betahalf)
     {
+        ptic("TPEnergyMultipole0::DNearField");
+        
         T1 alpha_minus_2 = alpha - 2;
         T2 minus_betahalf_minus_1 = -betahalf - 1;
         
@@ -418,7 +433,7 @@ namespace rsurfaces
         mreal const * restrict const M3 = T->P_near[6];
         
         
-        #pragma omp parallel for num_threads( nthreads ) reduction( +: sum )
+        #pragma omp parallel for num_threads( nthreads ) reduction( + : sum ) RAGGED_SCHEDULE
         for( mint b_i = 0; b_i < b_m; ++b_i )
         {
             mint thread = omp_get_thread_num();
@@ -557,6 +572,8 @@ namespace rsurfaces
             }// for( mint k = b_outer[b_i]; k < b_outer[b_i+1]; ++k )
         } // for( mint b_i = 0; b_i < b_m; ++b_i )
         
+        ptoc("TPEnergyMultipole0::DNearField");
+        
         return sum;
     }; //DNearField
 
@@ -564,6 +581,8 @@ namespace rsurfaces
     // Returns the current value of the energy.
     double TPEnergyMultipole0::Value()
     {
+        ptic("TPEnergyMultipole0::Value");
+        
         mreal value = 0.;
         
         mreal intpart;
@@ -598,6 +617,8 @@ namespace rsurfaces
             value += FarField( real_alphahalf, real_betahalf );
         }
         
+        ptoc("TPEnergyMultipole0::Value");
+        
         return weight * value;
     } // Value
 
@@ -606,6 +627,8 @@ namespace rsurfaces
     // respect to the corresponding vertex.
     void TPEnergyMultipole0::Differential(Eigen::MatrixXd &output)
     {
+        ptic("TPEnergyMultipole0::Differential");
+        
         if( bct->S->near_dim != 7)
         {
             eprint("in TPEnergyBarnesHut_Projectors0::Differential: near_dim != 7");
@@ -658,6 +681,7 @@ namespace rsurfaces
         AssembleDerivativeFromACNData( mesh, geom, P_D_near, output, weight );
         AssembleDerivativeFromACPData( mesh, geom, P_D_far, output, weight );
         
+        ptoc("TPEnergyMultipole0::Differential");
     } // Differential
 
 
