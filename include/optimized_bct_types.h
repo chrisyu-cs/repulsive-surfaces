@@ -627,7 +627,10 @@ namespace rsurfaces
         
         void Transpose( MKLSparseMatrix & AT)
         {
-            
+
+            MKLVersion Version;
+            mkl_get_version(&Version);
+            mint mkl_version = Version.MajorVersion;
 //            MKLVersion Version;
 //            mkl_get_version(&Version);
 //            printf("Major version:           %d\n",Version.MajorVersion);
@@ -664,7 +667,16 @@ namespace rsurfaces
             
             sparse_index_base_t indexing = SPARSE_INDEX_BASE_ZERO;
             
-            stat = mkl_sparse_d_export_csr( csrAT, &indexing, &rows_AT, &cols_AT, &outerB_AT, &outerE_AT, &inner_AT, &values_AT ); // It's not logical to swap rows_AT and cols_AT...
+            if( mkl_version >=2020)
+            {
+                stat = mkl_sparse_d_export_csr( csrAT, &indexing, &rows_AT, &cols_AT, &outerB_AT, &outerE_AT, &inner_AT, &values_AT );
+            }
+            else
+            {
+                // MKL 2019.0.1 requires this one for a weird reason
+                stat = mkl_sparse_d_export_csr( csrAT, &indexing, &cols_AT, &rows_AT, &outerB_AT, &outerE_AT, &inner_AT, &values_AT ); // It's not logical to swap rows_AT and cols_AT...
+            }
+            
             if (stat)
             {
                 eprint("in MKLSparseMatrix::Transpose: mkl_sparse_d_export_csr returned " + std::to_string(stat) );
