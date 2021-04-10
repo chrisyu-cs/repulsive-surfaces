@@ -96,7 +96,7 @@ namespace rsurfaces
         MKLSparseMatrix DiffOp = MKLSparseMatrix( DiffOp0.rows(), DiffOp0.cols(), DiffOp0.outerIndexPtr(), DiffOp0.innerIndexPtr(), DiffOp0.valuePtr() ); // This is a sparse matrix in CSR format.
 
         // create a cluster tree
-        int split_threashold = 8;
+        int split_threshold = 8;
         return new OptimizedClusterTree(
             &P_coords[0],      // coordinates used for clustering
             primitive_count,            // number of primitives
@@ -109,7 +109,7 @@ namespace rsurfaces
             far_dim,                 // number of dofs of P_far per mesh element; it is 10 for polylines and triangle meshes in 3D.
             dim * dim,             // some estimate for the buffer size per vertex and cluster (usually the square of the dimension of the embedding space
             &ordering[0],      // some ordering of triangles
-            split_threashold,  // create clusters only with at most this many mesh elements in it
+            split_threshold,  // create clusters only with at most this many mesh elements in it
             DiffOp,            // the first-order differential operator belonging to the hi order term of the metric
             AvOp               // the zeroth-order differential operator belonging to the lo order term of the metric
         );
@@ -217,7 +217,7 @@ namespace rsurfaces
         MKLSparseMatrix DiffOp = MKLSparseMatrix( DiffOp0.rows(), DiffOp0.cols(), DiffOp0.outerIndexPtr(), DiffOp0.innerIndexPtr(), DiffOp0.valuePtr() ); // This is a sparse matrix in CSR format.
 
         // create a cluster tree
-        int split_threashold = 8;
+        int split_threshold = 8;
         return new OptimizedClusterTree(
             &P_coords[0],      // coordinates used for clustering
             primitive_count,            // number of primitives
@@ -230,7 +230,7 @@ namespace rsurfaces
             far_dim,                 // number of dofs of P_far per mesh element; it is 10 for polylines and triangle meshes in 3D.
             dim * dim,             // some estimate for the buffer size per vertex and cluster (usually the square of the dimension of the embedding space
             &ordering[0],      // some ordering of triangles
-            split_threashold,  // create clusters only with at most this many mesh elements in it
+            split_threshold,  // create clusters only with at most this many mesh elements in it
             DiffOp,            // the first-order differential operator belonging to the hi order term of the metric
             AvOp               // the zeroth-order differential operator belonging to the lo order term of the metric
         );
@@ -329,7 +329,7 @@ namespace rsurfaces
         MKLSparseMatrix DiffOp = MKLSparseMatrix( DiffOp0.rows(), DiffOp0.cols(), DiffOp0.outerIndexPtr(), DiffOp0.innerIndexPtr(), DiffOp0.valuePtr() ); // This is a sparse matrix in CSR format.
 
         // create a cluster tree
-        int split_threashold = 8;
+        int split_threshold = 8;
         return new OptimizedClusterTree(
             &P_coords[0],      // coordinates used for clustering
             primitive_count,            // number of primitives
@@ -342,7 +342,7 @@ namespace rsurfaces
             far_dim,                 // number of dofs of P_data per mesh element; it is 10 for polylines and triangle meshes in 3D.
             std::max( dim * dim, far_dim ),             // some estimate for the buffer size per vertex and cluster (usually the square of the dimension of the embedding space
             &ordering[0],      // some ordering of triangles
-            split_threashold,  // create clusters only with at most this many mesh elements in it
+            split_threshold,  // create clusters only with at most this many mesh elements in it
             DiffOp,            // the first-order differential operator belonging to the hi order term of the metric
             AvOp               // the zeroth-order differential operator belonging to the lo order term of the metric
         );

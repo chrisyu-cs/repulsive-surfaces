@@ -4,6 +4,9 @@
 #include "geometrycentral/surface/meshio.h"
 #include "geometrycentral/surface/vertex_position_geometry.h"
 
+#include <boost/program_options.hpp>
+namespace po = boost::program_options;
+
 #include <omp.h>
 #include <mkl.h>
 #include <memory>
