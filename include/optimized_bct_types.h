@@ -628,17 +628,17 @@ namespace rsurfaces
         void Transpose( MKLSparseMatrix & AT)
         {
             
-            MKLVersion Version;
-            mkl_get_version(&Version);
-            printf("Major version:           %d\n",Version.MajorVersion);
-            printf("Minor version:           %d\n",Version.MinorVersion);
-            printf("Update version:          %d\n",Version.UpdateVersion);
-            printf("Product status:          %s\n",Version.ProductStatus);
-            printf("Build:                   %s\n",Version.Build);
-            printf("Platform:                %s\n",Version.Platform);
-            printf("Processor optimization:  %s\n",Version.Processor);
-            printf("================================================================\n");
-            printf("\n");
+//            MKLVersion Version;
+//            mkl_get_version(&Version);
+//            printf("Major version:           %d\n",Version.MajorVersion);
+//            printf("Minor version:           %d\n",Version.MinorVersion);
+//            printf("Update version:          %d\n",Version.UpdateVersion);
+//            printf("Product status:          %s\n",Version.ProductStatus);
+//            printf("Build:                   %s\n",Version.Build);
+//            printf("Platform:                %s\n",Version.Platform);
+//            printf("Processor optimization:  %s\n",Version.Processor);
+//            printf("================================================================\n");
+//            printf("\n");
             
             sparse_status_t stat;
             sparse_matrix_t csrA = nullptr;
