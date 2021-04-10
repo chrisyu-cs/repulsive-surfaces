@@ -557,39 +557,125 @@ namespace rsurfaces
         }
         ptoc("P_to_C.outer");
         
-        auto hi_perm = MKLSparseMatrix( dim * primitive_count, dim * primitive_count, dim * primitive_count );
-        hi_perm.outer[ dim * primitive_count ] = dim * primitive_count;
-
-        ptic("hi_perm");
-        #pragma omp parallel for
-        for( mint i = 0; i < primitive_count; ++i )
+//        auto hi_perm = MKLSparseMatrix( dim * primitive_count, dim * primitive_count, dim * primitive_count );
+//        hi_perm.outer[ dim * primitive_count ] = dim * primitive_count;
+//
+//        ptic("hi_perm");
+//        #pragma omp parallel for
+//        for( mint i = 0; i < primitive_count; ++i )
+//        {
+//            mreal a = P_far[0][i];
+//            for( mint k = 0; k < dim; ++k )
+//            {
+//                mint to = dim * i + k;
+//                hi_perm.outer [ to ] = to;
+//                hi_perm.inner [ to ] = dim * P_ext_pos[i] + k;
+//                hi_perm.values[ to ] = a;
+//            }
+//        }
+//        ptoc("hi_perm");
+//        ptic("hi_perm.Multiply");
+//        hi_perm.Multiply( DiffOp, hi_pre );
+//        ptoc("hi_perm.Multiply");
+        
+        ptic("hi_pre");
         {
-            mreal a = P_far[0][i];
-            for( mint k = 0; k < dim; ++k )
+            hi_pre = MKLSparseMatrix( DiffOp.m, DiffOp.n, DiffOp.nnz );
+            mint * Douter = DiffOp.outer;
+            mint * Dinner = DiffOp.inner;
+            mreal * Dvalues = DiffOp.values;
+            mint * Pouter = hi_pre.outer;
+            mint * Pinner = hi_pre.inner;
+            mreal * Pvalues = hi_pre.values;
+
+            // permuting block rows of DiffOp (dim rows per block row)
+            #pragma omp parallel for
+            for( mint i = 0; i < primitive_count; ++i)
             {
-                mint to = dim * i + k;
-                hi_perm.outer [ to ] = to;
-                hi_perm.inner [ to ] = dim * P_ext_pos[i] + k;
-                hi_perm.values[ to ] = a;
+                mint j = P_ext_pos[i];
+                mint from = dim * j;
+                mint to = dim * i;
+                #pragma omp simd aligned( Pouter, Douter : ALIGN )
+                for( mint k = 0; k < dim; ++k)
+                {
+                    Pouter[to + k + 1] = Douter[from + k + 1] - Douter[from + k];
+                }
+            }
+        
+            std::partial_sum( hi_pre.outer, hi_pre.outer + hi_pre.m + 1, hi_pre.outer );
+            
+            #pragma omp parallel for
+            for( mint i = 0; i < primitive_count; ++i)
+            {
+                mreal a = P_far[0][i];
+                mint j = P_ext_pos[i];
+                mint from = Douter[dim * j];
+                mint last = Douter[dim * (j+1)] - from;
+                mint to = Douter[dim * i];
+
+                #pragma omp simd aligned( Dinner, Dvalues, Pinner, Pvalues : ALIGN )
+                for( mint k = 0; k < last; ++k )
+                {
+                    Pinner[to + k] = Dinner[from + k];
+                    Pvalues[to + k] = a * Dvalues[from + k];
+                }
             }
         }
-        ptoc("hi_perm");
-        
-        ptic("hi_perm.Multiply");
-        hi_perm.Multiply( DiffOp, hi_pre );
-        ptoc("hi_perm.Multiply");
+        ptoc("hi_pre");
+
         
         ptic("hi_pre.Transpose");
         hi_pre.Transpose( hi_post );
         ptoc("hi_pre.Transpose");
         
-        ptic("MKLSparseMatrix");
-        auto lo_perm = MKLSparseMatrix( primitive_count, primitive_count, C_to_P.outer, P_ext_pos, P_far[0] ); // Copy
-        ptoc("MKLSparseMatrix");
+//        ptic("MKLSparseMatrix");
+//        auto lo_perm = MKLSparseMatrix( primitive_count, primitive_count, C_to_P.outer, P_ext_pos, P_far[0] ); // Copy
+//        ptoc("MKLSparseMatrix");
+//
+//        ptic("lo_perm.Multiply");
+//        lo_perm.Multiply( AvOp, lo_pre );
+//        ptoc("lo_perm.Multiply");
         
-        ptic("lo_perm.Multiply");
-        lo_perm.Multiply( AvOp, lo_pre );
-        ptoc("lo_perm.Multiply");
+        ptic("lo_pre");
+        {
+            lo_pre = MKLSparseMatrix( AvOp.m, AvOp.n, AvOp.nnz );
+            mint * Douter = AvOp.outer;
+            mint * Dinner = AvOp.inner;
+            mreal * Dvalues = AvOp.values;
+            mint * Pouter = lo_pre.outer;
+            mint * Pinner = lo_pre.inner;
+            mreal * Pvalues = lo_pre.values;
+
+            // permuting rows of AvOps
+            #pragma omp parallel for
+            for( mint i = 0; i < primitive_count; ++i)
+            {
+                mint j = P_ext_pos[i];
+                mint from = j;
+                mint to = i;
+                Pouter[to + 1] = Douter[from + 1] - Douter[from ];
+            }
+        
+            std::partial_sum( lo_pre.outer, lo_pre.outer + lo_pre.m + 1, lo_pre.outer );
+            
+            #pragma omp parallel for
+            for( mint i = 0; i < primitive_count; ++i)
+            {
+                mreal a = P_far[0][i];
+                mint j = P_ext_pos[i];
+                mint from = Douter[j];
+                mint last = Douter[j+1] - from;
+                mint to = Douter[i];
+
+                #pragma omp simd aligned( Dinner, Dvalues, Pinner, Pvalues : ALIGN )
+                for( mint k = 0; k < last; ++k )
+                {
+                    Pinner[to + k] = Dinner[from + k];
+                    Pvalues[to + k] = a * Dvalues[from + k];
+                }
+            }
+        }
+        ptoc("lo_pre");
         
         ptic("lo_pre.Transpose");
         lo_pre.Transpose( lo_post );
