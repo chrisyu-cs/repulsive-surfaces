@@ -7,6 +7,8 @@ namespace rsurfaces
     template<typename T1, typename T2>
     mreal TPEnergyMultipole0::FarField( T1 alphahalf, T2 betahalf)
     {
+        ptic("TPEnergyMultipole0::FarField");
+        
         T2 minus_betahalf = -betahalf;
         
         auto S = bct->S;
@@ -90,6 +92,9 @@ namespace rsurfaces
             
             sum += A[i] * block_sum;
         }
+        
+        ptoc("TPEnergyMultipole0::FarField");
+        
         return sum;
     } // FarField
 
@@ -97,6 +102,8 @@ namespace rsurfaces
     template<typename T1, typename T2>
     mreal TPEnergyMultipole0::NearField(T1 alpha, T2 betahalf)
     {
+        ptic("TPEnergyMultipole0::NearField");
+        
         T2 minus_betahalf = -betahalf;
         
         auto S = bct->S;
@@ -128,7 +135,7 @@ namespace rsurfaces
         mreal const * restrict const M3 = T->P_near[6];
         
         mreal sum = 0.;
-    #pragma omp parallel for num_threads( nthreads ) reduction( + : sum)
+        #pragma omp parallel for num_threads( nthreads ) reduction( + : sum)
         for( mint b_i = 0; b_i < b_m; ++b_i )
         {
             
@@ -186,12 +193,16 @@ namespace rsurfaces
                 }
             }
         }
+        
+        ptoc("TPEnergyMultipole0::NearField");
+        
         return sum;
     }; //NearField
 
     template<typename T1, typename T2>
     mreal TPEnergyMultipole0::DFarField(T1 alphahalf, T2 betahalf)
     {
+        ptic("TPEnergyMultipole0::DFarField");
         
         T1 alphahalf_minus_1 = alphahalf - 1;
         T2 minus_betahalf_minus_1 = -betahalf - 1;
@@ -375,12 +386,16 @@ namespace rsurfaces
             
         } // for( mint i = 0; i < b_m; ++i )
         
+        ptoc("TPEnergyMultipole0::DFarField");
+        
         return sum;
     }; //DFarField
 
     template<typename T1, typename T2>
     mreal TPEnergyMultipole0::DNearField(T1 alpha, T2 betahalf)
     {
+        ptic("TPEnergyMultipole0::DNearField");
+        
         T1 alpha_minus_2 = alpha - 2;
         T2 minus_betahalf_minus_1 = -betahalf - 1;
         
@@ -556,6 +571,8 @@ namespace rsurfaces
                 }// if( b_i <= b_j )
             }// for( mint k = b_outer[b_i]; k < b_outer[b_i+1]; ++k )
         } // for( mint b_i = 0; b_i < b_m; ++b_i )
+        
+        ptoc("TPEnergyMultipole0::DNearField");
         
         return sum;
     }; //DNearField

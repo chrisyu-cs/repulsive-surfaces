@@ -292,6 +292,7 @@ namespace rsurfaces
     void InteractionData::ApplyKernel_CSR_MKL( mreal * values, mreal * T_input, mreal * S_output, mint cols, mreal factor ) // sparse matrix-vector multiplication using mkl_sparse_d_mm
     {
         ptic("InteractionData::ApplyKernel_CSR_MKL");
+        tic("InteractionData::ApplyKernel_CSR_MKL");
         if( T_input && S_output && OuterPtrB()[m] > 0 && values )
         {
             // Creation of handle for a sparse matrix in CSR format. This has almost no overhead. (Should be similar to Eigen's Map.)
@@ -350,6 +351,7 @@ namespace rsurfaces
                 }
             }
         }
+        toc("InteractionData::ApplyKernel_CSR_MKL");
         ptoc("InteractionData::ApplyKernel_CSR_MKL");
     }; // ApplyKernel_CSR_MKL
 

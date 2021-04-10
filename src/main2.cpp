@@ -26,20 +26,46 @@ struct Benchmarker
     
     void Compute()
     {
+        mint vertex_count1 = mesh1->nVertices();
+        
         OptimizedClusterTree *bvh1 = CreateOptimizedBVH(mesh1, geom1);
-        auto bct11 = std::make_shared<OptimizedBlockClusterTree>(bvh1, bvh1, alpha, beta, theta);
+        auto bct11 = std::make_shared<OptimizedBlockClusterTree>(bvh1, bvh1, alpha, beta, chi);
         
 //        bct11->PrintStats();
         
-        auto tpe_11 = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
+        auto tpe_bh_11 = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
+        auto tpe_fm_11 = std::make_shared<TPEnergyMultipole0>(mesh1, geom1, bct11.get(), alpha, beta, weight);
         
         mreal E_11;
-        Eigen::MatrixXd DE_11(mesh1->nVertices(), 3);
+        Eigen::MatrixXd DE_11(vertex_count1, 3);
         
-        E_11 = tpe_11->Value();
+        E_11 = tpe_bh_11->Value();
         DE_11.setZero();
-        tpe_11->Differential(DE_11);
+        tpe_bh_11->Differential(DE_11);
         
+        E_11 = tpe_fm_11->Value();
+        DE_11.setZero();
+        tpe_fm_11->Differential(DE_11);
+        
+        Eigen::MatrixXd U(vertex_count1, 3);
+        U = getVertexPositions( mesh1, geom1 );
+        
+        Eigen::MatrixXd V(vertex_count1, 3);
+        V.setZero();
+        
+        ptic("Fractional Multiply");
+        bct11->Multiply(V,U,BCTKernelType::FractionalOnly);
+        ptoc("Fractional Multiply");
+        
+        ptic("Fractional HighOrder");
+        bct11->Multiply(V,U,BCTKernelType::HighOrder);
+        ptoc("Fractional HighOrder");
+        
+        ptic("Fractional LowOrder");
+        bct11->Multiply(V,U,BCTKernelType::LowOrder);
+        ptoc("Fractional LowOrder");
+        
+
         delete bvh1;
     }
     
@@ -167,6 +193,9 @@ int main(int arg_count, char* arg_vec[])
         BM.thread_count = threads;
         omp_set_num_threads(BM.thread_count);
 
+        std::cout << std::endl;
+        std::cout << "### threads =  " << BM.thread_count << std::endl;
+        
         ClearProfile("./Profile_" + std::to_string(BM.thread_count) + ".tsv");
         
         //burn-in
@@ -186,6 +215,7 @@ int main(int arg_count, char* arg_vec[])
             BM.Compute();
 
         }
+        std::cout << std::endl;
     }
     
 //    tic("Create bvh1");
