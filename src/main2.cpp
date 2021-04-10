@@ -15,7 +15,7 @@ int main(int argc, char **argv)
     int threads;
     #pragma omp parallel
     {
-        threads = omp_get_num_threads();
+        threads = omp_get_num_threads()/2;
     }
     ClearProfile("./TestObstacle0_" + std::to_string(threads)+ ".tsv");
     
