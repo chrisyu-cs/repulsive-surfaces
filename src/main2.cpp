@@ -212,7 +212,9 @@ int main(int arg_count, char* arg_vec[])
         for( mint i = 0; i < BM.iterations; ++i)
         {
             std::cout << "iterations " << i+1 << " / " << BM.iterations << std::endl;
+            ptic("Iteration");
             BM.Compute();
+            ptoc("Iteration");
 
         }
         std::cout << std::endl;

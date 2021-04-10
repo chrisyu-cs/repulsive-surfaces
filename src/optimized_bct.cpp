@@ -534,7 +534,7 @@ namespace rsurfaces
             
             // Using b_i and b_j for block (leaf cluster) positions.
             // Using i and j for primitive positions.
-            #pragma omp parallel for num_threads(thread_count)
+            #pragma omp parallel for num_threads(thread_count) schedule(guided, 8)
             for (mint b_i = 0; b_i < b_m; ++b_i) // we are going to loop over all rows in block fashion
             {
                 mint k_begin = b_outer[b_i];
@@ -642,7 +642,7 @@ namespace rsurfaces
             
             // Using b_i and b_j for block (leaf cluster) positions.
             // Using i and j for primitive positions.
-            #pragma omp parallel for num_threads(thread_count)
+            #pragma omp parallel for num_threads(thread_count) schedule(guided, 8)
             for (mint b_i = 0; b_i < b_m; ++b_i) // we are going to loop over all rows in block fashion
             {
                 mint k_begin = b_outer[b_i];
