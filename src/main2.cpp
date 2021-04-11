@@ -30,24 +30,17 @@ struct Benchmarker
     {
         mint vertex_count1 = mesh1->nVertices();
         
-        OptimizedClusterTree *bvh1 = CreateOptimizedBVH(mesh1, geom1);
-        auto bct11 = std::make_shared<OptimizedBlockClusterTree>(bvh1, bvh1, alpha, beta, chi);
-        
-//        bct11->PrintStats();
-        
-        auto tpe_bh_11 = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
-        auto tpe_fm_11 = std::make_shared<TPEnergyMultipole0>(mesh1, geom1, bct11.get(), alpha, beta, weight);
-        
         mreal E_11;
         Eigen::MatrixXd DE_11(vertex_count1, 3);
         
+        
+//        OptimizedClusterTree *bvh1 = CreateOptimizedBVH(mesh1, geom1);
+        ptic("Energy");
+        auto tpe_bh_11 = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
         E_11 = tpe_bh_11->Value();
         DE_11.setZero();
         tpe_bh_11->Differential(DE_11);
-        
-        E_11 = tpe_fm_11->Value();
-        DE_11.setZero();
-        tpe_fm_11->Differential(DE_11);
+        ptoc("Energy");
         
         Eigen::MatrixXd U(vertex_count1, 3);
         U = getVertexPositions( mesh1, geom1 );
@@ -55,7 +48,9 @@ struct Benchmarker
         Eigen::MatrixXd V(vertex_count1, 3);
         V.setZero();
         
-        for( mint k = 0; k < 15; ++k)
+        ptic("Multiply");
+        auto bct11 = std::make_shared<OptimizedBlockClusterTree>(tpe_bh_11->GetBVH(), tpe_bh_11->GetBVH(), alpha, beta, chi);
+        for( mint k = 0; k < 20; ++k)
         {
             ptic("Multiply Fractional");
             bct11->Multiply(V,U,BCTKernelType::FractionalOnly);
@@ -69,8 +64,8 @@ struct Benchmarker
             bct11->Multiply(V,U,BCTKernelType::LowOrder);
             ptoc("Multiply LowOrder");
         }
-
-        delete bvh1;
+        ptoc("Multiply");
+//        delete bvh1;
     }
     
     void PrintStats()

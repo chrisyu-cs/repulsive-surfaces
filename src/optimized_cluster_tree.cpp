@@ -94,22 +94,44 @@ namespace rsurfaces
         cluster_count = root->descendant_count;
         leaf_cluster_count = root->descendant_leaf_count;
 
-        // TODO: Create parallel tasks here.
+        #pragma omp parallel
         {
-            mint s = std::max( dim * dim, far_dim);
-            RequireBuffers( std::max( s, max_buffer_dim_ ) );
+            #pragma omp task
+            {
+                mint s = std::max( dim * dim, far_dim);
+                RequireBuffers( std::max( s, max_buffer_dim_ ) );
+            }
+            #pragma omp task
+            {
+                C_left  = mint_alloc ( cluster_count );
+            }
+            #pragma omp task
+            {
+                C_right = mint_alloc ( cluster_count );
+            }
+            #pragma omp task
+            {
+                C_begin = mint_alloc ( cluster_count );
+            }
+            #pragma omp task
+            {
+                C_end   = mint_alloc ( cluster_count );
+            }
+            #pragma omp task
+            {
+                C_depth = mint_alloc ( cluster_count );
+            }
+            #pragma omp task
+            {
+                leaf_clusters = mint_alloc( leaf_cluster_count );
+            }
+            #pragma omp task
+            {
+                leaf_cluster_lookup = mint_alloc( cluster_count );
+            }
         }
         
-        C_left  = mint_alloc ( cluster_count );
-        C_right = mint_alloc ( cluster_count );
-        C_begin = mint_alloc ( cluster_count );
-        C_end   = mint_alloc ( cluster_count );
-        C_depth = mint_alloc ( cluster_count );
-        
-        leaf_clusters = mint_alloc( leaf_cluster_count );
-        leaf_cluster_lookup = mint_alloc( cluster_count );
-
-        #pragma omp parallel num_threads(tree_thread_count)  shared( root, tree_thread_count )
+        #pragma omp parallel num_threads(tree_thread_count)
         {
             #pragma omp single
             {
@@ -510,7 +532,6 @@ namespace rsurfaces
         leaf_cluster_ptr[0] = 0;
     //    P_leaf = A_Vector<mint>( primitive_count );
 
-        ptic("loop 1");
         #pragma omp parallel for
         for( mint i = 0; i < leaf_cluster_count; ++i )
         {
@@ -523,9 +544,6 @@ namespace rsurfaces
                 C_to_P.inner[k] = leaf;
             }
         }
-        ptoc("loop 1");
-        
-        ptic("loop 2");
         {
             mreal * x = C_to_P.values;
             mreal * y = P_to_C.values;
@@ -541,7 +559,6 @@ namespace rsurfaces
                 j[k] = k;
             }
         }
-        ptoc("loop 2");
 
         ptic("P_to_C.outer");
         for (mint C = 0; C < cluster_count; ++C)
@@ -821,7 +838,7 @@ namespace rsurfaces
 
     void OptimizedClusterTree::Pre( mreal * input, const mint cols, BCTKernelType type )
     {
-        ptic("OptimizedClusterTree::Pre");
+        ptic("Pre");
         MKLSparseMatrix * pre;
         
         switch (type)
@@ -862,11 +879,11 @@ namespace rsurfaces
         P_to_C.Multiply( P_in, C_in, buffer_dim );  // Beware: The derivative operator increases the number of columns!
         ptoc("P_to_C.Multiply");
         
-        ptic("OptimizedClusterTree::PercolateUp");
+        ptic("PercolateUp");
         PercolateUp( 0, thread_count );
-        ptoc("OptimizedClusterTree::PercolateUp");
+        ptoc("PercolateUp");
     
-        ptoc("OptimizedClusterTree::Pre");
+        ptoc("Pre");
     }; // Pre
 
     void OptimizedClusterTree::Post( Eigen::MatrixXd & output, BCTKernelType type, bool addToResult )
