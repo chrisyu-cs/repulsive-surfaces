@@ -62,21 +62,6 @@ else()
   message( FATAL_ERROR "Unrecognized compiler [${CMAKE_CXX_COMPILER_ID}]" )
 endif()
 
-if (APPLE)
-    set(CMAKE_THREAD_LIBS_INIT "-lpthread")
-    set(CMAKE_HAVE_THREADS_LIBRARY 1)
-    set(CMAKE_USE_WIN32_THREADS_INIT 0)
-    set(CMAKE_USE_PTHREADS_INIT 1)
-    set(THREADS_PREFER_PTHREAD_FLAG ON)
-endif (APPLE)
-
-set(BLA_VENDOR OpenBLAS)
-find_package( BLAS )
-#find_package(BLAS)
-#find_package(LAPACK)
-
-message("################")
-
 # == Deps
 
 add_subdirectory(deps/geometry-central)

@@ -8,6 +8,7 @@ struct Benchmarker
 {
     mint max_thread_count = 1;
     mint thread_count = 1;
+    mint thread_steps = 1;
 
     mint burn_ins = 0;
     mint iterations = 1;
@@ -20,7 +21,7 @@ struct Benchmarker
     mreal weight = 1.;
     
     std::string obj1 = "../scenes/Bunny/bunny.obj";
-    
+    std::string profile_path = "./";
     MeshPtr mesh1;
     GeomPtr geom1;
     
@@ -91,7 +92,7 @@ int main(int arg_count, char* arg_vec[])
     
     #pragma omp parallel
     {
-        BM.max_thread_count = omp_get_num_threads()/2;
+        BM.thread_count = BM.max_thread_count = omp_get_num_threads()/2;
     }
 
     
@@ -103,12 +104,14 @@ int main(int arg_count, char* arg_vec[])
         desc.add_options()
             ("help", "produce help message")
             ("mesh", po::value<std::string>(), "file of mesh to use as variable")
+            ("profile_path", po::value<std::string>(), "path to store the profile")
 //            ("profile_file", po::value<std::string>(), "file of profile file")
             ("alpha", po::value<mreal>(), "file name of mesh to use as variable")
             ("beta", po::value<mreal>(), "file name of mesh to use as variable")
             ("theta", po::value<mreal>(), "separation parameter for barnes-hut method")
             ("chi", po::value<mreal>(), "separation parameter for block cluster tree")
             ("threads", po::value<mint>(), "number of threads to be used")
+            ("thread_steps", po::value<mint>(), "number of threads to be used")
         
             ("burn_ins", po::value<mint>(), "number of burn-in iterations to use")
             ("iterations", po::value<mint>(), "number of iterations to use for the benchmark")
@@ -129,6 +132,9 @@ int main(int arg_count, char* arg_vec[])
 //        if (var_map.count("profile_file")) {
 //            profile_file = var_map["profile_file"].as<std::string>();
 //        }
+        if (var_map.count("profile_path")) {
+            BM.profile_path = var_map["profile_path"].as<std::string>();
+        }
 
         if (var_map.count("theta")) {
             BM.theta = var_map["theta"].as<mreal>();
@@ -145,6 +151,10 @@ int main(int arg_count, char* arg_vec[])
 
         if (var_map.count("threads")) {
             BM.thread_count = var_map["threads"].as<mint>();
+            BM.max_thread_count = var_map["threads"].as<mint>();
+        }
+        if (var_map.count("thread_steps")) {
+            BM.thread_steps = var_map["thread_steps"].as<mint>();
         }
         if (var_map.count("burn_ins")) {
             BM.burn_ins = var_map["burn_ins"].as<mint>();
@@ -187,7 +197,7 @@ int main(int arg_count, char* arg_vec[])
 //    geom2->requireVertexNormals();
 //    mint primitive_count2 = mesh2->nVertices();
 
-    for( mint threads = 1; threads < BM.max_thread_count + 1; ++threads)
+    for( mint threads = 0; threads < BM.max_thread_count + 1; threads += BM.thread_steps )
     {
     
         BM.thread_count = threads;
@@ -196,7 +206,7 @@ int main(int arg_count, char* arg_vec[])
         std::cout << std::endl;
         std::cout << "### threads =  " << BM.thread_count << std::endl;
         
-        ClearProfile("./Profile_" + std::to_string(BM.thread_count) + ".tsv");
+        ClearProfile(BM.profile_path + "Profile_" + std::to_string(BM.thread_count) + ".tsv");
         
         //burn-in
         for( mint i = 0; i < BM.burn_ins; ++i)
@@ -206,7 +216,7 @@ int main(int arg_count, char* arg_vec[])
 
         }
         
-        ClearProfile("./Profile_" + std::to_string(BM.thread_count) + ".tsv");
+        ClearProfile(BM.profile_path + "Profile_" + std::to_string(BM.thread_count) + ".tsv");
         
         //the actual test code
         for( mint i = 0; i < BM.iterations; ++i)
