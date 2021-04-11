@@ -74,6 +74,7 @@ namespace rsurfaces
     {
         Profiler::os.close();
         Profiler::os.open(filename);
+        std::cout << "Writing profile to " << filename << "." << std::endl;
 //        Profiler::os << "ID" << "\t" << "Tag" << "\t" << "From" << "\t" << "Tic" << "\t" << "Toc" << "\t" << "Duration" << "\t" << "Depth" << std::endl;
         Profiler::init_time = std::chrono::steady_clock::now();
         Profiler::time_stack.clear();

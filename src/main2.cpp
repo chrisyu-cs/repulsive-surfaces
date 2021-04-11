@@ -10,8 +10,8 @@ struct Benchmarker
     mint thread_count = 1;
     mint thread_steps = 1;
 
-    mint burn_ins = 0;
-    mint iterations = 1;
+    mint burn_ins = 1;
+    mint iterations = 3;
 
     
     mreal alpha = 6.;
@@ -21,7 +21,8 @@ struct Benchmarker
     mreal weight = 1.;
     
     std::string obj1 = "../scenes/Bunny/bunny.obj";
-    std::string profile_path = "./";
+    std::string profile_name = "Profile";
+    std::string profile_path = ".";
     MeshPtr mesh1;
     GeomPtr geom1;
     
@@ -54,18 +55,20 @@ struct Benchmarker
         Eigen::MatrixXd V(vertex_count1, 3);
         V.setZero();
         
-        ptic("Fractional Multiply");
-        bct11->Multiply(V,U,BCTKernelType::FractionalOnly);
-        ptoc("Fractional Multiply");
-        
-        ptic("Fractional HighOrder");
-        bct11->Multiply(V,U,BCTKernelType::HighOrder);
-        ptoc("Fractional HighOrder");
-        
-        ptic("Fractional LowOrder");
-        bct11->Multiply(V,U,BCTKernelType::LowOrder);
-        ptoc("Fractional LowOrder");
-        
+        for( mint k = 0; k < 15; ++k)
+        {
+            ptic("Multiply Fractional");
+            bct11->Multiply(V,U,BCTKernelType::FractionalOnly);
+            ptoc("Multiply Fractional");
+            
+            ptic("Multiply HighOrder");
+            bct11->Multiply(V,U,BCTKernelType::HighOrder);
+            ptoc("Multiply HighOrder");
+            
+            ptic("Multiply LowOrder");
+            bct11->Multiply(V,U,BCTKernelType::LowOrder);
+            ptoc("Multiply LowOrder");
+        }
 
         delete bvh1;
     }
@@ -105,7 +108,7 @@ int main(int arg_count, char* arg_vec[])
             ("help", "produce help message")
             ("mesh", po::value<std::string>(), "file of mesh to use as variable")
             ("profile_path", po::value<std::string>(), "path to store the profile")
-//            ("profile_file", po::value<std::string>(), "file of profile file")
+            ("profile_name", po::value<std::string>(), "file base name of profile file")
             ("alpha", po::value<mreal>(), "file name of mesh to use as variable")
             ("beta", po::value<mreal>(), "file name of mesh to use as variable")
             ("theta", po::value<mreal>(), "separation parameter for barnes-hut method")
@@ -129,9 +132,9 @@ int main(int arg_count, char* arg_vec[])
         if (var_map.count("mesh")) {
             BM.obj1 = var_map["mesh"].as<std::string>();
         }
-//        if (var_map.count("profile_file")) {
-//            profile_file = var_map["profile_file"].as<std::string>();
-//        }
+        if (var_map.count("profile_name")) {
+            BM.profile_name = var_map["profile_name"].as<std::string>();
+        }
         if (var_map.count("profile_path")) {
             BM.profile_path = var_map["profile_path"].as<std::string>();
         }
@@ -206,7 +209,7 @@ int main(int arg_count, char* arg_vec[])
         std::cout << std::endl;
         std::cout << "### threads =  " << BM.thread_count << std::endl;
         
-        ClearProfile(BM.profile_path + "Profile_" + std::to_string(BM.thread_count) + ".tsv");
+        ClearProfile(BM.profile_path + "/" + BM.profile_name + "_" + std::to_string(BM.thread_count) + ".tsv");
         
         //burn-in
         for( mint i = 0; i < BM.burn_ins; ++i)
@@ -216,7 +219,7 @@ int main(int arg_count, char* arg_vec[])
 
         }
         
-        ClearProfile(BM.profile_path + "Profile_" + std::to_string(BM.thread_count) + ".tsv");
+        ClearProfile(BM.profile_path + "/" + BM.profile_name + "_" + std::to_string(BM.thread_count) + ".tsv");
         
         //the actual test code
         for( mint i = 0; i < BM.iterations; ++i)
