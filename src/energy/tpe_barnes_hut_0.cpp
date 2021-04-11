@@ -48,7 +48,7 @@ namespace rsurfaces
         
         mreal sum = 0.;
         
-        #pragma omp parallel for num_threads( nthreads ) reduction( + : sum) schedule(guided, 8)
+        #pragma omp parallel for num_threads( nthreads ) reduction( + : sum ) RAGGED_SCHEDULE
         for( mint k = 0; k < bvh->leaf_cluster_count; ++k )
         {
             mint thread = omp_get_thread_num();
@@ -228,7 +228,7 @@ namespace rsurfaces
         
         A_Vector<A_Vector<mint>> thread_stack ( nthreads );
         
-        #pragma omp parallel for num_threads( nthreads ) reduction( + : sum) schedule(guided, 8)
+        #pragma omp parallel for num_threads( nthreads ) reduction( + : sum ) RAGGED_SCHEDULE
         for( mint k = 0; k < bvh->leaf_cluster_count; ++k )
         {
             mint thread = omp_get_thread_num();

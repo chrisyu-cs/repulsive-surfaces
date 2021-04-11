@@ -44,7 +44,7 @@ namespace rsurfaces
         
         mreal sum = 0.;
         
-        #pragma omp parallel for num_threads( nthreads ) reduction( + : sum ) schedule(guided, 8)
+        #pragma omp parallel for num_threads( nthreads ) reduction( + : sum ) RAGGED_SCHEDULE
         for( mint i = 0; i < b_m; ++i )
         {
             mreal x1 = X1[i];
@@ -135,7 +135,7 @@ namespace rsurfaces
         mreal const * restrict const M3 = T->P_near[6];
         
         mreal sum = 0.;
-        #pragma omp parallel for num_threads( nthreads ) reduction( + : sum) schedule(guided, 8)
+        #pragma omp parallel for num_threads( nthreads ) reduction( + : sum ) RAGGED_SCHEDULE
         for( mint b_i = 0; b_i < b_m; ++b_i )
         {
             
@@ -244,7 +244,7 @@ namespace rsurfaces
         mreal const * restrict const Q23 = T->C_far[8];
         mreal const * restrict const Q33 = T->C_far[9];
         
-        #pragma omp parallel for num_threads( nthreads ) reduction( + : sum ) schedule(guided, 8)
+        #pragma omp parallel for num_threads( nthreads ) reduction( + : sum ) RAGGED_SCHEDULE
         for( mint i = 0; i < b_m; ++i )
         {
             mint thread = omp_get_thread_num();
@@ -433,7 +433,7 @@ namespace rsurfaces
         mreal const * restrict const M3 = T->P_near[6];
         
         
-        #pragma omp parallel for num_threads( nthreads ) reduction( +: sum ) schedule(guided, 8)
+        #pragma omp parallel for num_threads( nthreads ) reduction( + : sum ) RAGGED_SCHEDULE
         for( mint b_i = 0; b_i < b_m; ++b_i )
         {
             mint thread = omp_get_thread_num();

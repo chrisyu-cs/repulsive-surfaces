@@ -144,7 +144,7 @@ namespace rsurfaces
         // TODO: b_row_counters is needed only for computing block_ptr, which is only required for VBSR format (which we do not implement here).
         // TODO: Anyways, I leave it as uncommented code for potential later use.
         
-        #pragma omp parallel for num_threads(thread_count)
+        #pragma omp parallel for num_threads(thread_count) RAGGED_SCHEDULE
         for( mint b_i = 0; b_i < b_m; ++b_i )
         {
             mint b_row_counter = 0;

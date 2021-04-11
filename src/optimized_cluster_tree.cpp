@@ -321,7 +321,7 @@ namespace rsurfaces
             P_D_far[thread]  = A_Vector<mreal> ( primitive_count * far_dim );
         }
         
-        #pragma omp parallel for  shared( P_near, P_far, P_ext_pos, P_min, P_min, P_near_, P_far_, P_hull_coords_, near_dim, far_dim, hull_size, dim )
+        #pragma omp parallel for shared( P_near, P_far, P_ext_pos, P_min, P_min, P_near_, P_far_, P_hull_coords_, near_dim, far_dim, hull_size, dim )
         for( mint i = 0; i < primitive_count; ++i )
         {
             mreal min, max;
@@ -402,7 +402,7 @@ namespace rsurfaces
         }
         
         // using the already serialized cluster tree
-        #pragma omp parallel  shared( thread_count )
+        #pragma omp parallel shared( thread_count )
         {
             #pragma omp single
             {

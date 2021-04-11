@@ -19,6 +19,8 @@
 
 #define restrict __restrict
 #define ALIGN 32
+#define CHUNK_SIZE 8
+#define RAGGED_SCHEDULE schedule( guided, CHUNK_SIZE)
 
 namespace rsurfaces
 {
