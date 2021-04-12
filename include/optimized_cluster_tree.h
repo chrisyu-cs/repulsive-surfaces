@@ -145,78 +145,171 @@ namespace rsurfaces
 
             ptic("~OptimizedClusterTree");
             // pointer arrays come at the cost of manual deallocation...
-
-            mreal_free(P_in);
-            mreal_free(P_out);
-
-            mreal_free(C_in);
-            mreal_free(C_out);
-
-            mreal_free(C_squared_radius);
-
-            mint_free(leaf_clusters);
-            mint_free(leaf_cluster_lookup);
-            mint_free(leaf_cluster_ptr);
-
-            mint_free(inverse_ordering);
-            mint_free(P_ext_pos);
-
-            mint_free(C_begin);
-            mint_free(C_end);
-            mint_free(C_depth);
-            mint_free(C_next);
-            mint_free(C_left);
-            mint_free(C_right);
-
-            for (mint k = 0; k < static_cast<mint>(P_coords.size()); ++k)
+            
+#pragma omp parallel
             {
-                mreal_free(P_coords[k]);
+                #pragma omp task
+                {
+                    //            for( mint k = 0; k < moment_count; ++ k )
+                    //            {
+                    //                mreal_free(P_moments[k]);
+                    //            }
+                }
+                
+                #pragma omp task
+                {
+                    //            for( mint k = 0; k < moment_count; ++ k )
+                    //            {
+                    //                mreal_free(C_moments[k]);
+                    //            }
+                }
+                
+                #pragma omp task
+                {
+                    for (mint k = 0; k < static_cast<mint>(P_coords.size()); ++k)
+                    {
+                        mreal_free(P_coords[k]);
+                    }
+                }
+                
+                #pragma omp task
+                {
+                    for (mint k = 0; k < static_cast<mint>(C_coords.size()); ++k)
+                    {
+                        mreal_free(C_coords[k]);
+                    }
+                }
+                
+                #pragma omp task
+                {
+                    for (mint k = 0; k < static_cast<mint>(P_near.size()); ++k)
+                    {
+                        mreal_free(P_near[k]);
+                    }
+                }
+                
+                #pragma omp task
+                {
+                    for (mint k = 0; k < static_cast<mint>(C_far.size()); ++k)
+                    {
+                        mreal_free(C_far[k]);
+                    }
+                }
+                
+                #pragma omp task
+                {
+                    for (mint k = 0; k < static_cast<mint>(P_min.size()); ++k)
+                    {
+                        mreal_free(P_min[k]);
+                    }
+                }
+                
+                #pragma omp task
+                {
+                    for (mint k = 0; k < static_cast<mint>(P_max.size()); ++k)
+                    {
+                        mreal_free(P_max[k]);
+                    }
+                }
+                
+                #pragma omp task
+                {
+                    for (mint k = 0; k < static_cast<mint>(C_min.size()); ++k)
+                    {
+                        mreal_free(C_min[k]);
+                    }
+                }
+                
+                #pragma omp task
+                {
+                    for (mint k = 0; k < static_cast<mint>(C_max.size()); ++k)
+                    {
+                        mreal_free(C_max[k]);
+                    }
+                }
+                
+                #pragma omp task
+                {
+                    mreal_free(P_in);
+                }
+                #pragma omp task
+                {
+                    mreal_free(P_out);
+                }
+                
+                #pragma omp task
+                {
+                    mreal_free(C_in);
+                }
+                
+                #pragma omp task
+                {
+                    mreal_free(C_out);
+                }
+                
+                #pragma omp task
+                {
+                    mreal_free(C_squared_radius);
+                }
+                
+                #pragma omp task
+                {
+                    mint_free(leaf_clusters);
+                }
+                
+                #pragma omp task
+                {
+                    mint_free(leaf_cluster_lookup);
+                }
+                #pragma omp task
+                
+                {
+                    mint_free(leaf_cluster_ptr);
+                }
+                
+                #pragma omp task
+                {
+                    mint_free(inverse_ordering);
+                }
+                
+                #pragma omp task
+                {
+                    mint_free(P_ext_pos);
+                }
+                
+                #pragma omp task
+                {
+                    mint_free(C_begin);
+                }
+                
+                #pragma omp task
+                {
+                    mint_free(C_end);
+                }
+                
+                #pragma omp task
+                {
+                    mint_free(C_depth);
+                }
+                
+                #pragma omp task
+                {
+                    mint_free(C_next);
+                }
+                
+                #pragma omp task
+                {
+                    mint_free(C_left);
+                }
+                #pragma omp task
+                {
+                }
+                
+                #pragma omp task
+                {
+                    mint_free(C_right);
+                }
             }
-
-            for (mint k = 0; k < static_cast<mint>(C_coords.size()); ++k)
-            {
-                mreal_free(C_coords[k]);
-            }
-
-            for (mint k = 0; k < static_cast<mint>(P_near.size()); ++k)
-            {
-                mreal_free(P_near[k]);
-            }
-
-            for (mint k = 0; k < static_cast<mint>(C_far.size()); ++k)
-            {
-                mreal_free(C_far[k]);
-            }
-
-            for (mint k = 0; k < static_cast<mint>(P_min.size()); ++k)
-            {
-                mreal_free(P_min[k]);
-            }
-
-            for (mint k = 0; k < static_cast<mint>(P_max.size()); ++k)
-            {
-                mreal_free(P_max[k]);
-            }
-
-            for (mint k = 0; k < static_cast<mint>(C_min.size()); ++k)
-            {
-                mreal_free(C_min[k]);
-            }
-
-            for (mint k = 0; k < static_cast<mint>(C_max.size()); ++k)
-            {
-                mreal_free(C_max[k]);
-            }
-
-            //            for( mint k = 0; k < moment_count; ++ k )
-            //            {
-            //                mreal_free(P_moments[k]);
-            //            }
-            //
-            //            for( mint k = 0; k < moment_count; ++ k )
-            //            {
-            //                mreal_free(C_moments[k]);
-            //            }
             ptoc("~OptimizedClusterTree");
         };
 
