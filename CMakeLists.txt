@@ -151,56 +151,18 @@ set(SRCS2
 find_package(OpenMP REQUIRED)
 
 find_package(MKL REQUIRED)
-find_package(TBB REQUIRED)
+include_directories(${MKL_INCLUDE_DIR})
+link_directories(${MKL_LIBRARY_DIR})
 
-if(MKL_FOUND)
-    message("Intel MKL libraries found: ${MKL_LIBRARY}")
-    message("Include directories: ${MKL_INCLUDE_DIR}")
-    message("Intel library directories: ${MKL_LIBRARY_DIR}")
-    include_directories(${MKL_INCLUDE_DIR})
-    #  add_compile_definitions(EIGEN_USE_MKL_ALL)
-    link_directories(${MKL_LIBRARY_DIR})
-else()
-    message(WARNING "Intel MKL libraries not found")
-endif()
-
-if(TBB_FOUND)
-    include_directories(${TBB_INCLUDE_DIR})
-    link_directories(${TBB_LIBRARY_DIR})
-    message("Intel TBB libraries: ${TBB_LIBRARY}")
-    message("TBB include directories: ${TBB_INCLUDE_DIR}")
-    message("TBB library directories: ${TBB_LIBRARY_DIR}")
-else()
-    message(WARNING "Intel TBB not found")
-endif()
+find_library(BOOST_OPTS_LIB NAMES boost_program_options-mt boost_program_options)
 
 add_executable(rsurfaces "${SRCS}" "${SRCS1}")
 target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
-target_link_libraries(rsurfaces geometry-central polyscope OpenMP::OpenMP_CXX)
-
-if(MKL_FOUND)
-    target_link_libraries(rsurfaces "-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lpthread -lm -ldl")
-endif()
-
-if(TBB_FOUND)
-    target_link_libraries(rsurfaces "-ltbb")
-endif()
-
 target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include")
+target_link_libraries(rsurfaces PUBLIC geometry-central polyscope OpenMP::OpenMP_CXX PRIVATE MKL::Shared)
 
 add_executable(runtest "${SRCS}" "${SRCS2}")
 target_include_directories(runtest PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
-target_link_libraries(runtest geometry-central OpenMP::OpenMP_CXX)
-
-find_library(BOOST_OPTS_LIB NAMES boost_program_options-mt boost_program_options)
-target_link_libraries(runtest ${BOOST_OPTS_LIB})
-
-if(MKL_FOUND)
-    target_link_libraries(runtest "-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lpthread -lm -ldl")
-endif()
-
-if(TBB_FOUND)
-    target_link_libraries(runtest "-ltbb")
-endif()
+target_link_libraries(runtest PUBLIC geometry-central OpenMP::OpenMP_CXX ${BOOST_OPTS_LIB} MKL::Shared)
 
 target_include_directories(runtest PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include")
