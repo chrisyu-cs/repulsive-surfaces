@@ -122,9 +122,6 @@ set(SRCS
   src/spatial/bvh_6d.cpp
   src/spatial/bvh_data.cpp
   src/spatial/convolution_kernel.cpp
-  src/optimized_bct_types.cpp
-  src/optimized_cluster_tree.cpp
-  src/optimized_bct.cpp
   src/fractional_laplacian.cpp
   src/interaction_data.cpp
   src/line_search.cpp
@@ -135,6 +132,9 @@ set(SRCS
   src/surface_derivatives.cpp
   src/surface_flow.cpp
   src/derivative_assembler.cpp
+  src/optimized_bct_types.cpp
+  src/optimized_bct.cpp
+  src/optimized_cluster_tree.cpp
     # add any other source files here
 )
 
@@ -151,6 +151,9 @@ set(SRCS2
 find_package(OpenMP REQUIRED)
 
 find_package(MKL REQUIRED)
+message("MKL_INCLUDE_DIR = ${MKL_INCLUDE_DIR}")
+message("MKL_LIBRARY_DIR = ${MKL_LIBRARY_DIR}")
+
 include_directories(${MKL_INCLUDE_DIR})
 link_directories(${MKL_LIBRARY_DIR})
 
@@ -159,10 +162,12 @@ find_library(BOOST_OPTS_LIB NAMES boost_program_options-mt boost_program_options
 add_executable(rsurfaces "${SRCS}" "${SRCS1}")
 target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include")
-target_link_libraries(rsurfaces PUBLIC geometry-central polyscope OpenMP::OpenMP_CXX PRIVATE MKL::Shared)
+target_include_directories(rsurfaces PUBLIC "${MKL_INCLUDE_DIR}")
+target_link_libraries(rsurfaces PUBLIC geometry-central polyscope OpenMP::OpenMP_CXX MKL::Shared)
 
 add_executable(runtest "${SRCS}" "${SRCS2}")
 target_include_directories(runtest PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
+target_include_directories(runtest PUBLIC "${MKL_INCLUDE_DIR}")
 target_link_libraries(runtest PUBLIC geometry-central OpenMP::OpenMP_CXX ${BOOST_OPTS_LIB} MKL::Shared)
 
 target_include_directories(runtest PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include")

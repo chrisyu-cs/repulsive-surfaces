@@ -13,7 +13,7 @@
 # MKLROOT environment variable which will be used to find the libraries on your system.
 #
 # Example:
-# set(MKL_THREAD_LAYER "TBB")
+# set(MKL_THREAD_LAYER "Intel OpenMP")
 # find_package(MKL)
 #
 # add_executable(myapp main.cpp)
