@@ -23,7 +23,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STR
   # using Clang (linux or apple) or GCC
   message("Using clang/gcc compiler flags")
   SET(BASE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Werror -Xpreprocessor -fopenmp ")
-  SET(DISABLED_WARNINGS " -Wno-unknown-warning-option -Wno-pass-failed -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-copy -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field -Wno-range-loop-analysis")
+  SET(DISABLED_WARNINGS " -Wno-unknown-warning-option -Wno-pass-failed -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-copy -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field -Wno-range-loop-analysis -Wno-macro-redefined")
   #SET(BASE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Xpreprocessor -fopenmp -gline-tables-only -gcolumn-info -Rpass=loop-vectorize")
   #SET(DISABLED_WARNINGS " -Wno-unknown-warning-option -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-copy -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field -Wno-range-loop-analysis")
   SET(TRACE_INCLUDES " -H -Wno-error=unused-command-line-argument")
@@ -121,9 +121,6 @@ set(SRCS
   src/sobolev/constraints/vertex_normal.cpp
   src/sobolev/constraints/vertex_pin.cpp
   src/spatial/convolution_kernel.cpp
-  src/optimized_bct_types.cpp
-  src/optimized_cluster_tree.cpp
-  src/optimized_bct.cpp
   src/fractional_laplacian.cpp
   src/interaction_data.cpp
   src/line_search.cpp
@@ -135,6 +132,9 @@ set(SRCS
   src/surface_derivatives.cpp
   src/surface_flow.cpp
   src/derivative_assembler.cpp
+  src/optimized_bct_types.cpp
+  src/optimized_bct.cpp
+  src/optimized_cluster_tree.cpp
     # add any other source files here
 )
 
@@ -150,57 +150,41 @@ set(SRCS2
 
 find_package(OpenMP REQUIRED)
 
-find_package(MKL REQUIRED)
+
 find_package(TBB REQUIRED)
+#message("TBB_INCLUDE_DIRS = ${TBB_INCLUDE_DIRS}")
+#message("TBB_LIBRARY_DIRS = ${TBB_LIBRARY_DIRS}")
+include_directories(${TBB_INCLUDE_DIRS})
 
-if(MKL_FOUND)
-    message("Intel MKL libraries found: ${MKL_LIBRARY}")
-    message("Include directories: ${MKL_INCLUDE_DIR}")
-    message("Intel library directories: ${MKL_LIBRARY_DIR}")
-    include_directories(${MKL_INCLUDE_DIR})
-    #  add_compile_definitions(EIGEN_USE_MKL_ALL)
-    link_directories(${MKL_LIBRARY_DIR})
-else()
-    message(WARNING "Intel MKL libraries not found")
-endif()
+set(MKL_THREAD_LAYER "Intel OpenMP")
+#set(MKL_THREAD_LAYER "TBB")
+find_package(MKL REQUIRED)
+#message("MKL_INCLUDE_DIR = ${MKL_INCLUDE_DIR}")
+#message("MKL_LIBRARY_DIR = ${MKL_LIBRARY_DIR}")
 
-if(TBB_FOUND)
-    include_directories(${TBB_INCLUDE_DIR})
-    link_directories(${TBB_LIBRARY_DIR})
-    message("Intel TBB libraries: ${TBB_LIBRARY}")
-    message("TBB include directories: ${TBB_INCLUDE_DIR}")
-    message("TBB library directories: ${TBB_LIBRARY_DIR}")
-else()
-    message(WARNING "Intel TBB not found")
-endif()
+include_directories(${MKL_INCLUDE_DIR})
+link_directories(${MKL_LIBRARY_DIR})
 
-add_executable(rsurfaces "${SRCS}" "${SRCS1}")
-target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
-target_link_libraries(rsurfaces geometry-central polyscope OpenMP::OpenMP_CXX)
 
-if(MKL_FOUND)
-    target_link_libraries(rsurfaces "-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lpthread -lm -ldl")
-endif()
-
-if(TBB_FOUND)
-    target_link_libraries(rsurfaces "-ltbb")
-endif()
-
-target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include")
-
-add_executable(runtest "${SRCS}" "${SRCS2}")
-target_include_directories(runtest PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
-target_link_libraries(runtest geometry-central OpenMP::OpenMP_CXX)
 
 find_library(BOOST_OPTS_LIB NAMES boost_program_options-mt boost_program_options)
-target_link_libraries(runtest ${BOOST_OPTS_LIB})
 
-if(MKL_FOUND)
-    target_link_libraries(runtest "-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lpthread -lm -ldl")
-endif()
+add_executable(rsurfaces "${SRCS}" "${SRCS1}")
+target_include_directories(rsurfaces PUBLIC "${TBB_INCLUDE_DIR}")
+target_include_directories(rsurfaces PUBLIC "${MKL_INCLUDE_DIR}")
+target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
+target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include" )
 
-if(TBB_FOUND)
-    target_link_libraries(runtest "-ltbb")
-endif()
+target_link_libraries(rsurfaces PUBLIC geometry-central polyscope OpenMP::OpenMP_CXX MKL::Shared)
 
-target_include_directories(runtest PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include")
+add_executable(runtest "${SRCS}" "${SRCS2}")
+target_include_directories(runtest PUBLIC "${TBB_INCLUDE_DIR}")
+target_include_directories(runtest PUBLIC "${MKL_INCLUDE_DIR}")
+target_include_directories(runtest PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
+target_include_directories(runtest PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include" )
+
+message("TBB_LIBRARIES = ${TBB_LIBRARIES}")
+
+#target_link_libraries(runtest PUBLIC "-L/opt/intel/oneapi/tbb/latest/lib -lmkl_tbb_thread")
+target_link_libraries(runtest PUBLIC geometry-central OpenMP::OpenMP_CXX ${BOOST_OPTS_LIB} MKL::Shared )
+

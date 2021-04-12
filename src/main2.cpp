@@ -14,7 +14,7 @@ int main(int arg_count, char* arg_vec[])
     
 #pragma omp parallel
     {
-        BM.thread_count = BM.max_thread_count = omp_get_num_threads()/2;
+        BM.thread_count = BM.max_thread_count = omp_get_num_threads();
     }
     
     
@@ -132,15 +132,56 @@ int main(int arg_count, char* arg_vec[])
     BM.geom1 = std::move(u_geom);
     BM.geom1->requireVertexDualAreas();
     BM.geom1->requireVertexNormals();
+
     
     for( mint threads = 0; threads < BM.max_thread_count + 1; threads += BM.thread_step )
     {
+        // 0 is the new 1. (Want to have steps, but also  a single-threaded run.
+        if( threads == 1)
+        {
+            break;
+        }
+        if( threads == 0)
+        {
+            BM.thread_count = 1;
+        }
+        else
+        {
+            BM.thread_count = threads;
+        }
         
-        BM.thread_count = threads;
-        omp_set_num_threads(BM.thread_count);
+        
         
         std::cout << std::endl;
         std::cout << "### threads =  " << BM.thread_count << std::endl;
+
+        omp_set_num_threads(BM.thread_count);
+        mkl_set_num_threads(BM.thread_count);
+        
+//        int a = BM.thread_count;
+//        tbb::task_scheduler_init init (a);
+        
+        
+        
+        {
+            mint a , b, c, d, e;
+            #pragma omp parallel
+            {
+                a = omp_get_num_threads();
+                c = mkl_get_max_threads();
+            }
+            b = omp_get_num_threads();
+            d = mkl_get_max_threads();
+//            e = tbb::task_scheduler_init::default_num_threads();
+            std::cout << "omp_get_num_threads() in omp parallel = " << a << std::endl;
+            std::cout << "omp_get_num_threads() in omp parallel = " << b << std::endl;
+
+            std::cout << "mkl_get_max_threads() = " << c << std::endl;
+            std::cout << "mkl_get_max_threads() = " << d << std::endl;
+            
+//            std::cout << "tbb::task_scheduler_init::default_num_threads() = " << e << std::endl;
+        }
+
         
         ClearProfile(BM.profile_path + "/" + BM.profile_name + "_" + std::to_string(BM.thread_count) + ".tsv");
         

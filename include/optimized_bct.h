@@ -149,6 +149,8 @@ namespace rsurfaces
 
         void NearFieldInteractionCSR(); // Compute nonzero values of sparse near field interaction matrices in CSR format.
 
+        void NearFieldInteractionVBSR(); // Compute nonzero values of sparse near field interaction matrices in VBSR format.
+        
         void InternalMultiply(BCTKernelType type) const;
 
         void ComputeDiagonals();

@@ -785,6 +785,7 @@ namespace rsurfaces
 
     void OptimizedClusterTree::PercolateUp()
     {
+        ptic("PercolateUp");
         switch (tree_perc_alg) {
             case TreePercolationAlgorithm::Chunks :
                 PercolateUp_Chunks();
@@ -811,10 +812,12 @@ namespace rsurfaces
                     }
                 }
         }
+        ptoc("PercolateUp");
     }; // PercolateUp
     
     void OptimizedClusterTree::PercolateDown()
     {
+        ptic("PercolateDown");
         switch (tree_perc_alg) {
             case TreePercolationAlgorithm::Chunks :
                 PercolateDown_Chunks();
@@ -841,6 +844,7 @@ namespace rsurfaces
                     }
                 }
         }
+        ptoc("PercolateDown");
     }; // PercolateUp
     
     void OptimizedClusterTree::PrepareChunks()
@@ -852,6 +856,7 @@ namespace rsurfaces
             mint chunk_size = CACHE_LINE_LENGHT * ( (cluster_count + thread_count * CACHE_LINE_LENGHT - 1)  / ( thread_count * CACHE_LINE_LENGHT ) );
             chunk_roots = A_Vector<A_Vector<mint>> ( thread_count );
             std::cout << "chunk_size = " << chunk_size << std::endl;
+            std::cout << "primitive_count = " << primitive_count << std::endl;
 
             #pragma omp parallel for num_threads(thread_count) schedule( static, 1)
             for( mint thread = 0; thread < thread_count; ++thread )
@@ -928,8 +933,6 @@ namespace rsurfaces
     
     void OptimizedClusterTree::PercolateUp_Chunks()
     {
-        ptic("PercolateUp_Chunks");
-        
         PrepareChunks();
         
         #pragma omp parallel for num_threads(thread_count) schedule( static, 1)
@@ -941,14 +944,11 @@ namespace rsurfaces
         }
         
         // do the tip later
-        
-        ptoc("PercolateUp_Chunks");
     }; // PercolateUp_Chunks
 
 
     void OptimizedClusterTree::PercolateDown_Chunks()
     {
-        ptic("PercolateDown_Chunks");
         // do the tip first
         
         PrepareChunks();
@@ -960,8 +960,6 @@ namespace rsurfaces
                 PercolateDown_Seq( C );
             }
         }
-        
-        ptoc("PercolateDown_Chunks");
     }; // PercolateDown_Chunks
     
     
