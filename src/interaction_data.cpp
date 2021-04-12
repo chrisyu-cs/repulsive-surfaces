@@ -369,12 +369,18 @@ namespace rsurfaces
 
     void InteractionData::ApplyKernel_CSR_Eigen( mreal * values, mreal * T_input, mreal * S_output, mint cols, mreal factor ) // sparse matrix-vector multiplication using Eigen
     {
-    //    wprint("InteractionData::ApplyKernel_CSR_Eigen is not thouroughly tested, yet.");
+        if( nnz == b_nnz )
+        {
+            ptic("ApplyKernel_CSR_Eigen - far field");
+        }
+        else
+        {
+            ptic("ApplyKernel_CSR_Eigen - near field");
+        }
         Eigen::Map<EigenMatrixCSR> A ( m, n, nnz, OuterPtrB(), InnerPtr(), values );
         Eigen::Map<EigenMatrixRM>  B ( &T_input[0],  n, cols );
         Eigen::Map<EigenMatrixRM>  C ( &S_output[0], m, cols );
 
-    //    tic("Eigen matrix-matrix multiplication: cols = " + std::to_string(cols) );
         if ( upper_triangular )
         {
             C = A.selfadjointView<Eigen::Upper>() * B;
@@ -387,7 +393,16 @@ namespace rsurfaces
         {
             C *= factor;
         }
-    //    toc("Eigen matrix-matrix multiplication: cols = " + std::to_string(cols) );
+        
+        if( nnz == b_nnz )
+        {
+            ptoc("ApplyKernel_CSR_Eigen - far field");
+        }
+        else
+        {
+            ptoc("ApplyKernel_CSR_Eigen - near field");
+        }
+    
     }; // ApplyKernel_CSR_Eigen
 
 } // namespace rsurfaces
