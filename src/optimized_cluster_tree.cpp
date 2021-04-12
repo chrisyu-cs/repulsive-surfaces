@@ -1046,12 +1046,15 @@ namespace rsurfaces
 
     void OptimizedClusterTree::Pre( Eigen::MatrixXd & input, BCTKernelType type )
     {
+        ptic("OptimizedClusterTree::Pre( Eigen::MatrixXd & input, BCTKernelType type )");
         mint cols = input.cols();
     //    tic("Eigen map + copy");
         EigenMatrixRM input_wrapper = EigenMatrixRM( input );
     //    toc("Eigen map + copy");
         
         Pre( input_wrapper.data(), cols, type );
+        
+        ptoc("OptimizedClusterTree::Pre( Eigen::MatrixXd & input, BCTKernelType type )");
     }
 
     void OptimizedClusterTree::Pre( mreal * input, const mint cols, BCTKernelType type )

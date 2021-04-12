@@ -753,10 +753,11 @@ namespace rsurfaces
 
             S->Post(output.data(), cols, type, addToResult);
 
-            if (type == BCTKernelType::HighOrder || type == BCTKernelType::LowOrder)
-            {
-                output /= 2;
-            }
+//            // TODO: Henrik wonders why he did this.
+//            if (type == BCTKernelType::HighOrder || type == BCTKernelType::LowOrder)
+//            {
+//                output *= 0.5;
+//            }
         }
         else
         {
