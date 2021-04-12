@@ -10,6 +10,7 @@ namespace rsurfaces
         
         T2 minus_betahalf = -betahalf;
         mreal theta2 = theta*theta;
+        mreal sum = 0.;
         
         mint nthreads = bvh->thread_count;
         
@@ -45,7 +46,6 @@ namespace rsurfaces
         
         A_Vector<A_Vector<mint>> thread_stack ( nthreads );
         
-        mreal sum = 0.;
         
         #pragma omp parallel for num_threads( nthreads ) reduction( + : sum ) RAGGED_SCHEDULE
         for( mint k = 0; k < bvh->leaf_cluster_count; ++k )
@@ -154,9 +154,13 @@ namespace rsurfaces
                                 if ( i != j )
                                 {
                                     mreal b  = P_A [j];
-                                    mreal v1 = P_X1[j] - x1;
-                                    mreal v2 = P_X2[j] - x2;
-                                    mreal v3 = P_X3[j] - x3;
+                                    mreal y1 = P_X1[j];
+                                    mreal y2 = P_X2[j];
+                                    mreal y3 = P_X3[j];
+                                    
+                                    mreal v1 = y1 - x1;
+                                    mreal v2 = y2 - x2;
+                                    mreal v3 = y3 - x3;
                                     
                                     mreal rCosPhi = v1 * n1 + v2 * n2 + v3 * n3;
                                     mreal r2 = v1 * v1 + v2 * v2 + v3 * v3 ;
@@ -436,7 +440,6 @@ namespace rsurfaces
         }
         
         ptoc("TPEnergyBarnesHut0::DEnergy");
-        
         return sum;
     }; // DEnergy
     

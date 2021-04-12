@@ -1,7 +1,20 @@
 #pragma once
 
+// This file is a compatibility layer between MeshPtr+GeomPtr and OptimizedClusterTree+OptimizedBlockClusterTree.
+// The latter two classes are agnostic to what kind of meshes they are used with, so they can be applied also to polyline mesh, splines, higher order FEM meshes, NURBS,...
+
+
+// To create a OptimizedClusterTree, essentially one has to  hand over the following data for each primitive (triangle, edge, finite element, NURBS patch...)
+//  - clustering coordinates in "clustering space" (which need not be the embedding space)
+//  - convex hulls for the primitive (in terms of a points in "clustering space" that span the hull )
+//  - each a list for far field and near field data
+//  - a derivative operator AvOp and an averaging operator DiffOp that handle the pre- and postprocessing for matrix-vector multiplication
+// To create a OptimizedBlockClusterTree, essentially one has to hand over only two pointers to instances of OptimizedClusterTree.
+
+// This header file is supposed to create this data for MeshPtr+GeomPtr embedded in 3D space.
+
 #include "optimized_bct.h"
-#include "optimized_cluster_tree.h"
+//#include "optimized_cluster_tree.h"
 #include "sobolev/hs_operators.h"
 
 namespace rsurfaces
@@ -115,9 +128,124 @@ namespace rsurfaces
         );
     } // CreateOptimizedBVH_Normls
 
-    inline void UpdateOptimizedBVH(MeshPtr &mesh, GeomPtr &geom, OptimizedClusterTree * bvh)
+    inline void UpdateOptimizedBVH(OptimizedClusterTree * bvh, MeshPtr &mesh, GeomPtr &geom)
     {
-        bvh->UpdateWithNewPositions(mesh, geom);
+//        bvh->UpdateWithNewPositions(mesh, geom);
+        
+        mint nVertices = mesh->nVertices();
+        mint nFaces = mesh->nFaces();
+        FaceIndices fInds = mesh->getFaceIndices();
+        VertexIndices vInds = mesh->getVertexIndices();
+
+        mreal athird = 1. / 3.;
+
+        if( bvh->far_dim == 7 && bvh->near_dim == 7)
+        {
+            std::vector<mreal> P_near_(7 * nFaces);
+            std::vector<mreal> P_far_(7 * nFaces);
+            
+            for (auto face : mesh->faces())
+            {
+                mint i = fInds[face];
+                
+                GCHalfedge he = face.halfedge();
+                
+                mint i0 = vInds[he.vertex()];
+                mint i1 = vInds[he.next().vertex()];
+                mint i2 = vInds[he.next().next().vertex()];
+                Vector3 p1 = geom->inputVertexPositions[i0];
+                Vector3 p2 = geom->inputVertexPositions[i1];
+                Vector3 p3 = geom->inputVertexPositions[i2];
+                
+                P_far_[7 * i + 0] = P_near_[7 * i + 0] = geom->faceAreas[face];
+                P_far_[7 * i + 0] = P_near_[7 * i + 1] = athird * (p1.x + p2.x + p3.x);
+                P_far_[7 * i + 0] = P_near_[7 * i + 2] = athird * (p1.y + p2.y + p3.y);
+                P_far_[7 * i + 0] = P_near_[7 * i + 3] = athird * (p1.z + p2.z + p3.z);
+                P_far_[7 * i + 0] = P_near_[7 * i + 4] = geom->faceNormals[face].x;
+                P_far_[7 * i + 0] = P_near_[7 * i + 5] = geom->faceNormals[face].y;
+                P_far_[7 * i + 0] = P_near_[7 * i + 6] = geom->faceNormals[face].z;
+            }
+            bvh->SemiStaticUpdate( &P_near_[0], &P_far_[0] );
+        }
+        else
+        {
+            if( bvh->far_dim == 10 && bvh->near_dim == 10)
+            {
+                std::vector<mreal> P_near_(10 * nFaces);
+                std::vector<mreal> P_far_(10 * nFaces);
+                
+                for (auto face : mesh->faces())
+                {
+                    mint i = fInds[face];
+                    
+                    GCHalfedge he = face.halfedge();
+                    
+                    mint i0 = vInds[he.vertex()];
+                    mint i1 = vInds[he.next().vertex()];
+                    mint i2 = vInds[he.next().next().vertex()];
+                    Vector3 p1 = geom->inputVertexPositions[i0];
+                    Vector3 p2 = geom->inputVertexPositions[i1];
+                    Vector3 p3 = geom->inputVertexPositions[i2];
+                    
+                    P_far_[10 * i + 0] = P_near_[10 * i + 0] = geom->faceAreas[face];
+                    P_far_[10 * i + 0] = P_near_[10 * i + 0] = athird * (p1.x + p2.x + p3.x);
+                    P_far_[10 * i + 0] = P_near_[10 * i + 0] = athird * (p1.y + p2.y + p3.y);
+                    P_far_[10 * i + 0] = P_near_[10 * i + 0] = athird * (p1.z + p2.z + p3.z);
+                    
+                    mreal n1 = geom->faceNormals[face].x;
+                    mreal n2 = geom->faceNormals[face].y;
+                    mreal n3 = geom->faceNormals[face].z;
+                    
+                    P_near_[10 * i + 4] = P_far_[10 * i + 4] = n1 * n1;
+                    P_near_[10 * i + 4] = P_far_[10 * i + 5] = n1 * n2;
+                    P_near_[10 * i + 4] = P_far_[10 * i + 6] = n1 * n3;
+                    P_near_[10 * i + 4] = P_far_[10 * i + 7] = n2 * n2;
+                    P_near_[10 * i + 4] = P_far_[10 * i + 8] = n2 * n3;
+                    P_near_[10 * i + 4] = P_far_[10 * i + 9] = n3 * n3;
+                }
+            }
+            else
+            {
+                std::vector<mreal> P_near_(7 * nFaces);
+                std::vector<mreal> P_far_(10 * nFaces);
+                
+                for (auto face : mesh->faces())
+                {
+                    mint i = fInds[face];
+                    
+                    GCHalfedge he = face.halfedge();
+                    
+                    mint i0 = vInds[he.vertex()];
+                    mint i1 = vInds[he.next().vertex()];
+                    mint i2 = vInds[he.next().next().vertex()];
+                    Vector3 p1 = geom->inputVertexPositions[i0];
+                    Vector3 p2 = geom->inputVertexPositions[i1];
+                    Vector3 p3 = geom->inputVertexPositions[i2];
+                    
+                    P_far_[10 * i + 0] = P_near_[7 * i + 0] = geom->faceAreas[face];
+                    P_far_[10 * i + 0] = P_near_[7 * i + 0] = athird * (p1.x + p2.x + p3.x);
+                    P_far_[10 * i + 0] = P_near_[7 * i + 0] = athird * (p1.y + p2.y + p3.y);
+                    P_far_[10 * i + 0] = P_near_[7 * i + 0] = athird * (p1.z + p2.z + p3.z);
+                    
+                    mreal n1 = geom->faceNormals[face].x;
+                    mreal n2 = geom->faceNormals[face].y;
+                    mreal n3 = geom->faceNormals[face].z;
+                    
+                    P_near_[7 * i + 4] = n1;
+                    P_near_[7 * i + 5] = n2;
+                    P_near_[7 * i + 6] = n3;
+                    
+                    P_far_[10 * i + 4] = n1 * n1;
+                    P_far_[10 * i + 5] = n1 * n2;
+                    P_far_[10 * i + 6] = n1 * n3;
+                    P_far_[10 * i + 7] = n2 * n2;
+                    P_far_[10 * i + 8] = n2 * n3;
+                    P_far_[10 * i + 9] = n3 * n3;
+
+                }
+                bvh->SemiStaticUpdate( &P_near_[0], &P_far_[0] );
+            }
+        }
     } // UpdateOptimizedBVH
     
     inline OptimizedClusterTree * CreateOptimizedBVH(MeshPtr &mesh, GeomPtr &geom)

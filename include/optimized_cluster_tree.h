@@ -6,6 +6,13 @@
 namespace rsurfaces
 {
 
+    enum class TreePercolationAlgorithm
+    {
+        Tasks,
+        Sequential,
+        Chunks
+    };
+    
     struct Cluster2 // slim POD container to hold only the data relevant for the construction phase in the tree, before it is serialized
     {
     public:
@@ -21,6 +28,7 @@ namespace rsurfaces
         mint begin = 0; // position of first triangle in cluster relative to array ordering
         mint end = 0;   // position behind last triangle in cluster relative to array ordering
         mint depth = 0; // depth within the tree -- not absolutely necessary but nice to have for plotting images
+        mint max_depth = 0; // used to compute the maximal depth in the tree
         mint descendant_count = 0;
         mint descendant_leaf_count = 0;
         Cluster2 *left = nullptr;
@@ -78,6 +86,7 @@ namespace rsurfaces
         mint *restrict C_begin = nullptr;
         mint *restrict C_end = nullptr;
         mint *restrict C_depth = nullptr;
+        mint *restrict C_next = nullptr;
         mint *restrict C_left = nullptr;  // list of index of left children;  entry is -1 if no child is present
         mint *restrict C_right = nullptr; // list of index of right children; entry is -1 if no child is present
 
@@ -126,9 +135,15 @@ namespace rsurfaces
         MKLSparseMatrix P_to_C;
         MKLSparseMatrix C_to_P;
 
+        TreePercolationAlgorithm tree_perc_alg = TreePercolationAlgorithm::Tasks;
+        A_Vector<A_Vector<mint>> chunk_roots;
+        mint tree_max_depth = 0;
+        bool chunks_prepared = false;
+        
         ~OptimizedClusterTree()
         {
 
+            ptic("~OptimizedClusterTree");
             // pointer arrays come at the cost of manual deallocation...
 
             mreal_free(P_in);
@@ -149,6 +164,7 @@ namespace rsurfaces
             mint_free(C_begin);
             mint_free(C_end);
             mint_free(C_depth);
+            mint_free(C_next);
             mint_free(C_left);
             mint_free(C_right);
 
@@ -201,125 +217,8 @@ namespace rsurfaces
             //            {
             //                mreal_free(C_moments[k]);
             //            }
+            ptoc("~OptimizedClusterTree");
         };
-
-        inline void UpdateWithNewPositions(MeshPtr &mesh, GeomPtr &geom)
-        {
-            mint nVertices = mesh->nVertices();
-            mint nFaces = mesh->nFaces();
-            FaceIndices fInds = mesh->getFaceIndices();
-            VertexIndices vInds = mesh->getVertexIndices();
-
-            mreal athird = 1. / 3.;
-
-            if( far_dim == 7 && near_dim == 7)
-            {
-                std::vector<mreal> P_near_(7 * nFaces);
-                std::vector<mreal> P_far_(7 * nFaces);
-                
-                for (auto face : mesh->faces())
-                {
-                    mint i = fInds[face];
-                    
-                    GCHalfedge he = face.halfedge();
-                    
-                    mint i0 = vInds[he.vertex()];
-                    mint i1 = vInds[he.next().vertex()];
-                    mint i2 = vInds[he.next().next().vertex()];
-                    Vector3 p1 = geom->inputVertexPositions[i0];
-                    Vector3 p2 = geom->inputVertexPositions[i1];
-                    Vector3 p3 = geom->inputVertexPositions[i2];
-                    
-                    P_far_[7 * i + 0] = P_near_[7 * i + 0] = geom->faceAreas[face];
-                    P_far_[7 * i + 0] = P_near_[7 * i + 1] = athird * (p1.x + p2.x + p3.x);
-                    P_far_[7 * i + 0] = P_near_[7 * i + 2] = athird * (p1.y + p2.y + p3.y);
-                    P_far_[7 * i + 0] = P_near_[7 * i + 3] = athird * (p1.z + p2.z + p3.z);
-                    P_far_[7 * i + 0] = P_near_[7 * i + 4] = geom->faceNormals[face].x;
-                    P_far_[7 * i + 0] = P_near_[7 * i + 5] = geom->faceNormals[face].y;
-                    P_far_[7 * i + 0] = P_near_[7 * i + 6] = geom->faceNormals[face].z;
-                }
-                SemiStaticUpdate( &P_near_[0], &P_far_[0] );
-            }
-            else
-            {
-                if( far_dim == 10 && near_dim == 10)
-                {
-                    std::vector<mreal> P_near_(10 * nFaces);
-                    std::vector<mreal> P_far_(10 * nFaces);
-                    
-                    for (auto face : mesh->faces())
-                    {
-                        mint i = fInds[face];
-                        
-                        GCHalfedge he = face.halfedge();
-                        
-                        mint i0 = vInds[he.vertex()];
-                        mint i1 = vInds[he.next().vertex()];
-                        mint i2 = vInds[he.next().next().vertex()];
-                        Vector3 p1 = geom->inputVertexPositions[i0];
-                        Vector3 p2 = geom->inputVertexPositions[i1];
-                        Vector3 p3 = geom->inputVertexPositions[i2];
-                        
-                        P_far_[10 * i + 0] = P_near_[10 * i + 0] = geom->faceAreas[face];
-                        P_far_[10 * i + 0] = P_near_[10 * i + 0] = athird * (p1.x + p2.x + p3.x);
-                        P_far_[10 * i + 0] = P_near_[10 * i + 0] = athird * (p1.y + p2.y + p3.y);
-                        P_far_[10 * i + 0] = P_near_[10 * i + 0] = athird * (p1.z + p2.z + p3.z);
-                        
-                        mreal n1 = geom->faceNormals[face].x;
-                        mreal n2 = geom->faceNormals[face].y;
-                        mreal n3 = geom->faceNormals[face].z;
-                        
-                        P_near_[10 * i + 4] = P_far_[10 * i + 4] = n1 * n1;
-                        P_near_[10 * i + 4] = P_far_[10 * i + 5] = n1 * n2;
-                        P_near_[10 * i + 4] = P_far_[10 * i + 6] = n1 * n3;
-                        P_near_[10 * i + 4] = P_far_[10 * i + 7] = n2 * n2;
-                        P_near_[10 * i + 4] = P_far_[10 * i + 8] = n2 * n3;
-                        P_near_[10 * i + 4] = P_far_[10 * i + 9] = n3 * n3;
-                    }
-                }
-                else
-                {
-                    std::vector<mreal> P_near_(7 * nFaces);
-                    std::vector<mreal> P_far_(10 * nFaces);
-                    
-                    for (auto face : mesh->faces())
-                    {
-                        mint i = fInds[face];
-                        
-                        GCHalfedge he = face.halfedge();
-                        
-                        mint i0 = vInds[he.vertex()];
-                        mint i1 = vInds[he.next().vertex()];
-                        mint i2 = vInds[he.next().next().vertex()];
-                        Vector3 p1 = geom->inputVertexPositions[i0];
-                        Vector3 p2 = geom->inputVertexPositions[i1];
-                        Vector3 p3 = geom->inputVertexPositions[i2];
-                        
-                        P_far_[10 * i + 0] = P_near_[7 * i + 0] = geom->faceAreas[face];
-                        P_far_[10 * i + 0] = P_near_[7 * i + 0] = athird * (p1.x + p2.x + p3.x);
-                        P_far_[10 * i + 0] = P_near_[7 * i + 0] = athird * (p1.y + p2.y + p3.y);
-                        P_far_[10 * i + 0] = P_near_[7 * i + 0] = athird * (p1.z + p2.z + p3.z);
-                        
-                        mreal n1 = geom->faceNormals[face].x;
-                        mreal n2 = geom->faceNormals[face].y;
-                        mreal n3 = geom->faceNormals[face].z;
-                        
-                        P_near_[7 * i + 4] = n1;
-                        P_near_[7 * i + 5] = n2;
-                        P_near_[7 * i + 6] = n3;
-                        
-                        P_far_[10 * i + 4] = n1 * n1;
-                        P_far_[10 * i + 5] = n1 * n2;
-                        P_far_[10 * i + 6] = n1 * n3;
-                        P_far_[10 * i + 7] = n2 * n2;
-                        P_far_[10 * i + 8] = n2 * n3;
-                        P_far_[10 * i + 9] = n3 * n3;
-
-                    }
-                    SemiStaticUpdate( &P_near_[0], &P_far_[0] );
-                }
-            }
-        }
 
         void SplitCluster(Cluster2 * const C, const mint free_thread_count);
 
@@ -350,24 +249,51 @@ namespace rsurfaces
 
         void Post(mreal *output, const mint cols, BCTKernelType type, bool addToResult = false);
 
-        //    // TODO: Not nearly as fast as I'd like it to be
-        void PercolateUp(const mint C, const mint free_thread_count);
+        void PercolateUp();
+        
+        void PercolateDown();
+        
+        void PrepareChunks();
+        
+        // some prototype
+        void PercolateUp_Chunks();
 
-        //    // TODO: Not nearly as fast as I'd like it to be
-        void PercolateDown(const mint C, const mint free_thread_count);
+        // some prototype
+        void PercolateDown_Chunks();
+        
+        // TODO: Not nearly as fast as I'd like it to be; not scalable!
+        // recusive algorithm parallelized by OpenMP tasks
+        void PercolateUp_Tasks(const mint C, const mint free_thread_count);
+
+        // TODO: Not nearly as fast as I'd like it to be; not scalable!
+        // recusive algorithm parallelized by OpenMP tasks
+        void PercolateDown_Tasks(const mint C, const mint free_thread_count);
+        
+        // TODO: use a stack for recursion instead of the program stack?
+        // sequential, recursive algorithm
+        void PercolateUp_Seq(const mint C);
+
+        // TODO: use a stack for recursion instead of the program stack?
+        // sequential, recursive algorithm
+        void PercolateDown_Seq(const mint C);
 
         void CollectDerivatives( mreal * restrict const P_D_near_output ); // collect only near field data
         
         void CollectDerivatives( mreal * restrict const P_D_near_output, mreal * restrict const P_D_far_output );
 
-    private:
-        
-        void computeClusterData(const mint C, const mint free_thread_count); // helper function for ComputeClusterData
-        
         // Updates only the computational data (primitive/cluster areas, centers of mass and normals).
         // All data related to clustering or multipole acceptance criteria remain are unchanged, as well
         // as the preprocessor and postprocessor matrices (that are needed for matrix-vector multiplies of the BCT.)
         void SemiStaticUpdate( const mreal * restrict const P_near_, const mreal * restrict const P_far_ );
+        
+        void PrintToFile(std::string filename = "./OptimizedClusterTree.tsv");
+        
+    private:
+        
+        void computeClusterData(const mint C, const mint free_thread_count); // helper function for ComputeClusterData
 
+        bool prepareChunks( mint C, mint last, mint thread);
+
+        
     }; //OptimizedClusterTree
 } // namespace rsurfaces

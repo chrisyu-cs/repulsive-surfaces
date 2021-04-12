@@ -7,6 +7,7 @@ namespace rsurfaces
         begin = begin_;
         end = end_;
         depth = depth_;
+        max_depth = depth_;
         descendant_count = 0;
         descendant_leaf_count = 0;
         left = nullptr;
@@ -52,11 +53,9 @@ namespace rsurfaces
 
         tree_thread_count = std::max( static_cast<mint>(1), nthreads );
              thread_count = std::max( static_cast<mint>(1), nthreads );
-        
         mint a = 1;
         split_threshold = std::max( a, split_threshold_);
-    
-
+        
         P_coords = A_Vector<mreal * >( dim, nullptr );
         #pragma omp parallel for
         for( mint k = 0; k < dim; ++k)
@@ -89,11 +88,12 @@ namespace rsurfaces
         }
         ptoc("SplitCluster");
         
+        
         ptic("Serialize");
         
         cluster_count = root->descendant_count;
         leaf_cluster_count = root->descendant_leaf_count;
-
+        tree_max_depth = root->max_depth;
         #pragma omp parallel
         {
             #pragma omp task
@@ -123,11 +123,19 @@ namespace rsurfaces
             }
             #pragma omp task
             {
+                C_next = mint_alloc ( cluster_count );
+            }
+            #pragma omp task
+            {
                 leaf_clusters = mint_alloc( leaf_cluster_count );
             }
             #pragma omp task
             {
                 leaf_cluster_lookup = mint_alloc( cluster_count );
+            }
+            #pragma omp task
+            {
+                inverse_ordering = mint_alloc( primitive_count );
             }
         }
         
@@ -140,8 +148,7 @@ namespace rsurfaces
         }
 
         delete root;
-
-        inverse_ordering = mint_alloc( primitive_count );
+        
         #pragma omp parallel for
         for( mint i = 0; i < primitive_count; ++i )
         {
@@ -227,6 +234,7 @@ namespace rsurfaces
             // counting ourselves as descendant, too!
             C->descendant_count = 1 + C->left->descendant_count + C->right->descendant_count;
             C->descendant_leaf_count = C->left->descendant_leaf_count + C->right->descendant_leaf_count;
+            C->max_depth = std::max( C->left->max_depth, C->right->max_depth );
         }
         else
         {
@@ -244,6 +252,7 @@ namespace rsurfaces
         C_begin[ID] = C->begin;
         C_end[ID] = C->end;
         C_depth[ID] = C->depth;
+        C_next[ID] = ID + C->descendant_count;
         
         if( ( C->left != nullptr ) && ( C->right  != nullptr ) )
         {
@@ -771,7 +780,167 @@ namespace rsurfaces
         }
     }; // CleanseD
 
-    void OptimizedClusterTree::PercolateUp( const mint C, const mint free_thread_count )
+    void OptimizedClusterTree::PercolateUp()
+    {
+        switch (tree_perc_alg) {
+            case TreePercolationAlgorithm::Chunks :
+                PercolateUp_Chunks();
+                break;
+            case TreePercolationAlgorithm::Tasks :
+                PercolateUp_Tasks( 0, thread_count );
+                break;
+            case TreePercolationAlgorithm::Sequential :
+                PercolateUp_Seq( 0 );
+                break;
+                
+            default:
+                PercolateUp_Tasks( 0, thread_count );
+        }
+    }; // PercolateUp
+    
+    void OptimizedClusterTree::PercolateDown()
+    {
+        switch (tree_perc_alg) {
+            case TreePercolationAlgorithm::Chunks :
+                PercolateDown_Chunks();
+                break;
+            case TreePercolationAlgorithm::Tasks :
+                PercolateDown_Tasks( 0, thread_count );
+                break;
+            case TreePercolationAlgorithm::Sequential :
+                PercolateDown_Seq( 0 );
+                break;
+                
+            default:
+                PercolateDown_Tasks( 0, thread_count );
+        }
+    }; // PercolateUp
+    
+    void OptimizedClusterTree::PrepareChunks()
+    {
+        ptic("PrepareChunks");
+        if( !chunks_prepared)
+        {
+            print("PrepareChunks");
+            mint chunk_size = CACHE_LINE_LENGHT * ( (cluster_count + thread_count * CACHE_LINE_LENGHT - 1)  / ( thread_count * CACHE_LINE_LENGHT ) );
+            chunk_roots = A_Vector<A_Vector<mint>> ( thread_count );
+            std::cout << "chunk_size = " << chunk_size << std::endl;
+            
+            #pragma omp parallel for num_threads(thread_count) schedule( static, 1)
+            for( mint thread = 0; thread < thread_count; ++thread )
+            {
+                
+                chunk_roots[thread].reserve( tree_max_depth + 1 );
+                
+                // last is supposed to be the first position _after_ the chunk belonging to thread thread.
+                mint last = std::min( cluster_count, chunk_size * ( thread + 1) );
+                
+                // first cluster in chunk
+                mint C = chunk_size * thread;
+                mint C_prev = C;
+                // C_next[C]-1 is the last cluster in the subtree with root C.
+                // The cluster C is "good" w.r.t. the thread, if and only if it is contained in the chunk, if and only if ( C_next[C] - 1 <= last - 1).
+                while( C_next[C] < last) // ensure that we do not reference past the end of C_next.
+                {
+                    chunk_roots[thread].push_back(C);
+                    C = C_next[C];
+                }
+                if( C_next[C] == last )
+                {
+                    // subtree of last C fits tightly into chunk
+                    chunk_roots[thread].push_back(C);
+                }
+                else
+                {
+                    // subtree of last C does not fit into chunk; use a breadth-first scan to find the max subtrees of C that do fit into chunk.
+                    prepareChunks(C, last, thread);
+                }
+                
+            }
+            
+            for( mint thread = 0; thread < thread_count; ++thread )
+            {
+                std::cout << "chunk_roots[" << thread << "] = ";
+                for( auto i : chunk_roots[thread])
+                {
+                    std::cout  << i << ", ";
+                }
+                std::cout << std::endl;
+            }
+            
+            // prepare the tip matrices;
+            
+            chunks_prepared = true;
+        }
+        ptoc("PrepareChunks");
+    } // PrepareChunks
+    
+    bool OptimizedClusterTree::prepareChunks( mint C, mint last, mint thread)
+    {
+        // last is supposed to be the first position _after_ the chunk belonging to thread thread.
+        // C_next[C]-1 is the last cluster in the subtree with root C.
+        // The cluster C is "good" w.r.t. the thread, if and only if it is contained in the chunk, if and only if ( C_next[C] - 1 <= last - 1).
+        bool C_good = C_next[C] <= last;
+        if( C_good )
+        {
+            chunk_roots[thread].push_back(C);
+        }
+        else
+        {
+            if( C_left[C]>= 0 && C_right[C])
+            {
+                bool left_good = prepareChunks( C_left[C], last, thread );
+                // If the left subtree is not contained in the chunk, then the right one won't either.
+                if( left_good )
+                {
+                    prepareChunks( C_right[C], last, thread );
+                }
+            }
+        }
+        return C_good;
+    } // prepareChunks
+    
+    void OptimizedClusterTree::PercolateUp_Chunks()
+    {
+        ptic("PercolateUp_Chunks");
+        
+        PrepareChunks();
+        
+        #pragma omp parallel for num_threads(thread_count) schedule( static, 1)
+        for( mint thread = 0; thread < thread_count; ++thread )
+        {
+            for( const auto & C: chunk_roots[thread] ) {
+                PercolateUp_Seq( C );
+            }
+        }
+        
+        // do the tip later
+        
+        ptoc("PercolateUp_Chunks");
+    }; // PercolateUp_Chunks
+
+
+    void OptimizedClusterTree::PercolateDown_Chunks()
+    {
+        ptic("PercolateDown_Chunks");
+        // do the tip first
+        
+        PrepareChunks();
+        
+        #pragma omp parallel for num_threads(thread_count) schedule( static, 1)
+        for( mint thread = 0; thread < thread_count; ++thread )
+        {
+            for( const auto & C: chunk_roots[thread] ) {
+                PercolateDown_Seq( C );
+            }
+        }
+        
+        ptoc("PercolateDown_Chunks");
+    }; // PercolateDown_Chunks
+    
+    
+    
+    void OptimizedClusterTree::PercolateUp_Seq( const mint C )
     {
         // C = cluster index
         
@@ -781,10 +950,59 @@ namespace rsurfaces
         if( (L >= 0) && (R >= 0) )
         {
             // If not a leaf, compute the values of the children first.
-            #pragma omp task final(free_thread_count<1)  shared( L, free_thread_count )
-                PercolateUp( L, free_thread_count/2 );
-            #pragma omp task final(free_thread_count<1)  shared( R, free_thread_count )
-                PercolateUp( R, free_thread_count-free_thread_count/2 );
+            PercolateUp_Seq(L);
+            PercolateUp_Seq(R);
+            
+            // Aftwards, compute the sum of the two children.
+            
+            #pragma omp simd aligned( C_in : ALIGN )
+            for( mint k = 0; k < buffer_dim; ++k )
+            {
+                // Overwrite, not add-into. Thus cleansing is not required.
+                C_in[ buffer_dim * C + k ] = C_in[ buffer_dim * L + k ] + C_in[ buffer_dim * R + k ];
+            }
+        }
+        
+    }; // PercolateUp_Seq
+
+
+    void OptimizedClusterTree::PercolateDown_Seq(const mint C)
+    {
+        // C = cluster index
+        
+        mint L = C_left [C];
+        mint R = C_right[C];
+        
+        if( ( L >= 0 ) && ( R >= 0 ) )
+        {
+            #pragma omp simd aligned( C_out : ALIGN )
+            for( mint k = 0; k < buffer_dim; ++k )
+            {
+                mreal buffer = C_out[ buffer_dim * C + k ];
+                C_out[ buffer_dim * L + k ] += buffer;
+                C_out[ buffer_dim * R + k ] += buffer;
+            }
+            PercolateDown_Seq(L);
+            PercolateDown_Seq(R);
+        }
+    }; // PercolateDown_Seq
+    
+    
+    
+    void OptimizedClusterTree::PercolateUp_Tasks( const mint C, const mint free_thread_count )
+    {
+        // C = cluster index
+        
+        mint L = C_left [C];
+        mint R = C_right[C];
+        
+        if( (L >= 0) && (R >= 0) )
+        {
+            // If not a leaf, compute the values of the children first.
+            #pragma omp task final(free_thread_count<1) shared( L, free_thread_count )
+                PercolateUp_Tasks( L, free_thread_count/2 );
+            #pragma omp task final(free_thread_count<1) shared( R, free_thread_count )
+                PercolateUp_Tasks( R, free_thread_count-free_thread_count/2 );
             #pragma omp taskwait
             
             // Aftwards, compute the sum of the two children.
@@ -792,15 +1010,15 @@ namespace rsurfaces
             #pragma omp simd aligned( C_in : ALIGN )
             for( mint k = 0; k < buffer_dim; ++k )
             {
-                // Overwrite, not add-into. Thus cleansing is not needed.
+                // Overwrite, not add-into. Thus cleansing is not required.
                 C_in[ buffer_dim * C + k ] = C_in[ buffer_dim * L + k ] + C_in[ buffer_dim * R + k ];
             }
         }
         
-    }; // PercolateUp
+    }; // PercolateUp_Tasks
 
 
-    void OptimizedClusterTree::PercolateDown(const mint C, const mint free_thread_count )
+    void OptimizedClusterTree::PercolateDown_Tasks(const mint C, const mint free_thread_count )
     {
         // C = cluster index
         
@@ -818,12 +1036,12 @@ namespace rsurfaces
             }
             
             #pragma omp task final(free_thread_count<1)  shared( L, free_thread_count )
-                PercolateDown( L, free_thread_count/2 );
+                PercolateDown_Tasks( L, free_thread_count/2 );
             #pragma omp task final(free_thread_count<1)  shared( R, free_thread_count )
-                PercolateDown( R, free_thread_count-free_thread_count/2 );
+                PercolateDown_Tasks( R, free_thread_count-free_thread_count/2 );
             #pragma omp taskwait
         }
-    }; // PercolateDown
+    }; // PercolateDown_Tasks
 
 
     void OptimizedClusterTree::Pre( Eigen::MatrixXd & input, BCTKernelType type )
@@ -880,7 +1098,7 @@ namespace rsurfaces
         ptoc("P_to_C.Multiply");
         
         ptic("PercolateUp");
-        PercolateUp( 0, thread_count );
+        PercolateUp();
         ptoc("PercolateUp");
     
         ptoc("Pre");
@@ -949,7 +1167,7 @@ namespace rsurfaces
         }
         
         ptic("PercolateDown");
-        PercolateDown( 0, thread_count );
+        PercolateDown();
         ptoc("PercolateDown");
         
         // Add data from leaf clusters into data on primitives
@@ -1031,7 +1249,7 @@ namespace rsurfaces
         //    toc("Accumulate cluster contributions");
         
         ptic("PercolateDown");
-        PercolateDown(0, thread_count );
+        PercolateDown();
         ptoc("PercolateDown");
         
         ptic("C_to_P.Multiply");
@@ -1053,64 +1271,78 @@ namespace rsurfaces
         ptoc("OptimizedClusterTree::CollectDerivatives");
         
     } // CollectDerivatives
-
-
-void OptimizedClusterTree::SemiStaticUpdate( const mreal * restrict const P_near_, const mreal * restrict const P_far_ ){
-    // Updates only the computational data like primitive/cluster areas, centers of mass and normals. All data related to clustering or multipole acceptance criteria remain are unchanged.
     
-    ptic("OptimizedClusterTree::SemiStaticUpdate");
     
-    RequireBuffers( far_dim );
+    void OptimizedClusterTree::SemiStaticUpdate( const mreal * restrict const P_near_, const mreal * restrict const P_far_ ){
+        // Updates only the computational data like primitive/cluster areas, centers of mass and normals. All data related to clustering or multipole acceptance criteria remain are unchanged.
+        
+        ptic("OptimizedClusterTree::SemiStaticUpdate");
+        
+        RequireBuffers( far_dim );
+        
+        #pragma omp parallel for shared( P_near, P_far , P_ext_pos, P_near_, P_far_, P_in, near_dim, far_dim )
+        for( mint i = 0; i < primitive_count; ++i )
+        {
+            mint j = P_ext_pos[i];
+            
+            for( mint k = 0; k < near_dim; ++k )
+            {
+                P_near[k][i] = P_near_[ near_dim * j + k];
+            }
+            
+            for( mint k = 0; k < far_dim; ++k )
+            {
+                P_far[k][i] = P_far_[ far_dim * j + k];
+            }
+            
+            //store 0-th moments in the primitive input buffer so that we can use P_to_C and PercolateUp.
+            mreal a = P_far_[ far_dim * j];
+            P_in[ far_dim * i] = a;
+            for( mint k = 1; k < far_dim; ++k )
+            {
+                P_in[far_dim * i + k] = a * P_far_[far_dim * j + k];
+            }
+        }
+        
+        // accumulate primitive input buffers in leaf clusters
+        ptic("P_to_C.Multiply");
+        P_to_C.Multiply(P_in, C_in, far_dim);
+        ptoc("P_to_C.Multiply");
+        
+        ptic("PercolateUp");
+        // upward pass, obviously
+        PercolateUp();
+        ptoc("PercolateUp");
+        
+        // finally divide center and normal moments by area and store the result in C_far
+        #pragma omp parallel for shared( C_far, C_in, far_dim )
+        for( mint i = 0; i < cluster_count; ++i )
+        {
+            mreal a = C_in[ far_dim * i];
+            C_far[0][i] = a;
+            mreal ainv = 1./a;
+            for( mint k = 1; k < far_dim; ++k )
+            {
+                C_far[k][i] = ainv * C_in[ far_dim * i + k];
+            }
+        }
+        
+        ptoc("OptimizedClusterTree::SemiStaticUpdate");
+        
+    } // SemiStaticUpdate
     
-    #pragma omp parallel for shared( P_near, P_far , P_ext_pos, P_near_, P_far_, P_in, near_dim, far_dim )
-    for( mint i = 0; i < primitive_count; ++i )
+    
+    
+    void OptimizedClusterTree::PrintToFile(std::string filename)
     {
-        mint j = P_ext_pos[i];
-        
-        for( mint k = 0; k < near_dim; ++k )
+        std::ofstream os;
+        std::cout << "Writing tree to " << filename << "." << std::endl;
+        os.open(filename);
+        os << "ID" << "\t" << "left" << "\t" << "right" << "\t" << "next" << "\t" << "depth" << "\t"  << "begin" << "\t" << "end" << std::endl;
+        for( mint C = 0;  C < cluster_count; ++C)
         {
-            P_near[k][i] = P_near_[ near_dim * j + k];
+            os << C << "\t" << C_left[C] << "\t" << C_right[C] << "\t" << C_next[C] << "\t" << C_depth[C] << "\t" << C_begin[C] << "\t" << C_end[C] << std::endl;
         }
-        
-        for( mint k = 0; k < far_dim; ++k )
-        {
-            P_far[k][i] = P_far_[ far_dim * j + k];
-        }
-        
-        //store 0-th moments in the primitive input buffer so that we can use P_to_C and PercolateUp.
-        mreal a = P_far_[ far_dim * j];
-        P_in[ far_dim * i] = a;
-        for( mint k = 1; k < far_dim; ++k )
-        {
-            P_in[far_dim * i + k] = a * P_far_[far_dim * j + k];
-        }
+        os.close();
     }
-    
-    // accumulate primitive input buffers in leaf clusters
-    ptic("P_to_C.Multiply");
-    P_to_C.Multiply(P_in, C_in, far_dim);
-    ptoc("P_to_C.Multiply");
-    
-    ptic("PercolateUp");
-    // upward pass, obviously
-    PercolateUp( 0, thread_count );
-    ptoc("PercolateUp");
-    
-    // finally divide center and normal moments by area and store the result in C_far
-    #pragma omp parallel for shared( C_far, C_in, far_dim )
-    for( mint i = 0; i < cluster_count; ++i )
-    {
-        mreal a = C_in[ far_dim * i];
-        C_far[0][i] = a;
-        mreal ainv = 1./a;
-        for( mint k = 1; k < far_dim; ++k )
-        {
-            C_far[k][i] = ainv * C_in[ far_dim * i + k];
-        }
-    }
-    
-    ptoc("OptimizedClusterTree::SemiStaticUpdate");
-    
-} // SemiStaticUpdate
-
 } // namespace rsurfaces

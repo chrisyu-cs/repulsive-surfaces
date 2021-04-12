@@ -19,6 +19,9 @@
 
 #define restrict __restrict
 #define ALIGN 32
+
+// length of cache line measured in number of doubles
+#define CACHE_LINE_LENGHT 8
 #define CHUNK_SIZE 8
 #define RAGGED_SCHEDULE schedule( guided, CHUNK_SIZE)
 
