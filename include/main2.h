@@ -33,3 +33,96 @@ namespace po = boost::program_options;
 
 
 #define EIGEN_NO_DEBUG
+
+namespace rsurfaces
+{
+    
+    
+    struct Benchmarker
+    {
+        mint max_thread_count = 1;
+        mint thread_count = 1;
+        mint thread_step = 1;
+        
+        mint burn_ins = 1;
+        mint iterations = 3;
+        
+        
+        mreal alpha = 6.;
+        mreal beta = 12.;
+        mreal theta = 0.5;
+        mreal chi = 0.5;
+        mreal weight = 1.;
+        
+        std::string obj1 = "../scenes/Bunny/bunny.obj";
+        std::string profile_name = "Profile";
+        std::string profile_path = ".";
+        
+        TreePercolationAlgorithm tree_perc_alg = TreePercolationAlgorithm::Tasks;
+        MeshPtr mesh1;
+        GeomPtr geom1;
+        
+        void Compute( mint iter )
+        {
+            mint vertex_count1 = mesh1->nVertices();
+            
+            mreal E_11;
+            Eigen::MatrixXd DE_11(vertex_count1, 3);
+            
+            
+            //        OptimizedClusterTree *bvh1 = CreateOptimizedBVH(mesh1, geom1);
+            ptic("Energy");
+            auto tpe_bh_11 = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
+            
+            tpe_bh_11->GetBVH()->tree_perc_alg = tree_perc_alg;
+            
+            if( iter < 0)
+            {
+                tpe_bh_11->GetBVH()->PrintToFile();
+            }
+            
+            E_11 = tpe_bh_11->Value();
+            DE_11.setZero();
+            tpe_bh_11->Differential(DE_11);
+            ptoc("Energy");
+            
+            ptic("Initialize Vector");
+            Eigen::MatrixXd U(vertex_count1, 3);
+            U = getVertexPositions( mesh1, geom1 );
+            Eigen::MatrixXd V(vertex_count1, 3);
+            V.setZero();
+            ptoc("Initialize Vector");
+            
+            ptic("Multiply");
+            auto bct11 = std::make_shared<OptimizedBlockClusterTree>(tpe_bh_11->GetBVH(), tpe_bh_11->GetBVH(), alpha, beta, chi);
+            for( mint k = 0; k < 20; ++k)
+            {
+                ptic("Multiply Fractional");
+                bct11->Multiply(V,U,BCTKernelType::FractionalOnly);
+                ptoc("Multiply Fractional");
+                
+                ptic("Multiply HighOrder");
+                bct11->Multiply(V,U,BCTKernelType::HighOrder);
+                ptoc("Multiply HighOrder");
+                
+                ptic("Multiply LowOrder");
+                bct11->Multiply(V,U,BCTKernelType::LowOrder);
+                ptoc("Multiply LowOrder");
+            }
+            ptoc("Multiply");
+            //        delete bvh1;
+        }
+        
+        void PrintStats()
+        {
+            std::cout << "mesh = "<< obj1 << std::endl;
+            //    std::cout << "profile_file = "<< profile_file << std::endl;
+            std::cout << "threads = "<< thread_count << std::endl;
+            std::cout << "alpha = "<< alpha << std::endl;
+            std::cout << "beta  = "<< beta << std::endl;
+            std::cout << "theta = "<< theta << std::endl;
+            std::cout << "chi   = "<< chi << std::endl;
+        }
+    };
+    
+} // namespace rsurfaces

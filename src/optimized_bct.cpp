@@ -897,7 +897,7 @@ namespace rsurfaces
     //        print("T->P_to_C.Multiply");
             T->P_to_C.Multiply( T->P_in, T->C_in, 1);
     //        tic("T->PercolateUp");
-            T->PercolateUp( 0 , T->thread_count );
+            T->PercolateUp();
     //        toc("T->PercolateUp");
 
             fr_diag = mreal_alloc( S->primitive_count );
@@ -909,7 +909,7 @@ namespace rsurfaces
             far->ApplyKernel_CSR_MKL(  far->fr_values, T->C_in, S->C_out, 1, 2. * fr_factor );
            near->ApplyKernel_CSR_MKL( near->fr_values, T->P_in, S->P_out, 1, 2. * fr_factor );
 
-            S->PercolateDown( 0 , S->thread_count );
+            S->PercolateDown();
             S->C_to_P.Multiply( S->C_out, S->P_out, 1, true);
 
 
@@ -931,7 +931,7 @@ namespace rsurfaces
             far->ApplyKernel_CSR_MKL(  far->hi_values, T->C_in, S->C_out, 1, 2. * hi_factor );
            near->ApplyKernel_CSR_MKL( near->hi_values, T->P_in, S->P_out, 1, 2. * hi_factor );
 
-            S->PercolateDown( 0 , S->thread_count );
+            S->PercolateDown();
             S->C_to_P.Multiply( S->C_out, S->P_out, 1, true);
 
             #pragma omp parallel for simd aligned( ainv, hi_diag, data : ALIGN)
@@ -943,7 +943,7 @@ namespace rsurfaces
             far->ApplyKernel_CSR_MKL(  far->lo_values, T->C_in, S->C_out, 1, 2. * lo_factor );
            near->ApplyKernel_CSR_MKL( near->lo_values, T->P_in, S->P_out, 1, 2. * lo_factor );
 
-            S->PercolateDown( 0 , S->thread_count );
+            S->PercolateDown();
             S->C_to_P.Multiply( S->C_out, S->P_out, 1, true);
 
             #pragma omp parallel for simd aligned( ainv, lo_diag, data : ALIGN)

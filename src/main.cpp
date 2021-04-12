@@ -741,7 +741,6 @@ namespace rsurfaces
 
         //######################################
         
-        
         tic();
         E_bh_11 = tpe_bh_11->Value();
         mreal t_bh_11 = toc();

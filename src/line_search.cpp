@@ -1,6 +1,7 @@
 #include "line_search.h"
 #include "matrix_utils.h"
 #include "spatial/bvh_6d.h"
+#include "bct_constructors.h"
 
 namespace rsurfaces
 {
@@ -43,7 +44,9 @@ namespace rsurfaces
 
         if (energies[0]->GetBVH())
         {
-            energies[0]->GetBVH()->UpdateWithNewPositions(mesh, geom);
+//            energies[0]->GetBVH()->UpdateWithNewPositions(mesh, geom);
+            // Henrik changed this line to make OptimizedClusterTree again agnostic of MeshPtr and GeomPtr, so that it can be used also in other projects.
+            UpdateOptimizedBVH(energies[0]->GetBVH(), mesh, geom );
         }
     }
 
@@ -64,7 +67,10 @@ namespace rsurfaces
 
         if (energies[0]->GetBVH())
         {
-            energies[0]->GetBVH()->UpdateWithNewPositions(mesh, geom);
+//            energies[0]->GetBVH()->UpdateWithNewPositions(mesh, geom);
+
+            // Henrik changed this line to make OptimizedClusterTree again agnostic of MeshPtr and GeomPtr, so that it can be used also in other projects.
+            UpdateOptimizedBVH(energies[0]->GetBVH(), mesh, geom );
         }
     }
 
