@@ -143,172 +143,175 @@ namespace rsurfaces
         ~OptimizedClusterTree()
         {
 
+            print("~OptimizedClusterTree");
             ptic("~OptimizedClusterTree");
             // pointer arrays come at the cost of manual deallocation...
             
-#pragma omp parallel
+            #pragma omp parallel
             {
-                #pragma omp task
+                #pragma omp single
                 {
-                    //            for( mint k = 0; k < moment_count; ++ k )
-                    //            {
-                    //                mreal_free(P_moments[k]);
-                    //            }
-                }
+//                    #pragma omp task
+//                    {
+//                        for( mint k = 0; k < moment_count; ++ k )
+//                        {
+//                            mreal_free(P_moments[k]);
+//                        }
+//                    }
+//
+//                    #pragma omp task
+//                    {
+//                        for( mint k = 0; k < moment_count; ++ k )
+//                        {
+//                            mreal_free(C_moments[k]);
+//                        }
+//                    }
                 
-                #pragma omp task
-                {
-                    //            for( mint k = 0; k < moment_count; ++ k )
-                    //            {
-                    //                mreal_free(C_moments[k]);
-                    //            }
-                }
-                
-                #pragma omp task
-                {
-                    for (mint k = 0; k < static_cast<mint>(P_coords.size()); ++k)
+                    #pragma omp task
                     {
-                        mreal_free(P_coords[k]);
+                        for (mint k = 0; k < static_cast<mint>(P_coords.size()); ++k)
+                        {
+                            mreal_free(P_coords[k]);
+                        }
                     }
-                }
-                
-                #pragma omp task
-                {
-                    for (mint k = 0; k < static_cast<mint>(C_coords.size()); ++k)
+
+                    #pragma omp task
                     {
-                        mreal_free(C_coords[k]);
+                        for (mint k = 0; k < static_cast<mint>(C_coords.size()); ++k)
+                        {
+                            mreal_free(C_coords[k]);
+                        }
                     }
-                }
-                
-                #pragma omp task
-                {
-                    for (mint k = 0; k < static_cast<mint>(P_near.size()); ++k)
+
+                    #pragma omp task
                     {
-                        mreal_free(P_near[k]);
+                        for (mint k = 0; k < static_cast<mint>(P_near.size()); ++k)
+                        {
+                            mreal_free(P_near[k]);
+                        }
                     }
-                }
-                
-                #pragma omp task
-                {
-                    for (mint k = 0; k < static_cast<mint>(C_far.size()); ++k)
+
+                    #pragma omp task
                     {
-                        mreal_free(C_far[k]);
+                        for (mint k = 0; k < static_cast<mint>(C_far.size()); ++k)
+                        {
+                            mreal_free(C_far[k]);
+                        }
                     }
-                }
-                
-                #pragma omp task
-                {
-                    for (mint k = 0; k < static_cast<mint>(P_min.size()); ++k)
+
+                    #pragma omp task
                     {
-                        mreal_free(P_min[k]);
+                        for (mint k = 0; k < static_cast<mint>(P_min.size()); ++k)
+                        {
+                            mreal_free(P_min[k]);
+                        }
                     }
-                }
-                
-                #pragma omp task
-                {
-                    for (mint k = 0; k < static_cast<mint>(P_max.size()); ++k)
+
+                    #pragma omp task
                     {
-                        mreal_free(P_max[k]);
+                        for (mint k = 0; k < static_cast<mint>(P_max.size()); ++k)
+                        {
+                            mreal_free(P_max[k]);
+                        }
                     }
-                }
-                
-                #pragma omp task
-                {
-                    for (mint k = 0; k < static_cast<mint>(C_min.size()); ++k)
+
+                    #pragma omp task
                     {
-                        mreal_free(C_min[k]);
+                        for (mint k = 0; k < static_cast<mint>(C_min.size()); ++k)
+                        {
+                            mreal_free(C_min[k]);
+                        }
                     }
-                }
-                
-                #pragma omp task
-                {
-                    for (mint k = 0; k < static_cast<mint>(C_max.size()); ++k)
+
+                    #pragma omp task
                     {
-                        mreal_free(C_max[k]);
+                        for (mint k = 0; k < static_cast<mint>(C_max.size()); ++k)
+                        {
+                            mreal_free(C_max[k]);
+                        }
                     }
-                }
-                
-                #pragma omp task
-                {
-                    mreal_free(P_in);
-                }
-                #pragma omp task
-                {
-                    mreal_free(P_out);
-                }
-                
-                #pragma omp task
-                {
-                    mreal_free(C_in);
-                }
-                
-                #pragma omp task
-                {
-                    mreal_free(C_out);
-                }
-                
-                #pragma omp task
-                {
-                    mreal_free(C_squared_radius);
-                }
-                
-                #pragma omp task
-                {
-                    mint_free(leaf_clusters);
-                }
-                
-                #pragma omp task
-                {
-                    mint_free(leaf_cluster_lookup);
-                }
-                #pragma omp task
-                
-                {
-                    mint_free(leaf_cluster_ptr);
-                }
-                
-                #pragma omp task
-                {
-                    mint_free(inverse_ordering);
-                }
-                
-                #pragma omp task
-                {
-                    mint_free(P_ext_pos);
-                }
-                
-                #pragma omp task
-                {
-                    mint_free(C_begin);
-                }
-                
-                #pragma omp task
-                {
-                    mint_free(C_end);
-                }
-                
-                #pragma omp task
-                {
-                    mint_free(C_depth);
-                }
-                
-                #pragma omp task
-                {
-                    mint_free(C_next);
-                }
-                
-                #pragma omp task
-                {
-                    mint_free(C_left);
-                }
-                #pragma omp task
-                {
-                }
-                
-                #pragma omp task
-                {
-                    mint_free(C_right);
-                }
+
+                    #pragma omp task
+                    {
+                        mreal_free(P_in);
+                    }
+
+                    #pragma omp task
+                    {
+                        mreal_free(P_out);
+                    }
+
+                    #pragma omp task
+                    {
+                        mreal_free(C_in);
+                    }
+
+                    #pragma omp task
+                    {
+                        mreal_free(C_out);
+                    }
+
+                    #pragma omp task
+                    {
+                        mreal_free(C_squared_radius);
+                    }
+
+                    #pragma omp task
+                    {
+                        mint_free(leaf_clusters);
+                    }
+
+                    #pragma omp task
+                    {
+                        mint_free(leaf_cluster_lookup);
+                    }
+                    #pragma omp task
+
+                    {
+                        mint_free(leaf_cluster_ptr);
+                    }
+
+                    #pragma omp task
+                    {
+                        mint_free(inverse_ordering);
+                    }
+
+                    #pragma omp task
+                    {
+                        mint_free(P_ext_pos);
+                    }
+
+                    #pragma omp task
+                    {
+                        mint_free(C_begin);
+                    }
+
+                    #pragma omp task
+                    {
+                        mint_free(C_end);
+                    }
+
+                    #pragma omp task
+                    {
+                        mint_free(C_depth);
+                    }
+
+                    #pragma omp task
+                    {
+                        mint_free(C_next);
+                    }
+
+                    #pragma omp task
+                    {
+                        mint_free(C_left);
+                    }
+
+                    #pragma omp task
+                    {
+                        mint_free(C_right);
+                    }
+
+                    }
             }
             ptoc("~OptimizedClusterTree");
         };

@@ -40,10 +40,25 @@ namespace rsurfaces
         OptimizedBlockClusterTree(OptimizedClusterTree* S_, OptimizedClusterTree* T_, const mreal alpha_, const mreal beta_, const mreal theta_, bool exploit_symmetry_ = true, bool upper_triangular_ = false);
 
         ~OptimizedBlockClusterTree()
-        {   
-            mreal_free(hi_diag);
-            mreal_free(lo_diag);
-            mreal_free(fr_diag);
+        {
+            #pragma omp parallel
+            {
+                #pragma omp single
+                {
+                    #pragma omp task
+                    {
+                        mreal_free(hi_diag);
+                    }
+                    #pragma omp task
+                    {
+                        mreal_free(lo_diag);
+                    }
+                    #pragma omp task
+                    {
+                        mreal_free(fr_diag);
+                    }
+                }
+            }
         };
 
         mutable OptimizedClusterTree* S; // "left" OptimizedClusterTree (output side of matrix-vector multiplication)
