@@ -110,7 +110,6 @@ namespace rsurfaces
                 ptoc("Multiply LowOrder");
             }
             ptoc("Multiply");
-            //        delete bvh1;
         }
         
         void PrintStats()

@@ -143,6 +143,7 @@ namespace rsurfaces
         ~OptimizedClusterTree()
         {
 
+            ptic("~OptimizedClusterTree");
             // pointer arrays come at the cost of manual deallocation...
 
             mreal_free(P_in);
@@ -216,6 +217,7 @@ namespace rsurfaces
             //            {
             //                mreal_free(C_moments[k]);
             //            }
+            ptoc("~OptimizedClusterTree");
         };
 
         void SplitCluster(Cluster2 * const C, const mint free_thread_count);
