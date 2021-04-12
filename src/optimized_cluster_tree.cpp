@@ -96,46 +96,49 @@ namespace rsurfaces
         tree_max_depth = root->max_depth;
         #pragma omp parallel
         {
-            #pragma omp task
+            #pragma omp single
             {
-                mint s = std::max( dim * dim, far_dim);
-                RequireBuffers( std::max( s, max_buffer_dim_ ) );
-            }
-            #pragma omp task
-            {
-                C_left  = mint_alloc ( cluster_count );
-            }
-            #pragma omp task
-            {
-                C_right = mint_alloc ( cluster_count );
-            }
-            #pragma omp task
-            {
-                C_begin = mint_alloc ( cluster_count );
-            }
-            #pragma omp task
-            {
-                C_end   = mint_alloc ( cluster_count );
-            }
-            #pragma omp task
-            {
-                C_depth = mint_alloc ( cluster_count );
-            }
-            #pragma omp task
-            {
-                C_next = mint_alloc ( cluster_count );
-            }
-            #pragma omp task
-            {
-                leaf_clusters = mint_alloc( leaf_cluster_count );
-            }
-            #pragma omp task
-            {
-                leaf_cluster_lookup = mint_alloc( cluster_count );
-            }
-            #pragma omp task
-            {
-                inverse_ordering = mint_alloc( primitive_count );
+                #pragma omp task
+                {
+                    mint s = std::max( dim * dim, far_dim);
+                    RequireBuffers( std::max( s, max_buffer_dim_ ) );
+                }
+                #pragma omp task
+                {
+                    C_left  = mint_alloc ( cluster_count );
+                }
+                #pragma omp task
+                {
+                    C_right = mint_alloc ( cluster_count );
+                }
+                #pragma omp task
+                {
+                    C_begin = mint_alloc ( cluster_count );
+                }
+                #pragma omp task
+                {
+                    C_end   = mint_alloc ( cluster_count );
+                }
+                #pragma omp task
+                {
+                    C_depth = mint_alloc ( cluster_count );
+                }
+                #pragma omp task
+                {
+                    C_next = mint_alloc ( cluster_count );
+                }
+                #pragma omp task
+                {
+                    leaf_clusters = mint_alloc( leaf_cluster_count );
+                }
+                #pragma omp task
+                {
+                    leaf_cluster_lookup = mint_alloc( cluster_count );
+                }
+                #pragma omp task
+                {
+                    inverse_ordering = mint_alloc( primitive_count );
+                }
             }
         }
         
@@ -787,14 +790,26 @@ namespace rsurfaces
                 PercolateUp_Chunks();
                 break;
             case TreePercolationAlgorithm::Tasks :
-                PercolateUp_Tasks( 0, thread_count );
+                #pragma omp parallel
+                {
+                    #pragma omp single
+                    {
+                        PercolateUp_Tasks( 0, thread_count );
+                    }
+                }
                 break;
             case TreePercolationAlgorithm::Sequential :
                 PercolateUp_Seq( 0 );
                 break;
                 
             default:
-                PercolateUp_Tasks( 0, thread_count );
+                #pragma omp parallel
+                {
+                    #pragma omp single
+                    {
+                        PercolateUp_Tasks( 0, thread_count );
+                    }
+                }
         }
     }; // PercolateUp
     
@@ -805,14 +820,26 @@ namespace rsurfaces
                 PercolateDown_Chunks();
                 break;
             case TreePercolationAlgorithm::Tasks :
-                PercolateDown_Tasks( 0, thread_count );
+                #pragma omp parallel
+                {
+                    #pragma omp single
+                    {
+                        PercolateDown_Tasks( 0, thread_count );
+                    }
+                }
                 break;
             case TreePercolationAlgorithm::Sequential :
                 PercolateDown_Seq( 0 );
                 break;
                 
             default:
-                PercolateDown_Tasks( 0, thread_count );
+                #pragma omp parallel
+                {
+                    #pragma omp single
+                    {
+                        PercolateDown_Tasks( 0, thread_count );
+                    }
+                }
         }
     }; // PercolateUp
     
@@ -825,7 +852,7 @@ namespace rsurfaces
             mint chunk_size = CACHE_LINE_LENGHT * ( (cluster_count + thread_count * CACHE_LINE_LENGHT - 1)  / ( thread_count * CACHE_LINE_LENGHT ) );
             chunk_roots = A_Vector<A_Vector<mint>> ( thread_count );
             std::cout << "chunk_size = " << chunk_size << std::endl;
-            
+
             #pragma omp parallel for num_threads(thread_count) schedule( static, 1)
             for( mint thread = 0; thread < thread_count; ++thread )
             {
@@ -867,7 +894,6 @@ namespace rsurfaces
                 }
                 std::cout << std::endl;
             }
-            
             // prepare the tip matrices;
             
             chunks_prepared = true;

@@ -20,7 +20,7 @@ namespace rsurfaces
 
     void  mreal_free(mreal * ptr)
     {
-        if( ptr ){ mkl_free(ptr); }
+        if( ptr ){ mkl_free(ptr); ptr = nullptr; }
     }
 
     mint * mint_alloc(size_t size)
@@ -52,7 +52,7 @@ namespace rsurfaces
 
     void  mint_free(mint * ptr)
     {
-        if( ptr ){ mkl_free(ptr); }
+        if( ptr ){ mkl_free(ptr); ptr = nullptr; }
     }
 
     std::deque<std::chrono::time_point<std::chrono::steady_clock>> Timers::time_stack;
