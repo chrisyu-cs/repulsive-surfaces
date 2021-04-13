@@ -308,8 +308,6 @@ endfunction()
 find_mkl_library(NAME Core LIBRARY_NAME mkl_core SEARCH_STATIC)
 find_mkl_library(NAME RT LIBRARY_NAME mkl_rt)
 
-message("### MKL_THREAD_LAYER = ${MKL_THREAD_LAYER}")
-
 # MKL can link against Intel OpenMP, GNU OpenMP, TBB, and Sequential
 if(MKL_THREAD_LAYER STREQUAL "Intel OpenMP")
   find_mkl_library(NAME ThreadLayer LIBRARY_NAME mkl_intel_thread SEARCH_STATIC)

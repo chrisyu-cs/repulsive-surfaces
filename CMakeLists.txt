@@ -23,7 +23,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STR
   # using Clang (linux or apple) or GCC
   message("Using clang/gcc compiler flags")
   SET(BASE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Werror -Xpreprocessor -fopenmp ")
-  SET(DISABLED_WARNINGS " -Wno-unknown-warning-option -Wno-pass-failed -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-copy -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field -Wno-range-loop-analysis")
+  SET(DISABLED_WARNINGS " -Wno-unknown-warning-option -Wno-pass-failed -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-copy -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field -Wno-range-loop-analysis -Wno-macro-redefined")
   #SET(BASE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Xpreprocessor -fopenmp -gline-tables-only -gcolumn-info -Rpass=loop-vectorize")
   #SET(DISABLED_WARNINGS " -Wno-unknown-warning-option -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-copy -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field -Wno-range-loop-analysis")
   SET(TRACE_INCLUDES " -H -Wno-error=unused-command-line-argument")
@@ -152,15 +152,15 @@ find_package(OpenMP REQUIRED)
 
 
 find_package(TBB REQUIRED)
-message("TBB_INCLUDE_DIRS = ${TBB_INCLUDE_DIRS}")
-message("TBB_LIBRARY_DIRS = ${TBB_LIBRARY_DIRS}")
+#message("TBB_INCLUDE_DIRS = ${TBB_INCLUDE_DIRS}")
+#message("TBB_LIBRARY_DIRS = ${TBB_LIBRARY_DIRS}")
 include_directories(${TBB_INCLUDE_DIRS})
 
 #set(MKL_THREAD_LAYER "Intel OpenMP")
 set(MKL_THREAD_LAYER "TBB")
 find_package(MKL REQUIRED)
-message("MKL_INCLUDE_DIR = ${MKL_INCLUDE_DIR}")
-message("MKL_LIBRARY_DIR = ${MKL_LIBRARY_DIR}")
+#message("MKL_INCLUDE_DIR = ${MKL_INCLUDE_DIR}")
+#message("MKL_LIBRARY_DIR = ${MKL_LIBRARY_DIR}")
 
 include_directories(${MKL_INCLUDE_DIR})
 link_directories(${MKL_LIBRARY_DIR})
@@ -170,14 +170,17 @@ link_directories(${MKL_LIBRARY_DIR})
 find_library(BOOST_OPTS_LIB NAMES boost_program_options-mt boost_program_options)
 
 add_executable(rsurfaces "${SRCS}" "${SRCS1}")
+target_include_directories(rsurfaces PUBLIC "${TBB_INCLUDE_DIR}")
+target_include_directories(rsurfaces PUBLIC "${MKL_INCLUDE_DIR}")
 target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include")
-target_include_directories(rsurfaces PUBLIC "${MKL_INCLUDE_DIR}")
+
 target_link_libraries(rsurfaces PUBLIC geometry-central polyscope OpenMP::OpenMP_CXX MKL::Static)
 
 add_executable(runtest "${SRCS}" "${SRCS2}")
-target_include_directories(runtest PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
+target_include_directories(runtest PUBLIC "${TBB_INCLUDE_DIR}")
 target_include_directories(runtest PUBLIC "${MKL_INCLUDE_DIR}")
-target_link_libraries(runtest PUBLIC geometry-central OpenMP::OpenMP_CXX ${BOOST_OPTS_LIB} MKL::Static)
-
+target_include_directories(runtest PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 target_include_directories(runtest PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include")
+
+target_link_libraries(runtest PUBLIC geometry-central OpenMP::OpenMP_CXX ${BOOST_OPTS_LIB} MKL::Static)

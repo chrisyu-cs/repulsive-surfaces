@@ -9,6 +9,8 @@ namespace po = boost::program_options;
 
 #include <omp.h>
 #include <mkl.h>
+//#include <tbb/tbb.h>
+#include <tbb/task_scheduler_init.h>
 #include <memory>
 #include <Eigen/Core>
 

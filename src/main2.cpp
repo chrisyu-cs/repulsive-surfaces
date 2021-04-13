@@ -133,6 +133,8 @@ int main(int arg_count, char* arg_vec[])
     BM.geom1->requireVertexDualAreas();
     BM.geom1->requireVertexNormals();
     
+    tbb::task_scheduler_init::default_num_threads();
+    
     for( mint threads = 0; threads < BM.max_thread_count + 1; threads += BM.thread_step )
     {
         BM.thread_count = threads;
@@ -142,9 +144,10 @@ int main(int arg_count, char* arg_vec[])
 
         omp_set_num_threads(BM.thread_count);
         mkl_set_num_threads(BM.thread_count);
+        tbb::task_scheduler_init init (BM.thread_count);
         
         {
-            mint a , b, c, d;
+            mint a , b, c, d, e;
             #pragma omp parallel
             {
                 a = omp_get_num_threads();
@@ -152,12 +155,14 @@ int main(int arg_count, char* arg_vec[])
             }
             b = omp_get_num_threads();
             d = mkl_get_max_threads();
-
+            e = tbb::task_scheduler_init::default_num_threads();
             std::cout << "omp_get_num_threads() in omp parallal = " << a << std::endl;
             std::cout << "omp_get_num_threads() in omp parallal = " << b << std::endl;
 
             std::cout << "mkl_get_max_threads() = " << c << std::endl;
             std::cout << "mkl_get_max_threads() = " << d << std::endl;
+            
+            std::cout << "tbb::task_scheduler_init::default_num_threads() = " << e << std::endl;
         }
 
         
