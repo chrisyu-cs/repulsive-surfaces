@@ -135,12 +135,17 @@ int main(int arg_count, char* arg_vec[])
     
     for( mint threads = 0; threads < BM.max_thread_count + 1; threads += BM.thread_step )
     {
-        
         BM.thread_count = threads;
-        omp_set_num_threads(BM.thread_count);
         
         std::cout << std::endl;
         std::cout << "### threads =  " << BM.thread_count << std::endl;
+
+        omp_set_num_threads(BM.thread_count);
+        std::cout << "omp_get_num_threads() = " << omp_get_num_threads() << std::endl;
+        mkl_set_num_threads(BM.thread_count);
+        std::cout << "mkl_get_max_threads() = " << mkl_get_max_threads() << std::endl;
+        
+
         
         ClearProfile(BM.profile_path + "/" + BM.profile_name + "_" + std::to_string(BM.thread_count) + ".tsv");
         
