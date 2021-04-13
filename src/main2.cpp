@@ -141,10 +141,24 @@ int main(int arg_count, char* arg_vec[])
         std::cout << "### threads =  " << BM.thread_count << std::endl;
 
         omp_set_num_threads(BM.thread_count);
-        std::cout << "omp_get_num_threads() = " << omp_get_num_threads() << std::endl;
         mkl_set_num_threads(BM.thread_count);
-        std::cout << "mkl_get_max_threads() = " << mkl_get_max_threads() << std::endl;
         
+        {
+            mint a , b, c, d;
+            #pragma omp parallel
+            {
+                a = omp_get_num_threads();
+                c = mkl_get_max_threads();
+            }
+            b = omp_get_num_threads();
+            d = mkl_get_max_threads();
+
+            std::cout << "omp_get_num_threads() in omp parallal = " << a << std::endl;
+            std::cout << "omp_get_num_threads() in omp parallal = " << b << std::endl;
+
+            std::cout << "mkl_get_max_threads() = " << c << std::endl;
+            std::cout << "mkl_get_max_threads() = " << d << std::endl;
+        }
 
         
         ClearProfile(BM.profile_path + "/" + BM.profile_name + "_" + std::to_string(BM.thread_count) + ".tsv");
