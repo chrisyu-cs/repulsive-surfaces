@@ -51,6 +51,12 @@ public:
     void PrepareCSR();                                                                // Allocates nonzero values for matrix in CSR format.
     void PrepareCSR( mint b_m_, mint * b_row_ptr_, mint b_n_, mint * b_col_ptr_ );      // Allocates nonzero values  for blocked matrix (typically near field).
 
+    inline void ApplyKernel_CSR( mreal * values, mreal * T_input, mreal * S_output, mint cols, mreal factor = 1. )
+    {
+//        ApplyKernel_CSR_MKL( values, T_input, S_output, cols, factor );
+        ApplyKernel_CSR_Eigen( values, T_input, S_output, cols, factor );
+    }; // ApplyKernel_CSR
+
     void ApplyKernel_CSR_MKL  ( mreal * values, mreal * T_input, mreal * S_output, mint cols, mreal factor = 1. );
     void ApplyKernel_CSR_Eigen( mreal * values, mreal * T_input, mreal * S_output, mint cols, mreal factor = 1. );
     

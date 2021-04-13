@@ -841,13 +841,10 @@ namespace rsurfaces
         }
         // The factor of 2. in the last argument stems from the symmetry of the kernel
 
-        // TODO: In case of S != T, we have to replace each call with one call to ApplyKernel_CSR_MKL and one to (a yet to be written) ApplyKernelTranspose_CSR_MKL
+        // TODO: In case of S != T, we have to replace each call with one call to ApplyKernel_CSR and one to (a yet to be written) ApplyKernelTranspose_CSR
 
-        //    near->ApplyKernel_CSR_Eigen( near_values, T->P_in, S->P_out, cols, -2.0 * factor );
-        //     far->ApplyKernel_CSR_Eigen(  far_values, T->C_in, S->C_out, cols, -2.0 * factor );
-
-        near->ApplyKernel_CSR_MKL( near_values, T->P_in, S->P_out, cols, -2.0 * factor );
-         far->ApplyKernel_CSR_MKL(  far_values, T->C_in, S->C_out, cols, -2.0 * factor );
+        near->ApplyKernel_CSR( near_values, T->P_in, S->P_out, cols, -2.0 * factor );
+         far->ApplyKernel_CSR(  far_values, T->C_in, S->C_out, cols, -2.0 * factor );
 
         //     Adding product of diagonal matrix of "diags".
         if ( diag ){
@@ -885,7 +882,7 @@ namespace rsurfaces
             S->RequireBuffers(1);
             T->RequireBuffers(1);
 
-            //Sloppily: hi_diag = hi_ker * P_near[0], where hi_ker is the kernel implemented in ApplyKernel_CSR_MKL
+            //Sloppily: hi_diag = hi_ker * P_near[0], where hi_ker is the kernel implemented in ApplyKernel_CSR
 
             // Initialize the "diag" vector (weighted by the primitive weights)
             {
@@ -911,8 +908,8 @@ namespace rsurfaces
 
 
             // The factor of 2. in the last argument stems from the symmetry of the kernel
-            far->ApplyKernel_CSR_MKL(  far->fr_values, T->C_in, S->C_out, 1, 2. * fr_factor );
-           near->ApplyKernel_CSR_MKL( near->fr_values, T->P_in, S->P_out, 1, 2. * fr_factor );
+            far->ApplyKernel_CSR(  far->fr_values, T->C_in, S->C_out, 1, 2. * fr_factor );
+           near->ApplyKernel_CSR( near->fr_values, T->P_in, S->P_out, 1, 2. * fr_factor );
 
             S->PercolateDown();
             S->C_to_P.Multiply( S->C_out, S->P_out, 1, true);
@@ -933,8 +930,8 @@ namespace rsurfaces
             }
 
 
-            far->ApplyKernel_CSR_MKL(  far->hi_values, T->C_in, S->C_out, 1, 2. * hi_factor );
-           near->ApplyKernel_CSR_MKL( near->hi_values, T->P_in, S->P_out, 1, 2. * hi_factor );
+            far->ApplyKernel_CSR(  far->hi_values, T->C_in, S->C_out, 1, 2. * hi_factor );
+           near->ApplyKernel_CSR( near->hi_values, T->P_in, S->P_out, 1, 2. * hi_factor );
 
             S->PercolateDown();
             S->C_to_P.Multiply( S->C_out, S->P_out, 1, true);
@@ -945,8 +942,8 @@ namespace rsurfaces
                 hi_diag[i] =  ainv[i] * data[i];
             }
 
-            far->ApplyKernel_CSR_MKL(  far->lo_values, T->C_in, S->C_out, 1, 2. * lo_factor );
-           near->ApplyKernel_CSR_MKL( near->lo_values, T->P_in, S->P_out, 1, 2. * lo_factor );
+            far->ApplyKernel_CSR(  far->lo_values, T->C_in, S->C_out, 1, 2. * lo_factor );
+           near->ApplyKernel_CSR( near->lo_values, T->P_in, S->P_out, 1, 2. * lo_factor );
 
             S->PercolateDown();
             S->C_to_P.Multiply( S->C_out, S->P_out, 1, true);
