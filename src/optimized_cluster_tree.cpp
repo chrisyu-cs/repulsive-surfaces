@@ -844,7 +844,7 @@ namespace rsurfaces
                     }
                 }
         }
-        ptic("PercolateDown");
+        ptoc("PercolateDown");
     }; // PercolateUp
     
     void OptimizedClusterTree::PrepareChunks()
@@ -856,6 +856,7 @@ namespace rsurfaces
             mint chunk_size = CACHE_LINE_LENGHT * ( (cluster_count + thread_count * CACHE_LINE_LENGHT - 1)  / ( thread_count * CACHE_LINE_LENGHT ) );
             chunk_roots = A_Vector<A_Vector<mint>> ( thread_count );
             std::cout << "chunk_size = " << chunk_size << std::endl;
+            std::cout << "primitive_count = " << primitive_count << std::endl;
 
             #pragma omp parallel for num_threads(thread_count) schedule( static, 1)
             for( mint thread = 0; thread < thread_count; ++thread )

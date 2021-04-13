@@ -173,8 +173,8 @@ int main(int arg_count, char* arg_vec[])
             b = omp_get_num_threads();
             d = mkl_get_max_threads();
 //            e = tbb::task_scheduler_init::default_num_threads();
-            std::cout << "omp_get_num_threads() in omp parallal = " << a << std::endl;
-            std::cout << "omp_get_num_threads() in omp parallal = " << b << std::endl;
+            std::cout << "omp_get_num_threads() in omp parallel = " << a << std::endl;
+            std::cout << "omp_get_num_threads() in omp parallel = " << b << std::endl;
 
             std::cout << "mkl_get_max_threads() = " << c << std::endl;
             std::cout << "mkl_get_max_threads() = " << d << std::endl;
