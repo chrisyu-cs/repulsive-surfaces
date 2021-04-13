@@ -589,7 +589,7 @@ namespace rsurfaces
                                 mreal r6 = r4 * r2;
                                 mreal r8 = r4 * r4;
                                 
-                                // The following line makes up approx 2/3 of this function's runtime! This is whe we avoid pow as much as possible and replace it with mypow.
+                                // The following line makes up approx 2/3 of this function's runtime! This is why we avoid pow as much as possible and replace it with mypow.
                                 mreal hi = mypow(r2, hi_exponent); // I got it down to this single call to pow. We might want to generate a lookup table for it...
                                 
                                 hi_values[ptr] = 2.0 * hi; // The factor 2.0 might be suboptimal. That's what my Mathematica code uses (somwwhat accidentally) and it seems to work fine.
@@ -687,7 +687,7 @@ namespace rsurfaces
                                 mreal r6 = r4 * r2;
                                 mreal r8 = r4 * r4;
                                 
-                                // The following line makes up approx 2/3 of this function's runtime! This is whe we avoid pow as much as possible and replace it with mypow.
+                                // The following line makes up approx 2/3 of this function's runtime! This is why we avoid pow as much as possible and replace it with mypow.
                                 mreal hi = mypow(r2, hi_exponent); // I got it down to this single call to pow. We might want to generate a lookup table for it...
                                 
                                 hi_values[ptr] = 2.0 * hi; // The factor 2.0 might be suboptimal. That's what my Mathematica code uses (somwwhat accidentally) and it seems to work fine.
@@ -889,8 +889,8 @@ namespace rsurfaces
 
             // Initialize the "diag" vector (weighted by the primitive weights)
             {
-                mreal const  * restrict const a = T->P_near[0];
-                mreal * restrict const diag = T->P_in;
+                mreal * a = T->P_near[0];
+                mreal * diag = T->P_in;
                 mint m = T->primitive_count;
                 #pragma omp parallel for simd aligned( a, diag : ALIGN )
                 for( mint i = 0; i < m; ++i )
@@ -920,10 +920,10 @@ namespace rsurfaces
 
             // TODO: Explain the hack of dividing by S->P_near[0][i] here to a future self so that he won't change this later.
             
-            mreal * restrict ainv = mreal_alloc(S->primitive_count);
+            mreal * ainv = mreal_alloc(S->primitive_count);
             mint m = S->primitive_count;
-            mreal const * restrict const data = S->P_out;
-            mreal const * restrict const a = S->P_near[0];
+            mreal * data = S->P_out;
+            mreal * a = S->P_near[0];
             
             #pragma omp parallel for simd aligned( ainv, a, fr_diag, data : ALIGN)
             for( mint i = 0; i < m; ++i )

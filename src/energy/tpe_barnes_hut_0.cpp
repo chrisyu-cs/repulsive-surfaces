@@ -107,12 +107,17 @@ namespace rsurfaces
                     
                     mreal local_local_sum = 0.;
                     
+                    #pragma omp simd aligned (P_A, P_X1, P_X2, P_X3, P_N1, P_N2, P_N3: ALIGN ) reduction( + : local_local_sum)
                     for( mint i = i_begin; i < i_end; ++i )
                     {
                         mreal a  = P_A [i];
-                        mreal x1 = P_X1[i];   mreal n1 = P_N1[i];
-                        mreal x2 = P_X2[i];   mreal n2 = P_N2[i];
-                        mreal x3 = P_X3[i];   mreal n3 = P_N3[i];
+                        mreal x1 = P_X1[i];
+                        mreal x2 = P_X2[i];
+                        mreal x3 = P_X3[i];
+                        
+                        mreal n1 = P_N1[i];
+                        mreal n2 = P_N2[i];
+                        mreal n3 = P_N3[i];
                         
                         mreal v1 = y1 - x1;
                         mreal v2 = y2 - x2;
@@ -122,6 +127,7 @@ namespace rsurfaces
                         mreal r2 = v1 * v1 + v2 * v2 + v3 * v3 ;
                         local_local_sum += a * mypow( fabs(rCosPhi), alpha ) * mypow( r2, minus_betahalf );
                     }
+                    
                     local_sum += local_local_sum  * b;
                     
                 }
@@ -140,16 +146,19 @@ namespace rsurfaces
                         mint j_begin = C_begin[C];
                         mint j_end   = C_end[C];
 
+//                        #pragma omp simd aligned( P_A, P_X1, P_X2, P_X3 : ALIGN ) collapse(2)
                         for( mint i = i_begin; i < i_end; ++i )
                         {
                             mreal a  = P_A [i];
-                            mreal x1 = P_X1[i];   mreal n1 = P_N1[i];
-                            mreal x2 = P_X2[i];   mreal n2 = P_N2[i];
-                            mreal x3 = P_X3[i];   mreal n3 = P_N3[i];
+                            mreal x1 = P_X1[i];
+                            mreal x2 = P_X2[i];
+                            mreal x3 = P_X3[i];
+                            mreal n1 = P_N1[i];
+                            mreal n2 = P_N2[i];
+                            mreal n3 = P_N3[i];
                             
                             mreal local_local_sum = 0.;
                             
-    //                        #pragma omp simd aligned( P_A, P_X1, P_X3 : ALIGN )
                             for( mint j = j_begin; j < j_end; ++j )
                             {
                                 if ( i != j )
