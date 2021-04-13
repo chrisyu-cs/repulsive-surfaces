@@ -69,7 +69,8 @@ find_package(OpenMP QUIET)
 check_type_size("int" INT_SIZE
   BUILTIN_TYPES_ONLY LANGUAGE C)
 
-#Henrik: I included the if-condition because I want to have upstream control over MKL_THREAD_LAYER.    
+
+#Henrik: I included the if-condition because I want to have upstream control over MKL_THREAD_LAYER.
 if(NOT MKL_THREAD_LAYER)
     set(MKL_THREAD_LAYER "TBB" CACHE STRING "The thread layer to choose for MKL")
 elseif()
