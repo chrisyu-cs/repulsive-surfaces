@@ -183,4 +183,8 @@ target_include_directories(runtest PUBLIC "${MKL_INCLUDE_DIR}")
 target_include_directories(runtest PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 target_include_directories(runtest PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include")
 
+message("TBB_LIBRARIES = ${TBB_LIBRARIES}")
+
+target_link_libraries(runtest PUBLIC -ltbb)
 target_link_libraries(runtest PUBLIC geometry-central OpenMP::OpenMP_CXX ${BOOST_OPTS_LIB} MKL::Static)
+
