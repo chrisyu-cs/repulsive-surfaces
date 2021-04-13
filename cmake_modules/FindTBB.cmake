@@ -41,6 +41,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# Adapted by Henrik Schumacher henrik.schumacher _at_ mathematik.tu-chemnitz.de
+
 INCLUDE (FindPackageHandleStandardArgs)
 
 IF (CMAKE_VERSION VERSION_GREATER 2.8.7)
@@ -49,6 +51,8 @@ ELSE (CMAKE_VERSION VERSION_GREATER 2.8.7)
   SET (_TBB_CHECK_COMPONENTS TRUE)
 ENDIF (CMAKE_VERSION VERSION_GREATER 2.8.7)
 
+
+#Henrik : I added a couple of default installation directories here.
 FIND_PATH (TBB_ROOT_DIR
   NAMES include/tbb/tbb.h
   PATHS ENV TBBROOT
@@ -57,6 +61,8 @@ FIND_PATH (TBB_ROOT_DIR
         ENV TBB22_INSTALL_DIR
         ENV TBB21_INSTALL_DIR
         ENV TBB_ROOT_DIR
+        /opt/intel/oneapi/tbb/latest/include
+        /opt/intel/tbb
   DOC "TBB root directory")
 
 FIND_PATH (TBB_INCLUDE_DIR
