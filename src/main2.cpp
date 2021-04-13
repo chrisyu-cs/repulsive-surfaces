@@ -137,7 +137,21 @@ int main(int arg_count, char* arg_vec[])
     
     for( mint threads = 0; threads < BM.max_thread_count + 1; threads += BM.thread_step )
     {
-        BM.thread_count = threads;
+        // 0 is the new 1. (Want to have steps, but also  a single-threaded run.
+        if( threads == 1)
+        {
+            break;
+        }
+        if( threads == 0)
+        {
+            BM.thread_count = 1
+        }
+        else
+        {
+            BM.thread_count = threads;
+        }
+        
+        
         
         std::cout << std::endl;
         std::cout << "### threads =  " << BM.thread_count << std::endl;
