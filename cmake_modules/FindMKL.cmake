@@ -77,7 +77,7 @@ elseif()
     set(MKL_THREAD_LAYER "${MKL_THREAD_LAYER}" CACHE STRING "The thread layer to choose for MKL")
 endif()
 
-set_property(CACHE MKL_THREAD_LAYER PROPERTY STRINGS "TBB" "GNU OpenMP" "Intel OpenMP" "Sequential")
+#set_property(CACHE MKL_THREAD_LAYER PROPERTY STRINGS "TBB" "GNU OpenMP" "Intel OpenMP" "Sequential")
 
 message(STATUS "MKL: Thread Layer(${MKL_THREAD_LAYER}) Interface(${INT_SIZE}-byte Integer)")
 
