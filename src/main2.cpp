@@ -14,7 +14,7 @@ int main(int arg_count, char* arg_vec[])
     
 #pragma omp parallel
     {
-        BM.thread_count = BM.max_thread_count = omp_get_num_threads()/2;
+        BM.thread_count = BM.max_thread_count = omp_get_num_threads();
     }
     
     
@@ -144,7 +144,7 @@ int main(int arg_count, char* arg_vec[])
         }
         if( threads == 0)
         {
-            BM.thread_count = 1
+            BM.thread_count = 1;
         }
         else
         {
