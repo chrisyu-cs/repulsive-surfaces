@@ -69,7 +69,13 @@ find_package(OpenMP QUIET)
 check_type_size("int" INT_SIZE
   BUILTIN_TYPES_ONLY LANGUAGE C)
 
-set(MKL_THREAD_LAYER "TBB" CACHE STRING "The thread layer to choose for MKL")
+#Henrik: I included the if-condition because I want to have upstream control over MKL_THREAD_LAYER.    
+if(NOT MKL_THREAD_LAYER)
+    set(MKL_THREAD_LAYER "TBB" CACHE STRING "The thread layer to choose for MKL")
+elseif()
+    set(MKL_THREAD_LAYER "${MKL_THREAD_LAYER}" CACHE STRING "The thread layer to choose for MKL")
+endif()
+
 set_property(CACHE MKL_THREAD_LAYER PROPERTY STRINGS "TBB" "GNU OpenMP" "Intel OpenMP" "Sequential")
 
 message(STATUS "MKL: Thread Layer(${MKL_THREAD_LAYER}) Interface(${INT_SIZE}-byte Integer)")
@@ -85,6 +91,7 @@ if(NOT MKL_THREAD_LAYER STREQUAL MKL_THREAD_LAYER_LAST)
   unset(MKL_ThreadingLibrary_DLL_LIBRARY CACHE)
   set(MKL_THREAD_LAYER_LAST ${MKL_THREAD_LAYER} CACHE INTERNAL "" FORCE)
 endif()
+
 
 find_path(MKL_INCLUDE_DIR
   NAMES
