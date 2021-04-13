@@ -157,6 +157,12 @@ message("MKL_LIBRARY_DIR = ${MKL_LIBRARY_DIR}")
 include_directories(${MKL_INCLUDE_DIR})
 link_directories(${MKL_LIBRARY_DIR})
 
+find_package(TBB REQUIRED)
+
+message("TBB_INCLUDE_DIRS = ${TBB_INCLUDE_DIRS}")
+message("TBB_LIBRARY_DIRS = ${TBB_LIBRARY_DIRS}")
+include_directories(${TBB_INCLUDE_DIRS})
+
 find_library(BOOST_OPTS_LIB NAMES boost_program_options-mt boost_program_options)
 
 add_executable(rsurfaces "${SRCS}" "${SRCS1}")
