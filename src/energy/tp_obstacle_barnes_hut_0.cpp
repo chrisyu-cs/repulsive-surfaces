@@ -941,9 +941,9 @@ namespace rsurfaces
         
         EigenMatrixRM P_D_near_( bvh->primitive_count, bvh->near_dim );
         EigenMatrixRM P_D_far_ ( bvh->primitive_count, bvh->far_dim );
-        print("G.5.1");
+
         bvh->CleanseD();
-        print("G.5.2");
+
         if( use_int )
         {
             mint int_alpha = std::round(alpha);
@@ -957,11 +957,11 @@ namespace rsurfaces
             mreal real_betahalf = beta/2;
             DEnergy( real_alpha, real_betahalf );
         }
-        print("G.5.3");
+
         bvh->CollectDerivatives( P_D_near_.data(), P_D_far_.data() );
-        print("G.5.4");
+
         AssembleDerivativeFromACNData( mesh, geom, P_D_near_, output, weight );
-        print("G.5.5");
+
         if( bvh->far_dim == 10)
         {
             AssembleDerivativeFromACPData( mesh, geom, P_D_far_, output, weight );
@@ -970,7 +970,7 @@ namespace rsurfaces
         {
             AssembleDerivativeFromACNData( mesh, geom, P_D_far_, output, weight );
         }
-        print("G.5.6");
+        
         ptoc("TPObstacleBarnesHut0::Differential");
         
     } // Differential
