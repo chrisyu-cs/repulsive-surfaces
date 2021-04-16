@@ -72,20 +72,22 @@ namespace rsurfaces
             //        OptimizedClusterTree *bvh1 = CreateOptimizedBVH(mesh1, geom1);
             ptic("Energy");
 
+            print("G.1");
             auto tpe_bh_11 = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
-
+            print("G.2");
             tpe_bh_11->GetBVH()->tree_perc_alg = tree_perc_alg;
-
+            print("G.3");
 //            if( iter < 0)
 //            {
 //                tpe_bh_11->GetBVH()->PrintToFile();
 //            }
-
+            print("G.4");
             E_11 = tpe_bh_11->Value();
             DE_11.setZero();
+            print("G.5");
             tpe_bh_11->Differential(DE_11);
             ptoc("Energy");
-            
+            print("G.6");
             ptic("Multiply");
             auto bct11 = std::make_shared<OptimizedBlockClusterTree>(tpe_bh_11->GetBVH(), tpe_bh_11->GetBVH(), alpha, beta, chi);
             for( mint k = 0; k < 20; ++k)
@@ -102,6 +104,7 @@ namespace rsurfaces
                 bct11->Multiply(V,U,BCTKernelType::LowOrder);
                 ptoc("Multiply LowOrder");
             }
+            print("G.7");
             ptoc("Multiply");
         }
         
