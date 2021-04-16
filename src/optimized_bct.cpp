@@ -877,7 +877,7 @@ namespace rsurfaces
 
             // TODO: Explain the hack of dividing by S->P_near[0][i] here to a future self so that he won't change this later.
             
-            mreal * ainv;
+            mreal * ainv = nullptr;
             safe_alloc( ainv, S->primitive_count );
             mint m = S->primitive_count;
             mreal * data = S->P_out;
