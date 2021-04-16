@@ -472,12 +472,12 @@ namespace rsurfaces
             eprint("in TPEnergyBarnesHut0::Differential: near_dim != 7");
             valprint("bvh->near_dim",bvh->near_dim);
         }
-        print("G.5.2");
+
         EigenMatrixRM P_D_near( bvh->primitive_count, bvh->near_dim );
         EigenMatrixRM P_D_far ( bvh->primitive_count, bvh->far_dim );
-        print("G.5.3");
+
         bvh->CleanseD();
-        print("G.5.4");
+
         if( use_int )
         {
             mint int_alpha = std::round(alpha);
@@ -491,11 +491,11 @@ namespace rsurfaces
             mreal real_betahalf = beta/2;
             DEnergy( real_alpha, real_betahalf );
         }
-        print("G.5.5");
+
         bvh->CollectDerivatives( P_D_near.data(), P_D_far.data() );
-        print("G.5.6");
+
         AssembleDerivativeFromACNData( mesh, geom, P_D_near, output, weight );
-        print("G.5.7");
+
         if( bvh->far_dim == 10)
         {
             AssembleDerivativeFromACPData( mesh, geom, P_D_far, output, weight );
