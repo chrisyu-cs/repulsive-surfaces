@@ -862,9 +862,9 @@ namespace rsurfaces
             T->PercolateUp();
     //        toc("T->PercolateUp");
 
-            mreal_safe_alloc( fr_diag, S->primitive_count );
-            mreal_safe_alloc( hi_diag, S->primitive_count );
-            mreal_safe_alloc( lo_diag, S->primitive_count );
+            safe_alloc( fr_diag, S->primitive_count );
+            safe_alloc( hi_diag, S->primitive_count );
+            safe_alloc( lo_diag, S->primitive_count );
 
             
             // The factor of 2. in the last argument stems from the symmetry of the kernel
@@ -877,7 +877,8 @@ namespace rsurfaces
 
             // TODO: Explain the hack of dividing by S->P_near[0][i] here to a future self so that he won't change this later.
             
-            mreal * ainv = mreal_alloc(S->primitive_count);
+            mreal * ainv;
+            safe_alloc( ainv, S->primitive_count );
             mint m = S->primitive_count;
             mreal * data = S->P_out;
             mreal * a = S->P_near[0];
@@ -914,7 +915,7 @@ namespace rsurfaces
                 lo_diag[i] =  ainv[i] * data[i];
             }
             
-            mreal_free(ainv);
+            safe_free(ainv);
         }
         ptoc("OptimizedBlockClusterTree::ComputeDiagonals");
     }; // ComputeDiagonals

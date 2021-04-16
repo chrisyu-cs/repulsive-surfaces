@@ -48,15 +48,15 @@ namespace rsurfaces
                 {
                     #pragma omp task
                     {
-                        mreal_free(hi_diag);
+                        safe_free(hi_diag);
                     }
                     #pragma omp task
                     {
-                        mreal_free(lo_diag);
+                        safe_free(lo_diag);
                     }
                     #pragma omp task
                     {
-                        mreal_free(fr_diag);
+                        safe_free(fr_diag);
                     }
                     #pragma omp taskwait
                 }

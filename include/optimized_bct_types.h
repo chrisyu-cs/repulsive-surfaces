@@ -142,81 +142,33 @@ namespace rsurfaces
     
 // double allocation helpers
     
-    
-    inline int mreal_free( mreal * &  ptr )
+    template <typename T>
+    inline int safe_free( T * &  ptr )
     {
         int wasallocated = (ptr != nullptr);
         if( wasallocated ){ mkl_free(ptr); ptr = nullptr; }
         return !wasallocated;
     }
     
-    inline int mreal_safe_alloc(mreal * &  ptr, size_t size)
+    template <typename T>
+    inline int safe_alloc(T * &  ptr, size_t size)
     {
         int wasallocated = (ptr != nullptr);
         if( wasallocated )
         {
 #ifdef SAFE_ALLOCATE_WARNINGS
-            wprint("mreal_safe_alloc: Pointer was not NULL. Calling mreal_free to prevent memory leak.");
+            wprint("safe_alloc: Pointer was not NULL. Calling safe_free to prevent memory leak.");
 #endif
-            mreal_free(ptr);
+            safe_free(ptr);
         }
-        ptr = (mreal *) mkl_malloc ( size * sizeof(mreal), ALIGN );
+        ptr = (T *) mkl_malloc ( size * sizeof(T), ALIGN );
         return wasallocated;
     }
 
-    inline int mreal_safe_alloc( mreal* &  ptr, size_t size, mreal init)
+    template <typename T>
+    inline int safe_alloc( T * &  ptr, size_t size, T init)
     {
-        int wasallocated = mreal_safe_alloc(ptr, size);
-        #pragma omp simd aligned( ptr : ALIGN )
-        for( size_t i = 0; i < size; ++i )
-        {
-            ptr[i] = init;
-        }
-        return wasallocated;
-    }
-
-    inline mreal * mreal_alloc(size_t size)
-    {
-        return (mreal *) mkl_malloc ( size * sizeof(mreal), ALIGN );
-    }
-    
-    inline mreal * mreal_alloc(size_t size, mreal init)
-    {
-        mreal * ptr = mreal_alloc(size);
-        #pragma omp simd aligned( ptr : ALIGN )
-        for( size_t i = 0; i < size; ++i )
-        {
-            ptr[i] = init;
-        }
-        return ptr;
-    }
-    
-// integer allocation helpers
-    
-    inline int mint_free( mint * & ptr )
-    {
-        int wasallocated = (ptr != nullptr);
-        if( wasallocated ){ mkl_free(ptr); ptr = nullptr; }
-        return !wasallocated;
-    }
-    
-    inline int mint_safe_alloc( mint * & ptr, size_t size )
-    {
-        int wasallocated = (ptr != nullptr);
-        if( wasallocated )
-        {
-#ifdef SAFE_ALLOCATE_WARNINGS
-            wprint("mint_safe_alloc: Pointer was not NULL. Calling mint_free to prevent memory leak.");
-#endif
-            mint_free(ptr);
-        }
-        ptr = (mint *) mkl_malloc ( size * sizeof(mint), ALIGN );
-        return wasallocated;
-    }
-
-    inline int mint_safe_alloc( mint * & ptr, size_t size, mint init)
-    {
-        int wasallocated = mint_safe_alloc(ptr, size);
+        int wasallocated = safe_alloc(ptr, size);
         #pragma omp simd aligned( ptr : ALIGN )
         for( size_t i = 0; i < size; ++i )
         {
@@ -225,10 +177,10 @@ namespace rsurfaces
         return wasallocated;
     }
     
-    
-    inline int mint_safe_iota(mint * & ptr, size_t size, mint step = 1)
+    template <typename T>
+    inline int safe_iota(T * & ptr, size_t size, T step = static_cast<T>(1) )
     {
-        int wasallocated = mint_safe_alloc(ptr, size);
+        int wasallocated = safe_alloc(ptr, size);
         #pragma omp simd aligned( ptr : ALIGN )
         for( size_t i = 0; i < size; i+=step )
         {
@@ -237,52 +189,11 @@ namespace rsurfaces
         return wasallocated;
     }
     
-    inline mint * mint_alloc(size_t size)
-    {
-        return (mint * ) mkl_malloc ( size * sizeof(mint), size );
-    }
-
-    inline mint * mint_alloc(size_t size, mint init)
-    {
-        mint * ptr = mint_alloc(size);
-        #pragma omp simd aligned( ptr : ALIGN )
-        for( size_t i = 0; i < size; ++i )
-        {
-            ptr[i] = init;
-        }
-        return ptr;
-    }
-    
-    inline mint * mint_iota(size_t size, mint step = 1)
-    {
-        mint * ptr = mint_alloc(size);
-        #pragma omp simd aligned( ptr : ALIGN )
-        for( size_t i = 0; i < size; i+=step )
-        {
-            ptr[i] = i;
-        }
-        return ptr;
-    }
-
-    inline void mint_accumulate( mint * begin, mint * end)
+    template <typename T>
+    inline void partial_sum( T * begin, T * end)
     {
         std::partial_sum( begin, end, begin );
     }
-
-    
-    
-//    void mint_accumulate( mint * begin, mint * end);
-//    {
-//        if( end > begin)
-//        {
-//            for( mint * ptr = begin; ptr < end-1; ++ptr )
-//            {
-//                *(ptr+1) += * ptr;
-//            }
-//        }
-//    }
-    
-
 
 
     typedef Eigen::SparseMatrix<mreal, Eigen::RowMajor, mint> EigenMatrixCSR;
@@ -319,8 +230,8 @@ namespace rsurfaces
         PardisoData(){};
     
         ~PardisoData(){
-            mint_free(perm);
-            mint_free(iparm);
+            safe_free(perm);
+            safe_free(iparm);
         };
         
         // Copy constructor
@@ -334,7 +245,7 @@ namespace rsurfaces
             if( P.perm )
             {
                 const mint * const restrict ptr = P.perm;
-                perm = mint_alloc(n);
+                safe_alloc( perm, n );
                 #pragma omp simd aligned( perm, ptr : ALIGN)
                 for( mint i = 0; i < n; ++i )
                 {
@@ -344,7 +255,7 @@ namespace rsurfaces
             if( P.iparm )
             {
                 const mint * const restrict ptr = P.iparm;
-                iparm = mint_alloc(64);
+                safe_alloc( iparm, 64);
                 #pragma omp simd aligned( iparm, ptr : ALIGN)
                 for( mint i = 0; i < 64; ++i )
                 {
@@ -409,9 +320,9 @@ namespace rsurfaces
             nnz = nnz_;
             P.n = n;
         
-            outer  =  mint_alloc( m + 1 );
-            inner  =  mint_alloc( nnz );
-            values = mreal_alloc( nnz );
+            safe_alloc( outer, m + 1 );
+            safe_alloc( inner, nnz );
+            safe_alloc( values, nnz );
             outer[0] = 0;
             outer[m_] = nnz;
         
@@ -428,9 +339,9 @@ namespace rsurfaces
             nnz = outer_[m];
             P.n = n;
             
-            outer  =  mint_alloc( m + 1 );
-            inner  =  mint_alloc( nnz );
-            values = mreal_alloc( nnz );
+            safe_alloc( outer, m + 1 );
+            safe_alloc( inner, nnz );
+            safe_alloc( values, nnz );
         
             #pragma omp simd aligned( outer : ALIGN )
             for( mint i = 0; i < m+1; ++i)
@@ -467,9 +378,9 @@ namespace rsurfaces
                 eprint("in MKLSparseMatrix: outer_B[0] != 0.");
             }
         
-            outer  =  mint_alloc( m + 1 );
-            inner  =  mint_alloc( nnz );
-            values = mreal_alloc( nnz );
+            safe_alloc( outer, m + 1 );
+            safe_alloc( inner, nnz );
+            safe_alloc( values, nnz );
         
             outer[0] = 0;
         
@@ -507,9 +418,9 @@ namespace rsurfaces
                 eprint("in MKLSparseMatrix &operator=(MKLSparseMatrix const &B): B.outer[0] != 0.");
             }
             
-            outer  =  mint_alloc( m + 1 );
-            inner  =  mint_alloc( nnz );
-            values = mreal_alloc( nnz );
+            safe_alloc( outer, m + 1 );
+            safe_alloc( inner, nnz );
+            safe_alloc( values, nnz );
             
             #pragma omp simd aligned( outer : ALIGN )
             for( mint i = 0; i <= m; ++i)
@@ -574,9 +485,9 @@ namespace rsurfaces
                 pardiso (P.pt.data(), &maxfct, &mnum, &P.mtype, &phase, &n, values, outer, inner, P.perm, &nrhs, P.iparm, &msglvl, &ddum, &ddum, &error);
             }
             
-            mint_free( outer );
-            mint_free( inner );
-            mreal_free( values );
+            safe_free( outer );
+            safe_free( inner );
+            safe_free( values );
         };
         
         
@@ -869,8 +780,8 @@ namespace rsurfaces
             else
             {
                 P.pt = A_Vector<void*>(64);
-                P.iparm = mint_alloc(64);
-                P.perm = mint_alloc(m);
+                safe_alloc( P.iparm, 64 );
+                safe_alloc( P.perm , m);
                 
                 for ( mint i = 0; i < m; ++i )
                 {

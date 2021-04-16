@@ -37,12 +37,12 @@ namespace rsurfaces
             {
                 #pragma omp task
                 {
-                    mint_safe_alloc( b_outer, 1 + b_m );
+                    safe_alloc( b_outer, 1 + b_m );
                     b_outer[0] = 0;
                 }
                 #pragma omp task
                 {
-                    mint_safe_alloc( b_inner, b_nnz );
+                    safe_alloc( b_inner, b_nnz );
                 }
                 #pragma omp task
                 {
@@ -111,15 +111,15 @@ namespace rsurfaces
             {
                 #pragma omp task
                 {
-                    mreal_safe_alloc( hi_values, nnz );
+                    safe_alloc( hi_values, nnz );
                 }
                 #pragma omp task
                 {
-                    mreal_safe_alloc( lo_values, nnz );
+                    safe_alloc( lo_values, nnz );
                 }
                 #pragma omp task
                 {
-                    mreal_safe_alloc( fr_values, nnz );
+                    safe_alloc( fr_values, nnz );
                 }
                 #pragma omp taskwait
             }
@@ -142,9 +142,9 @@ namespace rsurfaces
         m = b_row_ptr_[b_m];
         n = b_col_ptr_[b_n];
 
-        mint_safe_alloc( outer, m + 1 );
+        safe_alloc( outer, m + 1 );
         outer[0] = 0;
-        mint_safe_alloc( b_row_counters, b_m );
+        safe_alloc( b_row_counters, b_m );
         
         // TODO: b_row_counters is needed only for computing block_ptr, which is only required for VBSR format (which we do not implement here).
         // TODO: Anyways, I leave it as uncommented code for potential later use.
@@ -169,14 +169,8 @@ namespace rsurfaces
                 outer[k+1] = b_row_counter;
             }
         }
-        
-        // Now outer[k+1] contains the number of entries in k-th row. Accumulating to get the true row pointers.
-//        for( mint k = 0; k < m; ++k )
-//        {
-//            outer[k+1] += outer[k];
-//        }
 
-        mint_accumulate( outer, outer + m + 1);
+        partial_sum( outer, outer + m + 1);
         
         nnz = outer[m];
         
@@ -187,7 +181,7 @@ namespace rsurfaces
             {
                 #pragma omp task
                 {
-                    mint_safe_alloc( b_row_ptr, b_m + 1 );
+                    safe_alloc( b_row_ptr, b_m + 1 );
                     #pragma omp simd
                     for( mint i = 0; i < b_m + 1; ++i )
                     {
@@ -196,7 +190,7 @@ namespace rsurfaces
                 }
                 #pragma omp task
                 {
-                    mint_safe_alloc( b_col_ptr, b_n + 1 );
+                    safe_alloc( b_col_ptr, b_n + 1 );
                     #pragma omp simd
                     for( mint i = 0; i < b_n + 1; ++i )
                     {
@@ -205,19 +199,19 @@ namespace rsurfaces
                 }
                 #pragma omp task
                 {
-                    mint_safe_alloc ( inner, nnz );
+                    safe_alloc( inner, nnz );
                 }
                 #pragma omp task
                 {
-                    mreal_safe_alloc( hi_values, nnz );
+                    safe_alloc( hi_values, nnz );
                 }
                 #pragma omp task
                 {
-                    mreal_safe_alloc( lo_values, nnz );
+                    safe_alloc( lo_values, nnz );
                 }
                 #pragma omp task
                 {
-                    mreal_safe_alloc( fr_values,nnz );
+                    safe_alloc( fr_values,nnz );
                 }
                 #pragma omp taskwait
             }
@@ -256,7 +250,7 @@ namespace rsurfaces
             }
         }
 
-        mint_safe_alloc( block_ptr, b_nnz );
+        safe_alloc( block_ptr, b_nnz );
         block_ptr[0] = 0;
         
         auto entries_before_block_row = A_Vector<mint>( b_m + 1 );
@@ -276,7 +270,7 @@ namespace rsurfaces
 //            entries_before_block_row[b_i+1] += entries_before_block_row[b_i];
 //        }
         
-        mint_accumulate( &entries_before_block_row[0], &entries_before_block_row[0] +b_m + 1);
+        partial_sum( &entries_before_block_row[0], &entries_before_block_row[0] +b_m + 1);
         
         #pragma omp parallel for num_threads(thread_count)
         for( mint b_i = 0; b_i < b_m; ++b_i )
@@ -298,14 +292,14 @@ namespace rsurfaces
         
         // distribute workload
         mint * b_row_acc_costs = nullptr;
-        mint_safe_alloc( b_row_acc_costs, b_m);
+        safe_alloc( b_row_acc_costs, b_m);
         b_row_acc_costs[0] = 0;
         #pragma omp parallel for simd num_threads(thread_count) aligned( b_row_acc_costs, b_row_counters, b_row_ptr : ALIGN )
         for( mint b_i = 0; b_i < b_m; ++b_i)
         {
             b_row_acc_costs[b_i+1] = b_row_counters[b_i] * (b_row_ptr[b_i + 1] - b_row_ptr[b_i]);
         }
-        mint_accumulate( b_row_acc_costs, b_row_acc_costs + b_m + 1 );
+        partial_sum( b_row_acc_costs, b_row_acc_costs + b_m + 1 );
         
         BalanceWorkLoad( b_m, b_row_acc_costs, thread_count, job_ptr);
         
@@ -322,7 +316,7 @@ namespace rsurfaces
         m = b_row_ptr_[b_m];
         n = b_col_ptr_[b_n];
 
-        mint_safe_alloc( b_row_counters, b_m );
+        safe_alloc( b_row_counters, b_m );
         
         // TODO: b_row_counters is needed only for computing block_ptr, which is only required for VBSR format (which we do not implement here).
         // TODO: Anyways, I leave it as uncommented code for potential later use.
@@ -349,7 +343,7 @@ namespace rsurfaces
             {
                 #pragma omp task
                 {
-                    mint_safe_alloc( b_row_ptr, b_m + 1 );
+                    safe_alloc( b_row_ptr, b_m + 1 );
                     #pragma omp simd
                     for( mint i = 0; i < b_m + 1; ++i )
                     {
@@ -358,7 +352,7 @@ namespace rsurfaces
                 }
                 #pragma omp task
                 {
-                    mint_safe_alloc( b_col_ptr, b_n + 1 );
+                    safe_alloc( b_col_ptr, b_n + 1 );
                     #pragma omp simd
                     for( mint i = 0; i < b_n + 1; ++i )
                     {
@@ -367,19 +361,19 @@ namespace rsurfaces
                 }
                 #pragma omp task
                 {
-                    mint_safe_alloc ( inner, nnz );
+                    safe_alloc ( inner, nnz );
                 }
                 #pragma omp task
                 {
-                    mreal_safe_alloc( hi_values, nnz );
+                    safe_alloc( hi_values, nnz );
                 }
                 #pragma omp task
                 {
-                    mreal_safe_alloc( lo_values, nnz );
+                    safe_alloc( lo_values, nnz );
                 }
                 #pragma omp task
                 {
-                    mreal_safe_alloc( fr_values,nnz );
+                    safe_alloc( fr_values,nnz );
                 }
                 #pragma omp taskwait
             }
@@ -418,7 +412,7 @@ namespace rsurfaces
             }
         }
         
-        mint_safe_alloc( block_ptr, b_nnz );
+        safe_alloc( block_ptr, b_nnz );
         block_ptr[0] = 0;
         
         auto entries_before_block_row = A_Vector<mint>( b_m + 1 );
@@ -433,7 +427,7 @@ namespace rsurfaces
             entries_before_block_row[b_i+1] = mi * b_row_counters[ b_i ];
         }
         
-        mint_accumulate( &entries_before_block_row[0], &entries_before_block_row[0] +b_m + 1);
+        partial_sum( &entries_before_block_row[0], &entries_before_block_row[0] +b_m + 1);
         
         #pragma omp parallel for num_threads(thread_count) RAGGED_SCHEDULE
         for( mint b_i = 0; b_i < b_m; ++b_i )
@@ -455,18 +449,18 @@ namespace rsurfaces
         
         // distribute workload
         mint * b_row_acc_costs = nullptr;
-        mint_safe_alloc( b_row_acc_costs, b_m);
+        safe_alloc( b_row_acc_costs, b_m);
         b_row_acc_costs[0] = 0;
         #pragma omp parallel for simd num_threads(thread_count) aligned( b_row_acc_costs, b_row_counters, b_row_ptr : ALIGN )
         for( mint b_i = 0; b_i < b_m; ++b_i)
         {
             b_row_acc_costs[b_i+1] = b_row_counters[b_i] * (b_row_ptr[b_i + 1] - b_row_ptr[b_i]);
         }
-        mint_accumulate( b_row_acc_costs, b_row_acc_costs + b_m + 1 );
+        partial_sum( b_row_acc_costs, b_row_acc_costs + b_m + 1 );
         
         BalanceWorkLoad( b_m, b_row_acc_costs, thread_count, job_ptr);
         
-        mint_free(b_row_acc_costs);
+        safe_free(b_row_acc_costs);
         ptoc("InteractionData::Prepare_VBSR( mint b_m_, mint * b_row_ptr_, mint b_n_, mint * b_col_ptr_ )");
     }
     

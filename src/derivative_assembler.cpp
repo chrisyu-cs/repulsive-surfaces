@@ -86,10 +86,14 @@ namespace rsurfaces
         mint primitive_count = primitives.rows();
         mint primitive_length = primitives.cols();
 
-        mint * outer = mint_iota( primitive_count * primitive_length + 1 );
-        mint * inner = mint_alloc( primitive_count * primitive_length );
-        mreal * values = mreal_alloc( primitive_count * primitive_length, weight );
+        mint * outer;
+        mint * inner;
+        mreal * values;
 
+        safe_iota( outer, primitive_count * primitive_length + 1 );
+        safe_alloc( inner, primitive_count * primitive_length );
+        safe_alloc( values, primitive_count * primitive_length, weight );
+        
         #pragma omp parallel for simd aligned( outer, inner, values : ALIGN)
         for( mint i = 0; i < primitive_count; ++i )
         {
@@ -104,9 +108,9 @@ namespace rsurfaces
 
         output += A * buffer;
 
-        mint_free(outer);
-        mint_free(inner);
-        mreal_free(values);
+        safe_free(outer);
+        safe_free(inner);
+        safe_free(values);
         
         ptoc("AssembleDerivative");
     }

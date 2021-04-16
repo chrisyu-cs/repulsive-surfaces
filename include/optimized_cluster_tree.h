@@ -153,7 +153,7 @@ namespace rsurfaces
 //                    {
 //                        for( mint k = 0; k < moment_count; ++ k )
 //                        {
-//                            mreal_free(P_moments[k]);
+//                            safe_free(P_moments[k]);
 //                        }
 //                    }
 //
@@ -161,7 +161,7 @@ namespace rsurfaces
 //                    {
 //                        for( mint k = 0; k < moment_count; ++ k )
 //                        {
-//                            mreal_free(C_moments[k]);
+//                            safe_free(C_moments[k]);
 //                        }
 //                    }
                 
@@ -169,7 +169,7 @@ namespace rsurfaces
                     {
                         for (mint k = 0; k < static_cast<mint>(P_coords.size()); ++k)
                         {
-                            mreal_free(P_coords[k]);
+                            safe_free(P_coords[k]);
                         }
                     }
 
@@ -177,7 +177,7 @@ namespace rsurfaces
                     {
                         for (mint k = 0; k < static_cast<mint>(C_coords.size()); ++k)
                         {
-                            mreal_free(C_coords[k]);
+                            safe_free(C_coords[k]);
                         }
                     }
 
@@ -185,7 +185,7 @@ namespace rsurfaces
                     {
                         for (mint k = 0; k < static_cast<mint>(P_near.size()); ++k)
                         {
-                            mreal_free(P_near[k]);
+                            safe_free(P_near[k]);
                         }
                     }
 
@@ -193,7 +193,7 @@ namespace rsurfaces
                     {
                         for (mint k = 0; k < static_cast<mint>(C_far.size()); ++k)
                         {
-                            mreal_free(C_far[k]);
+                            safe_free(C_far[k]);
                         }
                     }
 
@@ -201,7 +201,7 @@ namespace rsurfaces
                     {
                         for (mint k = 0; k < static_cast<mint>(P_min.size()); ++k)
                         {
-                            mreal_free(P_min[k]);
+                            safe_free(P_min[k]);
                         }
                     }
 
@@ -209,7 +209,7 @@ namespace rsurfaces
                     {
                         for (mint k = 0; k < static_cast<mint>(P_max.size()); ++k)
                         {
-                            mreal_free(P_max[k]);
+                            safe_free(P_max[k]);
                         }
                     }
 
@@ -217,7 +217,7 @@ namespace rsurfaces
                     {
                         for (mint k = 0; k < static_cast<mint>(C_min.size()); ++k)
                         {
-                            mreal_free(C_min[k]);
+                            safe_free(C_min[k]);
                         }
                     }
 
@@ -225,88 +225,88 @@ namespace rsurfaces
                     {
                         for (mint k = 0; k < static_cast<mint>(C_max.size()); ++k)
                         {
-                            mreal_free(C_max[k]);
+                            safe_free(C_max[k]);
                         }
                     }
 
                     #pragma omp task
                     {
-                        mreal_free(P_in);
+                        safe_free(P_in);
                     }
 
                     #pragma omp task
                     {
-                        mreal_free(P_out);
+                        safe_free(P_out);
                     }
 
                     #pragma omp task
                     {
-                        mreal_free(C_in);
+                        safe_free(C_in);
                     }
 
                     #pragma omp task
                     {
-                        mreal_free(C_out);
+                        safe_free(C_out);
                     }
 
                     #pragma omp task
                     {
-                        mreal_free(C_squared_radius);
+                        safe_free(C_squared_radius);
                     }
 
                     #pragma omp task
                     {
-                        mint_free(leaf_clusters);
+                        safe_free(leaf_clusters);
                     }
 
                     #pragma omp task
                     {
-                        mint_free(leaf_cluster_lookup);
+                        safe_free(leaf_cluster_lookup);
                     }
                     #pragma omp task
 
                     {
-                        mint_free(leaf_cluster_ptr);
+                        safe_free(leaf_cluster_ptr);
                     }
 
                     #pragma omp task
                     {
-                        mint_free(inverse_ordering);
+                        safe_free(inverse_ordering);
                     }
 
                     #pragma omp task
                     {
-                        mint_free(P_ext_pos);
+                        safe_free(P_ext_pos);
                     }
 
                     #pragma omp task
                     {
-                        mint_free(C_begin);
+                        safe_free(C_begin);
                     }
 
                     #pragma omp task
                     {
-                        mint_free(C_end);
+                        safe_free(C_end);
                     }
 
                     #pragma omp task
                     {
-                        mint_free(C_depth);
+                        safe_free(C_depth);
                     }
 
                     #pragma omp task
                     {
-                        mint_free(C_next);
+                        safe_free(C_next);
                     }
 
                     #pragma omp task
                     {
-                        mint_free(C_left);
+                        safe_free(C_left);
                     }
 
                     #pragma omp task
                     {
-                        mint_free(C_right);
+                        safe_free(C_right);
                     }
 
                     }
