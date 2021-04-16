@@ -97,6 +97,8 @@ set(SRCS
   src/energy/tp_obstacle_barnes_hut_pr_0.cpp
   src/energy/tp_obstacle_all_pairs.cpp
   src/energy/tp_obstacle_all_pairs_pr.cpp
+  src/energy/tp_pointcloud_obstacle_barnes_hut_0.cpp
+  src/energy/tp_pointnormalcloud_obstacle_barnes_hut_0.cpp
   src/implicit/implicit_surface.cpp
   src/implicit/simple_surfaces.cpp
   src/marchingcubes/CIsoSurface.cpp
