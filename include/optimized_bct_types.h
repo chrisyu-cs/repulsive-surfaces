@@ -220,8 +220,8 @@ namespace rsurfaces
     {
         mint n = 0;
         mint mtype = 11;                   /* Matrix type */
-        mint * restrict perm = nullptr;       /* Permutation */
-        mint * restrict iparm = nullptr;      /* Integer parameter array for controlling pardiso */
+        mint * perm = nullptr;       /* Permutation */
+        mint * iparm = nullptr;      /* Integer parameter array for controlling pardiso */
         A_Vector<void*> pt;                /* Pointer used internally by pardiso to store its data */
     
         bool symfactorized = false;
@@ -303,9 +303,9 @@ namespace rsurfaces
         mint m = 0;
         mint n = 0;
         mint nnz = 0;
-        mint  * restrict outer = nullptr;
-        mint  * restrict inner = nullptr;
-        mreal * restrict values = nullptr;
+        mint  * outer = nullptr;
+        mint  * inner = nullptr;
+        mreal * values = nullptr;
         PardisoData P;
     
         matrix_descr descr;
