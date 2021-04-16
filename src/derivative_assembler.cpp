@@ -117,6 +117,7 @@ namespace rsurfaces
     
     void AssembleDerivativeFromACNData( MeshPtr mesh, GeomPtr geom, EigenMatrixRM const & P_D_data, Eigen::MatrixXd & output, mreal weight )
     {
+        print("AssembleDerivativeFromACNData");
         ptic("AssembleDerivativeFromACNData");
         
         auto V_coords = getVertexPositions( mesh, geom );
@@ -126,14 +127,14 @@ namespace rsurfaces
         mint dim = V_coords.cols();
         mint primitive_count = primitives.rows();
         mint primitive_length = primitives.cols();
-        
+        print("A.1");
         if( P_D_data.cols() != 7 )
         {
             eprint("in DerivativeAssemblerFromACNData: P_D_data.cols() != 7");
         }
-        
+        print("A.2");
         Eigen::MatrixXd buffer ( primitive_count * primitive_length, dim );
-        
+        print("A.3");
         for( mint i = 0;  i < primitive_count; ++i )
         {
             
@@ -252,9 +253,9 @@ namespace rsurfaces
             buffer( 3 * i + 2, 1 ) = ((s11 + s20)*s56)/2. + (s52*(s2 + s64))/2. + (s37*s41*s84)/4. + (s37*s42*s46*s84)/12. + (s37*s50*s51*s84)/12. + s49*(s48 + (s37*s47*s84)/12.);
             buffer( 3 * i + 2, 2 ) = (s56*s75)/2. + (s57*s81)/2. + (s37*s41*s88)/4. + (s37*s42*s46*s88)/12. + (s37*s47*s49*s88)/12. + s51*(s48 + (s37*s50*s88)/12.);
         }
-        
+        print("A.4");
         AssembleDerivative( primitives, buffer, output, weight );
-        
+        print("A.5");
         ptoc("AssembleDerivativeFromACNData");
     }// AssembleDerivativeFromACNData
     
