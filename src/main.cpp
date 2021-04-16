@@ -521,8 +521,9 @@ namespace rsurfaces
 
         double alpha = 6.;
         double beta = 12.;
-        double weight = 0.5;
+        double weight = 1.;
         double theta = MainApp::instance->bh_theta;
+        double chi = 0.4 * theta;
 
         // mesh1 and geom1 represent the movable surface
         auto mesh1 = rsurfaces::MainApp::instance->mesh;
@@ -557,22 +558,22 @@ namespace rsurfaces
         toc("Create bvh2");
 
         tic("Create bct11");
-        auto bct11 = std::make_shared<OptimizedBlockClusterTree>(bvh1, bvh1, alpha, beta, theta);
-        auto bct11_nl = std::make_shared<OptimizedBlockClusterTree>(bvh1_nl, bvh1_nl, alpha, beta, theta);
-        auto bct11_pr = std::make_shared<OptimizedBlockClusterTree>(bvh1_pr, bvh1_pr, alpha, beta, theta);
+        auto bct11 = std::make_shared<OptimizedBlockClusterTree>(bvh1, bvh1, alpha, beta, chi);
+        auto bct11_nl = std::make_shared<OptimizedBlockClusterTree>(bvh1_nl, bvh1_nl, alpha, beta, chi);
+        auto bct11_pr = std::make_shared<OptimizedBlockClusterTree>(bvh1_pr, bvh1_pr, alpha, beta, chi);
         toc("Create bct11");
         tic("Create bct12");
-        auto bct12 = std::make_shared<OptimizedBlockClusterTree>(bvh1, bvh2, alpha, beta, theta);
-        auto bct12_nl = std::make_shared<OptimizedBlockClusterTree>(bvh1_nl, bvh2_nl, alpha, beta, theta);
-        auto bct12_pr = std::make_shared<OptimizedBlockClusterTree>(bvh1_pr, bvh2_pr, alpha, beta, theta);
+        auto bct12 = std::make_shared<OptimizedBlockClusterTree>(bvh1, bvh2, alpha, beta, chi);
+        auto bct12_nl = std::make_shared<OptimizedBlockClusterTree>(bvh1_nl, bvh2_nl, alpha, beta, chi);
+        auto bct12_pr = std::make_shared<OptimizedBlockClusterTree>(bvh1_pr, bvh2_pr, alpha, beta, chi);
         toc("Create bct12");
 
         // The transpose of bct12 and thus not needed.
         //auto bct21 = std::make_shared<OptimizedBlockClusterTree>(bvh2, bvh1, alpha, beta, theta);
         tic("Create bct22");
-        auto bct22 = std::make_shared<OptimizedBlockClusterTree>(bvh2, bvh2, alpha, beta, theta);
-        auto bct22_nl = std::make_shared<OptimizedBlockClusterTree>(bvh2_nl, bvh2_nl, alpha, beta, theta);
-        auto bct22_pr = std::make_shared<OptimizedBlockClusterTree>(bvh2_pr, bvh2_pr, alpha, beta, theta);
+        auto bct22 = std::make_shared<OptimizedBlockClusterTree>(bvh2, bvh2, alpha, beta, chi);
+        auto bct22_nl = std::make_shared<OptimizedBlockClusterTree>(bvh2_nl, bvh2_nl, alpha, beta, chi);
+        auto bct22_pr = std::make_shared<OptimizedBlockClusterTree>(bvh2_pr, bvh2_pr, alpha, beta, chi);
         toc("Create bct22");
 
         bct11->PrintStats();

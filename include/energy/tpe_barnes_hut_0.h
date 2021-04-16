@@ -34,7 +34,9 @@ namespace rsurfaces
 
         ~TPEnergyBarnesHut0()
         {
+            ptic("~TPEnergyBarnesHut0");
             if (bvh) delete bvh;
+            ptoc("~TPEnergyBarnesHut0");
         }
         
         // Returns the current value of the energy.

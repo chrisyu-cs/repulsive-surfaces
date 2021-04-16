@@ -31,8 +31,7 @@ namespace po = boost::program_options;
 
 #include "energy/all_energies.h"
 
-
-
+#define MKL_DIRECT_CALL_SEQ_JIT
 #define EIGEN_NO_DEBUG
 
 namespace rsurfaces
@@ -63,36 +62,29 @@ namespace rsurfaces
         MeshPtr mesh1;
         GeomPtr geom1;
         
+        Eigen::MatrixXd U;
+        Eigen::MatrixXd V;
+        mreal E_11;
+        Eigen::MatrixXd DE_11;
+        
         void Compute( mint iter )
         {
-            mint vertex_count1 = mesh1->nVertices();
-            
-            mreal E_11;
-            Eigen::MatrixXd DE_11(vertex_count1, 3);
-            
-            
             //        OptimizedClusterTree *bvh1 = CreateOptimizedBVH(mesh1, geom1);
             ptic("Energy");
+
             auto tpe_bh_11 = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
-            
+
             tpe_bh_11->GetBVH()->tree_perc_alg = tree_perc_alg;
-            
-            if( iter < 0)
-            {
-                tpe_bh_11->GetBVH()->PrintToFile();
-            }
-            
+
+//            if( iter < 0)
+//            {
+//                tpe_bh_11->GetBVH()->PrintToFile();
+//            }
+
             E_11 = tpe_bh_11->Value();
             DE_11.setZero();
             tpe_bh_11->Differential(DE_11);
             ptoc("Energy");
-            
-            ptic("Initialize Vector");
-            Eigen::MatrixXd U(vertex_count1, 3);
-            U = getVertexPositions( mesh1, geom1 );
-            Eigen::MatrixXd V(vertex_count1, 3);
-            V.setZero();
-            ptoc("Initialize Vector");
             
             ptic("Multiply");
             auto bct11 = std::make_shared<OptimizedBlockClusterTree>(tpe_bh_11->GetBVH(), tpe_bh_11->GetBVH(), alpha, beta, chi);
@@ -111,6 +103,18 @@ namespace rsurfaces
                 ptoc("Multiply LowOrder");
             }
             ptoc("Multiply");
+        }
+        
+        void PrepareVectors()
+        {
+            ptic("PrepareVectors");
+            mint vertex_count1 = mesh1->nVertices();
+            DE_11 = Eigen::MatrixXd(vertex_count1, 3);
+            
+            U = getVertexPositions( mesh1, geom1 );
+            V = Eigen::MatrixXd(vertex_count1, 3);
+            V.setZero();
+            ptoc("PrepareVectors");
         }
         
         void PrintStats()

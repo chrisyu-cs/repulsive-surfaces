@@ -132,7 +132,7 @@ int main(int arg_count, char* arg_vec[])
     BM.geom1 = std::move(u_geom);
     BM.geom1->requireVertexDualAreas();
     BM.geom1->requireVertexNormals();
-
+    BM.PrepareVectors();
     
     for( mint threads = 0; threads < BM.max_thread_count + 1; threads += BM.thread_step )
     {

@@ -35,6 +35,7 @@ namespace rsurfaces
     )
     {
         ptic("OptimizedClusterTree::OptimizedClusterTree");
+        
         primitive_count = primitive_count_;
         hull_count = hull_count_;
         dim = dim_;
@@ -44,7 +45,6 @@ namespace rsurfaces
         max_buffer_dim = 0;
 
 //        scratch_size = 12;
-
         mint nthreads;
         #pragma omp parallel
         {
@@ -55,16 +55,13 @@ namespace rsurfaces
              thread_count = std::max( static_cast<mint>(1), nthreads );
         mint a = 1;
         split_threshold = std::max( a, split_threshold_);
-        
         P_coords = A_Vector<mreal * >( dim, nullptr );
         #pragma omp parallel for
         for( mint k = 0; k < dim; ++k)
         {
-            P_coords[k] = mreal_alloc(primitive_count);
+            mreal_safe_alloc( P_coords[k], primitive_count );
         }
-
-        P_ext_pos = mint_alloc( primitive_count );
-        
+        mint_safe_alloc( P_ext_pos, primitive_count );
         #pragma omp parallel for num_threads(thread_count)  shared( P_coords, P_ext_pos, P_coords_, dim, primitive_count, ordering_ )
         for( mint i=0; i < primitive_count; ++i )
         {
@@ -75,28 +72,25 @@ namespace rsurfaces
                 P_coords[k][i] = P_coords_[ dim * j + k ];
             }
         }
-        
         ptic("SplitCluster");
         Cluster2 * root = new Cluster2 ( 0, primitive_count, 0 );
 
         #pragma omp parallel num_threads(tree_thread_count)  shared( root, P_coords, P_ext_pos, tree_thread_count)
         {
-            #pragma omp single
+            #pragma omp single nowait
             {
                 SplitCluster( root, tree_thread_count );
             }
         }
         ptoc("SplitCluster");
         
-        
-        ptic("Serialize");
-        
+        ptic("Bunch of allocations");
         cluster_count = root->descendant_count;
         leaf_cluster_count = root->descendant_leaf_count;
         tree_max_depth = root->max_depth;
         #pragma omp parallel
         {
-            #pragma omp single
+            #pragma omp single nowait
             {
                 #pragma omp task
                 {
@@ -105,46 +99,50 @@ namespace rsurfaces
                 }
                 #pragma omp task
                 {
-                    C_left  = mint_alloc ( cluster_count );
+                    mint_safe_alloc( C_left, cluster_count );
                 }
                 #pragma omp task
                 {
-                    C_right = mint_alloc ( cluster_count );
+                    mint_safe_alloc( C_right, cluster_count );
                 }
                 #pragma omp task
                 {
-                    C_begin = mint_alloc ( cluster_count );
+                    mint_safe_alloc( C_begin, cluster_count );
                 }
                 #pragma omp task
                 {
-                    C_end   = mint_alloc ( cluster_count );
+                    mint_safe_alloc( C_end, cluster_count );
                 }
                 #pragma omp task
                 {
-                    C_depth = mint_alloc ( cluster_count );
+                    mint_safe_alloc( C_depth, cluster_count );
                 }
                 #pragma omp task
                 {
-                    C_next = mint_alloc ( cluster_count );
+                    mint_safe_alloc( C_next, cluster_count );
                 }
                 #pragma omp task
                 {
-                    leaf_clusters = mint_alloc( leaf_cluster_count );
+                    mint_safe_alloc( leaf_clusters, leaf_cluster_count );
                 }
                 #pragma omp task
                 {
-                    leaf_cluster_lookup = mint_alloc( cluster_count );
+                    mint_safe_alloc( leaf_cluster_lookup, cluster_count );
                 }
                 #pragma omp task
                 {
-                    inverse_ordering = mint_alloc( primitive_count );
+                    mint_safe_alloc( inverse_ordering, primitive_count );
                 }
+                #pragma omp taskwait
             }
         }
+        ptoc("Bunch of allocations");
+
+        ptic("Serialize");
         
         #pragma omp parallel num_threads(tree_thread_count)
         {
-            #pragma omp single
+            #pragma omp single nowait
             {
                 Serialize( root, 0, 0, tree_thread_count );
             }
@@ -158,10 +156,10 @@ namespace rsurfaces
             inverse_ordering[P_ext_pos[i]] = i;
         }
         ptoc("Serialize");
-        
+
         ComputePrimitiveData( P_hull_coords_, P_near_, P_far_ );
 //        ComputePrimitiveData( P_hull_coords_, P_near_, P_moments_ );
-        
+
         ComputeClusterData();
 
         ComputePrePost( DiffOp, AvOp );
@@ -298,21 +296,21 @@ namespace rsurfaces
         P_near = A_Vector<mreal * > ( near_dim, nullptr );
         for( mint k = 0; k < near_dim; ++ k )
         {
-            P_near[k] = mreal_alloc( primitive_count );
+            mreal_safe_alloc( P_near[k], primitive_count );
         }
         
         P_far  = A_Vector<mreal * > ( far_dim , nullptr );
         for( mint k = 0; k < far_dim; ++ k )
         {
-            P_far [k] = mreal_alloc( primitive_count );
+            mreal_safe_alloc( P_far[k], primitive_count );
         }
         
         P_min = A_Vector<mreal * > ( dim, nullptr );
         P_max = A_Vector<mreal * > ( dim, nullptr );
         for( mint k = 0; k < dim; ++ k )
         {
-            P_min[k] = mreal_alloc( primitive_count );
-            P_max[k] = mreal_alloc( primitive_count );
+            mreal_safe_alloc( P_min[k], primitive_count );
+            mreal_safe_alloc( P_max[k], primitive_count );
         }
         
         P_D_near = A_Vector<A_Vector<mreal>> ( thread_count );
@@ -321,7 +319,7 @@ namespace rsurfaces
 //        P_moments = A_Vector<mreal * restrict> ( moment_count, nullptr );
 //        for( mint k = 0; k < moment_count; ++ k )
 //        {
-//            P_moments[k] = mreal_alloc( primitive_count );
+//            mreal_safe_alloc( P_moments[k], primitive_count );
 //        }
             
         mint hull_size = hull_count * dim;
@@ -354,6 +352,7 @@ namespace rsurfaces
 //            }
 
             // computing bounding boxes of primitives; admittedly, it looks awful
+            
             for( mint k = 0; k < dim; ++k )
             {
                 min = max = P_hull_coords_[ hull_size * j + dim * 0 + k];
@@ -385,7 +384,7 @@ namespace rsurfaces
         C_far = A_Vector<mreal * > ( far_dim, nullptr );
         for( mint k = 0; k < far_dim; ++ k )
         {
-            C_far[k] = mreal_alloc( cluster_count, 0. );
+            mreal_safe_alloc( C_far[k], cluster_count, 0. );
         }
         
         C_coords = A_Vector<mreal * > ( dim, nullptr );
@@ -393,17 +392,17 @@ namespace rsurfaces
         C_max = A_Vector<mreal * > ( dim, nullptr );
         for( mint k = 0; k < dim; ++ k )
         {
-            C_coords[k] = mreal_alloc( cluster_count, 0. );
-            C_min[k]    = mreal_alloc( cluster_count );
-            C_max[k]    = mreal_alloc( cluster_count );
+            mreal_safe_alloc( C_coords[k], cluster_count, 0. );
+            mreal_safe_alloc( C_min[k], cluster_count );
+            mreal_safe_alloc( C_max[k], cluster_count );
         }
         
-        C_squared_radius = mreal_alloc( cluster_count );
+        mreal_safe_alloc( C_squared_radius, cluster_count );
         
 //        C_moments = A_Vector<mreal * restrict> ( moment_count, nullptr );
 //        for( mint k = 0; k < moment_count; ++ k )
 //        {
-//            C_moments[k] = mreal_alloc( cluster_count, 0. );
+//            mreal_safe_alloc( C_moments[k], cluster_count, 0. );
 //        }
         
         C_D_far = A_Vector<A_Vector<mreal>> ( thread_count );
@@ -416,7 +415,7 @@ namespace rsurfaces
         // using the already serialized cluster tree
         #pragma omp parallel shared( thread_count )
         {
-            #pragma omp single
+            #pragma omp single nowait
             {
                 computeClusterData( 0, thread_count );
             }
@@ -540,7 +539,7 @@ namespace rsurfaces
         C_to_P = MKLSparseMatrix(primitive_count, cluster_count, primitive_count );
         C_to_P.outer[primitive_count] = primitive_count;
         
-        leaf_cluster_ptr = mint_alloc( leaf_cluster_count + 1  );
+        mint_safe_alloc( leaf_cluster_ptr, leaf_cluster_count + 1  );
         leaf_cluster_ptr[0] = 0;
     //    P_leaf = A_Vector<mint>( primitive_count );
 
@@ -631,7 +630,7 @@ namespace rsurfaces
                 }
             }
         
-            std::partial_sum( hi_pre.outer, hi_pre.outer + hi_pre.m + 1, hi_pre.outer );
+            mint_accumulate( hi_pre.outer, hi_pre.outer + hi_pre.m + 1);
             
             #pragma omp parallel for
             for( mint i = 0; i < primitive_count; ++i)
@@ -715,6 +714,7 @@ namespace rsurfaces
 
     void OptimizedClusterTree::RequireBuffers( const mint cols )
     {
+        ptic("RequireBuffers");
         // TODO: parallelize allocation
         if( cols > max_buffer_dim )
         {
@@ -722,25 +722,27 @@ namespace rsurfaces
             max_buffer_dim = cols;
 
             mreal_free(P_in);
-            P_in = mreal_alloc( primitive_count * max_buffer_dim, 0. );
+            mreal_safe_alloc( P_in, primitive_count * max_buffer_dim, 0. );
 
             mreal_free(P_out);
-            P_out = mreal_alloc( primitive_count * max_buffer_dim, 0. );
+            mreal_safe_alloc( P_out, primitive_count * max_buffer_dim, 0. );
             
             mreal_free(C_in);
-            C_in = mreal_alloc( cluster_count * max_buffer_dim, 0. );
+            mreal_safe_alloc( C_in, cluster_count * max_buffer_dim, 0. );
             
             mreal_free(C_out);
-            C_out = mreal_alloc( cluster_count * max_buffer_dim, 0. );
+            mreal_safe_alloc( C_out, cluster_count * max_buffer_dim, 0. );
             
         }
         
         buffer_dim = cols;
+        ptoc("RequireBuffers");
         
     }; // RequireBuffers
 
     void OptimizedClusterTree::CleanseBuffers()
     {
+        ptic("CleanseBuffers");
         #pragma omp parallel for simd aligned( P_in, P_out : ALIGN )
         for( mint i = 0; i < primitive_count * buffer_dim; ++i )
         {
@@ -754,10 +756,12 @@ namespace rsurfaces
             C_in[i] = 0.;
             C_out[i] = 0.;
         }
+        ptoc("CleanseBuffers");
     }; // CleanseBuffers
 
     void OptimizedClusterTree::CleanseD()
     {
+        ptic("CleanseD");
         #pragma omp parallel for schedule(static, 1)
         for( mint thread = 0; thread < thread_count; ++thread )
         {
@@ -781,6 +785,7 @@ namespace rsurfaces
                 C[i] = 0.;
             }
         }
+        ptoc("CleanseD");
     }; // CleanseD
 
     void OptimizedClusterTree::PercolateUp()
@@ -793,7 +798,7 @@ namespace rsurfaces
             case TreePercolationAlgorithm::Tasks :
                 #pragma omp parallel
                 {
-                    #pragma omp single
+                    #pragma omp single nowait
                     {
                         PercolateUp_Tasks( 0, thread_count );
                     }
@@ -806,7 +811,7 @@ namespace rsurfaces
             default:
                 #pragma omp parallel
                 {
-                    #pragma omp single
+                    #pragma omp single nowait
                     {
                         PercolateUp_Tasks( 0, thread_count );
                     }
@@ -825,7 +830,7 @@ namespace rsurfaces
             case TreePercolationAlgorithm::Tasks :
                 #pragma omp parallel
                 {
-                    #pragma omp single
+                    #pragma omp single nowait
                     {
                         PercolateDown_Tasks( 0, thread_count );
                     }
@@ -838,7 +843,7 @@ namespace rsurfaces
             default:
                 #pragma omp parallel
                 {
-                    #pragma omp single
+                    #pragma omp single nowait
                     {
                         PercolateDown_Tasks( 0, thread_count );
                     }
@@ -856,7 +861,7 @@ namespace rsurfaces
             mint chunk_size = CACHE_LINE_LENGHT * ( (cluster_count + thread_count * CACHE_LINE_LENGHT - 1)  / ( thread_count * CACHE_LINE_LENGHT ) );
             chunk_roots = A_Vector<A_Vector<mint>> ( thread_count );
             std::cout << "chunk_size = " << chunk_size << std::endl;
-            std::cout << "primitive_count = " << primitive_count << std::endl;
+            std::cout << "cluster_count = " << cluster_count << std::endl;
 
             #pragma omp parallel for num_threads(thread_count) schedule( static, 1)
             for( mint thread = 0; thread < thread_count; ++thread )

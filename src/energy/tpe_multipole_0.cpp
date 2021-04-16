@@ -151,43 +151,35 @@ namespace rsurfaces
                     mint j_end   = b_col_ptr[b_j+1];
                     mreal block_sum = 0.;
                     
+                    #pragma omp simd aligned( A, X1, X2, X3, N1, N2, N3, B, Y1, Y2, Y3, M1, M2, M3 : ALIGN ) reduction( + : block_sum ) collapse(2)
                     for( mint i = i_begin; i < i_end ; ++i )
                     {
-                        mreal x1 = X1[i];
-                        mreal x2 = X2[i];
-                        mreal x3 = X3[i];
-                        mreal n1 = N1[i];
-                        mreal n2 = N2[i];
-                        mreal n3 = N3[i];
-                        
-                        mreal i_sum = 0.;
-                        
-                        // if b_i == b_j, we loop only over the upper triangular block, diagonal excluded
-                        mint begin = (b_i != b_j) ? j_begin : i + 1;
-                        // Here, one could do a bit of horizontal vectorization. However, the number of js an x interacts with varies greatly..
-                        #pragma omp simd aligned( B, Y1, Y2, Y3, M1, M2, M3 : ALIGN ) reduction( + : block_sum )
-                        for( mint j = begin; j < j_end; ++j )
+                        for( mint j = j_begin; j < j_end; ++j )
                         {
-                            if( i != j )
-                            {
-                                mreal v1 = Y1[j] - x1;
-                                mreal v2 = Y2[j] - x2;
-                                mreal v3 = Y3[j] - x3;
-                                mreal m1 = M1[j];
-                                mreal m2 = M2[j];
-                                mreal m3 = M3[j];
-                                
-                                mreal rCosPhi = v1 * n1 + v2 * n2 + v3 * n3;
-                                mreal rCosPsi = v1 * m1 + v2 * m2 + v3 * m3;
-                                mreal r2 = v1 * v1 + v2 * v2 + v3 * v3 ;
-                                
-                                mreal en = ( mypow( fabs(rCosPhi), alpha ) + mypow( fabs(rCosPsi), alpha) ) * mypow( r2, minus_betahalf );
-                                
-                                
-                                i_sum += en * B[j];
-                            }
+                            mreal delta_ij  = (i <= j);
+                            
+                            mreal x1 = X1[i];
+                            mreal x2 = X2[i];
+                            mreal x3 = X3[i];
+                            mreal n1 = N1[i];
+                            mreal n2 = N2[i];
+                            mreal n3 = N3[i];
+                            
+                            mreal v1 = Y1[j] - x1;
+                            mreal v2 = Y2[j] - x2;
+                            mreal v3 = Y3[j] - x3;
+                            mreal m1 = M1[j];
+                            mreal m2 = M2[j];
+                            mreal m3 = M3[j];
+                            
+                            mreal rCosPhi = v1 * n1 + v2 * n2 + v3 * n3;
+                            mreal rCosPsi = v1 * m1 + v2 * m2 + v3 * m3;
+                            mreal r2 = v1 * v1 + v2 * v2 + v3 * v3 + delta_ij;
+                            
+                            mreal en = (1. - delta_ij) * ( mypow( fabs(rCosPhi), alpha ) + mypow( fabs(rCosPsi), alpha) ) * mypow( r2, minus_betahalf );
+                            
+                            block_sum +=  A[i] * en * B[j];
                         }
-                        block_sum += A[i] * i_sum;
                     }
                     sum += block_sum;
                 }
@@ -452,130 +444,294 @@ namespace rsurfaces
                     mint j_begin = b_col_ptr[b_j];
                     mint j_end   = b_col_ptr[b_j+1];
                     
+                    #pragma omp simd aligned( A, X1, X2, X3, N1, N2, N3, B, Y1, Y2, Y3, M1, M2, M3 : ALIGN ) reduction( + : sum) collapse(2)
                     for( mint i = i_begin; i < i_end ; ++i )
                     {
-                        mreal  a = A [i];
-                        mreal x1 = X1[i];
-                        mreal x2 = X2[i];
-                        mreal x3 = X3[i];
-                        mreal n1 = N1[i];
-                        mreal n2 = N2[i];
-                        mreal n3 = N3[i];
-                        
-                        mreal  da = 0.;
-                        mreal dx1 = 0.;
-                        mreal dx2 = 0.;
-                        mreal dx3 = 0.;
-                        mreal dn1 = 0.;
-                        mreal dn2 = 0.;
-                        mreal dn3 = 0.;
-                        
-                        
-                        // if i == j, we loop only over the upper triangular block, diagonal excluded
-                        mint begin = (b_i != b_j) ? j_begin : i + 1;
-                        
-                        // Here, one could do a bit of horizontal vectorization. However, the number of js an x interacts with is small and varies greatly..
-                        #pragma omp simd aligned( B, Y1, Y2, Y3, M1, M2, M3 : ALIGN ) reduction( + : sum)
-                        for( mint j = begin; j < j_end; ++j )
+                        for( mint j = j_begin; j < j_end; ++j )
                         {
-                            if( i != j )
-                            {
-                                mreal  b = B [j];
-                                mreal y1 = Y1[j];
-                                mreal y2 = Y2[j];
-                                mreal y3 = Y3[j];
-                                mreal m1 = M1[j];
-                                mreal m2 = M2[j];
-                                mreal m3 = M3[j];
-                                
-                                mreal v1 = y1 - x1;
-                                mreal v2 = y2 - x2;
-                                mreal v3 = y3 - x3;
-                                
-                                mreal rCosPhi = v1 * n1 + v2 * n2 + v3 * n3;
-                                mreal rCosPsi = v1 * m1 + v2 * m2 + v3 * m3;
-                                mreal r2      = v1 * v1 + v2 * v2 + v3 * v3;
-                                
-                                mreal rBetaMinus2 = mypow( r2, minus_betahalf_minus_1 );
-                                mreal rBeta = rBetaMinus2 * r2;
-                                
-                                mreal rCosPhiAlphaMinus1 = mypow( fabs(rCosPhi), alpha_minus_2 ) * rCosPhi;
-                                mreal rCosPhiAlpha = rCosPhiAlphaMinus1 * rCosPhi;
-                                
-                                mreal rCosPsiAlphaMinus1 = mypow( fabs(rCosPsi), alpha_minus_2 ) * rCosPsi;
-                                mreal rCosPsiAlpha = rCosPsiAlphaMinus1 * rCosPsi;
-                                
-                                
-                                mreal Num = rCosPhiAlpha + rCosPsiAlpha;
-                                mreal factor0 = rBeta * alpha;
-                                mreal density = rBeta * Num;
-                                sum += a * b * density;
-                                
-                                mreal F = factor0 * rCosPhiAlphaMinus1;
-                                mreal G = factor0 * rCosPsiAlphaMinus1;
-                                mreal H = beta * rBetaMinus2 * Num;
-                                
-                                mreal bF = b * F;
-                                mreal aG = a * G;
-                                
-                                mreal Z1 = ( - n1 * F - m1 * G + v1 * H );
-                                mreal Z2 = ( - n2 * F - m2 * G + v2 * H );
-                                mreal Z3 = ( - n3 * F - m3 * G + v3 * H );
-                                
-                                da += b * (
-                                           density
-                                           +
-                                           F * ( n1 * (x1 - v1) + n2 * (x2 - v2) + n3 * (x3 - v3) )
-                                           +
-                                           G * ( m1 * x1 + m2 * x2 + m3 * x3 )
-                                           -
-                                           H * ( v1 * x1 + v2 * x2 + v3 * x3 )
-                                           );
-                                
-                                V[ 7 * j ] += a * (
-                                                          density
-                                                          -
-                                                          F * ( n1 * y1 + n2 * y2 + n3 * y3 )
-                                                          -
-                                                          G * ( m1 * (y1 + v1) + m2 * (y2 + v2) + m3 * (y3 + v3) )
-                                                          +
-                                                          H * ( v1 * y1 + v2 * y2 + v3 * y3 )
-                                                          );
-                                
-                                dx1 += b  * Z1;
-                                dx2 += b  * Z2;
-                                dx3 += b  * Z3;
-                                dn1 += bF * v1;
-                                dn2 += bF * v2;
-                                dn3 += bF * v3;
-                                
-                                V[ 7 * j + 1 ] -= a  * Z1;
-                                V[ 7 * j + 2 ] -= a  * Z2;
-                                V[ 7 * j + 3 ] -= a  * Z3;
-                                V[ 7 * j + 4 ] += aG * v1;
-                                V[ 7 * j + 5 ] += aG * v2;
-                                V[ 7 * j + 6 ] += aG * v3;
-                            }
-                        } // for( mint j = ( b_i != b_j ? j_begin : i + 1 ); j < j_end; ++j )
-                        
-                        
-                        U[ 7 * i     ] +=  da;
-                        U[ 7 * i + 1 ] += dx1;
-                        U[ 7 * i + 2 ] += dx2;
-                        U[ 7 * i + 3 ] += dx3;
-                        U[ 7 * i + 4 ] += dn1;
-                        U[ 7 * i + 5 ] += dn2;
-                        U[ 7 * i + 6 ] += dn3;
-                        
+                            mreal delta_ij  = (i <= j);
+                            
+                            mreal  a = A [i];
+                            mreal x1 = X1[i];
+                            mreal x2 = X2[i];
+                            mreal x3 = X3[i];
+                            mreal n1 = N1[i];
+                            mreal n2 = N2[i];
+                            mreal n3 = N3[i];
+                            
+                            mreal  b = B [j];
+                            mreal y1 = Y1[j];
+                            mreal y2 = Y2[j];
+                            mreal y3 = Y3[j];
+                            mreal m1 = M1[j];
+                            mreal m2 = M2[j];
+                            mreal m3 = M3[j];
+                            
+                            mreal v1 = y1 - x1;
+                            mreal v2 = y2 - x2;
+                            mreal v3 = y3 - x3;
+                            
+                            mreal rCosPhi = v1 * n1 + v2 * n2 + v3 * n3;
+                            mreal rCosPsi = v1 * m1 + v2 * m2 + v3 * m3;
+                            mreal r2      = v1 * v1 + v2 * v2 + v3 * v3 + delta_ij;
+                            
+                            mreal rBetaMinus2 = (1. - delta_ij) * mypow( r2, minus_betahalf_minus_1 );
+                            mreal rBeta = rBetaMinus2 * r2;
+                            
+                            mreal rCosPhiAlphaMinus1 = mypow( fabs(rCosPhi), alpha_minus_2 ) * rCosPhi;
+                            mreal rCosPhiAlpha = rCosPhiAlphaMinus1 * rCosPhi;
+                            
+                            mreal rCosPsiAlphaMinus1 = mypow( fabs(rCosPsi), alpha_minus_2 ) * rCosPsi;
+                            mreal rCosPsiAlpha = rCosPsiAlphaMinus1 * rCosPsi;
+                            
+                            
+                            mreal Num = rCosPhiAlpha + rCosPsiAlpha;
+                            mreal factor0 = rBeta * alpha;
+                            mreal density = rBeta * Num;
+                            sum += a * b * density;
+                            
+                            mreal F = factor0 * rCosPhiAlphaMinus1;
+                            mreal G = factor0 * rCosPsiAlphaMinus1;
+                            mreal H = beta * rBetaMinus2 * Num;
+                            
+                            mreal bF = b * F;
+                            mreal aG = a * G;
+                            
+                            mreal Z1 = ( - n1 * F - m1 * G + v1 * H );
+                            mreal Z2 = ( - n2 * F - m2 * G + v2 * H );
+                            mreal Z3 = ( - n3 * F - m3 * G + v3 * H );
+                            
+                            U[ 7 * i + 0 ] += b * (
+                                       density
+                                       +
+                                       F * ( n1 * (x1 - v1) + n2 * (x2 - v2) + n3 * (x3 - v3) )
+                                       +
+                                       G * ( m1 * x1 + m2 * x2 + m3 * x3 )
+                                       -
+                                       H * ( v1 * x1 + v2 * x2 + v3 * x3 )
+                                       );
+
+                            
+                            U[ 7 * i + 1 ] += b  * Z1;
+                            U[ 7 * i + 2 ] += b  * Z2;
+                            U[ 7 * i + 3 ] += b  * Z3;
+                            U[ 7 * i + 4 ] += bF * v1;
+                            U[ 7 * i + 5 ] += bF * v2;
+                            U[ 7 * i + 6 ] += bF * v3;
+          
+                            
+                            V[ 7 * j + 0 ] += a * (
+                                               density
+                                               -
+                                               F * ( n1 * y1 + n2 * y2 + n3 * y3 )
+                                               -
+                                               G * ( m1 * (y1 + v1) + m2 * (y2 + v2) + m3 * (y3 + v3) )
+                                               +
+                                               H * ( v1 * y1 + v2 * y2 + v3 * y3 )
+                                               );
+                            V[ 7 * j + 1 ] -= a  * Z1;
+                            V[ 7 * j + 2 ] -= a  * Z2;
+                            V[ 7 * j + 3 ] -= a  * Z3;
+                            V[ 7 * j + 4 ] += aG * v1;
+                            V[ 7 * j + 5 ] += aG * v2;
+                            V[ 7 * j + 6 ] += aG * v3;
+                            
+                        } // for( mint j = j_begin; j < j_end; ++j )
                     }// for( mint i = i_begin; i < i_end ; ++i )
                 }// if( b_i <= b_j )
             }// for( mint k = b_outer[b_i]; k < b_outer[b_i+1]; ++k )
         } // for( mint b_i = 0; b_i < b_m; ++b_i )
-        
-        ptoc("TPEnergyMultipole0::DNearField");
-        
-        return sum;
-    }; //DNearField
+    
+    ptoc("TPEnergyMultipole0::DNearField");
+    
+    return sum;
+}; //DNearField
+
+//template<typename T1, typename T2>
+//mreal TPEnergyMultipole0::DNearField(T1 alpha, T2 betahalf)
+//{
+//    ptic("TPEnergyMultipole0::DNearField");
+//
+//    T1 alpha_minus_2 = alpha - 2;
+//    T2 minus_betahalf_minus_1 = -betahalf - 1;
+//
+//    mreal beta = 2. * betahalf;
+//
+//    mreal sum = 0.;
+//
+//    auto S = bct->S;
+//    auto T = bct->T;
+//
+//    mint b_m = bct->near->b_m;
+//    mint nthreads = std::min( S->thread_count, T->thread_count);
+//
+//    mint  const * restrict const b_row_ptr = S->leaf_cluster_ptr;
+//    mint  const * restrict const b_col_ptr = T->leaf_cluster_ptr;
+//
+//    mint  const * restrict const b_outer = &bct->near->b_outer[0];
+//    mint  const * restrict const b_inner = &bct->near->b_inner[0];
+//
+//    // Dunno why "restrict" helps with P_near. It is actually a lie here.
+//    mreal const * restrict const A  = S->P_near[0];
+//    mreal const * restrict const X1 = S->P_near[1];
+//    mreal const * restrict const X2 = S->P_near[2];
+//    mreal const * restrict const X3 = S->P_near[3];
+//    mreal const * restrict const N1 = S->P_near[4];
+//    mreal const * restrict const N2 = S->P_near[5];
+//    mreal const * restrict const N3 = S->P_near[6];
+//
+//    mreal const * restrict const B  = T->P_near[0];
+//    mreal const * restrict const Y1 = T->P_near[1];
+//    mreal const * restrict const Y2 = T->P_near[2];
+//    mreal const * restrict const Y3 = T->P_near[3];
+//    mreal const * restrict const M1 = T->P_near[4];
+//    mreal const * restrict const M2 = T->P_near[5];
+//    mreal const * restrict const M3 = T->P_near[6];
+//
+//
+//    #pragma omp parallel for num_threads( nthreads ) reduction( + : sum ) RAGGED_SCHEDULE
+//    for( mint b_i = 0; b_i < b_m; ++b_i )
+//    {
+//        mint thread = omp_get_thread_num();
+//
+//        mreal * restrict const U = &S->P_D_near[thread][0];
+//        mreal * restrict const V = &T->P_D_near[thread][0];
+//
+//        mint i_begin = b_row_ptr[b_i];
+//        mint i_end   = b_row_ptr[b_i+1];
+//
+//        for( mint k = b_outer[b_i]; k < b_outer[b_i+1]; ++k )
+//        {
+//            mint b_j = b_inner[k];
+//            if( b_i <= b_j )
+//            {
+//                mint j_begin = b_col_ptr[b_j];
+//                mint j_end   = b_col_ptr[b_j+1];
+//
+//                for( mint i = i_begin; i < i_end ; ++i )
+//                {
+//                    mreal  a = A [i];
+//                    mreal x1 = X1[i];
+//                    mreal x2 = X2[i];
+//                    mreal x3 = X3[i];
+//                    mreal n1 = N1[i];
+//                    mreal n2 = N2[i];
+//                    mreal n3 = N3[i];
+//
+//                    mreal  da = 0.;
+//                    mreal dx1 = 0.;
+//                    mreal dx2 = 0.;
+//                    mreal dx3 = 0.;
+//                    mreal dn1 = 0.;
+//                    mreal dn2 = 0.;
+//                    mreal dn3 = 0.;
+//
+//
+//                    // if i == j, we loop only over the upper triangular block, diagonal excluded
+//                    mint begin = (b_i != b_j) ? j_begin : i + 1;
+//
+//                    // Here, one could do a bit of horizontal vectorization. However, the number of js an x interacts with is small and varies greatly..
+//                    #pragma omp simd aligned( B, Y1, Y2, Y3, M1, M2, M3 : ALIGN ) reduction( + : sum)
+//                    for( mint j = begin; j < j_end; ++j )
+//                    {
+//                        mreal delta_ij  = (i <= j);
+//
+//                            mreal  b = B [j];
+//                            mreal y1 = Y1[j];
+//                            mreal y2 = Y2[j];
+//                            mreal y3 = Y3[j];
+//                            mreal m1 = M1[j];
+//                            mreal m2 = M2[j];
+//                            mreal m3 = M3[j];
+//
+//                            mreal v1 = y1 - x1;
+//                            mreal v2 = y2 - x2;
+//                            mreal v3 = y3 - x3;
+//
+//                            mreal rCosPhi = v1 * n1 + v2 * n2 + v3 * n3;
+//                            mreal rCosPsi = v1 * m1 + v2 * m2 + v3 * m3;
+//                            mreal r2      = v1 * v1 + v2 * v2 + v3 * v3 + delta_ij;
+//
+//                            mreal rBetaMinus2 = (1. - delta_ij) * mypow( r2, minus_betahalf_minus_1 );
+//                            mreal rBeta = rBetaMinus2 * r2;
+//
+//                            mreal rCosPhiAlphaMinus1 = mypow( fabs(rCosPhi), alpha_minus_2 ) * rCosPhi;
+//                            mreal rCosPhiAlpha = rCosPhiAlphaMinus1 * rCosPhi;
+//
+//                            mreal rCosPsiAlphaMinus1 = mypow( fabs(rCosPsi), alpha_minus_2 ) * rCosPsi;
+//                            mreal rCosPsiAlpha = rCosPsiAlphaMinus1 * rCosPsi;
+//
+//
+//                            mreal Num = rCosPhiAlpha + rCosPsiAlpha;
+//                            mreal factor0 = rBeta * alpha;
+//                            mreal density = rBeta * Num;
+//                            sum += a * b * density;
+//
+//                            mreal F = factor0 * rCosPhiAlphaMinus1;
+//                            mreal G = factor0 * rCosPsiAlphaMinus1;
+//                            mreal H = beta * rBetaMinus2 * Num;
+//
+//                            mreal bF = b * F;
+//                            mreal aG = a * G;
+//
+//                            mreal Z1 = ( - n1 * F - m1 * G + v1 * H );
+//                            mreal Z2 = ( - n2 * F - m2 * G + v2 * H );
+//                            mreal Z3 = ( - n3 * F - m3 * G + v3 * H );
+//
+//                            da += b * (
+//                                       density
+//                                       +
+//                                       F * ( n1 * (x1 - v1) + n2 * (x2 - v2) + n3 * (x3 - v3) )
+//                                       +
+//                                       G * ( m1 * x1 + m2 * x2 + m3 * x3 )
+//                                       -
+//                                       H * ( v1 * x1 + v2 * x2 + v3 * x3 )
+//                                       );
+//
+//                            V[ 7 * j ] += a * (
+//                                                      density
+//                                                      -
+//                                                      F * ( n1 * y1 + n2 * y2 + n3 * y3 )
+//                                                      -
+//                                                      G * ( m1 * (y1 + v1) + m2 * (y2 + v2) + m3 * (y3 + v3) )
+//                                                      +
+//                                                      H * ( v1 * y1 + v2 * y2 + v3 * y3 )
+//                                                      );
+//
+//                            dx1 += b  * Z1;
+//                            dx2 += b  * Z2;
+//                            dx3 += b  * Z3;
+//                            dn1 += bF * v1;
+//                            dn2 += bF * v2;
+//                            dn3 += bF * v3;
+//
+//                            V[ 7 * j + 1 ] -= a  * Z1;
+//                            V[ 7 * j + 2 ] -= a  * Z2;
+//                            V[ 7 * j + 3 ] -= a  * Z3;
+//                            V[ 7 * j + 4 ] += aG * v1;
+//                            V[ 7 * j + 5 ] += aG * v2;
+//                            V[ 7 * j + 6 ] += aG * v3;
+//                        }
+//                    } // for( mint j = ( b_i != b_j ? j_begin : i + 1 ); j < j_end; ++j )
+//
+//
+//                    U[ 7 * i     ] +=  da;
+//                    U[ 7 * i + 1 ] += dx1;
+//                    U[ 7 * i + 2 ] += dx2;
+//                    U[ 7 * i + 3 ] += dx3;
+//                    U[ 7 * i + 4 ] += dn1;
+//                    U[ 7 * i + 5 ] += dn2;
+//                    U[ 7 * i + 6 ] += dn3;
+//
+//                }// for( mint i = i_begin; i < i_end ; ++i )
+//            }// if( b_i <= b_j )
+//        }// for( mint k = b_outer[b_i]; k < b_outer[b_i+1]; ++k )
+//    } // for( mint b_i = 0; b_i < b_m; ++b_i )
+//
+//    ptoc("TPEnergyMultipole0::DNearField");
+//
+//    return sum;
+//}; //DNearField
 
 
     // Returns the current value of the energy.

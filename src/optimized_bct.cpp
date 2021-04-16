@@ -60,7 +60,7 @@ namespace rsurfaces
 
         #pragma omp parallel num_threads(tree_thread_count) shared(thread_sep_idx, thread_sep_jdx, thread_nonsep_idx, thread_nonsep_jdx)
         {
-            #pragma omp single
+            #pragma omp single nowait
             {
                 SplitBlockCluster(thread_sep_idx, thread_sep_jdx, thread_nonsep_idx, thread_nonsep_jdx, 0, 0, tree_thread_count);
             }
@@ -294,25 +294,15 @@ namespace rsurfaces
         ptic("OptimizedBlockClusterTree::RequireMetrics");
         if( !metrics_initialized )
         {
-            
-//            tic("far->PrepareCSR()");
-            far->PrepareCSR();
-//            toc("far->PrepareCSR()");
-
-            
-//            tic("FarFieldInteraction");
+            far->Prepare_CSR();
             FarFieldInteraction();
-//            toc("FarFieldInteraction");
 
-//            tic("near->PrepareCSR( S->leaf_cluster_ptr, T->leaf_cluster_ptr );");
-            near->PrepareCSR( S->leaf_cluster_count, S->leaf_cluster_ptr, T->leaf_cluster_count, T->leaf_cluster_ptr );
-//            toc("near->PrepareCSR( S->leaf_cluster_ptr, T->leaf_cluster_ptr );");
+            near->Prepare_CSR( S->leaf_cluster_count, S->leaf_cluster_ptr, T->leaf_cluster_count, T->leaf_cluster_ptr );
+            NearFieldInteraction_CSR();
             
-            NearFieldInteractionVBSR();
+//            near->Prepare_VBSR( S->leaf_cluster_count, S->leaf_cluster_ptr, T->leaf_cluster_count, T->leaf_cluster_ptr );
+//            NearFieldInteraction_VBSR();
             
-//            tic("NearFieldInteractionCSR");
-            NearFieldInteractionCSR();
-//            toc("NearFieldInteractionCSR");
 
 //            tic("ComputeDiagonals");
             ComputeDiagonals();
@@ -488,9 +478,9 @@ namespace rsurfaces
         ptoc("OptimizedBlockClusterTree::FarFieldInteraction");
     }; //FarFieldInteraction
     
-    void OptimizedBlockClusterTree::NearFieldInteractionCSR()
+    void OptimizedBlockClusterTree::NearFieldInteraction_CSR()
     {
-        ptic("OptimizedBlockClusterTree::NearFieldInteractionCSR");
+        ptic("OptimizedBlockClusterTree::NearFieldInteraction_CSR");
         mint b_m = near->b_m;
         // Getting the pointers first to reduce indexing within the loops. Together with const + restrict, this gains about 5% runtime improvement.
         mint const * restrict const b_row_ptr = &near->b_row_ptr[0];
@@ -572,44 +562,35 @@ namespace rsurfaces
                         #pragma omp simd aligned( Y1, Y2, Y3, Q11, Q12, Q13, Q22, Q23, Q33 : ALIGN )
                         for (mint j = j_begin; j < j_end; ++j)
                         {
-                            if (i != j)
-                            {
-                                mreal v1 = Y1[j] - x1;
-                                mreal v2 = Y2[j] - x2;
-                                mreal v3 = Y3[j] - x3;
-                                mreal q11 = Q11[j];
-                                mreal q12 = Q12[j];
-                                mreal q13 = Q13[j];
-                                mreal q22 = Q22[j];
-                                mreal q23 = Q23[j];
-                                mreal q33 = Q33[j];
-                                
-                                mreal rCosPhi2 = v1*(p11*v1 + p12*v2 + p13*v3) + v2*(p12*v1 + p22*v2 + p23*v3) + v3*(p13*v1 + p23*v2 + p33*v3);
-                                mreal rCosPsi2 = v1*(q11*v1 + q12*v2 + q13*v3) + v2*(q12*v1 + q22*v2 + q23*v3) + v3*(q13*v1 + q23*v2 + q33*v3);
-                                mreal r2 = v1 * v1 + v2 * v2 + v3 * v3 ;
-                                mreal r4 = r2 * r2;
-                                mreal r6 = r4 * r2;
-                                mreal r8 = r4 * r4;
-                                
-                                // The following line makes up approx 2/3 of this function's runtime! This is why we avoid pow as much as possible and replace it with mypow.
-                                mreal hi = mypow(r2, hi_exponent); // I got it down to this single call to pow. We might want to generate a lookup table for it...
-                                
-                                hi_values[ptr] = 2.0 * hi; // The factor 2.0 might be suboptimal. That's what my Mathematica code uses (somewhat accidentally) and it seems to work fine.
+                            mreal delta_ij = (i == j);
+                            mreal v1 = Y1[j] - x1;
+                            mreal v2 = Y2[j] - x2;
+                            mreal v3 = Y3[j] - x3;
+                            mreal q11 = Q11[j];
+                            mreal q12 = Q12[j];
+                            mreal q13 = Q13[j];
+                            mreal q22 = Q22[j];
+                            mreal q23 = Q23[j];
+                            mreal q33 = Q33[j];
+                            
+                            mreal rCosPhi2 = v1*(p11*v1 + p12*v2 + p13*v3) + v2*(p12*v1 + p22*v2 + p23*v3) + v3*(p13*v1 + p23*v2 + p33*v3);
+                            mreal rCosPsi2 = v1*(q11*v1 + q12*v2 + q13*v3) + v2*(q12*v1 + q22*v2 + q23*v3) + v3*(q13*v1 + q23*v2 + q33*v3);
+                            mreal r2 = v1 * v1 + v2 * v2 + v3 * v3 + delta_ij;
+                            mreal r4 = r2 * r2;
+                            mreal r6 = r4 * r2;
+                            mreal r8 = r4 * r4;
+                            
+                            // The following line makes up approx 2/3 of this function's runtime! This is why we avoid pow as much as possible and replace it with mypow.
+                            mreal hi = mypow(r2, hi_exponent); // I got it down to this single call to pow. We might want to generate a lookup table for it...
+                            
+                            hi_values[ptr] = 2.0 * (1. - delta_ij) * hi; // The factor 2.0 might be suboptimal. That's what my Mathematica code uses (somewhat accidentally) and it seems to work fine.
 
-                                // Nasty trick to enforce vectorization without resorting to mypow or pos. Works only if intrinsic_dim is one of 1, 2, or 3.
-                                mreal mul = t1 * r4 + t2 * r6 + t3 * r8;
-                                
-                                fr_values[ptr] = 1. / (hi * mul);
-                                
-                                lo_values[ptr] = (rCosPhi2 + rCosPsi2) / r4 * hi;
-                            }
-                            else
-                            {
-                                // Overwrite diagonal. Just in case.
-                                fr_values[ptr] = 0.;
-                                hi_values[ptr] = 0.;
-                                lo_values[ptr] = 0.;
-                            }
+                            // Nasty trick to enforce vectorization without resorting to mypow or pos. Works only if intrinsic_dim is one of 1, 2, or 3.
+                            mreal mul = t1 * r4 + t2 * r6 + t3 * r8;
+                            
+                            fr_values[ptr] = (1. - delta_ij) / (hi * mul);
+                            
+                            lo_values[ptr] = (1. - delta_ij) * (rCosPhi2 + rCosPsi2) / r4 * hi;
                             
                             // Increment ptr, so that the next value is written to the next position.
                             ++ptr;
@@ -673,41 +654,33 @@ namespace rsurfaces
                         #pragma omp simd aligned( Y1, Y2, Y3, M1, M2, M3 : ALIGN )
                         for (mint j = j_begin; j < j_end; ++j)
                         {
-                            if (i != j)
-                            {
-                                mreal v1 = Y1[j] - x1;
-                                mreal v2 = Y2[j] - x2;
-                                mreal v3 = Y3[j] - x3;
-                                mreal m1 = M1[j];
-                                mreal m2 = M2[j];
-                                mreal m3 = M3[j];
-                                
-                                mreal rCosPhi = v1 * n1 + v2 * n2 + v3 * n3;
-                                mreal rCosPsi = v1 * m1 + v2 * m2 + v3 * m3;
-                                mreal r2 = v1 * v1 + v2 * v2 + v3 * v3;
-                                mreal r4 = r2 * r2;
-                                mreal r6 = r4 * r2;
-                                mreal r8 = r4 * r4;
-                                
-                                // The following line makes up approx 2/3 of this function's runtime! This is why we avoid pow as much as possible and replace it with mypow.
-                                mreal hi = mypow(r2, hi_exponent); // I got it down to this single call to pow. We might want to generate a lookup table for it...
-                                
-                                hi_values[ptr] = 2.0 * hi; // The factor 2.0 might be suboptimal. That's what my Mathematica code uses (somewhat accidentally) and it seems to work fine.
+                            mreal delta_ij = (i == j);
+                            
+                            mreal v1 = Y1[j] - x1;
+                            mreal v2 = Y2[j] - x2;
+                            mreal v3 = Y3[j] - x3;
+                            mreal m1 = M1[j];
+                            mreal m2 = M2[j];
+                            mreal m3 = M3[j];
+                            
+                            mreal rCosPhi = v1 * n1 + v2 * n2 + v3 * n3;
+                            mreal rCosPsi = v1 * m1 + v2 * m2 + v3 * m3;
+                            mreal r2 = v1 * v1 + v2 * v2 + v3 * v3 + delta_ij;
+                            mreal r4 = r2 * r2;
+                            mreal r6 = r4 * r2;
+                            mreal r8 = r4 * r4;
+                            
+                            // The following line makes up approx 2/3 of this function's runtime! This is why we avoid pow as much as possible and replace it with mypow.
+                            mreal hi = mypow(r2, hi_exponent); // I got it down to this single call to pow. We might want to generate a lookup table for it...
+                            
+                            hi_values[ptr] = 2.0 * (1. - delta_ij) * hi; // The factor 2.0 might be suboptimal. That's what my Mathematica code uses (somewhat accidentally) and it seems to work fine.
 
-                                // Nasty trick to enforce vectorization without resorting to mypow or pos. Works only if intrinsic_dim is one of 1, 2, or 3.
-                                mreal mul = t1 * r4 + t2 * r6 + t3 * r8;
-                                
-                                fr_values[ptr] = 1. / (hi * mul);
-                                
-                                lo_values[ptr] = (rCosPhi * rCosPhi + rCosPsi * rCosPsi) / r4 * hi;
-                            }
-                            else
-                            {
-                                // Overwrite diagonal. Just in case.
-                                fr_values[ptr] = 0.;
-                                hi_values[ptr] = 0.;
-                                lo_values[ptr] = 0.;
-                            }
+                            // Nasty trick to enforce vectorization without resorting to mypow or pos. Works only if intrinsic_dim is one of 1, 2, or 3.
+                            mreal mul = t1 * r4 + t2 * r6 + t3 * r8;
+                            
+                            fr_values[ptr] = (1. - delta_ij) / (hi * mul);
+                            
+                            lo_values[ptr] = (1. - delta_ij) * (rCosPhi * rCosPhi + rCosPsi * rCosPsi) / r4 * hi;
                             
                             // Increment ptr, so that the next value is written to the next position.
                             ++ptr;
@@ -716,8 +689,8 @@ namespace rsurfaces
                 }
             }
         }
-        ptoc("OptimizedBlockClusterTree::NearFieldInteractionCSR");
-    }; //NearFieldInteractionCSR
+        ptoc("OptimizedBlockClusterTree::NearFieldInteraction_CSR");
+    }; //NearFieldInteraction_CSR
 
     //######################################################################################################################################
     //      Vector multiplication
@@ -799,76 +772,61 @@ namespace rsurfaces
 //        RequireMetrics();
 
         mreal * diag = NULL;
-        mreal * near_values = NULL;
-        mreal * far_values = NULL;
-
-        mreal factor = 1.;
-
         mint cols = T->buffer_dim;
 
         S->RequireBuffers(cols); // Tell the S-side what it has to expect.
 
+        // The factor of 2. in the last argument stems from the symmetry of the kernel
+        // TODO: In case of S != T, we have to replace each call with one call to ApplyKernel and one to (a yet to be written) ApplyKernelTranspose_CSR
+        near->ApplyKernel( type, T->P_in, S->P_out, cols, -2.0);
+         far->ApplyKernel( type, T->C_in, S->C_out, cols, -2.0);
+        
         // I know, this looks awful... hash tables with keys from BCTKernelType would be nicer.
         switch (type)
         {
-        case BCTKernelType::FractionalOnly:
-        {
-            factor = fr_factor;
-            if( is_symmetric ){ diag = fr_diag; };
-            near_values = near->fr_values;
-            far_values = far->fr_values;
-            break;
+            case BCTKernelType::FractionalOnly:
+            {
+                if( is_symmetric ){ diag = fr_diag; };
+                break;
+            }
+            case BCTKernelType::HighOrder:
+            {
+                if( is_symmetric ){ diag = hi_diag; };
+                break;
+            }
+            case BCTKernelType::LowOrder:
+            {
+                if( is_symmetric ){ diag = lo_diag; };
+                break;
+            }
+            default:
+            {
+                eprint("Unknown kernel. Doing nothing.");
+                return;
+            }
         }
-        case BCTKernelType::HighOrder:
-        {
-            factor = hi_factor;
-            if( is_symmetric ){ diag = hi_diag; };
-            near_values = near->hi_values;
-            far_values = far->hi_values;
-            break;
-        }
-        case BCTKernelType::LowOrder:
-        {
-            factor = lo_factor;
-            if( is_symmetric ){ diag = lo_diag; };
-            near_values = near->lo_values;
-            far_values = far->lo_values;
-            break;
-        }
-        default:
-        {
-            eprint("Unknown kernel. Doing nothing.");
-            return;
-        }
-        }
-        // The factor of 2. in the last argument stems from the symmetry of the kernel
-
-        // TODO: In case of S != T, we have to replace each call with one call to ApplyKernel and one to (a yet to be written) ApplyKernelTranspose_CSR
-
-        near->ApplyKernel( near_values, T->P_in, S->P_out, cols, -2.0 * factor );
-         far->ApplyKernel(  far_values, T->C_in, S->C_out, cols, -2.0 * factor );
-
+        
         //     Adding product of diagonal matrix of "diags".
         if ( diag ){
-            
             mint last = std::min( S->primitive_count, T->primitive_count );    // A crude safe-guard protecting against out-of-bound access if S != T.
             mreal * in = T->P_in;
             mreal * out = T->P_out;
             
-//            #pragma omp parallel for
-//            for( mint i = 0; i < last; ++i )
-//            {
-//                cblas_daxpy( cols, diag[i], in + (cols * i), 1, out + (cols * i), 1 );
-//            }
-            
-            #pragma omp parallel for simd aligned( diag, in, out  : ALIGN ) collapse(2)
+            #pragma omp parallel for
             for( mint i = 0; i < last; ++i )
             {
-                for( mint k = 0; k < cols; ++k )
-                {
-                    out[cols * i + k] += diag[i] * in[cols * i + k];
-                }
+                cblas_daxpy( cols, diag[i], in + (cols * i), 1, out + (cols * i), 1 );
             }
+            
+            // For some weird reason, the following cannot be vectorized...
+//            #pragma omp parallel for simd aligned( diag, in, out : ALIGN ) collapse(2)
+//            for( mint i = 0; i < last; ++i )
+//            {
+//                for( mint k = 0; k < cols; ++k )
+//                {
+//                    out[cols * i + k] += diag[i] * in[cols * i + k];
+//                }
+//            }
             
         }
         
@@ -904,14 +862,14 @@ namespace rsurfaces
             T->PercolateUp();
     //        toc("T->PercolateUp");
 
-            fr_diag = mreal_alloc( S->primitive_count );
-            hi_diag = mreal_alloc( S->primitive_count );
-            lo_diag = mreal_alloc( S->primitive_count );
+            mreal_safe_alloc( fr_diag, S->primitive_count );
+            mreal_safe_alloc( hi_diag, S->primitive_count );
+            mreal_safe_alloc( lo_diag, S->primitive_count );
 
-
+            
             // The factor of 2. in the last argument stems from the symmetry of the kernel
-            far->ApplyKernel(  far->fr_values, T->C_in, S->C_out, 1, 2. * fr_factor );
-           near->ApplyKernel( near->fr_values, T->P_in, S->P_out, 1, 2. * fr_factor );
+            far->ApplyKernel( BCTKernelType::FractionalOnly, T->C_in, S->C_out, 1, 2.);
+           near->ApplyKernel( BCTKernelType::FractionalOnly, T->P_in, S->P_out, 1, 2.);
 
             S->PercolateDown();
             S->C_to_P.Multiply( S->C_out, S->P_out, 1, true);
@@ -931,9 +889,9 @@ namespace rsurfaces
                 fr_diag[i] =  ainv[i] * data[i];
             }
 
-
-            far->ApplyKernel(  far->hi_values, T->C_in, S->C_out, 1, 2. * hi_factor );
-           near->ApplyKernel( near->hi_values, T->P_in, S->P_out, 1, 2. * hi_factor );
+            
+            far->ApplyKernel( BCTKernelType::HighOrder, T->C_in, S->C_out, 1, 2.);
+           near->ApplyKernel( BCTKernelType::HighOrder, T->P_in, S->P_out, 1, 2.);
 
             S->PercolateDown();
             S->C_to_P.Multiply( S->C_out, S->P_out, 1, true);
@@ -944,8 +902,8 @@ namespace rsurfaces
                 hi_diag[i] =  ainv[i] * data[i];
             }
 
-            far->ApplyKernel(  far->lo_values, T->C_in, S->C_out, 1, 2. * lo_factor );
-           near->ApplyKernel( near->lo_values, T->P_in, S->P_out, 1, 2. * lo_factor );
+            far->ApplyKernel( BCTKernelType::LowOrder, T->C_in, S->C_out, 1, 2.);
+           near->ApplyKernel( BCTKernelType::LowOrder, T->P_in, S->P_out, 1, 2.);
 
             S->PercolateDown();
             S->C_to_P.Multiply( S->C_out, S->P_out, 1, true);
@@ -986,17 +944,29 @@ namespace rsurfaces
             RequireMetrics();
             bct12->RequireMetrics();
 
-            if( fr_factor != bct12->fr_factor )
+            if( far->fr_factor != bct12->far->fr_factor )
             {
-                wprint("AddToDiagonal: The values of fr_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+                wprint("AddObstacleCorrection: The values of far->fr_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
             }
-            if( hi_factor != bct12->hi_factor )
+            if( far->hi_factor != bct12->far->hi_factor )
             {
-                wprint("AddToDiagonal: The values of hi_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+                wprint("AddObstacleCorrection: The values of far->hi_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
             }
-            if( lo_factor != bct12->lo_factor )
+            if( far->lo_factor != bct12->far->lo_factor )
             {
-                wprint("AddToDiagonal: The values of lo_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+                wprint("AddObstacleCorrection: The values of far->lo_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+            }
+            if( near->fr_factor != bct12->near->fr_factor )
+            {
+                wprint("AddObstacleCorrection: The values of near->fr_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+            }
+            if( near->hi_factor != bct12->near->hi_factor )
+            {
+                wprint("AddObstacleCorrection: The values of near->hi_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+            }
+            if( near->lo_factor != bct12->near->lo_factor )
+            {
+                wprint("AddObstacleCorrection: The values of near->lo_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
             }
             
             mint n = T->primitive_count;
@@ -1045,9 +1015,9 @@ namespace rsurfaces
     
     
     
-    void OptimizedBlockClusterTree::NearFieldInteractionVBSR()
+    void OptimizedBlockClusterTree::NearFieldInteraction_VBSR()
     {
-        ptic("OptimizedBlockClusterTree::NearFieldInteractionVBSR");
+        ptic("OptimizedBlockClusterTree::NearFieldInteraction_VBSR");
         mint b_m = near->b_m;
         // Getting the pointers first to reduce indexing within the loops. Together with const + restrict, this gains about 5% runtime improvement.
         mint const * restrict const b_row_ptr = &near->b_row_ptr[0];
@@ -1055,7 +1025,6 @@ namespace rsurfaces
         mint const * restrict const block_ptr = &near->block_ptr[0];
         mint const * restrict const b_outer = &near->b_outer[0];
         mint const * restrict const b_inner = &near->b_inner[0];
-        mint const * restrict const outer = &near->outer[0];
         
 
         // "restrict" makes sense to me here because it exclude write conflicts.
@@ -1069,6 +1038,7 @@ namespace rsurfaces
 
         if( S->near_dim == 10 && T->near_dim == 10 )
         {
+            print("NearFieldInteraction_VBSR - projector variant");
             // using projectors on primitives (correct, but normals are more efficient)
             
             // Dunno why "restrict" helps with P_near. It is actually a lie here if S = S.
@@ -1099,13 +1069,11 @@ namespace rsurfaces
             #pragma omp parallel for num_threads(thread_count) RAGGED_SCHEDULE
             for( mint b_i = 0; b_i < b_m; ++b_i )
             {
-                
                 mint i_begin = b_row_ptr[b_i];
                 mint i_end   = b_row_ptr[b_i+1];
                 
                 for( mint k = b_outer[b_i]; k < b_outer[b_i+1]; ++k )
                 {
-                    
                     mint ptr = block_ptr[k];              // starting position of matrix block
                     
                     mint b_j = b_inner[k];                // we are in block {b_i, b_j} now
@@ -1113,65 +1081,53 @@ namespace rsurfaces
                     mint j_begin = b_col_ptr[b_j];
                     mint j_end   = b_row_ptr[b_j+1];
                     
-                    mint n_b_j = j_end - j_begin;
-                    
+                    #pragma omp simd aligned( X1, X2, X3, P11, P12, P13, P22, P23, P33, Y1, Y2, Y3, Q11, Q12, Q13, Q22, Q23, Q33, hi_values, fr_values, lo_values : ALIGN ) collapse(2)
                     for( mint i = i_begin; i < i_end ; ++i )
                     {
-                        mreal x1 = X1[i];
-                        mreal x2 = X2[i];
-                        mreal x3 = X3[i];
-                        mreal p11 = P11[i];
-                        mreal p12 = P12[i];
-                        mreal p13 = P13[i];
-                        mreal p22 = P22[i];
-                        mreal p23 = P23[i];
-                        mreal p33 = P33[i];
-                        
                         for( mint j = j_begin; j < j_end; ++j )
                         {
-                            if (j != i )
-                            {
-                                mreal v1 = Y1[j] - x1;
-                                mreal v2 = Y2[j] - x2;
-                                mreal v3 = Y3[j] - x3;
-                                mreal q11 = Q11[j];
-                                mreal q12 = Q12[j];
-                                mreal q13 = Q13[j];
-                                mreal q22 = Q22[j];
-                                mreal q23 = Q23[j];
-                                mreal q33 = Q33[j];
-                                
-                                mint to = ptr + (i - i_begin) * n_b_j + (j-j_begin);
+                            mreal delta_ij = (i == j);
+                            
+                            mreal x1 = X1[i];
+                            mreal x2 = X2[i];
+                            mreal x3 = X3[i];
+                            mreal p11 = P11[i];
+                            mreal p12 = P12[i];
+                            mreal p13 = P13[i];
+                            mreal p22 = P22[i];
+                            mreal p23 = P23[i];
+                            mreal p33 = P33[i];
+                            
+                            mreal v1 = Y1[j] - x1;
+                            mreal v2 = Y2[j] - x2;
+                            mreal v3 = Y3[j] - x3;
+                            mreal q11 = Q11[j];
+                            mreal q12 = Q12[j];
+                            mreal q13 = Q13[j];
+                            mreal q22 = Q22[j];
+                            mreal q23 = Q23[j];
+                            mreal q33 = Q33[j];
+                            
+                            mreal rCosPhi2 = v1*(p11*v1 + p12*v2 + p13*v3) + v2*(p12*v1 + p22*v2 + p23*v3) + v3*(p13*v1 + p23*v2 + p33*v3);
+                            mreal rCosPsi2 = v1*(q11*v1 + q12*v2 + q13*v3) + v2*(q12*v1 + q22*v2 + q23*v3) + v3*(q13*v1 + q23*v2 + q33*v3);
+                            mreal r2 = v1 * v1 + v2 * v2 + v3 * v3 + delta_ij;
+                            mreal r4 = r2 * r2;
+                            mreal r6 = r4 * r2;
+                            mreal r8 = r4 * r4;
+                            
+                            // The following line makes up approx 2/3 of this function's runtime! This is why we avoid pow as much as possible and replace it with mypow.
+                            mreal hi = mypow(r2, hi_exponent); // I got it down to this single call to pow. We might want to generate a lookup table for it...
+                            
+                            hi_values[ptr] = 2.0 * (1.-delta_ij) * hi; // The factor 2.0 might be suboptimal. That's what my Mathematica code uses (somewhat accidentally) and it seems to work fine.
 
-                                
-                                mreal rCosPhi2 = v1*(p11*v1 + p12*v2 + p13*v3) + v2*(p12*v1 + p22*v2 + p23*v3) + v3*(p13*v1 + p23*v2 + p33*v3);
-                                mreal rCosPsi2 = v1*(q11*v1 + q12*v2 + q13*v3) + v2*(q12*v1 + q22*v2 + q23*v3) + v3*(q13*v1 + q23*v2 + q33*v3);
-                                mreal r2 = v1 * v1 + v2 * v2 + v3 * v3 ;
-                                mreal r4 = r2 * r2;
-                                mreal r6 = r4 * r2;
-                                mreal r8 = r4 * r4;
-                                
-                                // The following line makes up approx 2/3 of this function's runtime! This is why we avoid pow as much as possible and replace it with mypow.
-                                mreal hi = mypow(r2, hi_exponent); // I got it down to this single call to pow. We might want to generate a lookup table for it...
-                                
-                                hi_values[ptr] = 2.0 * hi; // The factor 2.0 might be suboptimal. That's what my Mathematica code uses (somewhat accidentally) and it seems to work fine.
-
-                                // Nasty trick to enforce vectorization without resorting to mypow or pos. Works only if intrinsic_dim is one of 1, 2, or 3.
-                                mreal mul = t1 * r4 + t2 * r6 + t3 * r8;
-                                
-                                fr_values[ptr] = 1. / (hi * mul);
-                                
-                                lo_values[ptr] = (rCosPhi2 + rCosPsi2) / r4 * hi;
-                                
-                            }
-                            else
-                            {
-                                mint to = ptr + (i - i_begin) * n_b_j + (j-j_begin);
-                                // Overwrite diagonal. Just in case.
-                                fr_values[to] = 0.;
-                                hi_values[to] = 0.;
-                                lo_values[to] = 0.;
-                            }
+                            // Nasty trick to enforce vectorization without resorting to mypow or pos. Works only if intrinsic_dim is one of 1, 2, or 3.
+                            mreal mul = t1 * r4 + t2 * r6 + t3 * r8;
+                            
+                            fr_values[ptr] = (1.-delta_ij) / (hi * mul);
+                            
+                            lo_values[ptr] = (1.-delta_ij) * (rCosPhi2 + rCosPsi2) / r4 * hi;
+                            
+                            ptr++;
                         }
                     }
                 }
@@ -1179,6 +1135,7 @@ namespace rsurfaces
         }
         else
         {
+            print("NearFieldInteraction_VBSR - normal variant");
             // using normals on primitives (correct)
             
             // Dunno why "restrict" helps with P_near. It is actually a lie here if S = S.
@@ -1203,13 +1160,11 @@ namespace rsurfaces
             #pragma omp parallel for num_threads(thread_count) RAGGED_SCHEDULE
             for( mint b_i = 0; b_i < b_m; ++b_i )
             {
-                
                 mint i_begin = b_row_ptr[b_i];
                 mint i_end   = b_row_ptr[b_i+1];
                 
                 for( mint k = b_outer[b_i]; k < b_outer[b_i+1]; ++k )
                 {
-                    
                     mint ptr = block_ptr[k];              // starting position of matrix block
                     
                     mint b_j = b_inner[k];                // we are in block {b_i, b_j} now
@@ -1217,65 +1172,56 @@ namespace rsurfaces
                     mint j_begin = b_col_ptr[b_j];
                     mint j_end   = b_row_ptr[b_j+1];
                     
-                    mint n_b_j = j_end - j_begin;
-                    
+                    #pragma omp simd aligned( X1, X2, X3, N1, N2, N3, Y1, Y2, Y3, M1, M2, M3, hi_values, fr_values, lo_values : ALIGN ) collapse(2)
                     for( mint i = i_begin; i < i_end ; ++i )
                     {
-                        mreal x1 = X1[i];
-                        mreal x2 = X2[i];
-                        mreal x3 = X3[i];
-                        mreal n1 = N1[i];
-                        mreal n2 = N2[i];
-                        mreal n3 = N3[i];
-                        #pragma omp simd aligned( Y1, Y2, Y3, M1, M2, M3 : ALIGN )
                         for( mint j = j_begin; j < j_end; ++j )
                         {
-                            if (j != i )
-                            {
-                                mreal v1 = Y1[j] - x1;
-                                mreal v2 = Y2[j] - x2;
-                                mreal v3 = Y3[j] - x3;
-                                mreal m1 = M1[j];
-                                mreal m2 = M2[j];
-                                mreal m3 = M3[j];
-                                
-                                mint to = ptr + (i - i_begin) * n_b_j + (j-j_begin);
-                                
-                                mreal rCosPhi = v1 * n1 + v2 * n2 + v3 * n3;
-                                mreal rCosPsi = v1 * m1 + v2 * m2 + v3 * m3;
-                                mreal r2 = v1 * v1 + v2 * v2 + v3 * v3;
-                                mreal r4 = r2 * r2;
-                                mreal r6 = r4 * r2;
-                                mreal r8 = r4 * r4;
-                                
-                                // The following line makes up approx 2/3 of this function's runtime! This is why we avoid pow as much as possible and replace it with mypow.
-                                mreal hi = mypow(r2, hi_exponent); // I got it down to this single call to pow. We might want to generate a lookup table for it...
-                                
-                                hi_values[ptr] = 2.0 * hi; // The factor 2.0 might be suboptimal. That's what my Mathematica code uses (somewhat accidentally) and it seems to work fine.
+                            mreal delta_ij = (i == j);
+                            
+                            mreal x1 = X1[i];
+                            mreal x2 = X2[i];
+                            mreal x3 = X3[i];
+                            mreal n1 = N1[i];
+                            mreal n2 = N2[i];
+                            mreal n3 = N3[i];
 
-                                // Nasty trick to enforce vectorization without resorting to mypow or pos. Works only if intrinsic_dim is one of 1, 2, or 3.
-                                mreal mul = t1 * r4 + t2 * r6 + t3 * r8;
-                                
-                                fr_values[ptr] = 1. / (hi * mul);
-                                
-                                lo_values[ptr] = (rCosPhi * rCosPhi + rCosPsi * rCosPsi) / r4 * hi;
-                            }
-                            else
-                            {
-                                mint to = ptr + (i - i_begin) * n_b_j + (j-j_begin);
-                                // Overwrite diagonal. Just in case.
-                                fr_values[to] = 0.;
-                                hi_values[to] = 0.;
-                                lo_values[to] = 0.;
-                            }
+                            
+                            mreal v1 = Y1[j] - x1;
+                            mreal v2 = Y2[j] - x2;
+                            mreal v3 = Y3[j] - x3;
+                            mreal m1 = M1[j];
+                            mreal m2 = M2[j];
+                            mreal m3 = M3[j];
+                            
+                            mreal rCosPhi = v1 * n1 + v2 * n2 + v3 * n3;
+                            mreal rCosPsi = v1 * m1 + v2 * m2 + v3 * m3;
+                            mreal r2 = v1 * v1 + v2 * v2 + v3 * v3 + delta_ij;
+                            mreal r4 = r2 * r2;
+                            mreal r6 = r4 * r2;
+                            mreal r8 = r4 * r4;
+                            
+                            // The following line makes up approx 2/3 of this function's runtime! This is why we avoid pow as much as possible and replace it with mypow.
+                            mreal hi = mypow(r2, hi_exponent); // I got it down to this single call to pow. We might want to generate a lookup table for it...
+                            
+                            hi_values[ptr] = 2.0 * (1.-delta_ij) * hi; // The factor 2.0 might be suboptimal. That's what my Mathematica code uses (somewhat accidentally) and it seems to work fine.
+
+                            // Nasty trick to enforce vectorization without resorting to mypow or pos. Works only if intrinsic_dim is one of 1, 2, or 3.
+                            mreal mul = t1 * r4 + t2 * r6 + t3 * r8;
+                            
+                            fr_values[ptr] = (1.-delta_ij) / (hi * mul);
+                            
+                            lo_values[ptr] = (1.-delta_ij) * (rCosPhi * rCosPhi + rCosPsi * rCosPsi) / r4 * hi;
+                            
+                            ptr++;
                         } // for( mint j = j_begin; j < j_end; ++j )
                     } // for( mint i = i_begin; i < i_end ; ++i )
                 } // for( mint k = b_outer[b_i]; k < b_outer[b_i+1]; ++k )
             } // for( mint b_i = 0; b_i < b_m; ++b_i )
             
         } // if( S->near_dim == 10 && T->near_dim == 10 )
-        ptoc("OptimizedBlockClusterTree::NearFieldInteractionVBSR");
-    }; //NearFieldInteractionVBSR
+        ptoc("OptimizedBlockClusterTree::NearFieldInteraction_VBSR");
+    }; //NearFieldInteraction_VBSR
     
     
 } // namespace rsurfaces
