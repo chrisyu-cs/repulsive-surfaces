@@ -83,9 +83,10 @@ namespace rsurfaces
 
             E_11 = tpe_bh_11->Value();
             DE_11.setZero();
+            
             tpe_bh_11->Differential(DE_11);
             ptoc("Energy");
-            
+
             ptic("Multiply");
             auto bct11 = std::make_shared<OptimizedBlockClusterTree>(tpe_bh_11->GetBVH(), tpe_bh_11->GetBVH(), alpha, beta, chi);
             for( mint k = 0; k < 20; ++k)
@@ -102,6 +103,7 @@ namespace rsurfaces
                 bct11->Multiply(V,U,BCTKernelType::LowOrder);
                 ptoc("Multiply LowOrder");
             }
+
             ptoc("Multiply");
         }
         

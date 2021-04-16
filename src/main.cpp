@@ -529,7 +529,7 @@ namespace rsurfaces
         double beta = 12.;
         double weight = 1.;
         double theta = MainApp::instance->bh_theta;
-        double chi = 0.4 * theta;
+        double chi = 0.8 * theta;
 
         // mesh1 and geom1 represent the movable surface
         auto mesh1 = rsurfaces::MainApp::instance->mesh;

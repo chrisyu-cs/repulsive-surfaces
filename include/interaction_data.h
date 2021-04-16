@@ -123,51 +123,51 @@ public:
             {
                 #pragma omp task
                 {
-                    mreal_free(hi_values);
+                    safe_free(hi_values);
                 }
                 #pragma omp task
                 {
-                    mreal_free(lo_values);
+                    safe_free(lo_values);
                 }
                 #pragma omp task
                 {
-                    mreal_free(fr_values);
+                    safe_free(fr_values);
                 }
                 #pragma omp task
                 {
-                    mint_free(outer);
+                    safe_free(outer);
                 }
                 #pragma omp task
                 {
-                    mint_free(inner);
+                    safe_free(inner);
                 }
                 #pragma omp task
                 {
-                    mint_free(b_outer);
+                    safe_free(b_outer);
                 }
                 #pragma omp task
                 {
-                    mint_free(b_inner);
+                    safe_free(b_inner);
                 }
                 #pragma omp task
                 {
-                    mint_free(b_row_ptr);
+                    safe_free(b_row_ptr);
                 }
                 #pragma omp task
                 {
-                    mint_free(b_col_ptr);
+                    safe_free(b_col_ptr);
                 }
                 #pragma omp task
                 {
-                    mint_free(b_row_counters);
+                    safe_free(b_row_counters);
                 }
                 #pragma omp task
                 {
-                    mint_free(block_ptr);
+                    safe_free(block_ptr);
                 }
                 #pragma omp task
                 {
-                    mint_free(job_ptr);
+                    safe_free(job_ptr);
                 }
                 #pragma omp taskwait
             }

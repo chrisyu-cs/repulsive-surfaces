@@ -17,7 +17,6 @@ int main(int arg_count, char* arg_vec[])
         BM.thread_count = BM.max_thread_count = omp_get_num_threads();
     }
     
-    
     po::options_description desc("Allowed options");
     
     try
@@ -150,17 +149,11 @@ int main(int arg_count, char* arg_vec[])
             BM.thread_count = threads;
         }
         
-        
-        
         std::cout << std::endl;
         std::cout << "### threads =  " << BM.thread_count << std::endl;
 
         omp_set_num_threads(BM.thread_count);
         mkl_set_num_threads(BM.thread_count);
-        
-//        int a = BM.thread_count;
-//        tbb::task_scheduler_init init (a);
-        
         
         
         {
@@ -182,7 +175,6 @@ int main(int arg_count, char* arg_vec[])
 //            std::cout << "tbb::task_scheduler_init::default_num_threads() = " << e << std::endl;
         }
 
-        
         ClearProfile(BM.profile_path + "/" + BM.profile_name + "_" + std::to_string(BM.thread_count) + ".tsv");
         
         //burn-in

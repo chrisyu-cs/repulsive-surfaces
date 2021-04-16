@@ -941,9 +941,9 @@ namespace rsurfaces
         
         EigenMatrixRM P_D_near_( bvh->primitive_count, bvh->near_dim );
         EigenMatrixRM P_D_far_ ( bvh->primitive_count, bvh->far_dim );
-        
+
         bvh->CleanseD();
-        
+
         if( use_int )
         {
             mint int_alpha = std::round(alpha);
@@ -957,11 +957,11 @@ namespace rsurfaces
             mreal real_betahalf = beta/2;
             DEnergy( real_alpha, real_betahalf );
         }
-        
+
         bvh->CollectDerivatives( P_D_near_.data(), P_D_far_.data() );
-    
+
         AssembleDerivativeFromACNData( mesh, geom, P_D_near_, output, weight );
-        
+
         if( bvh->far_dim == 10)
         {
             AssembleDerivativeFromACPData( mesh, geom, P_D_far_, output, weight );

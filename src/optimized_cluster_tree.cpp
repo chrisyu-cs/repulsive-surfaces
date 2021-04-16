@@ -59,9 +59,9 @@ namespace rsurfaces
         #pragma omp parallel for
         for( mint k = 0; k < dim; ++k)
         {
-            mreal_safe_alloc( P_coords[k], primitive_count );
+            safe_alloc( P_coords[k], primitive_count );
         }
-        mint_safe_alloc( P_ext_pos, primitive_count );
+        safe_alloc( P_ext_pos, primitive_count );
         #pragma omp parallel for num_threads(thread_count)  shared( P_coords, P_ext_pos, P_coords_, dim, primitive_count, ordering_ )
         for( mint i=0; i < primitive_count; ++i )
         {
@@ -99,39 +99,39 @@ namespace rsurfaces
                 }
                 #pragma omp task
                 {
-                    mint_safe_alloc( C_left, cluster_count );
+                    safe_alloc( C_left, cluster_count );
                 }
                 #pragma omp task
                 {
-                    mint_safe_alloc( C_right, cluster_count );
+                    safe_alloc( C_right, cluster_count );
                 }
                 #pragma omp task
                 {
-                    mint_safe_alloc( C_begin, cluster_count );
+                    safe_alloc( C_begin, cluster_count );
                 }
                 #pragma omp task
                 {
-                    mint_safe_alloc( C_end, cluster_count );
+                    safe_alloc( C_end, cluster_count );
                 }
                 #pragma omp task
                 {
-                    mint_safe_alloc( C_depth, cluster_count );
+                    safe_alloc( C_depth, cluster_count );
                 }
                 #pragma omp task
                 {
-                    mint_safe_alloc( C_next, cluster_count );
+                    safe_alloc( C_next, cluster_count );
                 }
                 #pragma omp task
                 {
-                    mint_safe_alloc( leaf_clusters, leaf_cluster_count );
+                    safe_alloc( leaf_clusters, leaf_cluster_count );
                 }
                 #pragma omp task
                 {
-                    mint_safe_alloc( leaf_cluster_lookup, cluster_count );
+                    safe_alloc( leaf_cluster_lookup, cluster_count );
                 }
                 #pragma omp task
                 {
-                    mint_safe_alloc( inverse_ordering, primitive_count );
+                    safe_alloc( inverse_ordering, primitive_count );
                 }
                 #pragma omp taskwait
             }
@@ -296,21 +296,21 @@ namespace rsurfaces
         P_near = A_Vector<mreal * > ( near_dim, nullptr );
         for( mint k = 0; k < near_dim; ++ k )
         {
-            mreal_safe_alloc( P_near[k], primitive_count );
+            safe_alloc( P_near[k], primitive_count );
         }
         
         P_far  = A_Vector<mreal * > ( far_dim , nullptr );
         for( mint k = 0; k < far_dim; ++ k )
         {
-            mreal_safe_alloc( P_far[k], primitive_count );
+            safe_alloc( P_far[k], primitive_count );
         }
         
         P_min = A_Vector<mreal * > ( dim, nullptr );
         P_max = A_Vector<mreal * > ( dim, nullptr );
         for( mint k = 0; k < dim; ++ k )
         {
-            mreal_safe_alloc( P_min[k], primitive_count );
-            mreal_safe_alloc( P_max[k], primitive_count );
+            safe_alloc( P_min[k], primitive_count );
+            safe_alloc( P_max[k], primitive_count );
         }
         
         P_D_near = A_Vector<A_Vector<mreal>> ( thread_count );
@@ -319,7 +319,7 @@ namespace rsurfaces
 //        P_moments = A_Vector<mreal * restrict> ( moment_count, nullptr );
 //        for( mint k = 0; k < moment_count; ++ k )
 //        {
-//            mreal_safe_alloc( P_moments[k], primitive_count );
+//            safe_alloc( P_moments[k], primitive_count );
 //        }
             
         mint hull_size = hull_count * dim;
@@ -384,7 +384,7 @@ namespace rsurfaces
         C_far = A_Vector<mreal * > ( far_dim, nullptr );
         for( mint k = 0; k < far_dim; ++ k )
         {
-            mreal_safe_alloc( C_far[k], cluster_count, 0. );
+            safe_alloc( C_far[k], cluster_count, 0. );
         }
         
         C_coords = A_Vector<mreal * > ( dim, nullptr );
@@ -392,17 +392,17 @@ namespace rsurfaces
         C_max = A_Vector<mreal * > ( dim, nullptr );
         for( mint k = 0; k < dim; ++ k )
         {
-            mreal_safe_alloc( C_coords[k], cluster_count, 0. );
-            mreal_safe_alloc( C_min[k], cluster_count );
-            mreal_safe_alloc( C_max[k], cluster_count );
+            safe_alloc( C_coords[k], cluster_count, 0. );
+            safe_alloc( C_min[k], cluster_count );
+            safe_alloc( C_max[k], cluster_count );
         }
         
-        mreal_safe_alloc( C_squared_radius, cluster_count );
+        safe_alloc( C_squared_radius, cluster_count );
         
 //        C_moments = A_Vector<mreal * restrict> ( moment_count, nullptr );
 //        for( mint k = 0; k < moment_count; ++ k )
 //        {
-//            mreal_safe_alloc( C_moments[k], cluster_count, 0. );
+//            safe_alloc( C_moments[k], cluster_count, 0. );
 //        }
         
         C_D_far = A_Vector<A_Vector<mreal>> ( thread_count );
@@ -539,7 +539,7 @@ namespace rsurfaces
         C_to_P = MKLSparseMatrix(primitive_count, cluster_count, primitive_count );
         C_to_P.outer[primitive_count] = primitive_count;
         
-        mint_safe_alloc( leaf_cluster_ptr, leaf_cluster_count + 1  );
+        safe_alloc( leaf_cluster_ptr, leaf_cluster_count + 1  );
         leaf_cluster_ptr[0] = 0;
     //    P_leaf = A_Vector<mint>( primitive_count );
 
@@ -630,7 +630,7 @@ namespace rsurfaces
                 }
             }
         
-            mint_accumulate( hi_pre.outer, hi_pre.outer + hi_pre.m + 1);
+            partial_sum( hi_pre.outer, hi_pre.outer + hi_pre.m + 1);
             
             #pragma omp parallel for
             for( mint i = 0; i < primitive_count; ++i)
@@ -721,17 +721,13 @@ namespace rsurfaces
     //        print("Reallocating buffers to max_buffer_dim = " + std::to_string(cols) + "." );
             max_buffer_dim = cols;
 
-            mreal_free(P_in);
-            mreal_safe_alloc( P_in, primitive_count * max_buffer_dim, 0. );
+            safe_alloc( P_in, primitive_count * max_buffer_dim, 0. );
 
-            mreal_free(P_out);
-            mreal_safe_alloc( P_out, primitive_count * max_buffer_dim, 0. );
+            safe_alloc( P_out, primitive_count * max_buffer_dim, 0. );
             
-            mreal_free(C_in);
-            mreal_safe_alloc( C_in, cluster_count * max_buffer_dim, 0. );
+            safe_alloc( C_in, cluster_count * max_buffer_dim, 0. );
             
-            mreal_free(C_out);
-            mreal_safe_alloc( C_out, cluster_count * max_buffer_dim, 0. );
+            safe_alloc( C_out, cluster_count * max_buffer_dim, 0. );
             
         }
         

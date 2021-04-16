@@ -470,7 +470,7 @@ namespace rsurfaces
             eprint("in TPEnergyBarnesHut0::Differential: near_dim != 7");
             valprint("bvh->near_dim",bvh->near_dim);
         }
-        
+
         EigenMatrixRM P_D_near( bvh->primitive_count, bvh->near_dim );
         EigenMatrixRM P_D_far ( bvh->primitive_count, bvh->far_dim );
 
@@ -489,9 +489,9 @@ namespace rsurfaces
             mreal real_betahalf = beta/2;
             DEnergy( real_alpha, real_betahalf );
         }
-        
+
         bvh->CollectDerivatives( P_D_near.data(), P_D_far.data() );
-                
+
         AssembleDerivativeFromACNData( mesh, geom, P_D_near, output, weight );
 
         if( bvh->far_dim == 10)
@@ -502,6 +502,7 @@ namespace rsurfaces
         {
             AssembleDerivativeFromACNData( mesh, geom, P_D_far, output, weight );
         }
+
         ptoc("TPEnergyBarnesHut0::Differential");
     } // Differential
     

@@ -16,7 +16,7 @@ namespace rsurfaces
         // The cost of the k-th thread goes from job no job_ptr[k] to job no job_ptr[k+1] (as always in C/C++, job_ptr[k+1] points _after_ the last job.
         
         ptic("BalanceWorkLoad");
-        mint_safe_alloc( job_ptr, thread_count + 1);
+        safe_alloc( job_ptr, thread_count + 1);
         job_ptr[0] = 0;
         job_ptr[ thread_count ] = job_count;
         
