@@ -22,11 +22,15 @@ namespace rsurfaces
 
     inline OptimizedClusterTree * CreateOptimizedBVH_Normals(MeshPtr &mesh, GeomPtr &geom)
     {
+        geom->requireFaceAreas();
+        geom->requireFaceNormals();
+
+        
         int vertex_count = mesh->nVertices();
         int primitive_count = mesh->nFaces();
         FaceIndices fInds = mesh->getFaceIndices();
         VertexIndices vInds = mesh->getVertexIndices();
-
+        
         int dim = 3;
         int near_dim = 1 + dim + dim;
         int far_dim  = 1 + dim + dim;
@@ -131,6 +135,9 @@ namespace rsurfaces
     inline void UpdateOptimizedBVH(OptimizedClusterTree * bvh, MeshPtr &mesh, GeomPtr &geom)
     {
 //        bvh->UpdateWithNewPositions(mesh, geom);
+        
+        geom->requireFaceAreas();
+        geom->requireFaceNormals();
         
         mint nVertices = mesh->nVertices();
         mint nFaces = mesh->nFaces();
@@ -250,6 +257,9 @@ namespace rsurfaces
     
     inline OptimizedClusterTree * CreateOptimizedBVH(MeshPtr &mesh, GeomPtr &geom)
     {
+        geom->requireFaceAreas();
+        geom->requireFaceNormals();
+        
         int vertex_count = mesh->nVertices();
         int primitive_count = mesh->nFaces();
         int primitive_length = 3;
@@ -366,6 +376,9 @@ namespace rsurfaces
 
     inline OptimizedClusterTree * CreateOptimizedBVH_Projectors(MeshPtr &mesh, GeomPtr &geom)
     {
+        geom->requireFaceAreas();
+        geom->requireFaceNormals();
+        
         int vertex_count = mesh->nVertices();
         int primitive_count = mesh->nFaces();
         int dim = 3;

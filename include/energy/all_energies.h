@@ -25,3 +25,6 @@
 #include "energy/tp_obstacle_barnes_hut_pr_0.h"
 #include "energy/tp_obstacle_all_pairs.h"
 #include "energy/tp_obstacle_all_pairs_pr.h"
+
+#include "energy/tp_pointcloud_obstacle_barnes_hut_0.h"
+#include "energy/tp_pointnormalcloud_obstacle_barnes_hut_0.h"

@@ -62,6 +62,9 @@ namespace rsurfaces
         MeshPtr mesh1;
         GeomPtr geom1;
         
+        std::shared_ptr<TPPointCloudObstacleBarnesHut0> tp_o_pc;
+        std::shared_ptr<TPPointNormalCloudObstacleBarnesHut0> tp_o_pnc;
+        
         Eigen::MatrixXd U;
         Eigen::MatrixXd V;
         mreal E_11;
@@ -73,9 +76,10 @@ namespace rsurfaces
             ptic("Energy");
 
             auto tpe_bh_11 = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
+        
 
             tpe_bh_11->GetBVH()->tree_perc_alg = tree_perc_alg;
-
+            
 //            if( iter < 0)
 //            {
 //                tpe_bh_11->GetBVH()->PrintToFile();
@@ -87,6 +91,52 @@ namespace rsurfaces
             tpe_bh_11->Differential(DE_11);
             ptoc("Energy");
 
+        
+            MeshUPtr u_pc_mesh;
+            GeomUPtr u_pc_geom;
+            std::tie(u_pc_mesh, u_pc_geom) = readMesh("../scenes/LungGrowing/sphere.obj");
+            
+            mint n = u_pc_mesh->nVertices();
+            u_pc_geom->requireVertexNormals();
+            
+            Eigen::MatrixXd pt_coords( n, 3);
+            Eigen::MatrixXd pt_normals( n, 3);
+            Eigen::VectorXd pt_weights( n);
+            
+            #pragma omp parallel for
+            for( mint i = 0; i < n; ++i )
+            {
+                pt_weights(i) = 1.;
+                pt_coords(i, 0) = u_pc_geom->inputVertexPositions[i][0];
+                pt_coords(i, 1) = u_pc_geom->inputVertexPositions[i][1];
+                pt_coords(i, 2) = u_pc_geom->inputVertexPositions[i][2];
+                pt_normals(i, 0) = u_pc_geom->vertexNormals[i][0];
+                pt_normals(i, 1) = u_pc_geom->vertexNormals[i][1];
+                pt_normals(i, 2) = u_pc_geom->vertexNormals[i][2];
+            }
+        
+            
+            ptic("TPPointCloudObstacleBarnesHut0");
+
+            tp_o_pc = std::make_shared<TPPointCloudObstacleBarnesHut0>(mesh1, geom1, tpe_bh_11.get(), pt_weights, pt_coords, alpha, beta, theta, weight);
+
+            E_11 = tp_o_pc->Value();
+            DE_11.setZero();
+            
+            tp_o_pc->Differential(DE_11);
+            ptoc("TPPointCloudObstacleBarnesHut0");
+            
+            ptic("TPPointNormalCloundObstacleBarnesHut0");
+            tp_o_pnc = std::make_shared<TPPointNormalCloudObstacleBarnesHut0>(mesh1, geom1, tpe_bh_11.get(), pt_weights, pt_coords, pt_normals, alpha, beta, theta, weight);
+
+            E_11 = tp_o_pnc->Value();
+            
+            DE_11.setZero();
+            
+            tp_o_pnc->Differential(DE_11);
+            
+            ptoc("TPPointNormalCloundObstacleBarnesHut0");
+            
             ptic("Multiply");
             auto bct11 = std::make_shared<OptimizedBlockClusterTree>(tpe_bh_11->GetBVH(), tpe_bh_11->GetBVH(), alpha, beta, chi);
             for( mint k = 0; k < 20; ++k)
@@ -107,16 +157,17 @@ namespace rsurfaces
             ptoc("Multiply");
         }
         
-        void PrepareVectors()
+        void Prepare()
         {
-            ptic("PrepareVectors");
+            ptic("Vectors");
             mint vertex_count1 = mesh1->nVertices();
             DE_11 = Eigen::MatrixXd(vertex_count1, 3);
             
             U = getVertexPositions( mesh1, geom1 );
             V = Eigen::MatrixXd(vertex_count1, 3);
             V.setZero();
-            ptoc("PrepareVectors");
+            ptoc("Vectors");
+            
         }
         
         void PrintStats()
