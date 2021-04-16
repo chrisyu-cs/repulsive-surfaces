@@ -16,7 +16,7 @@ int main(int arg_count, char* arg_vec[])
     {
         BM.thread_count = BM.max_thread_count = omp_get_num_threads();
     }
-    
+    print("A");
     
     po::options_description desc("Allowed options");
     
@@ -120,11 +120,13 @@ int main(int arg_count, char* arg_vec[])
         std::cerr << "Exception of unknown type!\n";
     }
     
+    print("B");
     std::cout << std::setprecision(8);
     
     MeshUPtr u_mesh;
     GeomUPtr u_geom;
     
+    print("C");
     // Load mesh1
     std::cout << "Loading " << BM.obj1 << " as variable." << std::endl;
     std::tie(u_mesh, u_geom) = readMesh(BM.obj1);
@@ -134,8 +136,11 @@ int main(int arg_count, char* arg_vec[])
     BM.geom1->requireVertexNormals();
     BM.PrepareVectors();
     
+    print("D");
     for( mint threads = 0; threads < BM.max_thread_count + 1; threads += BM.thread_step )
     {
+        
+        print("E");
         // 0 is the new 1. (Want to have steps, but also  a single-threaded run.
         if( threads == 1)
         {
@@ -150,17 +155,13 @@ int main(int arg_count, char* arg_vec[])
             BM.thread_count = threads;
         }
         
-        
+        print("F");
         
         std::cout << std::endl;
         std::cout << "### threads =  " << BM.thread_count << std::endl;
 
         omp_set_num_threads(BM.thread_count);
         mkl_set_num_threads(BM.thread_count);
-        
-//        int a = BM.thread_count;
-//        tbb::task_scheduler_init init (a);
-        
         
         
         {
@@ -182,7 +183,7 @@ int main(int arg_count, char* arg_vec[])
 //            std::cout << "tbb::task_scheduler_init::default_num_threads() = " << e << std::endl;
         }
 
-        
+        print("G");
         ClearProfile(BM.profile_path + "/" + BM.profile_name + "_" + std::to_string(BM.thread_count) + ".tsv");
         
         //burn-in
@@ -192,9 +193,11 @@ int main(int arg_count, char* arg_vec[])
             BM.Compute(-1);
 
         }
+        print("H");
         
         ClearProfile(BM.profile_path + "/" + BM.profile_name + "_" + std::to_string(BM.thread_count) + ".tsv");
         
+        print("I");
         //the actual test code
         for( mint i = 0; i < BM.iterations; ++i)
         {
