@@ -19,7 +19,8 @@
 
 #define CACHE_LINE_WIDTH 64    // length of cache line measured in bytes
 #define CACHE_LINE_LENGHT 8    // length of cache line measured in number of doubles
-#define restrict __restrict
+//#define restrict __restrict
+#define restrict 
 
 #define ALIGN CACHE_LINE_WIDTH // MKL suggests 64-byte alignment
 #define CHUNK_SIZE CACHE_LINE_LENGHT
@@ -220,8 +221,8 @@ namespace rsurfaces
     {
         mint n = 0;
         mint mtype = 11;                   /* Matrix type */
-        mint * perm = nullptr;       /* Permutation */
-        mint * iparm = nullptr;      /* Integer parameter array for controlling pardiso */
+        mint * restrict perm = nullptr;       /* Permutation */
+        mint * restrict iparm = nullptr;      /* Integer parameter array for controlling pardiso */
         A_Vector<void*> pt;                /* Pointer used internally by pardiso to store its data */
     
         bool symfactorized = false;
@@ -303,9 +304,9 @@ namespace rsurfaces
         mint m = 0;
         mint n = 0;
         mint nnz = 0;
-        mint  * outer = nullptr;
-        mint  * inner = nullptr;
-        mreal * values = nullptr;
+        mint  * restrict outer = nullptr;
+        mint  * restrict inner = nullptr;
+        mreal * restrict values = nullptr;
         PardisoData P;
     
         matrix_descr descr;
