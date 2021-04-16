@@ -142,8 +142,6 @@ namespace rsurfaces
         
         ~OptimizedClusterTree()
         {
-
-            print("~OptimizedClusterTree");
             ptic("~OptimizedClusterTree");
             // pointer arrays come at the cost of manual deallocation...
             

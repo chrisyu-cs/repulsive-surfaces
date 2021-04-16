@@ -41,6 +41,7 @@ namespace rsurfaces
 
         ~OptimizedBlockClusterTree()
         {
+            ptic("~OptimizedBlockClusterTree");
             #pragma omp parallel
             {
                 #pragma omp single
@@ -57,8 +58,10 @@ namespace rsurfaces
                     {
                         mreal_free(fr_diag);
                     }
+                    #pragma omp taskwait
                 }
             }
+            ptoc("~OptimizedBlockClusterTree");
         };
 
         mutable OptimizedClusterTree* S; // "left" OptimizedClusterTree (output side of matrix-vector multiplication)
@@ -75,17 +78,6 @@ namespace rsurfaces
 
         mreal hi_exponent = -0.5 * (2.0 * (2.0 / 3.0) + 2.0); // The only exponent we have to use for pow to compute matrix entries. All other exponents have been optimized away.
                                                               //    mreal fr_exponent;
-
-
-        // Scaling parameters for the matrix-vector product.
-        // E.g. one can perform  u = hi_factor * A_hi * v. With MKL, this comes at no cost, because it is fused into the matrix multiplications anyways.
-        mreal hi_far_factor = 1.;
-        mreal lo_far_factor = 1.;
-        mreal fr_far_factor = 1.;
-        
-        mreal hi_near_factor = 1.;
-        mreal lo_near_factor = 1.;
-        mreal fr_near_factor = 1.;
 
         // Product of the kernel matrix with the constant-1-vector.
         // Need to be updated if hi_factor, lo_factor, or fr_factor are changed!
@@ -147,9 +139,9 @@ namespace rsurfaces
         
         void FarFieldInteraction(); // Compute nonzero values of sparse far field interaction matrices.
 
-        void NearFieldInteractionCSR(); // Compute nonzero values of sparse near field interaction matrices in CSR format.
+        void NearFieldInteraction_CSR(); // Compute nonzero values of sparse near field interaction matrices in CSR format.
 
-        void NearFieldInteractionVBSR(); // Compute nonzero values of sparse near field interaction matrices in VBSR format.
+        void NearFieldInteraction_VBSR(); // Compute nonzero values of sparse near field interaction matrices in VBSR format.
         
         void InternalMultiply(BCTKernelType type) const;
 

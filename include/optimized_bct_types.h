@@ -17,13 +17,15 @@
 #include "bct_kernel_type.h"
 #include "profiler.h"
 
+#define CACHE_LINE_WIDTH 64    // length of cache line measured in bytes
+#define CACHE_LINE_LENGHT 8    // length of cache line measured in number of doubles
 #define restrict __restrict
-#define ALIGN 32
 
-// length of cache line measured in number of doubles
-#define CACHE_LINE_LENGHT 8
-#define CHUNK_SIZE 8
+#define ALIGN CACHE_LINE_WIDTH // MKL suggests 64-byte alignment
+#define CHUNK_SIZE CACHE_LINE_LENGHT
 #define RAGGED_SCHEDULE schedule( guided, CHUNK_SIZE)
+
+#define SAFE_ALLOCATE_WARNINGS
 
 namespace rsurfaces
 {
@@ -31,21 +33,6 @@ namespace rsurfaces
     // "In know only two types: integers and doubles..."
     typedef MKL_INT mint; // "machine integer" -- ensuring that we use the integer type requested by MKL. I find "MKL_INT" a bit clunky, though.
     typedef double mreal; // "machine real"
-
-    mreal * mreal_alloc(size_t size);
-    mreal * mreal_alloc(size_t size, mreal init);
-    void  mreal_free(mreal * ptr);
-    mint * mint_alloc(size_t size);
-    mint * mint_alloc(size_t size, mint init);
-    mint * mint_iota(size_t size, mint step = 1);
-    void  mint_free(mint * ptr);
-
-
-    typedef Eigen::SparseMatrix<mreal, Eigen::RowMajor, mint> EigenMatrixCSR;
-    typedef Eigen::SparseMatrix<mreal> EigenMatrixCSC;
-
-    typedef Eigen::Matrix<mreal, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> EigenMatrixRM;
-    typedef Eigen::MatrixXd EigenMatrixCM;
 
     class Timers
     {
@@ -60,15 +47,41 @@ namespace rsurfaces
         std::cout << (std::string( 2 * (Timers::time_stack.size() + 1), ' ') + s) << std::endl;
     }
 
-    inline void valprint(std::string s, mint val)
+    template <typename T>
+    inline void valprint(std::string s, T val)
     {
         std::cout << (std::string( 2 * (Timers::time_stack.size() + 1), ' ') + s) << " = " << val <<  std::endl;
     }
-
-    inline void valprint(std::string s, mreal val)
+    
+    template <typename T>
+    inline void valprint(std::string s, T * begin, T * end)
     {
-        std::cout << (std::string( 2 * (Timers::time_stack.size() + 1), ' ') + s) << " = " << val <<  std::endl;
+        std::cout << (std::string( 2 * (Timers::time_stack.size() + 1), ' ') + s) << " = [ ";
+        if( end > begin )
+        {
+            for( T * ptr = begin; ptr < end-1 ; ++ptr)
+            {
+                std::cout << *ptr << ", ";
+            }
+            std::cout << *(end-1);
+        }
+        std::cout << " ]" << std::endl;
     }
+    
+//    template <typename T>
+//    inline void valprint(std::string s, mint * begin, mint * end, T * array)
+//    {
+//        std::cout << (std::string( 2 * (Timers::time_stack.size() + 1), ' ') + s) << " = [ ";
+//        if( end > begin )
+//        {
+//            for( T * ptr = begin; ptr < end-1 ; ++ptr)
+//            {
+//                std::cout << array[*ptr] << ", ";
+//            }
+//            std::cout << array[*end];
+//        }
+//        std::cout << " ]" << std::endl;
+//    }
 
     inline void eprint(std::string s)
     {
@@ -125,6 +138,158 @@ namespace rsurfaces
             return 0.;
         }
     }
+    
+    
+// double allocation helpers
+    
+    
+    inline int mreal_free( mreal * &  ptr )
+    {
+        int wasallocated = (ptr != nullptr);
+        if( wasallocated ){ mkl_free(ptr); ptr = nullptr; }
+        return !wasallocated;
+    }
+    
+    inline int mreal_safe_alloc(mreal * &  ptr, size_t size)
+    {
+        int wasallocated = (ptr != nullptr);
+        if( wasallocated )
+        {
+#ifdef SAFE_ALLOCATE_WARNINGS
+            wprint("mreal_safe_alloc: Pointer was not NULL. Calling mreal_free to prevent memory leak.");
+#endif
+            mreal_free(ptr);
+        }
+        ptr = (mreal *) mkl_malloc ( size * sizeof(mreal), ALIGN );
+        return wasallocated;
+    }
+
+    inline int mreal_safe_alloc( mreal* &  ptr, size_t size, mreal init)
+    {
+        int wasallocated = mreal_safe_alloc(ptr, size);
+        #pragma omp simd aligned( ptr : ALIGN )
+        for( size_t i = 0; i < size; ++i )
+        {
+            ptr[i] = init;
+        }
+        return wasallocated;
+    }
+
+    inline mreal * mreal_alloc(size_t size)
+    {
+        return (mreal *) mkl_malloc ( size * sizeof(mreal), ALIGN );
+    }
+    
+    inline mreal * mreal_alloc(size_t size, mreal init)
+    {
+        mreal * ptr = mreal_alloc(size);
+        #pragma omp simd aligned( ptr : ALIGN )
+        for( size_t i = 0; i < size; ++i )
+        {
+            ptr[i] = init;
+        }
+        return ptr;
+    }
+    
+// integer allocation helpers
+    
+    inline int mint_free( mint * & ptr )
+    {
+        int wasallocated = (ptr != nullptr);
+        if( wasallocated ){ mkl_free(ptr); ptr = nullptr; }
+        return !wasallocated;
+    }
+    
+    inline int mint_safe_alloc( mint * & ptr, size_t size )
+    {
+        int wasallocated = (ptr != nullptr);
+        if( wasallocated )
+        {
+#ifdef SAFE_ALLOCATE_WARNINGS
+            wprint("mint_safe_alloc: Pointer was not NULL. Calling mint_free to prevent memory leak.");
+#endif
+            mint_free(ptr);
+        }
+        ptr = (mint *) mkl_malloc ( size * sizeof(mint), ALIGN );
+        return wasallocated;
+    }
+
+    inline int mint_safe_alloc( mint * & ptr, size_t size, mint init)
+    {
+        int wasallocated = mint_safe_alloc(ptr, size);
+        #pragma omp simd aligned( ptr : ALIGN )
+        for( size_t i = 0; i < size; ++i )
+        {
+            ptr[i] = init;
+        }
+        return wasallocated;
+    }
+    
+    
+    inline int mint_safe_iota(mint * & ptr, size_t size, mint step = 1)
+    {
+        int wasallocated = mint_safe_alloc(ptr, size);
+        #pragma omp simd aligned( ptr : ALIGN )
+        for( size_t i = 0; i < size; i+=step )
+        {
+            ptr[i] = i;
+        }
+        return wasallocated;
+    }
+    
+    inline mint * mint_alloc(size_t size)
+    {
+        return (mint * ) mkl_malloc ( size * sizeof(mint), size );
+    }
+
+    inline mint * mint_alloc(size_t size, mint init)
+    {
+        mint * ptr = mint_alloc(size);
+        #pragma omp simd aligned( ptr : ALIGN )
+        for( size_t i = 0; i < size; ++i )
+        {
+            ptr[i] = init;
+        }
+        return ptr;
+    }
+    
+    inline mint * mint_iota(size_t size, mint step = 1)
+    {
+        mint * ptr = mint_alloc(size);
+        #pragma omp simd aligned( ptr : ALIGN )
+        for( size_t i = 0; i < size; i+=step )
+        {
+            ptr[i] = i;
+        }
+        return ptr;
+    }
+
+    inline void mint_accumulate( mint * begin, mint * end)
+    {
+        std::partial_sum( begin, end, begin );
+    }
+
+    
+    
+//    void mint_accumulate( mint * begin, mint * end);
+//    {
+//        if( end > begin)
+//        {
+//            for( mint * ptr = begin; ptr < end-1; ++ptr )
+//            {
+//                *(ptr+1) += * ptr;
+//            }
+//        }
+//    }
+    
+
+
+
+    typedef Eigen::SparseMatrix<mreal, Eigen::RowMajor, mint> EigenMatrixCSR;
+    typedef Eigen::SparseMatrix<mreal> EigenMatrixCSC;
+
+    typedef Eigen::Matrix<mreal, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> EigenMatrixRM;
+    typedef Eigen::MatrixXd EigenMatrixCM;
 
     // I am not that knowledgable about allocators; tbb::cache_aligned_allocator seemed to work well for allocating thread-owned vectors. And I simply used it for the rest, too, because should also provide good alignment for SIMD instructions (used in MKL routines). DO NOT USE A_Vector OR A_Deque FOR MANY SMALL ARRAYS. I typically allicate only very large arrays, so the exrta memory consumption should not be an issue.
     template <typename T>
@@ -964,4 +1129,11 @@ namespace rsurfaces
     }
 
 
+    // This function reads in a list job_acc_costs of accumuated costs, then allocates job_ptr as a vector of size thread_count + 1, and writes the work distribution to it.
+    // Aasigns threads to consecutive chunks jobs, ..., job_ptr[k+1]-1 of jobs.
+    // Uses a binary search to find the chunk boundaries.
+    // The cost of the i-th job is job_acc_costs[i+1] - job_acc_costs[i].
+    // The cost of the k-th thread goes from job no job_ptr[k] to job no job_ptr[k+1] (as always in C/C++, job_ptr[k+1] points _after_ the last job.
+    void BalanceWorkLoad( mint job_count, mint * job_acc_costs, mint thread_count, mint * & job_ptr );
+    
 } // namespace rsurfaces

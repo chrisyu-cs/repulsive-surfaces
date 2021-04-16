@@ -145,41 +145,40 @@ namespace rsurfaces
                         mint j_begin = C_begin[C];
                         mint j_end   = C_end[C];
 
-//                        #pragma omp simd aligned( P_A, P_X1, P_X2, P_X3 : ALIGN ) collapse(2)
+                        mreal local_local_sum = 0.;
+                        
+                        #pragma omp simd aligned( P_A, P_X1, P_X2, P_X3, P_N1, P_N2, P_N3 : ALIGN ) collapse(2) reduction( + : local_local_sum )
                         for( mint i = i_begin; i < i_end; ++i )
                         {
-                            mreal a  = P_A [i];
-                            mreal x1 = P_X1[i];
-                            mreal x2 = P_X2[i];
-                            mreal x3 = P_X3[i];
-                            mreal n1 = P_N1[i];
-                            mreal n2 = P_N2[i];
-                            mreal n3 = P_N3[i];
-                            
-                            mreal local_local_sum = 0.;
-                            
                             for( mint j = j_begin; j < j_end; ++j )
                             {
-                                if ( i != j )
-                                {
-                                    mreal b  = P_A [j];
-                                    mreal y1 = P_X1[j];
-                                    mreal y2 = P_X2[j];
-                                    mreal y3 = P_X3[j];
-                                    
-                                    mreal v1 = y1 - x1;
-                                    mreal v2 = y2 - x2;
-                                    mreal v3 = y3 - x3;
-                                    
-                                    mreal rCosPhi = v1 * n1 + v2 * n2 + v3 * n3;
-                                    mreal r2 = v1 * v1 + v2 * v2 + v3 * v3 ;
-                                    
-                                    local_local_sum += mypow( fabs(rCosPhi), alpha ) * mypow( r2, minus_betahalf ) * b;
-                                }
+                                mreal delta_ij = (i == j);
+                                
+                                mreal a  = P_A [i];
+                                mreal x1 = P_X1[i];
+                                mreal x2 = P_X2[i];
+                                mreal x3 = P_X3[i];
+                                mreal n1 = P_N1[i];
+                                mreal n2 = P_N2[i];
+                                mreal n3 = P_N3[i];
+                                
+                                mreal b  = P_A [j];
+                                mreal y1 = P_X1[j];
+                                mreal y2 = P_X2[j];
+                                mreal y3 = P_X3[j];
+                                
+                                mreal v1 = y1 - x1;
+                                mreal v2 = y2 - x2;
+                                mreal v3 = y3 - x3;
+                                
+                                mreal rCosPhi = v1 * n1 + v2 * n2 + v3 * n3;
+                                mreal r2 = v1 * v1 + v2 * v2 + v3 * v3 + delta_ij;
+                                
+                                local_local_sum += a *  (1. - delta_ij) * mypow( fabs(rCosPhi), alpha ) * mypow( r2, minus_betahalf ) * b;
                             }
-                            
-                            local_sum += a * local_local_sum;
                         }
+                        
+                        local_sum += local_local_sum;
                     }
                 }
             }
@@ -204,8 +203,11 @@ namespace rsurfaces
         mreal sum = 0.;
         
         mint far_dim = bvh->far_dim;
+        mint primitive_count = bvh->primitive_count;
+        mint cluster_count = bvh->cluster_count;
         
         mint nthreads = bvh->thread_count;
+        
         
         // Dunno why "restrict" helps with P_near. It is actually a lie here when S = T.
         mreal const * restrict const P_A  = bvh->P_near[0];
@@ -298,12 +300,17 @@ namespace rsurfaces
                     mreal y2 = C_X2[C];
                     mreal y3 = C_X3[C];
                     
+// SIMD seems to be counterproductive here
+                    #pragma omp simd aligned( P_A, P_X1, P_X2, P_X3, P_N1, P_N2, P_N3, P_U, C_U : ALIGN ) reduction( + : sum )
                     for( mint i = i_begin; i < i_end; ++i )
                     {
                         mreal a  = P_A [i];
-                        mreal x1 = P_X1[i];   mreal n1 = P_N1[i];
-                        mreal x2 = P_X2[i];   mreal n2 = P_N2[i];
-                        mreal x3 = P_X3[i];   mreal n3 = P_N3[i];
+                        mreal x1 = P_X1[i];
+                        mreal x2 = P_X2[i];
+                        mreal x3 = P_X3[i];
+                        mreal n1 = P_N1[i];
+                        mreal n2 = P_N2[i];
+                        mreal n3 = P_N3[i];
                         
                         mreal v1 = y1 - x1;
                         mreal v2 = y2 - x2;
@@ -332,13 +339,7 @@ namespace rsurfaces
                         mreal Z2 = ( - n2 * F + v2 * H );
                         mreal Z3 = ( - n3 * F + v3 * H );
                         
-                        P_U[ 7 * i + 0 ] += b * (
-                                                 density
-                                                 +
-                                                 F * ( n1 * (x1 - v1) + n2 * (x2 - v2) + n3 * (x3 - v3) )
-                                                 -
-                                                 H * ( v1 * x1 + v2 * x2 + v3 * x3 )
-                                                 );
+                        P_U[ 7 * i + 0 ] += b  * ( density + F * ( n1 * (x1 - v1) + n2 * (x2 - v2) + n3 * (x3 - v3) ) - H * ( v1 * x1 + v2 * x2 + v3 * x3 ) );
                         P_U[ 7 * i + 1 ] += b  * Z1;
                         P_U[ 7 * i + 2 ] += b  * Z2;
                         P_U[ 7 * i + 3 ] += b  * Z3;
@@ -346,13 +347,7 @@ namespace rsurfaces
                         P_U[ 7 * i + 5 ] += bF * v2;
                         P_U[ 7 * i + 6 ] += bF * v3;
                         
-                        C_U[ far_dim * C + 0 ] += a * (
-                                                 density
-                                                 -
-                                                 F * ( n1 * y1 + n2 * y2 + n3 * y3 )
-                                                 +
-                                                 H * ( v1 * y1 + v2 * y2 + v3 * y3 )
-                                                 );
+                        C_U[ far_dim * C + 0 ] += a  * ( density - F * ( n1 * y1 + n2 * y2 + n3 * y3 ) + H * ( v1 * y1 + v2 * y2 + v3 * y3 ) );
                         C_U[ far_dim * C + 1 ] -= a  * Z1;
                         C_U[ far_dim * C + 2 ] -= a  * Z2;
                         C_U[ far_dim * C + 3 ] -= a  * Z3;
@@ -373,74 +368,66 @@ namespace rsurfaces
                         mint j_begin = C_begin[C];
                         mint j_end   = C_end[C];
                         
+// SIMD seems to be counterproductive here
+                        #pragma omp simd aligned( P_A, P_X1, P_X2, P_X3, P_N1, P_N2, P_N3, P_U : ALIGN ) collapse(2) reduction( + : sum )
                         for( mint i = i_begin; i < i_end; ++i )
                         {
-                            mreal a  = P_A [i];
-                            mreal x1 = P_X1[i];   mreal n1 = P_N1[i];
-                            mreal x2 = P_X2[i];   mreal n2 = P_N2[i];
-                            mreal x3 = P_X3[i];   mreal n3 = P_N3[i];
-                            
                             for( mint j = j_begin; j < j_end; ++j )
                             {
-                                if ( i != j )
-                                {
-                                    mreal b  = P_A [j];
-                                    mreal y1 = P_X1[j];
-                                    mreal y2 = P_X2[j];
-                                    mreal y3 = P_X3[j];
-                                    
-                                    mreal v1 = y1 - x1;
-                                    mreal v2 = y2 - x2;
-                                    mreal v3 = y3 - x3;
-                                    
-                                    mreal rCosPhi = v1 * n1 + v2 * n2 + v3 * n3;
-                                    mreal r2      = v1 * v1 + v2 * v2 + v3 * v3;
-                                    
-                                    mreal rBetaMinus2 = mypow( r2, minus_betahalf_minus_1 );
-                                    mreal rBeta = rBetaMinus2 * r2;
-                                    
-                                    mreal rCosPhiAlphaMinus1 = mypow( fabs(rCosPhi), alpha_minus_2 ) * rCosPhi;
-                                    mreal rCosPhiAlpha = rCosPhiAlphaMinus1 * rCosPhi;
-                                    
-                                    mreal Num = rCosPhiAlpha;
-                                    mreal factor0 = rBeta * alpha;
-                                    mreal density = rBeta * Num;
-                                    sum += a * b * density;
-                                    
-                                    mreal F = factor0 * rCosPhiAlphaMinus1;
-                                    mreal H = beta * rBetaMinus2 * Num;
-                                    
-                                    mreal bF = b * F;
-                                    
-                                    mreal Z1 = ( - n1 * F + v1 * H );
-                                    mreal Z2 = ( - n2 * F + v2 * H );
-                                    mreal Z3 = ( - n3 * F + v3 * H );
-                                    
-                                    P_U[ 7 * i + 0 ] += b * (
-                                                             density
-                                                             +
-                                                             F * ( n1 * (x1 - v1) + n2 * (x2 - v2) + n3 * (x3 - v3) )
-                                                             -
-                                                             H * ( v1 * x1 + v2 * x2 + v3 * x3 )
-                                                             );
-                                    P_U[ 7 * i + 1 ] += b  * Z1;
-                                    P_U[ 7 * i + 2 ] += b  * Z2;
-                                    P_U[ 7 * i + 3 ] += b  * Z3;
-                                    P_U[ 7 * i + 4 ] += bF * v1;
-                                    P_U[ 7 * i + 5 ] += bF * v2;
-                                    P_U[ 7 * i + 6 ] += bF * v3;
-                                    
-                                    P_U[ 7 * j + 0 ] += a * (
-                                                             density
-                                                             -
-                                                             F * ( n1 * y1 + n2 * y2 + n3 * y3 )
-                                                             +
-                                                             H * ( v1 * y1 + v2 * y2 + v3 * y3 )
-                                                             );
-                                    P_U[ 7 * j + 1 ] -= a  * Z1;
-                                    P_U[ 7 * j + 2 ] -= a  * Z2;
-                                    P_U[ 7 * j + 3 ] -= a  * Z3;
-                                }
+                                mreal delta_ij = (i == j);
+                                
+                                mreal a  = P_A [i];
+                                mreal x1 = P_X1[i];
+                                mreal x2 = P_X2[i];
+                                mreal x3 = P_X3[i];
+                                mreal n1 = P_N1[i];
+                                mreal n2 = P_N2[i];
+                                mreal n3 = P_N3[i];
+                                
+                                mreal b  = P_A [j];
+                                mreal y1 = P_X1[j];
+                                mreal y2 = P_X2[j];
+                                mreal y3 = P_X3[j];
+                                
+                                mreal v1 = y1 - x1;
+                                mreal v2 = y2 - x2;
+                                mreal v3 = y3 - x3;
+                                
+                                mreal rCosPhi = v1 * n1 + v2 * n2 + v3 * n3;
+                                mreal r2      = v1 * v1 + v2 * v2 + v3 * v3 + delta_ij;
+                                
+                                mreal rBetaMinus2 = (1. - delta_ij) * mypow( r2, minus_betahalf_minus_1 );
+                                mreal rBeta = (1. - delta_ij) * rBetaMinus2 * r2;
+                                
+                                mreal rCosPhiAlphaMinus1 = mypow( fabs(rCosPhi), alpha_minus_2 ) * rCosPhi;
+                                mreal rCosPhiAlpha = rCosPhiAlphaMinus1 * rCosPhi;
+                                
+                                mreal Num = rCosPhiAlpha;
+                                mreal factor0 = rBeta * alpha;
+                                mreal density = rBeta * Num;
+                                sum += a * b * density;
+                                
+                                mreal F = factor0 * rCosPhiAlphaMinus1;
+                                mreal H = beta * rBetaMinus2 * Num;
+                                
+                                mreal bF = b * F;
+                                
+                                mreal Z1 = ( - n1 * F + v1 * H );
+                                mreal Z2 = ( - n2 * F + v2 * H );
+                                mreal Z3 = ( - n3 * F + v3 * H );
+                                
+                                P_U[ 7 * i + 0 ] += b * ( density + F * ( n1 * (x1 - v1) + n2 * (x2 - v2) + n3 * (x3 - v3) ) - H * ( v1 * x1 + v2 * x2 + v3 * x3 ) );
+                                P_U[ 7 * i + 1 ] += b  * Z1;
+                                P_U[ 7 * i + 2 ] += b  * Z2;
+                                P_U[ 7 * i + 3 ] += b  * Z3;
+                                P_U[ 7 * i + 4 ] += bF * v1;
+                                P_U[ 7 * i + 5 ] += bF * v2;
+                                P_U[ 7 * i + 6 ] += bF * v3;
+                                
+                                P_U[ 7 * j + 0 ] += a * ( density - F * ( n1 * y1 + n2 * y2 + n3 * y3 ) + H * ( v1 * y1 + v2 * y2 + v3 * y3 ) );
+                                P_U[ 7 * j + 1 ] -= a  * Z1;
+                                P_U[ 7 * j + 2 ] -= a  * Z2;
+                                P_U[ 7 * j + 3 ] -= a  * Z3;
                             }
                         }
                     }
