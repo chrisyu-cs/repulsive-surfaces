@@ -121,7 +121,6 @@ namespace rsurfaces
     
     void AssembleDerivativeFromACNData( MeshPtr mesh, GeomPtr geom, EigenMatrixRM const & P_D_data, Eigen::MatrixXd & output, mreal weight )
     {
-        print("AssembleDerivativeFromACNData");
         ptic("AssembleDerivativeFromACNData");
         
         auto V_coords = getVertexPositions( mesh, geom );

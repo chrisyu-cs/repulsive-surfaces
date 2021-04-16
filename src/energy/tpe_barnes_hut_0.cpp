@@ -465,7 +465,6 @@ namespace rsurfaces
 
     void TPEnergyBarnesHut0::Differential( Eigen::MatrixXd &output )
     {
-        print("G.5.1");
         ptic("TPEnergyBarnesHut0::Differential");
         if( bvh->near_dim != 7)
         {
@@ -504,7 +503,7 @@ namespace rsurfaces
         {
             AssembleDerivativeFromACNData( mesh, geom, P_D_far, output, weight );
         }
-        print("G.5.8");
+
         ptoc("TPEnergyBarnesHut0::Differential");
     } // Differential
     
