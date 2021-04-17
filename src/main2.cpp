@@ -129,9 +129,7 @@ int main(int arg_count, char* arg_vec[])
     std::tie(u_mesh, u_geom) = readMesh(BM.obj1);
     BM.mesh1 = std::move(u_mesh);
     BM.geom1 = std::move(u_geom);
-    BM.geom1->requireVertexDualAreas();
-    BM.geom1->requireVertexNormals();
-    BM.PrepareVectors();
+    BM.Prepare();
     
     for( mint threads = 0; threads < BM.max_thread_count + 1; threads += BM.thread_step )
     {

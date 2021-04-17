@@ -35,7 +35,7 @@ namespace rsurfaces
     )
     {
         ptic("OptimizedClusterTree::OptimizedClusterTree");
-        
+
         primitive_count = primitive_count_;
         hull_count = hull_count_;
         dim = dim_;
@@ -54,14 +54,19 @@ namespace rsurfaces
         tree_thread_count = std::max( static_cast<mint>(1), nthreads );
              thread_count = std::max( static_cast<mint>(1), nthreads );
         mint a = 1;
+
         split_threshold = std::max( a, split_threshold_);
+
         P_coords = A_Vector<mreal * >( dim, nullptr );
+
         #pragma omp parallel for
         for( mint k = 0; k < dim; ++k)
         {
             safe_alloc( P_coords[k], primitive_count );
         }
+
         safe_alloc( P_ext_pos, primitive_count );
+
         #pragma omp parallel for num_threads(thread_count)  shared( P_coords, P_ext_pos, P_coords_, dim, primitive_count, ordering_ )
         for( mint i=0; i < primitive_count; ++i )
         {
@@ -72,7 +77,9 @@ namespace rsurfaces
                 P_coords[k][i] = P_coords_[ dim * j + k ];
             }
         }
+
         ptic("SplitCluster");
+
         Cluster2 * root = new Cluster2 ( 0, primitive_count, 0 );
 
         #pragma omp parallel num_threads(tree_thread_count)  shared( root, P_coords, P_ext_pos, tree_thread_count)
@@ -83,8 +90,9 @@ namespace rsurfaces
             }
         }
         ptoc("SplitCluster");
-        
+
         ptic("Bunch of allocations");
+
         cluster_count = root->descendant_count;
         leaf_cluster_count = root->descendant_leaf_count;
         tree_max_depth = root->max_depth;
@@ -557,20 +565,20 @@ namespace rsurfaces
         }
         {
             mreal * x = C_to_P.values;
-            mreal * y = P_to_C.values;
             mint * i  = C_to_P.outer;
+            
+            mreal * y = P_to_C.values;
             mint * j  = P_to_C.inner;
-            #pragma omp parallel for simd aligned ( x, y, i, j  : ALIGN )
+            #pragma omp parallel for
             for( mint k = 0; k < primitive_count; ++k )
             {
                 x[k] = 1.;
                 y[k] = 1.;
-                
                 i[k] = k;
                 j[k] = k;
             }
         }
-
+        
         ptic("P_to_C.outer");
         for (mint C = 0; C < cluster_count; ++C)
         {
@@ -585,29 +593,9 @@ namespace rsurfaces
         }
         ptoc("P_to_C.outer");
         
-//        auto hi_perm = MKLSparseMatrix( dim * primitive_count, dim * primitive_count, dim * primitive_count );
-//        hi_perm.outer[ dim * primitive_count ] = dim * primitive_count;
-//
-//        ptic("hi_perm");
-//        #pragma omp parallel for
-//        for( mint i = 0; i < primitive_count; ++i )
-//        {
-//            mreal a = P_far[0][i];
-//            for( mint k = 0; k < dim; ++k )
-//            {
-//                mint to = dim * i + k;
-//                hi_perm.outer [ to ] = to;
-//                hi_perm.inner [ to ] = dim * P_ext_pos[i] + k;
-//                hi_perm.values[ to ] = a;
-//            }
-//        }
-//        ptoc("hi_perm");
-//        ptic("hi_perm.Multiply");
-//        hi_perm.Multiply( DiffOp, hi_pre );
-//        ptoc("hi_perm.Multiply");
-        
         ptic("hi_pre");
         {
+
             hi_pre = MKLSparseMatrix( DiffOp.m, DiffOp.n, DiffOp.nnz );
             mint * Douter = DiffOp.outer;
             mint * Dinner = DiffOp.inner;
@@ -629,9 +617,8 @@ namespace rsurfaces
                     Pouter[to + k + 1] = Douter[from + k + 1] - Douter[from + k];
                 }
             }
-        
-            partial_sum( hi_pre.outer, hi_pre.outer + hi_pre.m + 1);
-            
+            partial_sum( Pouter, Pouter + hi_pre.m + 1);
+
             #pragma omp parallel for
             for( mint i = 0; i < primitive_count; ++i)
             {

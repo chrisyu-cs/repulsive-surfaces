@@ -16,7 +16,7 @@ namespace rsurfaces
     {
     public:
         TPPointCloudObstacleBarnesHut0(MeshPtr mesh_, GeomPtr geom_, SurfaceEnergy *bvhSharedFrom_,
-                                       Eigen::MatrixXd & pt_positions, Eigen::VectorXd & pt_weights,
+                                       Eigen::VectorXd & pt_weights, Eigen::MatrixXd & pt_positions,
                                        mreal alpha_, mreal beta_, mreal theta_, mreal weight_ = 1.)
         {
             mesh = mesh_;
@@ -29,11 +29,11 @@ namespace rsurfaces
                 eprint("TPPointCloudObstacleBarnesHut0: Number of positions vectors and number of weights does not coincide. Aborting.");
                 return;
             }
-            
+
             mint primitive_count = pt_positions.rows();
             mint dim = 3;
             mint primitive_length = 1;
-            
+
             mreal * P_far = nullptr;
             mint far_dim = bvhSharedFrom->GetBVH()->far_dim;
             safe_alloc( P_far, primitive_count * far_dim, 0.);
@@ -45,7 +45,7 @@ namespace rsurfaces
                 P_far[ far_dim * i + 2] = pt_positions(i,1);
                 P_far[ far_dim * i + 3] = pt_positions(i,2);
             }
-            
+
             mreal * P_near = nullptr;
             mreal * P_coords = nullptr;
             mint near_dim = bvhSharedFrom->GetBVH()->near_dim;
@@ -59,18 +59,29 @@ namespace rsurfaces
                 P_near[ near_dim * i + 2] = P_coords[ dim * i + 1] = pt_positions(i,1);
                 P_near[ near_dim * i + 3] = P_coords[ dim * i + 2] = pt_positions(i,2);
             }
-            
+
             mint * idx = nullptr;
-            mint * zeroes = nullptr;
+            mint * idxdim = nullptr;
             mreal * ones = nullptr;
+            mreal * zeroes = nullptr;
             
-            safe_iota( idx, primitive_count + 1);
-            safe_alloc( zeroes, primitive_count + 1, 0);
+            safe_iota( idx, dim * primitive_count + 1);
+            safe_alloc( idxdim, dim * primitive_count);
             safe_alloc( ones, primitive_count + 1, 1.);
+            safe_alloc( zeroes, dim * primitive_count, 0.);
+            
+            #pragma omp parallel for
+            for( mint i = 0; i < primitive_count; ++i)
+            {
+                for( mint k = 0; k < dim; ++k )
+                {
+                    idxdim[ dim * i + k] = i;
+                }
+            }
             
             MKLSparseMatrix AvOp = MKLSparseMatrix( primitive_count, primitive_count, idx, idx, ones ); // identity matrix
-            MKLSparseMatrix DiffOp = MKLSparseMatrix( primitive_count, primitive_count, zeroes, zeroes, ones ); // zero matrix
-
+            MKLSparseMatrix DiffOp = MKLSparseMatrix( dim * primitive_count, primitive_count, idx, idxdim, zeroes ); // zero matrix
+            
             // create a cluster tree
             int split_threshold = 8;
             o_bvh = new OptimizedClusterTree(
@@ -90,10 +101,12 @@ namespace rsurfaces
                 AvOp               // the zeroth-order differential operator belonging to the lo order term of the metric
             );
             
+
             safe_free(idx);
+            safe_free(idxdim);
             safe_free(ones);
             safe_free(zeroes);
-            
+
             alpha = alpha_;
             beta = beta_;
             theta = theta_;

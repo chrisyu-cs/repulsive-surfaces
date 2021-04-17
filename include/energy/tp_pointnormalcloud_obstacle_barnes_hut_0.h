@@ -16,7 +16,7 @@ namespace rsurfaces
     {
     public:
         TPPointNormalCloudObstacleBarnesHut0(MeshPtr mesh_, GeomPtr geom_, SurfaceEnergy *bvhSharedFrom_,
-                                       Eigen::MatrixXd & pt_positions, Eigen::MatrixXd & pt_normals, Eigen::VectorXd & pt_weights,
+                                             Eigen::VectorXd & pt_weights, Eigen::MatrixXd & pt_positions, Eigen::MatrixXd & pt_normals,
                                        mreal alpha_, mreal beta_, mreal theta_, mreal weight_ = 1.)
         {
             mesh = mesh_;
@@ -111,16 +111,27 @@ namespace rsurfaces
             }
             
             mint * idx = nullptr;
-            mint * zeroes = nullptr;
+            mint * idxdim = nullptr;
             mreal * ones = nullptr;
+            mreal * zeroes = nullptr;
             
-            safe_iota( idx, primitive_count + 1);
-            safe_alloc( zeroes, primitive_count + 1, 0);
+            safe_iota( idx, dim * primitive_count + 1);
+            safe_alloc( idxdim, dim * primitive_count);
             safe_alloc( ones, primitive_count + 1, 1.);
+            safe_alloc( zeroes, dim * primitive_count, 0.);
+            
+            #pragma omp parallel for
+            for( mint i = 0; i < primitive_count; ++i)
+            {
+                for( mint k = 0; k < dim; ++k )
+                {
+                    idxdim[ dim * i + k] = i;
+                }
+            }
             
             MKLSparseMatrix AvOp = MKLSparseMatrix( primitive_count, primitive_count, idx, idx, ones ); // identity matrix
-            MKLSparseMatrix DiffOp = MKLSparseMatrix( primitive_count, primitive_count, zeroes, zeroes, ones ); // zero matrix
-
+            MKLSparseMatrix DiffOp = MKLSparseMatrix( dim * primitive_count, primitive_count, idx, idxdim, zeroes ); // zero matrix
+            
             // create a cluster tree
             int split_threshold = 8;
             o_bvh = new OptimizedClusterTree(
@@ -140,7 +151,9 @@ namespace rsurfaces
                 AvOp               // the zeroth-order differential operator belonging to the lo order term of the metric
             );
             
+            
             safe_free(idx);
+            safe_free(idxdim);
             safe_free(ones);
             safe_free(zeroes);
             
