@@ -53,10 +53,12 @@ int main(int arg_count, char* arg_vec[])
         {
             BM.obj1 = var_map["mesh"].as<std::string>();
         }
+        
         if( var_map.count("profile_name") )
         {
             BM.profile_name = var_map["profile_name"].as<std::string>();
         }
+        
         if( var_map.count("profile_path") )
         {
             BM.profile_path = var_map["profile_path"].as<std::string>();
@@ -66,49 +68,60 @@ int main(int arg_count, char* arg_vec[])
         {
             BM.theta = var_map["theta"].as<mreal>();
         }
+        
         if( var_map.count("chi") )
         {
             BM.chi = var_map["chi"].as<mreal>();
         }
+
         if( var_map.count("alpha") )
         {
             BM.alpha = var_map["alpha"].as<mreal>();
         }
+
         if( var_map.count("beta") )
         {
             BM.beta = var_map["beta"].as<mreal>();
         }
-        
+
         if( var_map.count("thread_count") )
         {
             BM.thread_count = var_map["thread_count"].as<mint>();
             BM.max_thread_count = var_map["thread_count"].as<mint>();
         }
+
         if( var_map.count("thread_step") )
         {
             BM.thread_step = var_map["thread_step"].as<mint>();
         }
+
         if( var_map.count("burn_ins"))
         {
             BM.burn_ins = var_map["burn_ins"].as<mint>();
         }
+
         if( var_map.count("iterations") )
         {
             BM.iterations = var_map["iterations"].as<mint>();
         }
-        switch( var_map["tree_perc_alg"].as<mint>() ) {
-            case 1:
-                BM.tree_perc_alg = TreePercolationAlgorithm::Tasks;
-                break;
-            case 2:
-                BM.tree_perc_alg = TreePercolationAlgorithm::Chunks;
-                break;
-            case 0:
-                BM.tree_perc_alg = TreePercolationAlgorithm::Sequential;
-                break;
-            default:
-                BM.tree_perc_alg = TreePercolationAlgorithm::Tasks;
-                break;
+
+        if( var_map.count("tree_perc_alg") )
+        {
+            switch( var_map["tree_perc_alg"].as<mint>() )
+            {
+                case 1:
+                    BM.tree_perc_alg = TreePercolationAlgorithm::Tasks;
+                    break;
+                case 2:
+                    BM.tree_perc_alg = TreePercolationAlgorithm::Chunks;
+                    break;
+                case 0:
+                    BM.tree_perc_alg = TreePercolationAlgorithm::Sequential;
+                    break;
+                default:
+                    BM.tree_perc_alg = TreePercolationAlgorithm::Tasks;
+                    break;
+            }
         }
     }
     catch(std::exception& e) {
