@@ -614,8 +614,8 @@ namespace rsurfaces
             toc("ApplyKernel_Hybrid");
             
             
-            omp_set_num_threads(8);
-            mkl_set_num_threads(8);
+            omp_set_num_threads(BM.max_thread_count);
+            mkl_set_num_threads(BM.max_thread_count);
             
             tpe = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
 

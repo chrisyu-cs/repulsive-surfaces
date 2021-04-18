@@ -303,6 +303,8 @@ namespace rsurfaces
         
         BalanceWorkLoad( b_m, b_row_acc_costs, thread_count, job_ptr);
         
+        safe_free(b_row_acc_costs);
+        
         ptoc("InteractionData::Prepare_CSR( mint b_m_, mint * b_row_ptr_, mint b_n_, mint * b_col_ptr_ )");
     }
     
