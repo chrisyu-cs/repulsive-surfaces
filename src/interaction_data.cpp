@@ -681,12 +681,12 @@ namespace rsurfaces
             
                     mint nj = j_end - j_begin;
 
-                    mreal * vj_begin = T_input + cols * j_begin;
-                    mreal * vj_end   = T_input + cols * j_end;
-
-                    std::copy( vj_begin, vj_end, ptr );
+//                    mreal * vj_begin = T_input + cols * j_begin;
+//                    mreal * vj_end   = T_input + cols * j_end;
+//
+//                    std::copy( vj_begin, vj_end, ptr );
                     
-//                    cblas_dcopy( cols * nj, T_input + cols * j_begin, 1, ptr, 1);
+                    cblas_dcopy( cols * nj, T_input + cols * j_begin, 1, ptr, 1);
                     
                     ptr += cols * nj;
                 }
