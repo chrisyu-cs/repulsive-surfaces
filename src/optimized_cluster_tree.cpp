@@ -745,9 +745,10 @@ namespace rsurfaces
     void OptimizedClusterTree::CleanseD()
     {
         ptic("CleanseD");
-        #pragma omp parallel for schedule(static, 1)
-        for( mint thread = 0; thread < thread_count; ++thread )
+        #pragma omp parallel
         {
+            mint thread = omp_get_thread_num();
+            
             mreal * P = &P_D_near[thread][0];
             mreal * Q = &P_D_far[thread][0];
             mreal * C = &C_D_far[thread][0];
@@ -843,13 +844,13 @@ namespace rsurfaces
         ptoc("PercolateDown");
     }; // PercolateUp
     
-    void OptimizedClusterTree::PrepareChunks()
+    void OptimizedClusterTree::RequireChunks()
     {
-        ptic("PrepareChunks");
+        ptic("RequireChunks");
         if( !chunks_prepared)
         {
             
-//            print("PrepareChunks");
+//            print("RequireChunks");
             mint chunk_size = CACHE_LINE_LENGHT * ( (cluster_count + thread_count * CACHE_LINE_LENGHT - 1)  / ( thread_count * CACHE_LINE_LENGHT ) );
             chunk_roots = A_Vector<A_Vector<mint>> ( thread_count );
             std::cout << "chunk_size = " << chunk_size << std::endl;
@@ -882,7 +883,7 @@ namespace rsurfaces
                 else
                 {
                     // subtree of last C does not fit into chunk; use a breadth-first scan to find the max subtrees of C that do fit into chunk.
-                    prepareChunks(C, last, thread);
+                    requireChunks(C, last, thread);
                 }
                 
             }
@@ -913,10 +914,10 @@ namespace rsurfaces
             chunks_prepared = true;
         }
 
-        ptoc("PrepareChunks");
-    } // PrepareChunks
+        ptoc("RequireChunks");
+    } // RequireChunks
     
-    bool OptimizedClusterTree::prepareChunks( mint C, mint last, mint thread)
+    bool OptimizedClusterTree::requireChunks( mint C, mint last, mint thread)
     {
         // last is supposed to be the first position _after_ the chunk belonging to thread thread.
         // C_next[C]-1 is the last cluster in the subtree with root C.
@@ -930,20 +931,20 @@ namespace rsurfaces
         {
             if( (C_left[C] >= 0) && (C_right[C] >= 0) )
             {
-                bool left_good = prepareChunks( C_left[C], last, thread );
+                bool left_good = requireChunks( C_left[C], last, thread );
                 // If the left subtree is not contained in the chunk, then the right one won't either.
                 if( left_good )
                 {
-                    prepareChunks( C_right[C], last, thread );
+                    requireChunks( C_right[C], last, thread );
                 }
             }
         }
         return C_good;
-    } // prepareChunks
+    } // requireChunks
     
     void OptimizedClusterTree::PercolateUp_Chunks()
     {
-        PrepareChunks();
+        RequireChunks();
         
         #pragma omp parallel for num_threads(thread_count) schedule( static, 1)
         for( mint thread = 0; thread < thread_count; ++thread )
@@ -990,7 +991,7 @@ namespace rsurfaces
     void OptimizedClusterTree::PercolateDown_Chunks()
     {
         
-        PrepareChunks();
+        RequireChunks();
         
         // Treats the chunk roots of the tree as leaves and does a sequential downward percolation.
         percolateDown_Tip( 0 );
