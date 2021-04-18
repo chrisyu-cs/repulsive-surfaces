@@ -773,12 +773,15 @@ namespace rsurfaces
 
     void OptimizedClusterTree::PercolateUp()
     {
+        print("OptimizedClusterTree::PercolateUp()");
         ptic("PercolateUp");
         switch (tree_perc_alg) {
             case TreePercolationAlgorithm::Chunks :
+                print("Using Chunks");
                 PercolateUp_Chunks();
                 break;
             case TreePercolationAlgorithm::Tasks :
+                print("Using Tasks");
                 #pragma omp parallel
                 {
                     #pragma omp single nowait
@@ -788,10 +791,12 @@ namespace rsurfaces
                 }
                 break;
             case TreePercolationAlgorithm::Sequential :
+                print("Using Sequential");
                 PercolateUp_Seq( 0 );
                 break;
                 
             default:
+                print("Using Tasks");
                 #pragma omp parallel
                 {
                     #pragma omp single nowait
@@ -805,12 +810,15 @@ namespace rsurfaces
     
     void OptimizedClusterTree::PercolateDown()
     {
+        print("OptimizedClusterTree::PercolateDown()");
         ptic("PercolateDown");
         switch (tree_perc_alg) {
             case TreePercolationAlgorithm::Chunks :
+//                print("Using Chunks");
                 PercolateDown_Chunks();
                 break;
             case TreePercolationAlgorithm::Tasks :
+//                print("Using Tasks");
                 #pragma omp parallel
                 {
                     #pragma omp single nowait
@@ -820,10 +828,12 @@ namespace rsurfaces
                 }
                 break;
             case TreePercolationAlgorithm::Sequential :
+//                print("Using Sequential");
                 PercolateDown_Seq( 0 );
                 break;
                 
             default:
+//                print("Using Tasks");
                 #pragma omp parallel
                 {
                     #pragma omp single nowait
@@ -840,6 +850,7 @@ namespace rsurfaces
         ptic("PrepareChunks");
         if( !chunks_prepared)
         {
+            
             print("PrepareChunks");
             mint chunk_size = CACHE_LINE_LENGHT * ( (cluster_count + thread_count * CACHE_LINE_LENGHT - 1)  / ( thread_count * CACHE_LINE_LENGHT ) );
             chunk_roots = A_Vector<A_Vector<mint>> ( thread_count );
@@ -878,19 +889,32 @@ namespace rsurfaces
                 
             }
             
-            for( mint thread = 0; thread < thread_count; ++thread )
+
+            // prepare the tip;
+                    
+//            std::string f = "/Users/Henrik/Shared/Chunks.tsv";
+//            std::ofstream os;
+//            std::cout << "Writing chunks to " << f << "." << std::endl;
+//            os.open(f);
+            
+            safe_alloc( C_is_chunk_root, cluster_count, false );
+            
+            for( mint thread = 0; thread < thread_count; ++ thread)
             {
-                std::cout << "chunk_roots[" << thread << "] = ";
-                for( auto i : chunk_roots[thread])
+                mint * restrict ptr = &chunk_roots[thread][0];
+                mint n = chunk_roots[thread].size();
+                
+                for( mint i = 0; i < n; ++i )
                 {
-                    std::cout  << i << ", ";
+//                    os << ptr[i] << "\t ";
+                    C_is_chunk_root[ptr[i]] = true;
                 }
-                std::cout << std::endl;
             }
-            // prepare the tip matrices;
+//            os.close();
             
             chunks_prepared = true;
         }
+
         ptoc("PrepareChunks");
     } // PrepareChunks
     
@@ -906,7 +930,7 @@ namespace rsurfaces
         }
         else
         {
-            if( C_left[C]>= 0 && C_right[C])
+            if( (C_left[C] >= 0) && (C_right[C] >= 0) )
             {
                 bool left_good = prepareChunks( C_left[C], last, thread );
                 // If the left subtree is not contained in the chunk, then the right one won't either.
@@ -927,30 +951,86 @@ namespace rsurfaces
         for( mint thread = 0; thread < thread_count; ++thread )
         {
             for( const auto & C: chunk_roots[thread] ) {
+                
+                // Takes the subtree of each chunk root and does the percolation.
                 PercolateUp_Seq( C );
             }
         }
         
+        // Now the chunk roots and everything below them is already updated. We only have to process the tip of the tree. We do it sequentially, treating the chunk roots now as the leaves of the tree:
+        percolateUp_Tip( 0  );
+        
         // do the tip later
     }; // PercolateUp_Chunks
+    
+    void OptimizedClusterTree::percolateUp_Tip( const mint C  )
+    {
+        // C = cluster index
+        
+        mint L = C_left [C];
+        mint R = C_right[C];
+        
+        if( (!C_is_chunk_root[C]) && (L >= 0) && (R >= 0) )
+        {
+            // If not a leaf, compute the values of the children first.
+            percolateUp_Tip(L);
+            percolateUp_Tip(R);
+            
+            // Aftwards, compute the sum of the two children.
+            
+            #pragma omp simd aligned( C_in : ALIGN )
+            for( mint k = 0; k < buffer_dim; ++k )
+            {
+                // Overwrite, not add-into. Thus cleansing is not required.
+                C_in[ buffer_dim * C + k ] = C_in[ buffer_dim * L + k ] + C_in[ buffer_dim * R + k ];
+            }
+        }
+        
+    } // percolateUp_Tip
 
 
     void OptimizedClusterTree::PercolateDown_Chunks()
     {
-        // do the tip first
         
         PrepareChunks();
         
+        // Treats the chunk roots of the tree as leaves and does a sequential downward percolation.
+        percolateDown_Tip( 0 );
+        
+        // Now the chunk roots and everything above is updated. We can now process everything below the chunk roots in parallel.
+    
         #pragma omp parallel for num_threads(thread_count) schedule( static, 1)
         for( mint thread = 0; thread < thread_count; ++thread )
         {
             for( const auto & C: chunk_roots[thread] ) {
+                // Takes the subtree of each chunk root and does the percolation.
                 PercolateDown_Seq( C );
             }
         }
     }; // PercolateDown_Chunks
     
-    
+    void OptimizedClusterTree::percolateDown_Tip( const mint C )
+    {
+        // C = cluster index
+        if( !C_is_chunk_root[C] )
+        {
+            mint L = C_left [C];
+            mint R = C_right[C];
+            
+            if( ( L >= 0 ) && ( R >= 0 ) )
+            {
+                #pragma omp simd aligned( C_out : ALIGN )
+                for( mint k = 0; k < buffer_dim; ++k )
+                {
+                    mreal buffer = C_out[ buffer_dim * C + k ];
+                    C_out[ buffer_dim * L + k ] += buffer;
+                    C_out[ buffer_dim * R + k ] += buffer;
+                }
+                percolateDown_Tip(L);
+                percolateDown_Tip(R);
+            }
+        }
+    }; // percolateDown_Tip
     
     void OptimizedClusterTree::PercolateUp_Seq( const mint C )
     {

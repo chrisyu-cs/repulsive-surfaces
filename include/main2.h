@@ -56,7 +56,7 @@ namespace rsurfaces
         
         std::string obj1 = "../scenes/Bunny/bunny.obj";
         std::string profile_name = "Profile";
-        std::string profile_path = ".";
+        std::string path = ".";
         
         TreePercolationAlgorithm tree_perc_alg = TreePercolationAlgorithm::Tasks;
         MeshPtr mesh1;
@@ -80,10 +80,10 @@ namespace rsurfaces
 
             tpe_bh_11->GetBVH()->tree_perc_alg = tree_perc_alg;
             
-//            if( iter < 0)
-//            {
-//                tpe_bh_11->GetBVH()->PrintToFile();
-//            }
+            if( iter < 0)
+            {
+                tpe_bh_11->GetBVH()->PrintToFile( path + "/" + "OptimizedClusterTree.tsv");
+            }
 
             E_11 = tpe_bh_11->Value();
             DE_11.setZero();
@@ -92,50 +92,50 @@ namespace rsurfaces
             ptoc("Energy");
 
         
-            MeshUPtr u_pc_mesh;
-            GeomUPtr u_pc_geom;
-            std::tie(u_pc_mesh, u_pc_geom) = readMesh("../scenes/LungGrowing/sphere.obj");
-            
-            mint n = u_pc_mesh->nVertices();
-            u_pc_geom->requireVertexNormals();
-            
-            Eigen::MatrixXd pt_coords( n, 3);
-            Eigen::MatrixXd pt_normals( n, 3);
-            Eigen::VectorXd pt_weights( n);
-            
-            #pragma omp parallel for
-            for( mint i = 0; i < n; ++i )
-            {
-                pt_weights(i) = 1.;
-                pt_coords(i, 0) = u_pc_geom->inputVertexPositions[i][0];
-                pt_coords(i, 1) = u_pc_geom->inputVertexPositions[i][1];
-                pt_coords(i, 2) = u_pc_geom->inputVertexPositions[i][2];
-                pt_normals(i, 0) = u_pc_geom->vertexNormals[i][0];
-                pt_normals(i, 1) = u_pc_geom->vertexNormals[i][1];
-                pt_normals(i, 2) = u_pc_geom->vertexNormals[i][2];
-            }
-        
-            
-            ptic("TPPointCloudObstacleBarnesHut0");
-
-            tp_o_pc = std::make_shared<TPPointCloudObstacleBarnesHut0>(mesh1, geom1, tpe_bh_11.get(), pt_weights, pt_coords, alpha, beta, theta, weight);
-
-            E_11 = tp_o_pc->Value();
-            DE_11.setZero();
-            
-            tp_o_pc->Differential(DE_11);
-            ptoc("TPPointCloudObstacleBarnesHut0");
-            
-            ptic("TPPointNormalCloundObstacleBarnesHut0");
-            tp_o_pnc = std::make_shared<TPPointNormalCloudObstacleBarnesHut0>(mesh1, geom1, tpe_bh_11.get(), pt_weights, pt_coords, pt_normals, alpha, beta, theta, weight);
-
-            E_11 = tp_o_pnc->Value();
-            
-            DE_11.setZero();
-            
-            tp_o_pnc->Differential(DE_11);
-            
-            ptoc("TPPointNormalCloundObstacleBarnesHut0");
+//            MeshUPtr u_pc_mesh;
+//            GeomUPtr u_pc_geom;
+//            std::tie(u_pc_mesh, u_pc_geom) = readMesh("../scenes/LungGrowing/sphere.obj");
+//
+//            mint n = u_pc_mesh->nVertices();
+//            u_pc_geom->requireVertexNormals();
+//
+//            Eigen::MatrixXd pt_coords( n, 3);
+//            Eigen::MatrixXd pt_normals( n, 3);
+//            Eigen::VectorXd pt_weights( n);
+//
+//            #pragma omp parallel for
+//            for( mint i = 0; i < n; ++i )
+//            {
+//                pt_weights(i) = 1.;
+//                pt_coords(i, 0) = u_pc_geom->inputVertexPositions[i][0];
+//                pt_coords(i, 1) = u_pc_geom->inputVertexPositions[i][1];
+//                pt_coords(i, 2) = u_pc_geom->inputVertexPositions[i][2];
+//                pt_normals(i, 0) = u_pc_geom->vertexNormals[i][0];
+//                pt_normals(i, 1) = u_pc_geom->vertexNormals[i][1];
+//                pt_normals(i, 2) = u_pc_geom->vertexNormals[i][2];
+//            }
+//
+//
+//            ptic("TPPointCloudObstacleBarnesHut0");
+//
+//            tp_o_pc = std::make_shared<TPPointCloudObstacleBarnesHut0>(mesh1, geom1, tpe_bh_11.get(), pt_weights, pt_coords, alpha, beta, theta, weight);
+//
+//            E_11 = tp_o_pc->Value();
+//            DE_11.setZero();
+//
+//            tp_o_pc->Differential(DE_11);
+//            ptoc("TPPointCloudObstacleBarnesHut0");
+//
+//            ptic("TPPointNormalCloundObstacleBarnesHut0");
+//            tp_o_pnc = std::make_shared<TPPointNormalCloudObstacleBarnesHut0>(mesh1, geom1, tpe_bh_11.get(), pt_weights, pt_coords, pt_normals, alpha, beta, theta, weight);
+//
+//            E_11 = tp_o_pnc->Value();
+//
+//            DE_11.setZero();
+//
+//            tp_o_pnc->Differential(DE_11);
+//
+//            ptoc("TPPointNormalCloundObstacleBarnesHut0");
             
             ptic("Multiply");
             auto bct11 = std::make_shared<OptimizedBlockClusterTree>(tpe_bh_11->GetBVH(), tpe_bh_11->GetBVH(), alpha, beta, chi);
@@ -144,16 +144,15 @@ namespace rsurfaces
                 ptic("Multiply Fractional");
                 bct11->Multiply(V,U,BCTKernelType::FractionalOnly);
                 ptoc("Multiply Fractional");
-                
+
                 ptic("Multiply HighOrder");
                 bct11->Multiply(V,U,BCTKernelType::HighOrder);
                 ptoc("Multiply HighOrder");
-                
+
                 ptic("Multiply LowOrder");
                 bct11->Multiply(V,U,BCTKernelType::LowOrder);
                 ptoc("Multiply LowOrder");
             }
-
             ptoc("Multiply");
         }
         
@@ -163,9 +162,9 @@ namespace rsurfaces
             mint vertex_count1 = mesh1->nVertices();
             DE_11 = Eigen::MatrixXd(vertex_count1, 3);
             
-            U = getVertexPositions( mesh1, geom1 );
-            V = Eigen::MatrixXd(vertex_count1, 3);
-            V.setZero();
+            V = getVertexPositions( mesh1, geom1 );
+            U = Eigen::MatrixXd(vertex_count1, 3);
+            U.setZero();
             ptoc("Vectors");
             
         }
@@ -180,6 +179,193 @@ namespace rsurfaces
             std::cout << "theta = "<< theta << std::endl;
             std::cout << "chi   = "<< chi << std::endl;
         }
+        
+        void TestMultiply()
+        {
+            auto tpe_bh_11 = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
+            
+            tpe_bh_11->GetBVH()->PrintToFile( path + "/" + "OptimizedClusterTree.tsv");
+        
+            
+            //        E_11 = tpe_bh_11->Value();
+            //        DE_11.setZero();
+            //
+            //        tpe_bh_11->Differential(DE_11);
+            
+            ptic("Multiply");
+            auto bct11 = std::make_shared<OptimizedBlockClusterTree>(tpe_bh_11->GetBVH(), tpe_bh_11->GetBVH(), alpha, beta, chi);
+            //            for( mint k = 0; k < 20; ++k)
+            //            {
+            //                ptic("Multiply Fractional");
+            //                bct11->Multiply(V,U,BCTKernelType::FractionalOnly);
+            //                ptoc("Multiply Fractional");
+            //
+            //                ptic("Multiply HighOrder");
+            //                bct11->Multiply(V,U,BCTKernelType::HighOrder);
+            //                ptoc("Multiply HighOrder");
+            //
+            //                ptic("Multiply LowOrder");
+            //                bct11->Multiply(V,U,BCTKernelType::LowOrder);
+            //                ptoc("Multiply LowOrder");
+            //            }
+            
+            
+            OptimizedClusterTree * S = bct11->S;
+            OptimizedClusterTree * T = bct11->T;
+            S->RequireBuffers(1);
+            T->RequireBuffers(1);
+            
+            S->CleanseBuffers();
+            T->CleanseBuffers();
+            
+            mint n = T->cluster_count;
+            
+            Eigen::VectorXd v ( n );
+            Eigen::VectorXd u0 ( n );
+            Eigen::VectorXd u1 ( n );
+            Eigen::VectorXd u2 ( n );
+            
+            
+            std::uniform_real_distribution<double> unif(-1.,1.);
+            std::default_random_engine re;
+            
+            for( mint i = 0; i < n; ++i)
+            {
+                v(i) = unif(re);
+            }
+            
+            T->PrepareChunks();
+            
+            print("\n################################");
+            print("PercolateUp");
+            
+            T->CleanseBuffers();
+            std::copy( v.data(), v.data() + n, T->C_in );
+            T->tree_perc_alg = TreePercolationAlgorithm::Tasks;
+            T->PercolateUp();
+            std::copy( T->C_in, T->C_in + n, u0.data() );
+            
+            T->CleanseBuffers();
+            std::copy( v.data(), v.data() + n, T->C_in );
+            T->tree_perc_alg = TreePercolationAlgorithm::Sequential;
+            T->PercolateUp();
+            std::copy( T->C_in, T->C_in + n, u1.data() );
+            
+            T->CleanseBuffers();
+            std::copy( v.data(), v.data() +n, T->C_in );
+            T->tree_perc_alg = TreePercolationAlgorithm::Chunks;
+            T->PercolateUp();
+            std::copy( T->C_in, T->C_in + n, u2.data() );
+            
+            valprint("u0.norm()", u0.norm() );
+            
+            valprint("Absolute error Tasks-Sequential", (u0-u1).norm() );
+            valprint("Relative error Tasks-Sequential", (u0-u1).norm()/u0.norm());
+            
+            valprint("Absolute error Tasks-Chunks", (u2-u0).norm() );
+            valprint("Relative error Tasks-Chunks", (u2-u0).norm()/u0.norm() );
+            
+            valprint("Absolute error Sequential-Chunks", (u2-u1).norm() );
+            valprint("Relative error Sequential-Chunks", (u2-u1).norm()/u1.norm() );
+            
+            print("\n################################");
+            print("PercolateDown");
+            
+            tic("Tasks");
+            T->CleanseBuffers();
+            std::copy( v.data(), v.data() + n, T->C_out );
+            T->tree_perc_alg = TreePercolationAlgorithm::Tasks;
+            T->PercolateDown();
+            std::copy( T->C_out, T->C_out + n, u0.data() );
+            toc("Tasks");
+            
+            tic("Sequential");
+            T->CleanseBuffers();
+            std::copy( v.data(), v.data() + n, T->C_out );
+            T->tree_perc_alg = TreePercolationAlgorithm::Sequential;
+            T->PercolateDown();
+            std::copy( T->C_out, T->C_out + n, u1.data() );
+            toc("Sequential");
+            
+            tic("Chunks");
+            T->CleanseBuffers();
+            std::copy( v.data(), v.data() + n, T->C_out );
+            T->tree_perc_alg = TreePercolationAlgorithm::Chunks;
+            T->PercolateDown();
+            std::copy( T->C_out, T->C_out + n, u2.data() );
+            toc("Chunks");
+            
+            valprint("u0.norm()", u0.norm() );
+            
+            valprint("Absolute error Tasks-Sequential", (u0-u1).norm() );
+            valprint("Relative error Tasks-Sequential", (u0-u1).norm()/u0.norm());
+            
+            valprint("Absolute error Tasks-Chunks", (u2-u0).norm() );
+            valprint("Relative error Tasks-Chunks", (u2-u0).norm()/u0.norm() );
+            
+            valprint("Absolute error Sequential-Chunks", (u2-u1).norm() );
+            valprint("Relative error Sequential-Chunks", (u2-u1).norm()/u1.norm() );
+            
+            
+
+            print("\n################################");
+            print("Full Multiply");
+                
+            BCTKernelType type = BCTKernelType::LowOrder;
+            mint m = T->primitive_count;
+            mint cols = 3;
+            
+            S->RequireBuffers(cols);
+            T->RequireBuffers(cols);
+            
+            Eigen::MatrixXd V ( m , cols );
+            Eigen::MatrixXd V0 ( m , cols );
+            
+            for( mint i = 0; i < m; ++i)
+            {
+                for( mint j = 0; j < cols; ++ j)
+                {
+                    V0(i,j) = V(i,j) = unif(re);
+                }
+            }
+            
+            //            T->Pre( V, type );
+            
+            Eigen::MatrixXd U0 ( m , cols );
+            U0.setZero();
+            T->CleanseBuffers();
+            S->CleanseBuffers();
+            bct11->S->tree_perc_alg = TreePercolationAlgorithm::Tasks;
+            bct11->Multiply(V,U0,type, false);
+            
+            Eigen::MatrixXd U1 ( m , cols );
+            U1.setZero();
+            T->CleanseBuffers();
+            S->CleanseBuffers();
+            bct11->S->tree_perc_alg = TreePercolationAlgorithm::Sequential;
+            bct11->Multiply(V,U1,type, false);
+            
+            Eigen::MatrixXd U2 ( m , cols );
+            U2.setZero();
+            T->CleanseBuffers();
+            S->CleanseBuffers();
+            bct11->S->tree_perc_alg = TreePercolationAlgorithm::Chunks;
+            bct11->Multiply(V,U2,type, false);
+
+            valprint("(V-V0).norm()", (V-V0).norm() );
+            
+            valprint("Absolute multiplication error Tasks-Sequential", (U0-U1).norm() );
+            valprint("Relative multiplication error Tasks-Sequential", (U0-U1).norm()/U0.norm() );
+                     
+            valprint("Absolute multiplication error Tasks-Chunks", (U2-U0).norm() );
+            valprint("Relative multiplication error Tasks-Chunks", (U2-U0).norm()/U0.norm() );
+                
+            valprint("Absolute multiplication error Sequential-Chunks", (U2-U1).norm() );
+            valprint("Relative multiplication error Sequential-Chunks", (U2-U1).norm()/U1.norm() );
+            
+            
+            ptoc("Multiply");
+        }
     };
-    
+
 } // namespace rsurfaces

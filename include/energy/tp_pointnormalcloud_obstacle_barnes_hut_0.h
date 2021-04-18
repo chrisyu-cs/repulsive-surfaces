@@ -136,17 +136,17 @@ namespace rsurfaces
             int split_threshold = 8;
             o_bvh = new OptimizedClusterTree(
                 &P_coords[0],      // coordinates used for clustering
-                primitive_count,            // number of primitives
-                dim,                 // dimension of ambient space
-                &P_coords[0], // coordinates of the convex hull of each mesh element
-                primitive_length,                 // number of points in the convex hull of each mesh element (3 for triangle meshes, 2 for polylines)
+                primitive_count,   // number of primitives
+                dim,               // dimension of ambient space
+                &P_coords[0],      // coordinates of the convex hull of each mesh element
+                primitive_length,  // number of points in the convex hull of each mesh element (3 for triangle meshes, 2 for polylines)
                 &P_near[0],        // area, barycenter, and normal of mesh element
-                near_dim,                 // number of dofs of P_near per mesh element; it is 7 for polylines and triangle meshes in 3D.
-                &P_far[0],        // area, barycenter, and projector of mesh element
-                far_dim,                 // number of dofs of P_far per mesh element; it is 10 for polylines and triangle meshes in 3D.
-                dim * dim,             // some estimate for the buffer size per vertex and cluster (usually the square of the dimension of the embedding space
-                idx,      // some ordering of triangles
-                split_threshold,  // create clusters only with at most this many mesh elements in it
+                near_dim,          // number of dofs of P_near per mesh element; it is 7 for polylines and triangle meshes in 3D.
+                &P_far[0],         // area, barycenter, and projector of mesh element
+                far_dim,           // number of dofs of P_far per mesh element; it is 10 for polylines and triangle meshes in 3D.
+                dim * dim,         // some estimate for the buffer size per vertex and cluster (usually the square of the dimension of the embedding space
+                idx,               // some ordering of triangles
+                split_threshold,   // create clusters only with at most this many mesh elements in it
                 DiffOp,            // the first-order differential operator belonging to the hi order term of the metric
                 AvOp               // the zeroth-order differential operator belonging to the lo order term of the metric
             );
