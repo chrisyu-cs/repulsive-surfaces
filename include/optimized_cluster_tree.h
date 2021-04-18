@@ -5,7 +5,7 @@
 
 namespace rsurfaces
 {
-
+    
     enum class TreePercolationAlgorithm
     {
         Tasks,
@@ -83,12 +83,13 @@ namespace rsurfaces
 
         // "C_" stands for "cluster", "P_" stands for "primitive"
 
-        mint *restrict C_begin = nullptr;
-        mint *restrict C_end = nullptr;
-        mint *restrict C_depth = nullptr;
-        mint *restrict C_next = nullptr;
-        mint *restrict C_left = nullptr;  // list of index of left children;  entry is -1 if no child is present
-        mint *restrict C_right = nullptr; // list of index of right children; entry is -1 if no child is present
+        mint * restrict C_begin = nullptr;
+        mint * restrict C_end = nullptr;
+        mint * restrict C_depth = nullptr;
+        mint * restrict C_next = nullptr;
+        mint * restrict C_left = nullptr;  // list of index of left children;  entry is -1 if no child is present
+        mint * restrict C_right = nullptr; // list of index of right children; entry is -1 if no child is present
+        bool * restrict C_is_chunk_root = nullptr;
 
         // Primitive double data, stored in Structure of Arrays fashion
 
@@ -308,6 +309,11 @@ namespace rsurfaces
                     {
                         safe_free(C_right);
                     }
+                    
+                    #pragma omp task
+                    {
+                        safe_free(C_is_chunk_root);
+                    }
 
                     }
             }
@@ -351,9 +357,10 @@ namespace rsurfaces
         
         // some prototype
         void PercolateUp_Chunks();
-
+        void percolateUp_Tip( const mint C);
         // some prototype
         void PercolateDown_Chunks();
+        void percolateDown_Tip( const mint C);
         
         // TODO: Not nearly as fast as I'd like it to be; not scalable!
         // recusive algorithm parallelized by OpenMP tasks

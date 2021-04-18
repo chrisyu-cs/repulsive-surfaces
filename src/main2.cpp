@@ -25,7 +25,7 @@ int main(int arg_count, char* arg_vec[])
         desc.add_options()
         ("help", "produce help message")
         ("mesh", po::value<std::string>(), "file of mesh to use as variable")
-        ("profile_path", po::value<std::string>(), "path to store the profile")
+        ("path", po::value<std::string>(), "path to store data")
         ("profile_name", po::value<std::string>(), "file base name of profile file")
         ("alpha", po::value<mreal>(), "file name of mesh to use as variable")
         ("beta", po::value<mreal>(), "file name of mesh to use as variable")
@@ -59,9 +59,9 @@ int main(int arg_count, char* arg_vec[])
             BM.profile_name = var_map["profile_name"].as<std::string>();
         }
         
-        if( var_map.count("profile_path") )
+        if( var_map.count("path") )
         {
-            BM.profile_path = var_map["profile_path"].as<std::string>();
+            BM.path = var_map["path"].as<std::string>();
         }
         
         if( var_map.count("theta") )
@@ -144,6 +144,9 @@ int main(int arg_count, char* arg_vec[])
     BM.geom1 = std::move(u_geom);
     BM.Prepare();
     
+//    BM.thread_count = BM.max_thread_count;
+//    BM.TestMultiply();
+    
     for( mint threads = 0; threads < BM.max_thread_count + 1; threads += BM.thread_step )
     {
         // 0 is the new 1. (Want to have steps, but also  a single-threaded run.
@@ -159,14 +162,14 @@ int main(int arg_count, char* arg_vec[])
         {
             BM.thread_count = threads;
         }
-        
+
         std::cout << std::endl;
         std::cout << "### threads =  " << BM.thread_count << std::endl;
 
         omp_set_num_threads(BM.thread_count);
         mkl_set_num_threads(BM.thread_count);
-        
-        
+
+
         {
             mint a , b, c, d, e;
             #pragma omp parallel
@@ -182,12 +185,12 @@ int main(int arg_count, char* arg_vec[])
 
             std::cout << "mkl_get_max_threads() = " << c << std::endl;
             std::cout << "mkl_get_max_threads() = " << d << std::endl;
-            
+
 //            std::cout << "tbb::task_scheduler_init::default_num_threads() = " << e << std::endl;
         }
 
-        ClearProfile(BM.profile_path + "/" + BM.profile_name + "_" + std::to_string(BM.thread_count) + ".tsv");
-        
+        ClearProfile(BM.path + "/" + BM.profile_name + "_" + std::to_string(BM.thread_count) + ".tsv");
+
         //burn-in
         for( mint i = 0; i < BM.burn_ins; ++i)
         {
@@ -195,9 +198,9 @@ int main(int arg_count, char* arg_vec[])
             BM.Compute(-1);
 
         }
-        
-        ClearProfile(BM.profile_path + "/" + BM.profile_name + "_" + std::to_string(BM.thread_count) + ".tsv");
-        
+
+        ClearProfile(BM.path + "/" + BM.profile_name + "_" + std::to_string(BM.thread_count) + ".tsv");
+
         //the actual test code
         for( mint i = 0; i < BM.iterations; ++i)
         {
@@ -205,9 +208,10 @@ int main(int arg_count, char* arg_vec[])
             ptic("Iteration");
             BM.Compute(i);
             ptoc("Iteration");
-            
+
         }
         std::cout << std::endl;
+
     }
     return EXIT_SUCCESS;
 }
