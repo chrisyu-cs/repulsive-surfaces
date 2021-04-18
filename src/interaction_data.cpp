@@ -668,7 +668,7 @@ namespace rsurfaces
                 mint i_end   = b_row_ptr[ b_i + 1 ];
                 
 
-                mint k_begin = b_outer[ b_i     ];
+                mint k_begin = b_outer[ b_i ];
                 mint k_end   = b_outer[ b_i + 1 ];
                 
                 mreal * ptr = v;

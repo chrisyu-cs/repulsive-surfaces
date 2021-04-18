@@ -599,12 +599,12 @@ namespace rsurfaces
             }
             toc("ApplyKernel_CSR_MKL");
             
-//            tic("ApplyKernel_VBSR");
-//            for( mint i = 0; i < 20; ++i)
-//            {
-//                bct->near->ApplyKernel_VBSR( bct->near->hi_values, v.data(), u2.data(), cols, 1. );
-//            }
-//            toc("ApplyKernel_VBSR");
+            tic("ApplyKernel_VBSR");
+            for( mint i = 0; i < 20; ++i)
+            {
+                bct->near->ApplyKernel_VBSR( bct->near->hi_values, v.data(), u2.data(), cols, 1. );
+            }
+            toc("ApplyKernel_VBSR");
             
             tic("ApplyKernel_Hybrid");
             for( mint i = 0; i < 20; ++i)
@@ -633,12 +633,12 @@ namespace rsurfaces
             }
             toc("ApplyKernel_CSR_MKL");
             
-//            tic("ApplyKernel_VBSR");
-//            for( mint i = 0; i < 20; ++i)
-//            {
-//                bct->near->ApplyKernel_VBSR( bct->near->hi_values, v.data(), u2.data(), cols, 1. );
-//            }
-//            toc("ApplyKernel_VBSR");
+            tic("ApplyKernel_VBSR");
+            for( mint i = 0; i < 20; ++i)
+            {
+                bct->near->ApplyKernel_VBSR( bct->near->hi_values, v.data(), u2.data(), cols, 1. );
+            }
+            toc("ApplyKernel_VBSR");
             
             tic("ApplyKernel_Hybrid");
             for( mint i = 0; i < 20; ++i)
