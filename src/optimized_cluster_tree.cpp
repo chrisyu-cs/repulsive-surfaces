@@ -773,15 +773,14 @@ namespace rsurfaces
 
     void OptimizedClusterTree::PercolateUp()
     {
-        print("OptimizedClusterTree::PercolateUp()");
         ptic("PercolateUp");
         switch (tree_perc_alg) {
             case TreePercolationAlgorithm::Chunks :
-                print("Using Chunks");
+//                print("Using Chunks");
                 PercolateUp_Chunks();
                 break;
             case TreePercolationAlgorithm::Tasks :
-                print("Using Tasks");
+//                print("Using Tasks");
                 #pragma omp parallel
                 {
                     #pragma omp single nowait
@@ -791,12 +790,12 @@ namespace rsurfaces
                 }
                 break;
             case TreePercolationAlgorithm::Sequential :
-                print("Using Sequential");
+//                print("Using Sequential");
                 PercolateUp_Seq( 0 );
                 break;
                 
             default:
-                print("Using Tasks");
+//                print("Using Tasks");
                 #pragma omp parallel
                 {
                     #pragma omp single nowait
@@ -810,7 +809,6 @@ namespace rsurfaces
     
     void OptimizedClusterTree::PercolateDown()
     {
-        print("OptimizedClusterTree::PercolateDown()");
         ptic("PercolateDown");
         switch (tree_perc_alg) {
             case TreePercolationAlgorithm::Chunks :
@@ -851,7 +849,7 @@ namespace rsurfaces
         if( !chunks_prepared)
         {
             
-            print("PrepareChunks");
+//            print("PrepareChunks");
             mint chunk_size = CACHE_LINE_LENGHT * ( (cluster_count + thread_count * CACHE_LINE_LENGHT - 1)  / ( thread_count * CACHE_LINE_LENGHT ) );
             chunk_roots = A_Vector<A_Vector<mint>> ( thread_count );
             std::cout << "chunk_size = " << chunk_size << std::endl;
