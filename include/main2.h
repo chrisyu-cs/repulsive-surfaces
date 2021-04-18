@@ -9,6 +9,8 @@ namespace po = boost::program_options;
 
 #include <omp.h>
 #include <mkl.h>
+#include <mkl_spblas.h>
+
 #include <tbb/task_scheduler_init.h>
 #include <memory>
 #include <Eigen/Core>
@@ -234,7 +236,7 @@ namespace rsurfaces
                 v(i) = unif(re);
             }
             
-            T->PrepareChunks();
+            T->RequireChunks();
             
             print("\n################################");
             print("PercolateUp");
@@ -366,6 +368,288 @@ namespace rsurfaces
             
             ptoc("Multiply");
         }
-    };
+        
+//        void TestMKLOptimize()
+//        {
+//            auto tpe_bh_11 = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
+//
+//
+//            auto bct11 = std::make_shared<OptimizedBlockClusterTree>(tpe_bh_11->GetBVH(), tpe_bh_11->GetBVH(), alpha, beta, chi);
+//
+//
+//
+//            mint m = bct11->near->m;
+//            mint n = bct11->near->n;
+//            mint cols = 9;
+//            mreal * values = bct11->near->hi_values;
+//            mreal factor = 1.;
+//
+//
+//            Eigen::VectorXd v ( n * cols );
+//            std::uniform_real_distribution<double> unif(-1.,1.);
+//            std::default_random_engine re;
+//
+//            for( mint i = 0; i < n * cols; ++i)
+//            {
+//                v(i) = unif(re);
+//            }
+//
+//            Eigen::VectorXd u1 ( n * cols );
+//            Eigen::VectorXd u2 ( n * cols );
+//
+//            sparse_matrix_t A = NULL;
+//            sparse_status_t stat = mkl_sparse_d_create_csr ( &A, SPARSE_INDEX_BASE_ZERO, m, n, bct11->near->OuterPtrB(), bct11->near->OuterPtrE(), bct11->near->InnerPtr(), values );
+//            if (stat)
+//            {
+//                eprint("mkl_sparse_d_create_csr returned stat = " + std::to_string(stat) );
+//            }
+//
+//            mint repetitions = 20;
+//
+//            tic("MKL_CSR unoptimized");
+//            for( mint i = 0; i < repetitions; ++i )
+//            {
+//                stat = mkl_sparse_d_mm ( SPARSE_OPERATION_NON_TRANSPOSE, factor, A, bct11->near->descr, SPARSE_LAYOUT_ROW_MAJOR, v.data(), cols, cols, 0., u1.data(), cols );
+//                if (stat)
+//                {
+//                    eprint("mkl_sparse_d_mm returned stat = " + std::to_string(stat) );
+//                }
+//            }
+//            toc("MKL_CSR unoptimized");
+//
+//            tic("optimization");
+//            stat = mkl_sparse_set_mm_hint(A, SPARSE_OPERATION_NON_TRANSPOSE, bct11->near->descr, SPARSE_LAYOUT_ROW_MAJOR, cols, 100 * repetitions);
+//            if (stat)
+//            {
+//                eprint("mkl_sparse_set_mm_hint returned stat = " + std::to_string(stat) );
+//            }
+//
+//            stat = mkl_sparse_optimize( A );
+//            if (stat)
+//            {
+//                eprint("mkl_sparse_optimize = " + std::to_string(stat) );
+//            }
+//            toc("optimization");
+//
+//            tic("MKL_CSR optimized");
+//            for( mint i = 0; i < repetitions; ++i )
+//            {
+//                stat = mkl_sparse_d_mm ( SPARSE_OPERATION_NON_TRANSPOSE, factor, A, bct11->near->descr, SPARSE_LAYOUT_ROW_MAJOR, v.data(), cols, cols, 0., u2.data(), cols );
+//                if (stat)
+//                {
+//                    eprint("mkl_sparse_d_mm returned stat = " + std::to_string(stat) );
+//                }
+//            }
+//            toc("MKL_CSR optimized");
+//
+//
+//            valprint("(u1-u2).norm()",(u1-u2).norm());
+//            valprint("(u1-u2).norm()/u1.norm()",(u1-u2).norm()/u1.norm());
+//
+//        }
+        
+//        void TestMKLOptimize()
+//        {
+//            auto tpe_bh_11 = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
+//
+//
+//            auto bct11 = std::make_shared<OptimizedBlockClusterTree>(tpe_bh_11->GetBVH(), tpe_bh_11->GetBVH(), alpha, beta, chi);
+//
+//
+//            MKLSparseMatrix matrix = bct11->S->P_to_C;
+//
+//            mint m = matrix.m;
+//            mint n = matrix.n;
+//            mint cols = 9;
+//
+//            mreal factor = 1.;
+//
+//
+//            Eigen::VectorXd v ( n * cols );
+//            std::uniform_real_distribution<double> unif(-1.,1.);
+//            std::default_random_engine re;
+//
+//            for( mint i = 0; i < n * cols; ++i)
+//            {
+//                v(i) = unif(re);
+//            }
+//
+//            Eigen::VectorXd u1 ( m * cols );
+//            Eigen::VectorXd u2 ( m * cols );
+//
+//
+//
+//            sparse_matrix_t A = NULL;
+//            sparse_status_t stat = mkl_sparse_d_create_csr ( &A, SPARSE_INDEX_BASE_ZERO, m, n, matrix.outer, matrix.outer + 1 , matrix.inner, matrix.values );
+//            if (stat)
+//            {
+//                eprint("mkl_sparse_d_create_csr returned stat = " + std::to_string(stat) );
+//            }
+//
+//            mint repetitions = 20;
+//
+//            tic("MKL_CSR unoptimized");
+//            for( mint i = 0; i < repetitions; ++i )
+//            {
+//                stat = mkl_sparse_d_mm ( SPARSE_OPERATION_NON_TRANSPOSE, factor, A, matrix.descr, SPARSE_LAYOUT_ROW_MAJOR, v.data(), cols, cols, 0., u1.data(), cols );
+//                if (stat)
+//                {
+//                    eprint("mkl_sparse_d_mm returned stat = " + std::to_string(stat) );
+//                }
+//            }
+//            toc("MKL_CSR unoptimized");
+//
+//            tic("optimization");
+//            stat = mkl_sparse_set_mm_hint(A, SPARSE_OPERATION_NON_TRANSPOSE, matrix.descr, SPARSE_LAYOUT_ROW_MAJOR, cols, 100 * repetitions);
+//            if (stat)
+//            {
+//                eprint("mkl_sparse_set_mm_hint returned stat = " + std::to_string(stat) );
+//            }
+//
+//            stat = mkl_sparse_optimize( A );
+//            if (stat)
+//            {
+//                eprint("mkl_sparse_optimize = " + std::to_string(stat) );
+//            }
+//            toc("optimization");
+//
+//            tic("MKL_CSR optimized");
+//            for( mint i = 0; i < repetitions; ++i )
+//            {
+//                stat = mkl_sparse_d_mm ( SPARSE_OPERATION_NON_TRANSPOSE, factor, A, matrix.descr, SPARSE_LAYOUT_ROW_MAJOR, v.data(), cols, cols, 0., u2.data(), cols );
+//                if (stat)
+//                {
+//                    eprint("mkl_sparse_d_mm returned stat = " + std::to_string(stat) );
+//                }
+//            }
+//            toc("MKL_CSR optimized");
+//
+//
+//            valprint("(u1-u2).norm()",(u1-u2).norm());
+//            valprint("(u1-u2).norm()/u1.norm()",(u1-u2).norm()/u1.norm());
+//
+//        }
 
+        
+        void TestVBSR()
+        {
+            
+            omp_set_num_threads(1);
+            mkl_set_num_threads(1);
+            
+            auto tpe = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
+
+            auto bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi);
+
+            mint n = bct->near->n;
+            mint m = bct->near->m;
+            mint cols = 9;
+            
+            Eigen::VectorXd v  ( n * cols );
+            Eigen::VectorXd u1 ( m * cols );
+            Eigen::VectorXd u2 ( m * cols );
+            Eigen::VectorXd u3 ( m * cols );
+            
+            std::uniform_real_distribution<double> unif(-1.,1.);
+            std::default_random_engine re;
+            for( mint i = 0; i < n * cols; ++i)
+            {
+                v(i) = unif(re);
+            }
+            
+            tic("ApplyKernel_CSR_MKL");
+            for( mint i = 0; i < 20; ++i)
+            {
+                bct->near->ApplyKernel_CSR_MKL( bct->near->hi_values, v.data(), u1.data(), cols, 1. );
+            }
+            toc("ApplyKernel_CSR_MKL");
+            
+//            tic("ApplyKernel_VBSR");
+//            for( mint i = 0; i < 20; ++i)
+//            {
+//                bct->near->ApplyKernel_VBSR( bct->near->hi_values, v.data(), u2.data(), cols, 1. );
+//            }
+//            toc("ApplyKernel_VBSR");
+            
+            tic("ApplyKernel_Hybrid");
+            for( mint i = 0; i < 20; ++i)
+            {
+                bct->near->ApplyKernel_Hybrid( bct->near->hi_values, v.data(), u3.data(), cols, 1. );
+            }
+            toc("ApplyKernel_Hybrid");
+            
+            
+            
+            omp_set_num_threads(4);
+            mkl_set_num_threads(4);
+            
+            tpe = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
+
+            bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi);
+            
+            for( mint i = 0; i < n * cols; ++i)
+            {
+                v(i) = unif(re);
+            }
+            
+            tic("ApplyKernel_CSR_MKL");
+            for( mint i = 0; i < 20; ++i)
+            {
+                bct->near->ApplyKernel_CSR_MKL( bct->near->hi_values, v.data(), u1.data(), cols, 1. );
+            }
+            toc("ApplyKernel_CSR_MKL");
+            
+//            tic("ApplyKernel_VBSR");
+//            for( mint i = 0; i < 20; ++i)
+//            {
+//                bct->near->ApplyKernel_VBSR( bct->near->hi_values, v.data(), u2.data(), cols, 1. );
+//            }
+//            toc("ApplyKernel_VBSR");
+            
+            tic("ApplyKernel_Hybrid");
+            for( mint i = 0; i < 20; ++i)
+            {
+                bct->near->ApplyKernel_Hybrid( bct->near->hi_values, v.data(), u3.data(), cols, 1. );
+            }
+            toc("ApplyKernel_Hybrid");
+            
+            
+            omp_set_num_threads(8);
+            mkl_set_num_threads(8);
+            
+            tpe = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
+
+            bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi);
+            
+            for( mint i = 0; i < n * cols; ++i)
+            {
+                v(i) = unif(re);
+            }
+            
+            tic("ApplyKernel_CSR_MKL");
+            for( mint i = 0; i < 20; ++i)
+            {
+                bct->near->ApplyKernel_CSR_MKL( bct->near->hi_values, v.data(), u1.data(), cols, 1. );
+            }
+            toc("ApplyKernel_CSR_MKL");
+            
+//            tic("ApplyKernel_VBSR");
+//            for( mint i = 0; i < 20; ++i)
+//            {
+//                bct->near->ApplyKernel_VBSR( bct->near->hi_values, v.data(), u2.data(), cols, 1. );
+//            }
+//            toc("ApplyKernel_VBSR");
+            
+            tic("ApplyKernel_Hybrid");
+            for( mint i = 0; i < 20; ++i)
+            {
+                bct->near->ApplyKernel_Hybrid( bct->near->hi_values, v.data(), u3.data(), cols, 1. );
+            }
+            toc("ApplyKernel_Hybrid");
+            
+//            valprint("(u1-u2).norm()/u1.norm()",(u1-u2).norm()/u1.norm());
+//            valprint("(u1-u3).norm()/u1.norm()",(u1-u2).norm()/u1.norm());
+        }
+        
+    }; // Benchmarker
 } // namespace rsurfaces

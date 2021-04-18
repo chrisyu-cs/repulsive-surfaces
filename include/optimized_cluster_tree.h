@@ -136,7 +136,7 @@ namespace rsurfaces
         MKLSparseMatrix P_to_C;
         MKLSparseMatrix C_to_P;
 
-        TreePercolationAlgorithm tree_perc_alg = TreePercolationAlgorithm::Tasks;
+        TreePercolationAlgorithm tree_perc_alg = TreePercolationAlgorithm::Chunks;
         A_Vector<A_Vector<mint>> chunk_roots;
         mint tree_max_depth = 0;
         bool chunks_prepared = false;
@@ -353,7 +353,7 @@ namespace rsurfaces
         
         void PercolateDown();
         
-        void PrepareChunks();
+        void RequireChunks();
         
         // some prototype
         void PercolateUp_Chunks();
@@ -393,7 +393,7 @@ namespace rsurfaces
         
         void computeClusterData(const mint C, const mint free_thread_count); // helper function for ComputeClusterData
 
-        bool prepareChunks( mint C, mint last, mint thread);
+        bool requireChunks( mint C, mint last, mint thread);
 
         
     }; //OptimizedClusterTree

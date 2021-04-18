@@ -657,18 +657,19 @@ namespace rsurfaces
             mint thread = omp_get_thread_num();
             mreal * v = &thread_input_buffers[thread][0];
             
-            mint b_i_begin = job_ptr[ thread     ];
+            mint b_i_begin = job_ptr[ thread ];
             mint b_i_end   = job_ptr[ thread + 1 ];
             
             for( mint b_i = b_i_begin; b_i < b_i_end; ++ b_i)
             {
-//                mint i_begin = b_row_ptr[ b_i     ];
-//                mint i_end   = b_row_ptr[ b_i + 1 ];
+                mint i_begin = b_row_ptr[ b_i ];
+                mint i_end   = b_row_ptr[ b_i + 1 ];
                 
+
                 mint k_begin = b_outer[ b_i     ];
                 mint k_end   = b_outer[ b_i + 1 ];
                 
-                mreal * ptr = 0;
+                mreal * ptr = v;
                 
                 for( mint k = k_begin; k < k_end; ++ k)
                 {
@@ -676,23 +677,23 @@ namespace rsurfaces
                     mint j_begin = b_col_ptr[b_j];
                     mint j_end = b_col_ptr[b_j+1];
             
-//                    mint nj = b_col_ptr[b_j + 1] - b_col_ptr[b_j];
-//
-                    mreal * vj_begin = T_input + cols * b_col_ptr[b_j];
-                    mreal * vj_end   = T_input + cols * b_col_ptr[b_j+1];
-                    
-                    std::copy( vj_begin, vj_end, ptr );
-                    ptr += vj_end - vj_begin;
+                    mint nj = j_end - j_begin;
 
+                    mreal * vj_begin = T_input + cols * j_begin;
+                    mreal * vj_end   = T_input + cols * j_end;
+
+                    std::copy( vj_begin, vj_end, ptr );
+                    
+//                    cblas_dcopy( cols * nj, T_input + cols * j_begin, 1, ptr, 1);
+                    
+                    ptr += cols * nj;
                 }
                 
-                mint mi = b_row_ptr[b_i + 1] - b_row_ptr[b_i];
-                mreal * ui = S_output + cols * b_row_ptr[b_i];
+                mint mi = i_end - i_begin;
+                mreal * ui = S_output + cols * i_begin;
                 mint row_nnz = b_row_counters[b_i];
-                cblas_dgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, mi, cols, row_nnz, 1., values + outer[b_row_ptr[b_i]], row_nnz, v, cols, 1., ui, cols );
-//                                                                                                                                      ^
-//                                                                                                                                      |
-//                                                                                                                                      +--- add- into
+                cblas_dgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, mi, cols, row_nnz, 1., values + outer[i_begin], row_nnz, v, cols, 1., ui, cols );
+
             }
         }
         ptoc("ApplyKernel_Hybrid");
