@@ -101,15 +101,12 @@ public:
                 switch (mult_alg)
                 {
                     case NearFieldMultiplicationAlgorithm::MKL_CSR :
-//                        print("ApplyKernel_CSR_MKL - near field");
                         ApplyKernel_CSR_MKL( values, T_input, S_output, cols, factor );
                         break;
                     case NearFieldMultiplicationAlgorithm::Eigen :
-//                        print("ApplyKernel_CSR_Eigen - near field");
                         ApplyKernel_CSR_Eigen( values, T_input, S_output, cols, factor );
                         break;
                     default:
-//                        print("ApplyKernel_CSR_MKL - near field (default)");
                         ApplyKernel_CSR_MKL( values, T_input, S_output, cols, factor );
                         break;
                 }
@@ -119,19 +116,15 @@ public:
                 switch (mult_alg)
                 {
                     case NearFieldMultiplicationAlgorithm::MKL_CSR :
-//                        print("ApplyKernel_CSR_MKL - far field");
                         ApplyKernel_CSR_MKL( values, T_input, S_output, cols, factor );
                         break;
                     case NearFieldMultiplicationAlgorithm::Hybrid :
-//                        print("ApplyKernel_CSR_Hybrid - far field");
                         ApplyKernel_Hybrid( values, T_input, S_output, cols, factor );
                         break;
                     case NearFieldMultiplicationAlgorithm::Eigen :
-//                        print("ApplyKernel_CSR_Eigen - far field");
                         ApplyKernel_CSR_Eigen( values, T_input, S_output, cols, factor );
                         break;
                     default:
-//                        print("ApplyKernel_CSR_MKL - far field (default)");
                         ApplyKernel_CSR_MKL( values, T_input, S_output, cols, factor );
                         break;
                 }

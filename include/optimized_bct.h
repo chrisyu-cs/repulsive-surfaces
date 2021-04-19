@@ -100,7 +100,7 @@ namespace rsurfaces
         std::shared_ptr<InteractionData> far;  // far and near are data containers for far and near field, respectively.
         std::shared_ptr<InteractionData> near; // They also perform the matrix-vector products.
 
-        NearFieldMultiplicationAlgorithm mult_alg = NearFieldMultiplicationAlgorithm::MKL_CSR;
+        NearFieldMultiplicationAlgorithm mult_alg = NearFieldMultiplicationAlgorithm::Hybrid;
         
         mreal FarFieldEnergy0();
         mreal DFarFieldEnergy0Helper();

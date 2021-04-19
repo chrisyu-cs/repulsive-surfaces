@@ -1,7 +1,7 @@
 #pragma once
 
 #define EIGEN_NO_DEBUG
-//#define MKL_DIRECT_CALL_SEQ_JIT
+#define MKL_DIRECT_CALL_SEQ_JIT
 #define PROFILING
 
 #include <mkl.h>
@@ -476,7 +476,7 @@ namespace rsurfaces
     
         ~MKLSparseMatrix(){
             
-//            print("~MKLSparseMatrix()");
+            print("~MKLSparseMatrix()");
 //            PrintStats();
             if( P.symfactorized || P.numfactorized )
             {
@@ -493,6 +493,9 @@ namespace rsurfaces
             safe_free( outer );
             safe_free( inner );
             safe_free( values );
+            
+            print("Done ~MKLSparseMatrix()");
+            
         };
         
         

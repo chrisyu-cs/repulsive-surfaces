@@ -48,7 +48,6 @@ namespace rsurfaces
 
     void OptimizedBlockClusterTree::RequireBlockClusters()
     {
-        print("OptimizedBlockClusterTree::RequireBlockClusters");
         if( !block_clusters_initialized )
         {
             ptic("RequireBlockClusters");

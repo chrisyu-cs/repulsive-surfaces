@@ -37,7 +37,6 @@ namespace po = boost::program_options;
 namespace rsurfaces
 {
     
-    
     struct Benchmarker
     {
         mint max_thread_count = 1;
@@ -678,6 +677,116 @@ namespace rsurfaces
 ////            valprint("(u1-u2).norm()/u1.norm()",(u1-u2).norm()/u1.norm());
 ////            valprint("(u1-u3).norm()/u1.norm()",(u1-u2).norm()/u1.norm());
 //        }
+        
+                void TestHybrid()
+                {
+    
+                    mint repetitions = 20;
+                    mint cols = 9;
+                    
+                    
+                    omp_set_num_threads(1);
+                    mkl_set_num_threads(1);
+        
+                    print("A.1");
+                    auto tpe = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
+                    print("A.2");
+                    auto bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi);
+                    print("A.3");
+                    mint n = bct->near->n;
+                    mint m = bct->near->m;
+                    print("A.4");
+                    mreal * v = nullptr;
+                    mreal * u1_1 = nullptr;
+                    mreal * u1_2 = nullptr;
+                    mreal * u2_1 = nullptr;
+                    mreal * u2_2 = nullptr;
+
+                    safe_alloc( v, n * cols, 0.);
+                    safe_alloc( u1_1, m * cols, 0.);
+                    safe_alloc( u1_2, m * cols, 0.);
+                    safe_alloc( u2_1, m * cols, 0.);
+                    safe_alloc( u2_2, m * cols, 0.);
+                    
+                    Eigen::Map<Eigen::VectorXd> ev ( v, n * cols );
+                    Eigen::Map<Eigen::VectorXd> U1_1 ( u1_1, m * cols );
+                    Eigen::Map<Eigen::VectorXd> U1_2 ( u1_2, m * cols );
+                    Eigen::Map<Eigen::VectorXd> U2_1 ( u2_1, m * cols );
+                    Eigen::Map<Eigen::VectorXd> U2_2 ( u2_2, m * cols );
+
+                    print("A.5");
+                    std::uniform_real_distribution<double> unif(-1.,1.);
+                    std::default_random_engine re;
+                    re.seed(std::chrono::system_clock::now().time_since_epoch().count());
+                    
+                    for( mint i = 0; i < n * cols; ++i)
+                    {
+                        v[i] = unif(re);
+                    }
+                    
+                    
+                    
+                    valprint("u1_1.norm()", U1_1.norm());
+                    valprint("u1_2.norm()", U1_2.norm());
+                    tic("ApplyKernel_CSR_MKL");
+                    for( mint i = 0; i < repetitions; ++i)
+                    {
+                        bct->near->ApplyKernel_CSR_MKL( bct->near->hi_values, v, u1_1, cols, 1. );
+                    }
+                    toc("ApplyKernel_CSR_MKL");
+
+        
+                    tic("ApplyKernel_Hybrid");
+                    for( mint i = 0; i < repetitions; ++i)
+                    {
+                        bct->near->ApplyKernel_Hybrid( bct->near->hi_values, v, u1_2, cols, 1. );
+                    }
+                    toc("ApplyKernel_Hybrid");
+    
+                    valprint("u1_1.norm()", U1_1.norm());
+                    valprint("u1_2.norm()", U1_2.norm());
+                    valprint("(u1_1-u1_2).norm()/u1_1.norm()",(U1_1-U1_2).norm()/U1_1.norm());
+                    
+                    
+                    
+                    
+                    omp_set_num_threads(max_thread_count);
+                    mkl_set_num_threads(max_thread_count);
+        
+                    tpe = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
+        
+                    bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi);
+        
+                    valprint("u2_1.norm()", U2_1.norm());
+                    valprint("u2_2.norm()", U2_2.norm());
+        
+                    tic("ApplyKernel_CSR_MKL");
+                    for( mint i = 0; i < repetitions; ++i)
+                    {
+                        bct->near->ApplyKernel_CSR_MKL( bct->near->hi_values, v, u2_1, cols, 1. );
+                    }
+                    toc("ApplyKernel_CSR_MKL");
+        
+                    tic("ApplyKernel_Hybrid");
+                    for( mint i = 0; i < repetitions; ++i)
+                    {
+                        bct->near->ApplyKernel_Hybrid( bct->near->hi_values, v, u2_2, cols, 1. );
+                    }
+                    toc("ApplyKernel_Hybrid");
+        
+                    valprint("u2_1.norm()", U2_1.norm());
+                    valprint("u2_2.norm()", U2_2.norm());
+                    valprint("(u2_1-u2_2).norm()/u1_2.norm()",(U2_1-U2_2).norm()/U2_1.norm());
+                    
+                    valprint("(u2_1-u1_1).norm()/u1_1.norm()",(U2_1-U1_1).norm()/U1_1.norm());
+                    valprint("(u2_2-u1_2).norm()/u1_2.norm()",(U2_2-U1_2).norm()/U1_2.norm());
+                    
+                    safe_free(v);
+                    safe_free(u1_1);
+                    safe_free(u1_2);
+                    safe_free(u2_1);
+                    safe_free(u2_2);
+                }
         
     }; // Benchmarker
 } // namespace rsurfaces

@@ -468,6 +468,7 @@ namespace rsurfaces
     
     void InteractionData::ApplyKernel_CSR_MKL( mreal * values, mreal * T_input, mreal * S_output, mint cols, mreal factor ) // sparse matrix-vector multiplication using mkl_sparse_d_mm
     {
+//        print("ApplyKernel_CSR_MKL - near field");
         if( nnz == b_nnz )
         {
             ptic("ApplyKernel_CSR_MKL - far field");
@@ -547,6 +548,7 @@ namespace rsurfaces
 
     void InteractionData::ApplyKernel_CSR_Eigen( mreal * values, mreal * T_input, mreal * S_output, mint cols, mreal factor ) // sparse matrix-vector multiplication using Eigen
     {
+//        print("ApplyKernel_CSR_Eigen - near field");
         if( nnz == b_nnz )
         {
             ptic("ApplyKernel_CSR_Eigen - far field");
@@ -587,14 +589,8 @@ namespace rsurfaces
     void InteractionData::ApplyKernel_VBSR( mreal * values, mreal * T_input, mreal * S_output, mint cols, mreal factor ) // sparse matrix-vector multiplication using mkl_sparse_d_mm
     {
 
-//
-//        std::cout << "naive workloads = ";
-//        for( mint k = 0; k < thread_count; ++k)
-//        {
-//            std::cout << b_row_acc_costs[naive_job_ptr[k+1]] -  b_row_acc_costs[naive_job_ptr[k]] << ", ";
-//        }
-//        std::cout << "\n" << std::endl;
-
+        
+//        print("ApplyKernel_VBSR - near field");
         
         ptic("ApplyKernel_VBSR");
         #pragma omp parallel num_threads(thread_count)
@@ -643,6 +639,8 @@ namespace rsurfaces
     void InteractionData::ApplyKernel_Hybrid( mreal * values, mreal * T_input, mreal * S_output, mint cols, mreal factor ) // sparse matrix-vector multiplication using mkl_sparse_d_mm
     {
 
+//        print("ApplyKernel_Hybrid - near field");
+        
         mint max_len = *std::max_element(b_row_counters, b_row_counters + b_m);
         auto thread_input_buffers = A_Vector<A_Vector<mreal>> (thread_count);
 
@@ -694,7 +692,7 @@ namespace rsurfaces
                 mint mi = i_end - i_begin;
                 mreal * ui = S_output + cols * i_begin;
                 mint row_nnz = b_row_counters[b_i];
-                cblas_dgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, mi, cols, row_nnz, 1., values + outer[i_begin], row_nnz, v, cols, 1., ui, cols );
+                cblas_dgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, mi, cols, row_nnz, factor, values + outer[i_begin], row_nnz, v, cols, 1., ui, cols );
 
             }
         }
