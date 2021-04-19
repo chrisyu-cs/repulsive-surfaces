@@ -31,11 +31,14 @@ namespace rsurfaces
        const mint * restrict const ordering_, // A suggested preordering of primitives; this gets applied before the clustering begins in the hope that this may improve the sorting within a cluster --- at least in the top level(s). This could, e.g., be the ordering obtained by a tree for  similar data set.
        const mint split_threshold_,          // split a cluster if has this many or more primitives contained in it
        MKLSparseMatrix &DiffOp,              // Asking now for MKLSparseMatrix instead of EigenMatrixCSR as input
-       MKLSparseMatrix &AvOp                 // Asking now for MKLSparseMatrix instead of EigenMatrixCSR as input
+       MKLSparseMatrix &AvOp,                 // Asking now for MKLSparseMatrix instead of EigenMatrixCSR as input
+       bool use_old_prepost_
     )
     {
         ptic("OptimizedClusterTree::OptimizedClusterTree");
 
+        use_old_prepost = use_old_prepost_;
+        
         primitive_count = primitive_count_;
         hull_count = hull_count_;
         dim = dim_;
@@ -166,12 +169,13 @@ namespace rsurfaces
         ptoc("Serialize");
 
         ComputePrimitiveData( P_hull_coords_, P_near_, P_far_ );
-//        ComputePrimitiveData( P_hull_coords_, P_near_, P_moments_ );
+//        ComputePrimitiveData( P_hull_coords_, P_near_, P_far_, P_moments_ );
 
         ComputeClusterData();
 
         ComputePrePost( DiffOp, AvOp );
 
+        
         ptoc("OptimizedClusterTree::OptimizedClusterTree");
     }; //Constructor
 
@@ -549,7 +553,6 @@ namespace rsurfaces
         
         safe_alloc( leaf_cluster_ptr, leaf_cluster_count + 1  );
         leaf_cluster_ptr[0] = 0;
-    //    P_leaf = A_Vector<mint>( primitive_count );
 
         #pragma omp parallel for
         for( mint i = 0; i < leaf_cluster_count; ++i )
@@ -563,10 +566,10 @@ namespace rsurfaces
                 C_to_P.inner[k] = leaf;
             }
         }
+        
         {
             mreal * x = C_to_P.values;
             mint * i  = C_to_P.outer;
-            
             mreal * y = P_to_C.values;
             mint * j  = P_to_C.inner;
             #pragma omp parallel for
@@ -579,7 +582,6 @@ namespace rsurfaces
             }
         }
         
-        ptic("P_to_C.outer");
         for (mint C = 0; C < cluster_count; ++C)
         {
             if( C_left[C] >= 0)
@@ -591,11 +593,31 @@ namespace rsurfaces
                 P_to_C.outer[C + 1] = P_to_C.outer[C] + C_end[C] - C_begin[C];
             }
         }
-        ptoc("P_to_C.outer");
         
-        ptic("hi_pre");
+        if( use_old_prepost )
         {
+            print("hi_pre old");
+            auto hi_perm = MKLSparseMatrix( dim * primitive_count, dim * primitive_count, dim * primitive_count );
+            hi_perm.outer[ dim * primitive_count ] = dim * primitive_count;
 
+            #pragma omp parallel for
+            for( mint i = 0; i < primitive_count; ++i )
+            {
+                mreal a = P_near[0][i];
+                for( mint k = 0; k < dim; ++k )
+                {
+                    mint to = dim * i + k;
+                    hi_perm.outer [ to ] = to;
+                    hi_perm.inner [ to ] = dim * P_ext_pos[i] + k;
+                    hi_perm.values[ to ] = a;
+                }
+            }
+
+            hi_perm.Multiply( DiffOp, hi_pre );
+        }
+        else
+        {
+            print("hi_pre new");
             hi_pre = MKLSparseMatrix( DiffOp.m, DiffOp.n, DiffOp.nnz );
             mint * Douter = DiffOp.outer;
             mint * Dinner = DiffOp.inner;
@@ -636,23 +658,21 @@ namespace rsurfaces
                 }
             }
         }
-        ptoc("hi_pre");
 
-        
-        ptic("hi_pre.Transpose");
         hi_pre.Transpose( hi_post );
-        ptoc("hi_pre.Transpose");
-        
-//        ptic("MKLSparseMatrix");
-//        auto lo_perm = MKLSparseMatrix( primitive_count, primitive_count, C_to_P.outer, P_ext_pos, P_far[0] ); // Copy
-//        ptoc("MKLSparseMatrix");
-//
-//        ptic("lo_perm.Multiply");
-//        lo_perm.Multiply( AvOp, lo_pre );
-//        ptoc("lo_perm.Multiply");
-        
-        ptic("lo_pre");
+                
+        if( use_old_prepost )
         {
+            print("lo_pre old");
+            auto lo_perm = MKLSparseMatrix( primitive_count, primitive_count, C_to_P.outer, P_ext_pos, P_near[0] ); // Copy
+
+            lo_perm.Multiply( AvOp, lo_pre );
+
+        }
+        else
+        {
+            print("lo_pre new");
+            
             lo_pre = MKLSparseMatrix( AvOp.m, AvOp.n, AvOp.nnz );
             mint * Douter = AvOp.outer;
             mint * Dinner = AvOp.inner;
@@ -690,15 +710,12 @@ namespace rsurfaces
                 }
             }
         }
-        ptoc("lo_pre");
         
-        ptic("lo_pre.Transpose");
         lo_pre.Transpose( lo_post );
-        ptoc("lo_pre.Transpose");
         
         ptoc("OptimizedClusterTree::ComputePrePost");
     } // ComputePrePost
-
+    
     void OptimizedClusterTree::RequireBuffers( const mint cols )
     {
         ptic("RequireBuffers");
@@ -853,8 +870,8 @@ namespace rsurfaces
 //            print("RequireChunks");
             mint chunk_size = CACHE_LINE_LENGHT * ( (cluster_count + thread_count * CACHE_LINE_LENGHT - 1)  / ( thread_count * CACHE_LINE_LENGHT ) );
             chunk_roots = A_Vector<A_Vector<mint>> ( thread_count );
-            std::cout << "chunk_size = " << chunk_size << std::endl;
-            std::cout << "cluster_count = " << cluster_count << std::endl;
+//            std::cout << "chunk_size = " << chunk_size << std::endl;
+//            std::cout << "cluster_count = " << cluster_count << std::endl;
 
             #pragma omp parallel for num_threads(thread_count) schedule( static, 1)
             for( mint thread = 0; thread < thread_count; ++thread )
@@ -1438,5 +1455,6 @@ namespace rsurfaces
             os << C << "\t" << C_left[C] << "\t" << C_right[C] << "\t" << C_next[C] << "\t" << C_depth[C] << "\t" << C_begin[C] << "\t" << C_end[C] << std::endl;
         }
         os.close();
+        std::cout << "Done writing." << std::endl;
     }
 } // namespace rsurfaces

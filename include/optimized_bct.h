@@ -35,8 +35,6 @@ namespace rsurfaces
             }
         }
 
-        bool disableNearField = false;
-
         OptimizedBlockClusterTree(OptimizedClusterTree* S_, OptimizedClusterTree* T_, const mreal alpha_, const mreal beta_, const mreal theta_, bool exploit_symmetry_ = true, bool upper_triangular_ = false);
 
         ~OptimizedBlockClusterTree()
@@ -89,18 +87,21 @@ namespace rsurfaces
         // TODO: Maybe these "diag" - vectors should become members to S and T?
         // Remark: If S != T, the "diags" are not used.
 
+        bool block_clusters_initialized = false;
         bool metrics_initialized = false;
         bool is_symmetric = false;
         bool exploit_symmetry = false;
         bool upper_triangular = false;
-        
-        // If exploit_symmetry != 1, S == T is assume and only roughly half the block clusters are generated during the split pass performed by CreateBlockClusters.
-        // If upper_triangular != 0 and if exploit_symmetry != 0, only the upper triangle of the interaction matrices will be generated. --> CreateBlockClusters will be faster.
-        // If exploit_symmetry 1= 1 and upper_triangular 1= 0 then the block cluster twins are generated _at the end_ of the splitting pass by CreateBlockClusters.
+        bool disableNearField = false;
+        // If exploit_symmetry != 1, S == T is assume and only roughly half the block clusters are generated during the split pass performed by RequireBlockClusters.
+        // If upper_triangular != 0 and if exploit_symmetry != 0, only the upper triangle of the interaction matrices will be generated. --> RequireBlockClusters will be faster.
+        // If exploit_symmetry 1= 1 and upper_triangular 1= 0 then the block cluster twins are generated _at the end_ of the splitting pass by RequireBlockClusters.
 
         std::shared_ptr<InteractionData> far;  // far and near are data containers for far and near field, respectively.
         std::shared_ptr<InteractionData> near; // They also perform the matrix-vector products.
 
+        NearFieldMultiplicationAlgorithm mult_alg = NearFieldMultiplicationAlgorithm::Hybrid;
+        
         mreal FarFieldEnergy0();
         mreal DFarFieldEnergy0Helper();
         mreal NearFieldEnergy0();
@@ -123,7 +124,7 @@ namespace rsurfaces
 
         //private:  // made public only for debugging
 
-        void CreateBlockClusters(); // Creates InteractionData far and near for far and near field, respectively.
+        void RequireBlockClusters(); // Creates InteractionData far and near for far and near field, respectively.
 
         void SplitBlockCluster(
             A_Vector<A_Deque<mint>> &sep_i,  //  +

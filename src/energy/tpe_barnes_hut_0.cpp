@@ -517,6 +517,7 @@ namespace rsurfaces
         }
         
         bvh = CreateOptimizedBVH(mesh, geom);
+        
         ptoc("TPEnergyBarnesHut0::Update");
     }
 

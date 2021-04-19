@@ -6,13 +6,6 @@
 namespace rsurfaces
 {
     
-    enum class TreePercolationAlgorithm
-    {
-        Tasks,
-        Sequential,
-        Chunks
-    };
-    
     struct Cluster2 // slim POD container to hold only the data relevant for the construction phase in the tree, before it is serialized
     {
     public:
@@ -59,7 +52,8 @@ namespace rsurfaces
             const mint * restrict const ordering_, // A suggested preordering of primitives; this gets applied before the clustering begins in the hope that this may improve the sorting within a cluster --- at least in the top level(s). This could, e.g., be the ordering obtained by a tree for  similar data set.
             const mint split_threshold_,          // split a cluster if has this many or more primitives contained in it
             MKLSparseMatrix &DiffOp,              // Asking now for MKLSparseMatrix instead of EigenMatrixCSR as input
-            MKLSparseMatrix &AvOp                 // Asking now for MKLSparseMatrix instead of EigenMatrixCSR as input
+            MKLSparseMatrix &AvOp,                // Asking now for MKLSparseMatrix instead of EigenMatrixCSR as input
+            bool use_old_prepost_ = false
         );
 
         mint split_threshold = 8; // leaf clusters will contain split_threshold triangles or less; split_threshold = 8 might be good for cache.
@@ -77,19 +71,21 @@ namespace rsurfaces
         mint buffer_dim = 0;
         //        mint moment_count = 22;
 
+        bool use_old_prepost = false;
+        
         mint *restrict P_ext_pos = nullptr;        // Reordering of primitives; crucial for communication with outside world
         mint *restrict inverse_ordering = nullptr; // Inverse ordering of the above; crucial for communication with outside world
                                          //    A_Vector<mint> P_leaf;               // Index of the leaf cluster to which the primitive belongs
 
         // "C_" stands for "cluster", "P_" stands for "primitive"
 
-        mint * restrict C_begin = nullptr;
-        mint * restrict C_end = nullptr;
-        mint * restrict C_depth = nullptr;
-        mint * restrict C_next = nullptr;
-        mint * restrict C_left = nullptr;  // list of index of left children;  entry is -1 if no child is present
-        mint * restrict C_right = nullptr; // list of index of right children; entry is -1 if no child is present
-        bool * restrict C_is_chunk_root = nullptr;
+        mint *restrict C_begin = nullptr;
+        mint *restrict C_end = nullptr;
+        mint *restrict C_depth = nullptr;
+        mint *restrict C_next = nullptr;
+        mint *restrict C_left = nullptr;  // list of index of left children;  entry is -1 if no child is present
+        mint *restrict C_right = nullptr; // list of index of right children; entry is -1 if no child is present
+        bool *restrict C_is_chunk_root = nullptr;
 
         // Primitive double data, stored in Structure of Arrays fashion
 
@@ -142,7 +138,7 @@ namespace rsurfaces
         bool chunks_prepared = false;
         
         ~OptimizedClusterTree()
-        {
+        {;
             ptic("~OptimizedClusterTree");
             // pointer arrays come at the cost of manual deallocation...
             
@@ -315,7 +311,7 @@ namespace rsurfaces
                         safe_free(C_is_chunk_root);
                     }
 
-                    }
+                }
             }
             ptoc("~OptimizedClusterTree");
         };

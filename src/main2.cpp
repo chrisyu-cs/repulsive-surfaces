@@ -19,6 +19,20 @@ int main(int arg_count, char* arg_vec[])
     
     po::options_description desc("Allowed options");
     
+#ifdef PROFILING
+    std::cout << "Profiling activated." << std::endl;
+#else
+    std::cout << "Profiling deactivated." << std::endl;
+#endif
+    
+#ifdef MKL_DIRECT_CALL_SEQ_JIT
+    std::cout << "Called with MKL_DIRECT_CALL_SEQ_JIT activated." << std::endl;
+#else
+    std::cout << "Called with MKL_DIRECT_CALL_SEQ_JIT deactivated." << std::endl;
+#endif
+    
+    print("A");
+    
     try
     {
         po::options_description desc("Allowed options");
@@ -132,6 +146,8 @@ int main(int arg_count, char* arg_vec[])
         std::cerr << "Exception of unknown type!\n";
     }
     
+    print("B");
+    
     std::cout << std::setprecision(8);
     
     MeshUPtr u_mesh;
@@ -143,13 +159,18 @@ int main(int arg_count, char* arg_vec[])
     BM.mesh1 = std::move(u_mesh);
     BM.geom1 = std::move(u_geom);
     BM.Prepare();
-    
+
     BM.thread_count = BM.max_thread_count;
 //    BM.TestMultiply();    
 //    BM.TestMKLOptimize();
+//    BM.TestVBSR();
     
-    BM.TestVBSR();
+    print("C");
     
+    BM.TestHybrid();
+    
+    print("D");
+//    
 //    for( mint threads = 0; threads < BM.max_thread_count + 1; threads += BM.thread_step )
 //    {
 //        // 0 is the new 1. (Want to have steps, but also  a single-threaded run.
@@ -216,7 +237,6 @@ int main(int arg_count, char* arg_vec[])
 //
 //        }
 //        std::cout << std::endl;
-//
 //    }
     
     return EXIT_SUCCESS;
