@@ -475,8 +475,6 @@ namespace rsurfaces
         };
     
         ~MKLSparseMatrix(){
-            
-            print("~MKLSparseMatrix()");
 //            PrintStats();
             if( P.symfactorized || P.numfactorized )
             {
@@ -493,9 +491,6 @@ namespace rsurfaces
             safe_free( outer );
             safe_free( inner );
             safe_free( values );
-            
-            print("Done ~MKLSparseMatrix()");
-            
         };
         
         
@@ -1070,7 +1065,5 @@ namespace rsurfaces
         Hybrid,
         Eigen
     };
-    
-    
     
 } // namespace rsurfaces

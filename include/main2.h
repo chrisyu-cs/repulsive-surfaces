@@ -687,15 +687,14 @@ namespace rsurfaces
                     
                     omp_set_num_threads(1);
                     mkl_set_num_threads(1);
-        
-                    print("A.1");
+                    
                     auto tpe = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
-                    print("A.2");
+                    
                     auto bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi);
-                    print("A.3");
+                    
                     mint n = bct->near->n;
                     mint m = bct->near->m;
-                    print("A.4");
+                    
                     mreal * v = nullptr;
                     mreal * u1_1 = nullptr;
                     mreal * u1_2 = nullptr;
@@ -714,7 +713,6 @@ namespace rsurfaces
                     Eigen::Map<Eigen::VectorXd> U2_1 ( u2_1, m * cols );
                     Eigen::Map<Eigen::VectorXd> U2_2 ( u2_2, m * cols );
 
-                    print("A.5");
                     std::uniform_real_distribution<double> unif(-1.,1.);
                     std::default_random_engine re;
                     re.seed(std::chrono::system_clock::now().time_since_epoch().count());

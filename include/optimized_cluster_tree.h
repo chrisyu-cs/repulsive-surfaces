@@ -138,8 +138,7 @@ namespace rsurfaces
         bool chunks_prepared = false;
         
         ~OptimizedClusterTree()
-        {
-            print("~OptimizedClusterTree");
+        {;
             ptic("~OptimizedClusterTree");
             // pointer arrays come at the cost of manual deallocation...
             
@@ -312,10 +311,9 @@ namespace rsurfaces
                         safe_free(C_is_chunk_root);
                     }
 
-                    }
+                }
             }
             ptoc("~OptimizedClusterTree");
-            print("Done ~OptimizedClusterTree");
         };
 
         void SplitCluster(Cluster2 * const C, const mint free_thread_count);

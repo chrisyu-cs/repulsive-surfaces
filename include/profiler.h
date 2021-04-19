@@ -36,31 +36,41 @@ namespace rsurfaces
         Profiler::id_stack.push_back(++Profiler::id_counter);
         
     }
+    
     inline void ptoc(std::string tag)
     {
-        if( !Profiler::time_stack.empty() || tag != Profiler::tag_stack.back() )
+        if( !Profiler::tag_stack.empty() )
         {
-            double start_time = std::chrono::duration<double>( Profiler::time_stack.back()     - Profiler::init_time ).count();
-            double stop_time  = std::chrono::duration<double>( std::chrono::steady_clock::now() - Profiler::init_time ).count();
-
-            Profiler::os
-                << Profiler::id_stack.back() <<  "\t"
-                << Profiler::tag_stack.back() << "\t"
-                << Profiler::parent_stack.back() << "\t"
-                << start_time << "\t"
-                << stop_time << "\t"
-                << stop_time-start_time << "\t"
-                << Profiler::tag_stack.size()-1
-                << std::endl;
-            
-            Profiler::id_stack.pop_back();
-            Profiler::time_stack.pop_back();
-            Profiler::tag_stack.pop_back();
-            Profiler::parent_stack.pop_back();
+            if( tag == Profiler::tag_stack.back() )
+            {
+                double start_time = std::chrono::duration<double>( Profiler::time_stack.back()     - Profiler::init_time ).count();
+                double stop_time  = std::chrono::duration<double>( std::chrono::steady_clock::now() - Profiler::init_time ).count();
+                
+                Profiler::os
+                    << Profiler::id_stack.back() <<  "\t"
+                    << Profiler::tag_stack.back() << "\t"
+                    << Profiler::parent_stack.back() << "\t"
+                    << start_time << "\t"
+                    << stop_time << "\t"
+                    << stop_time-start_time << "\t"
+                    << Profiler::tag_stack.size()-1
+                    << std::endl;
+                
+                Profiler::id_stack.pop_back();
+                Profiler::time_stack.pop_back();
+                Profiler::tag_stack.pop_back();
+                Profiler::parent_stack.pop_back();
+            }
+            else
+            {
+                std::cout << "Unmatched ptoc detected." << std::endl;
+                std::cout << "  Expected label =  " + tag << std::endl;
+                std::cout << "  Visited label  =  " + Profiler::tag_stack.back() << std::endl;
+            }
         }
         else
         {
-            std::cout << ("Unmatched ptoc detected. Label =  " + tag) << std::endl;
+            std::cout << ("Unmatched ptoc detected. Stack empty. Label =  " + tag + " detected.") << std::endl;
         }
     }
 

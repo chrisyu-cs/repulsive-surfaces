@@ -175,7 +175,6 @@ namespace rsurfaces
 
         ComputePrePost( DiffOp, AvOp );
 
-        print("Bla.");
         
         ptoc("OptimizedClusterTree::OptimizedClusterTree");
     }; //Constructor
@@ -595,28 +594,28 @@ namespace rsurfaces
             }
         }
         
-//        if( use_old_prepost )
-//        {
-//            print("hi_pre old");
-//            auto hi_perm = MKLSparseMatrix( dim * primitive_count, dim * primitive_count, dim * primitive_count );
-//            hi_perm.outer[ dim * primitive_count ] = dim * primitive_count;
-//
-//            #pragma omp parallel for
-//            for( mint i = 0; i < primitive_count; ++i )
-//            {
-//                mreal a = P_near[0][i];
-//                for( mint k = 0; k < dim; ++k )
-//                {
-//                    mint to = dim * i + k;
-//                    hi_perm.outer [ to ] = to;
-//                    hi_perm.inner [ to ] = dim * P_ext_pos[i] + k;
-//                    hi_perm.values[ to ] = a;
-//                }
-//            }
-//
-//            hi_perm.Multiply( DiffOp, hi_pre );
-//        }
-//        else
+        if( use_old_prepost )
+        {
+            print("hi_pre old");
+            auto hi_perm = MKLSparseMatrix( dim * primitive_count, dim * primitive_count, dim * primitive_count );
+            hi_perm.outer[ dim * primitive_count ] = dim * primitive_count;
+
+            #pragma omp parallel for
+            for( mint i = 0; i < primitive_count; ++i )
+            {
+                mreal a = P_near[0][i];
+                for( mint k = 0; k < dim; ++k )
+                {
+                    mint to = dim * i + k;
+                    hi_perm.outer [ to ] = to;
+                    hi_perm.inner [ to ] = dim * P_ext_pos[i] + k;
+                    hi_perm.values[ to ] = a;
+                }
+            }
+
+            hi_perm.Multiply( DiffOp, hi_pre );
+        }
+        else
         {
             print("hi_pre new");
             hi_pre = MKLSparseMatrix( DiffOp.m, DiffOp.n, DiffOp.nnz );
@@ -659,19 +658,18 @@ namespace rsurfaces
                 }
             }
         }
-        ptoc("hi_pre");
 
         hi_pre.Transpose( hi_post );
                 
-//        if( use_old_prepost )
-//        {
-//            print("lo_pre old");
-//            auto lo_perm = MKLSparseMatrix( primitive_count, primitive_count, C_to_P.outer, P_ext_pos, P_near[0] ); // Copy
-//
-//            lo_perm.Multiply( AvOp, lo_pre );
-//
-//        }
-//        else
+        if( use_old_prepost )
+        {
+            print("lo_pre old");
+            auto lo_perm = MKLSparseMatrix( primitive_count, primitive_count, C_to_P.outer, P_ext_pos, P_near[0] ); // Copy
+
+            lo_perm.Multiply( AvOp, lo_pre );
+
+        }
+        else
         {
             print("lo_pre new");
             
@@ -714,8 +712,6 @@ namespace rsurfaces
         }
         
         lo_pre.Transpose( lo_post );
-        
-        print("Done.");
         
         ptoc("OptimizedClusterTree::ComputePrePost");
     } // ComputePrePost

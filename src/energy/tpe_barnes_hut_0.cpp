@@ -3,7 +3,6 @@
 
 namespace rsurfaces
 {
-    
     template<typename T1, typename T2>
     mreal TPEnergyBarnesHut0::Energy(T1 alpha, T2 betahalf)
     {
@@ -518,6 +517,7 @@ namespace rsurfaces
         }
         
         bvh = CreateOptimizedBVH(mesh, geom);
+        
         ptoc("TPEnergyBarnesHut0::Update");
     }
 
