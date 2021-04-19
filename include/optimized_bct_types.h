@@ -1,5 +1,9 @@
 #pragma once
 
+#define EIGEN_NO_DEBUG
+#define MKL_DIRECT_CALL_SEQ_JIT
+#define PROFILING
+
 #include <mkl.h>
 #include <tbb/cache_aligned_allocator.h>
 #include <algorithm>
@@ -1047,5 +1051,23 @@ namespace rsurfaces
     // The cost of the i-th job is job_acc_costs[i+1] - job_acc_costs[i].
     // The cost of the k-th thread goes from job no job_ptr[k] to job no job_ptr[k+1] (as always in C/C++, job_ptr[k+1] points _after_ the last job.
     void BalanceWorkLoad( mint job_count, mint * job_acc_costs, mint thread_count, mint * & job_ptr );
+    
+    
+    
+    enum class TreePercolationAlgorithm
+    {
+        Tasks,
+        Sequential,
+        Chunks
+    };
+    
+    enum class NearFieldMultiplicationAlgorithm
+    {
+        MKL_CSR,
+        Hybrid,
+        Eigen
+    };
+    
+    
     
 } // namespace rsurfaces

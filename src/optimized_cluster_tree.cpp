@@ -853,8 +853,8 @@ namespace rsurfaces
 //            print("RequireChunks");
             mint chunk_size = CACHE_LINE_LENGHT * ( (cluster_count + thread_count * CACHE_LINE_LENGHT - 1)  / ( thread_count * CACHE_LINE_LENGHT ) );
             chunk_roots = A_Vector<A_Vector<mint>> ( thread_count );
-            std::cout << "chunk_size = " << chunk_size << std::endl;
-            std::cout << "cluster_count = " << cluster_count << std::endl;
+//            std::cout << "chunk_size = " << chunk_size << std::endl;
+//            std::cout << "cluster_count = " << cluster_count << std::endl;
 
             #pragma omp parallel for num_threads(thread_count) schedule( static, 1)
             for( mint thread = 0; thread < thread_count; ++thread )
@@ -1438,5 +1438,6 @@ namespace rsurfaces
             os << C << "\t" << C_left[C] << "\t" << C_right[C] << "\t" << C_next[C] << "\t" << C_depth[C] << "\t" << C_begin[C] << "\t" << C_end[C] << std::endl;
         }
         os.close();
+        std::cout << "Done writing." << std::endl;
     }
 } // namespace rsurfaces

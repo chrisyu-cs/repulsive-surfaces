@@ -6,13 +6,6 @@
 namespace rsurfaces
 {
     
-    enum class TreePercolationAlgorithm
-    {
-        Tasks,
-        Sequential,
-        Chunks
-    };
-    
     struct Cluster2 // slim POD container to hold only the data relevant for the construction phase in the tree, before it is serialized
     {
     public:

@@ -33,8 +33,6 @@ namespace po = boost::program_options;
 
 #include "energy/all_energies.h"
 
-#define MKL_DIRECT_CALL_SEQ_JIT
-#define EIGEN_NO_DEBUG
 
 namespace rsurfaces
 {
@@ -75,10 +73,11 @@ namespace rsurfaces
         void Compute( mint iter )
         {
             //        OptimizedClusterTree *bvh1 = CreateOptimizedBVH(mesh1, geom1);
-            ptic("Energy");
-
+            
+            print("BVH");
+            ptic("BVH");
             auto tpe_bh_11 = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
-        
+            ptoc("BVH");
 
             tpe_bh_11->GetBVH()->tree_perc_alg = tree_perc_alg;
             
@@ -86,6 +85,9 @@ namespace rsurfaces
             {
                 tpe_bh_11->GetBVH()->PrintToFile( path + "/" + "OptimizedClusterTree.tsv");
             }
+            
+            print("Energy");
+            ptic("Energy");
 
             E_11 = tpe_bh_11->Value();
             DE_11.setZero();
@@ -139,8 +141,13 @@ namespace rsurfaces
 //
 //            ptoc("TPPointNormalCloundObstacleBarnesHut0");
             
-            ptic("Multiply");
-            auto bct11 = std::make_shared<OptimizedBlockClusterTree>(tpe_bh_11->GetBVH(), tpe_bh_11->GetBVH(), alpha, beta, chi);
+            
+            std::shared_ptr<OptimizedBlockClusterTree> bct11;
+            
+            print("Multiply MKL CSR");
+            ptic("Multiply MKL CSR");
+            bct11 = std::make_shared<OptimizedBlockClusterTree>(tpe_bh_11->GetBVH(), tpe_bh_11->GetBVH(), alpha, beta, chi);
+            bct11->mult_alg = NearFieldMultiplicationAlgorithm::MKL_CSR;
             for( mint k = 0; k < 20; ++k)
             {
                 ptic("Multiply Fractional");
@@ -155,7 +162,28 @@ namespace rsurfaces
                 bct11->Multiply(V,U,BCTKernelType::LowOrder);
                 ptoc("Multiply LowOrder");
             }
-            ptoc("Multiply");
+            ptoc("Multiply MKL CSR");
+            
+
+            print("Multiply Hybrid");
+            ptic("Multiply Hybrid");
+            bct11 = std::make_shared<OptimizedBlockClusterTree>(tpe_bh_11->GetBVH(), tpe_bh_11->GetBVH(), alpha, beta, chi);
+            bct11->mult_alg = NearFieldMultiplicationAlgorithm::Hybrid;
+            for( mint k = 0; k < 20; ++k)
+            {
+                ptic("Multiply Fractional");
+                bct11->Multiply(V,U,BCTKernelType::FractionalOnly);
+                ptoc("Multiply Fractional");
+
+                ptic("Multiply HighOrder");
+                bct11->Multiply(V,U,BCTKernelType::HighOrder);
+                ptoc("Multiply HighOrder");
+
+                ptic("Multiply LowOrder");
+                bct11->Multiply(V,U,BCTKernelType::LowOrder);
+                ptoc("Multiply LowOrder");
+            }
+            ptoc("Multiply Hybrid");
         }
         
         void Prepare()
@@ -531,125 +559,125 @@ namespace rsurfaces
 //        }
 
         
-        void TestVBSR()
-        {
-            
-            omp_set_num_threads(1);
-            mkl_set_num_threads(1);
-            
-            auto tpe = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
-
-            auto bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi);
-
-            mint n = bct->near->n;
-            mint m = bct->near->m;
-            mint cols = 9;
-            
-            Eigen::VectorXd v  ( n * cols );
-            Eigen::VectorXd u1 ( m * cols );
-            Eigen::VectorXd u2 ( m * cols );
-            Eigen::VectorXd u3 ( m * cols );
-            
-            std::uniform_real_distribution<double> unif(-1.,1.);
-            std::default_random_engine re;
-            for( mint i = 0; i < n * cols; ++i)
-            {
-                v(i) = unif(re);
-            }
-            
-            tic("ApplyKernel_CSR_MKL");
-            for( mint i = 0; i < 20; ++i)
-            {
-                bct->near->ApplyKernel_CSR_MKL( bct->near->hi_values, v.data(), u1.data(), cols, 1. );
-            }
-            toc("ApplyKernel_CSR_MKL");
-            
+//        void TestVBSR()
+//        {
+//            
+//            omp_set_num_threads(1);
+//            mkl_set_num_threads(1);
+//            
+//            auto tpe = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
+//
+//            auto bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi);
+//
+//            mint n = bct->near->n;
+//            mint m = bct->near->m;
+//            mint cols = 9;
+//            
+//            Eigen::VectorXd v  ( n * cols );
+//            Eigen::VectorXd u1 ( m * cols );
+//            Eigen::VectorXd u2 ( m * cols );
+//            Eigen::VectorXd u3 ( m * cols );
+//            
+//            std::uniform_real_distribution<double> unif(-1.,1.);
+//            std::default_random_engine re;
+//            for( mint i = 0; i < n * cols; ++i)
+//            {
+//                v(i) = unif(re);
+//            }
+//            
+//            tic("ApplyKernel_CSR_MKL");
+//            for( mint i = 0; i < 20; ++i)
+//            {
+//                bct->near->ApplyKernel_CSR_MKL( bct->near->hi_values, v.data(), u1.data(), cols, 1. );
+//            }
+//            toc("ApplyKernel_CSR_MKL");
+//            
 //            tic("ApplyKernel_VBSR");
 //            for( mint i = 0; i < 20; ++i)
 //            {
 //                bct->near->ApplyKernel_VBSR( bct->near->hi_values, v.data(), u2.data(), cols, 1. );
 //            }
 //            toc("ApplyKernel_VBSR");
-            
-            tic("ApplyKernel_Hybrid");
-            for( mint i = 0; i < 20; ++i)
-            {
-                bct->near->ApplyKernel_Hybrid( bct->near->hi_values, v.data(), u3.data(), cols, 1. );
-            }
-            toc("ApplyKernel_Hybrid");
-            
-            
-            
-            omp_set_num_threads(4);
-            mkl_set_num_threads(4);
-            
-            tpe = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
-
-            bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi);
-            
-            for( mint i = 0; i < n * cols; ++i)
-            {
-                v(i) = unif(re);
-            }
-            
-            tic("ApplyKernel_CSR_MKL");
-            for( mint i = 0; i < 20; ++i)
-            {
-                bct->near->ApplyKernel_CSR_MKL( bct->near->hi_values, v.data(), u1.data(), cols, 1. );
-            }
-            toc("ApplyKernel_CSR_MKL");
-            
-            tic("ApplyKernel_VBSR");
-            for( mint i = 0; i < 20; ++i)
-            {
-                bct->near->ApplyKernel_VBSR( bct->near->hi_values, v.data(), u2.data(), cols, 1. );
-            }
-            toc("ApplyKernel_VBSR");
-            
-            tic("ApplyKernel_Hybrid");
-            for( mint i = 0; i < 20; ++i)
-            {
-                bct->near->ApplyKernel_Hybrid( bct->near->hi_values, v.data(), u3.data(), cols, 1. );
-            }
-            toc("ApplyKernel_Hybrid");
-            
-            
-            omp_set_num_threads(max_thread_count);
-            mkl_set_num_threads(max_thread_count);
-            
-            tpe = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
-
-            bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi);
-            
-            for( mint i = 0; i < n * cols; ++i)
-            {
-                v(i) = unif(re);
-            }
-            
-            tic("ApplyKernel_CSR_MKL");
-            for( mint i = 0; i < 20; ++i)
-            {
-                bct->near->ApplyKernel_CSR_MKL( bct->near->hi_values, v.data(), u1.data(), cols, 1. );
-            }
-            toc("ApplyKernel_CSR_MKL");
-            
-            tic("ApplyKernel_VBSR");
-            for( mint i = 0; i < 20; ++i)
-            {
-                bct->near->ApplyKernel_VBSR( bct->near->hi_values, v.data(), u2.data(), cols, 1. );
-            }
-            toc("ApplyKernel_VBSR");
-            
-            tic("ApplyKernel_Hybrid");
-            for( mint i = 0; i < 20; ++i)
-            {
-                bct->near->ApplyKernel_Hybrid( bct->near->hi_values, v.data(), u3.data(), cols, 1. );
-            }
-            toc("ApplyKernel_Hybrid");
-            
-//            valprint("(u1-u2).norm()/u1.norm()",(u1-u2).norm()/u1.norm());
-//            valprint("(u1-u3).norm()/u1.norm()",(u1-u2).norm()/u1.norm());
-        }
+//            
+//            tic("ApplyKernel_Hybrid");
+//            for( mint i = 0; i < 20; ++i)
+//            {
+//                bct->near->ApplyKernel_Hybrid( bct->near->hi_values, v.data(), u3.data(), cols, 1. );
+//            }
+//            toc("ApplyKernel_Hybrid");
+//            
+//            
+//            
+//            omp_set_num_threads(4);
+//            mkl_set_num_threads(4);
+//            
+//            tpe = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
+//
+//            bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi);
+//            
+//            for( mint i = 0; i < n * cols; ++i)
+//            {
+//                v(i) = unif(re);
+//            }
+//            
+//            tic("ApplyKernel_CSR_MKL");
+//            for( mint i = 0; i < 20; ++i)
+//            {
+//                bct->near->ApplyKernel_CSR_MKL( bct->near->hi_values, v.data(), u1.data(), cols, 1. );
+//            }
+//            toc("ApplyKernel_CSR_MKL");
+//            
+//            tic("ApplyKernel_VBSR");
+//            for( mint i = 0; i < 20; ++i)
+//            {
+//                bct->near->ApplyKernel_VBSR( bct->near->hi_values, v.data(), u2.data(), cols, 1. );
+//            }
+//            toc("ApplyKernel_VBSR");
+//            
+//            tic("ApplyKernel_Hybrid");
+//            for( mint i = 0; i < 20; ++i)
+//            {
+//                bct->near->ApplyKernel_Hybrid( bct->near->hi_values, v.data(), u3.data(), cols, 1. );
+//            }
+//            toc("ApplyKernel_Hybrid");
+//            
+//            
+//            omp_set_num_threads(max_thread_count);
+//            mkl_set_num_threads(max_thread_count);
+//            
+//            tpe = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
+//
+//            bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi);
+//            
+//            for( mint i = 0; i < n * cols; ++i)
+//            {
+//                v(i) = unif(re);
+//            }
+//            
+//            tic("ApplyKernel_CSR_MKL");
+//            for( mint i = 0; i < 20; ++i)
+//            {
+//                bct->near->ApplyKernel_CSR_MKL( bct->near->hi_values, v.data(), u1.data(), cols, 1. );
+//            }
+//            toc("ApplyKernel_CSR_MKL");
+//            
+//            tic("ApplyKernel_VBSR");
+//            for( mint i = 0; i < 20; ++i)
+//            {
+//                bct->near->ApplyKernel_VBSR( bct->near->hi_values, v.data(), u2.data(), cols, 1. );
+//            }
+//            toc("ApplyKernel_VBSR");
+//            
+//            tic("ApplyKernel_Hybrid");
+//            for( mint i = 0; i < 20; ++i)
+//            {
+//                bct->near->ApplyKernel_Hybrid( bct->near->hi_values, v.data(), u3.data(), cols, 1. );
+//            }
+//            toc("ApplyKernel_Hybrid");
+//            
+////            valprint("(u1-u2).norm()/u1.norm()",(u1-u2).norm()/u1.norm());
+////            valprint("(u1-u3).norm()/u1.norm()",(u1-u2).norm()/u1.norm());
+//        }
         
     }; // Benchmarker
 } // namespace rsurfaces

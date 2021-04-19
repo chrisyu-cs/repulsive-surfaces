@@ -60,44 +60,90 @@ public:
     void Prepare_VBSR( mint b_m_, mint * b_row_ptr_, mint b_n_, mint * b_col_ptr_ );     // Allocates nonzero values  for blocked matrix (typically near field).
 
     
-    inline void ApplyKernel( BCTKernelType type, mreal * T_input, mreal * S_output, mint cols, mreal factor = 1.)
+    inline void ApplyKernel( BCTKernelType type, mreal * T_input, mreal * S_output, mint cols, mreal factor = 1., NearFieldMultiplicationAlgorithm mult_alg = NearFieldMultiplicationAlgorithm::MKL_CSR)
     {
+        ptic("ApplyKernel");
+        
         switch (type)
         {
             case BCTKernelType::FractionalOnly:
             {
-                ApplyKernel( fr_values, T_input, S_output, cols, factor * fr_factor );
+                ApplyKernel( fr_values, T_input, S_output, cols, factor * fr_factor, mult_alg );
                 break;
             }
             case BCTKernelType::HighOrder:
             {
-                ApplyKernel( hi_values, T_input, S_output, cols, factor * hi_factor );
+                ApplyKernel( hi_values, T_input, S_output, cols, factor * hi_factor, mult_alg );
                 break;
             }
             case BCTKernelType::LowOrder:
             {
-                ApplyKernel( lo_values, T_input, S_output, cols, factor * lo_factor );
+                ApplyKernel( lo_values, T_input, S_output, cols, factor * lo_factor, mult_alg );
                 break;
             }
             default:
             {
                 eprint("ApplyKernel: Unknown kernel. Doing nothing.");
-                return;
+                break;
             }
         }
+        
+        ptoc("ApplyKernel");
     }; // ApplyKernel
     
-    inline void ApplyKernel( mreal * values, mreal * T_input, mreal * S_output, mint cols, mreal factor = 1. )
+    inline void ApplyKernel( mreal * values, mreal * T_input, mreal * S_output, mint cols, mreal factor = 1., NearFieldMultiplicationAlgorithm mult_alg = NearFieldMultiplicationAlgorithm::MKL_CSR )
     {
-        if( nnz == b_nnz)
+
+        if( factor != 0. )
         {
-            ApplyKernel_CSR_MKL( values, T_input, S_output, cols, factor );
+            if( nnz == b_nnz)
+            {
+                switch (mult_alg)
+                {
+                    case NearFieldMultiplicationAlgorithm::MKL_CSR :
+//                        print("ApplyKernel_CSR_MKL - near field");
+                        ApplyKernel_CSR_MKL( values, T_input, S_output, cols, factor );
+                        break;
+                    case NearFieldMultiplicationAlgorithm::Eigen :
+//                        print("ApplyKernel_CSR_Eigen - near field");
+                        ApplyKernel_CSR_Eigen( values, T_input, S_output, cols, factor );
+                        break;
+                    default:
+//                        print("ApplyKernel_CSR_MKL - near field (default)");
+                        ApplyKernel_CSR_MKL( values, T_input, S_output, cols, factor );
+                        break;
+                }
+            }
+            else
+            {
+                switch (mult_alg)
+                {
+                    case NearFieldMultiplicationAlgorithm::MKL_CSR :
+//                        print("ApplyKernel_CSR_MKL - far field");
+                        ApplyKernel_CSR_MKL( values, T_input, S_output, cols, factor );
+                        break;
+                    case NearFieldMultiplicationAlgorithm::Hybrid :
+//                        print("ApplyKernel_CSR_Hybrid - far field");
+                        ApplyKernel_Hybrid( values, T_input, S_output, cols, factor );
+                        break;
+                    case NearFieldMultiplicationAlgorithm::Eigen :
+//                        print("ApplyKernel_CSR_Eigen - far field");
+                        ApplyKernel_CSR_Eigen( values, T_input, S_output, cols, factor );
+                        break;
+                    default:
+//                        print("ApplyKernel_CSR_MKL - far field (default)");
+                        ApplyKernel_CSR_MKL( values, T_input, S_output, cols, factor );
+                        break;
+                }
+            }
         }
         else
         {
-            ApplyKernel_CSR_MKL( values, T_input, S_output, cols, factor );
-//            ApplyKernel_VBSR( values, T_input, S_output, cols, factor );
-//            ApplyKernel_Hybrid( values, T_input, S_output, cols, factor );
+            #pragma omp parallel for simd aligned( S_output : ALIGN)
+            for( mint i = 0; i < m * cols; ++i )
+            {
+                S_output[i] = 0.;
+            }
         }
     }; // ApplyKernel
 

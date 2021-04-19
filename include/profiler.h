@@ -10,7 +10,6 @@
 #include <chrono>
 #include <iostream>
 #include <fstream>
-#include <omp.h>
 
 namespace rsurfaces
 {
@@ -28,10 +27,7 @@ namespace rsurfaces
     };
     
     
-//    inline void ptic(std::string tag){};
-//    inline void ptoc(std::string tag){};
-//    inline void ClearProfile(std::string filename){}
-    
+#ifdef PROFILING
     inline void ptic(std::string tag)
     {
         Profiler::time_stack.push_back(std::chrono::steady_clock::now());
@@ -40,7 +36,6 @@ namespace rsurfaces
         Profiler::id_stack.push_back(++Profiler::id_counter);
         
     }
-
     inline void ptoc(std::string tag)
     {
         if( !Profiler::time_stack.empty() || tag != Profiler::tag_stack.back() )
@@ -69,12 +64,11 @@ namespace rsurfaces
         }
     }
 
-    
     inline void ClearProfile(std::string filename)
     {
         Profiler::os.close();
         Profiler::os.open(filename);
-        std::cout << "Writing profile to " << filename << "." << std::endl;
+        std::cout << "Profile will be written to " << filename << "." << std::endl;
 //        Profiler::os << "ID" << "\t" << "Tag" << "\t" << "From" << "\t" << "Tic" << "\t" << "Toc" << "\t" << "Duration" << "\t" << "Depth" << std::endl;
         Profiler::init_time = std::chrono::steady_clock::now();
         Profiler::time_stack.clear();
@@ -87,5 +81,11 @@ namespace rsurfaces
         Profiler::id_stack.push_back(0);
         Profiler::id_counter = 0;
     }
+#else
+    inline void ptic(std::string tag){};
+    inline void ptoc(std::string tag){};
+    inline void ClearProfile(std::string filename){}
+#endif
+    
 
 } // namespace rsurfaces

@@ -2,7 +2,7 @@
 
 namespace rsurfaces
 {
-
+    
     OptimizedBlockClusterTree::OptimizedBlockClusterTree(OptimizedClusterTree* S_, OptimizedClusterTree* T_, const mreal alpha_, const mreal beta_, const mreal theta_, bool exploit_symmetry_, bool upper_triangular_)
     {
         ptic("OptimizedBlockClusterTree::OptimizedBlockClusterTree");
@@ -15,7 +15,6 @@ namespace rsurfaces
         is_symmetric = ( S == T );
         exploit_symmetry = is_symmetric && exploit_symmetry_;
         upper_triangular = is_symmetric && upper_triangular_;
-        disableNearField = false;
         metrics_initialized = false;
 
         // TODO: Abort and throw error when S->dim != T->dim
@@ -33,9 +32,9 @@ namespace rsurfaces
             tree_thread_count = omp_get_num_threads();
         }
 
-        // tic("CreateBlockClusters");
-        CreateBlockClusters();
-        // toc("CreateBlockClusters");
+        // tic("RequireBlockClusters");
+        RequireBlockClusters();
+        // toc("RequireBlockClusters");
 
         // TODO: The following line should be moved to InternalMultiply in order to delay matrix creation to a time when it is actually needed. Otherwise, using the BCT for line search (evaluating only the energy), the time for creating the matrices would be wasted.
         RequireMetrics();
@@ -47,42 +46,48 @@ namespace rsurfaces
     //      Initialization
     //######################################################################################################################################
 
-    void OptimizedBlockClusterTree::CreateBlockClusters()
+    void OptimizedBlockClusterTree::RequireBlockClusters()
     {
-        ptic("OptimizedBlockClusterTree::CreateBlockClusters");
-        auto thread_sep_idx = A_Vector<A_Deque<mint>>(tree_thread_count);
-        auto thread_sep_jdx = A_Vector<A_Deque<mint>>(tree_thread_count);
-
-        auto thread_nonsep_idx = A_Vector<A_Deque<mint>>(tree_thread_count);
-        auto thread_nonsep_jdx = A_Vector<A_Deque<mint>>(tree_thread_count);
-
-        ptic("SplitBlockCluster");
-
-        #pragma omp parallel num_threads(tree_thread_count) shared(thread_sep_idx, thread_sep_jdx, thread_nonsep_idx, thread_nonsep_jdx)
+        print("OptimizedBlockClusterTree::RequireBlockClusters");
+        if( !block_clusters_initialized )
         {
-            #pragma omp single nowait
+            ptic("RequireBlockClusters");
+            auto thread_sep_idx = A_Vector<A_Deque<mint>>(tree_thread_count);
+            auto thread_sep_jdx = A_Vector<A_Deque<mint>>(tree_thread_count);
+            
+            auto thread_nonsep_idx = A_Vector<A_Deque<mint>>(tree_thread_count);
+            auto thread_nonsep_jdx = A_Vector<A_Deque<mint>>(tree_thread_count);
+            
+            ptic("SplitBlockCluster");
+            
+            #pragma omp parallel num_threads(tree_thread_count) shared(thread_sep_idx, thread_sep_jdx, thread_nonsep_idx, thread_nonsep_jdx)
             {
-                SplitBlockCluster(thread_sep_idx, thread_sep_jdx, thread_nonsep_idx, thread_nonsep_jdx, 0, 0, tree_thread_count);
+                #pragma omp single nowait
+                {
+                    SplitBlockCluster(thread_sep_idx, thread_sep_jdx, thread_nonsep_idx, thread_nonsep_jdx, 0, 0, tree_thread_count);
+                }
             }
+            
+            mint sep_blockcluster_count = 0;
+            mint nonsep_blockcluster_count = 0;
+            
+            for (mint thread = 0; thread < tree_thread_count; ++thread)
+            {
+                sep_blockcluster_count += thread_sep_idx[thread].size();
+                nonsep_blockcluster_count += thread_nonsep_idx[thread].size();
+            }
+            
+            ptoc("SplitBlockCluster");
+            
+            far  = std::make_shared<InteractionData> ( thread_sep_idx, thread_sep_jdx, S->cluster_count, T->cluster_count, upper_triangular );
+            
+            near = std::make_shared<InteractionData> ( thread_nonsep_idx, thread_nonsep_jdx, S->leaf_cluster_count, T->leaf_cluster_count, upper_triangular );
+            
+            block_clusters_initialized = true;
+            
+            ptoc("RequireBlockClusters");
         }
-
-        mint sep_blockcluster_count = 0;
-        mint nonsep_blockcluster_count = 0;
-
-        for (mint thread = 0; thread < tree_thread_count; ++thread)
-        {
-            sep_blockcluster_count += thread_sep_idx[thread].size();
-            nonsep_blockcluster_count += thread_nonsep_idx[thread].size();
-        }
-
-        ptoc("SplitBlockCluster");
-
-        far  = std::make_shared<InteractionData> ( thread_sep_idx, thread_sep_jdx, S->cluster_count, T->cluster_count, upper_triangular );
-
-        near = std::make_shared<InteractionData> ( thread_nonsep_idx, thread_nonsep_jdx, S->leaf_cluster_count, T->leaf_cluster_count, upper_triangular );
-
-        ptoc("OptimizedBlockClusterTree::CreateBlockClusters");
-    }; //CreateBlockClusters
+    }; //RequireBlockClusters
 
     void OptimizedBlockClusterTree::SplitBlockCluster(
         A_Vector<A_Deque<mint>> &sep_i,
@@ -304,9 +309,7 @@ namespace rsurfaces
 //            NearFieldInteraction_VBSR();
             
 
-//            tic("ComputeDiagonals");
             ComputeDiagonals();
-//            toc("ComputeDiagonals");
 
             metrics_initialized = true;
 //          print("Done: RequireMetrics.");
@@ -778,8 +781,8 @@ namespace rsurfaces
 
         // The factor of 2. in the last argument stems from the symmetry of the kernel
         // TODO: In case of S != T, we have to replace each call with one call to ApplyKernel and one to (a yet to be written) ApplyKernelTranspose_CSR
-        near->ApplyKernel( type, T->P_in, S->P_out, cols, -2.0);
-         far->ApplyKernel( type, T->C_in, S->C_out, cols, -2.0);
+        near->ApplyKernel( type, T->P_in, S->P_out, cols, -2.0, mult_alg);
+         far->ApplyKernel( type, T->C_in, S->C_out, cols, -2.0, mult_alg);
         
         // I know, this looks awful... hash tables with keys from BCTKernelType would be nicer.
         switch (type)
@@ -868,8 +871,8 @@ namespace rsurfaces
 
             
             // The factor of 2. in the last argument stems from the symmetry of the kernel
-            far->ApplyKernel( BCTKernelType::FractionalOnly, T->C_in, S->C_out, 1, 2.);
-           near->ApplyKernel( BCTKernelType::FractionalOnly, T->P_in, S->P_out, 1, 2.);
+            far->ApplyKernel( BCTKernelType::FractionalOnly, T->C_in, S->C_out, 1, 2., mult_alg);
+           near->ApplyKernel( BCTKernelType::FractionalOnly, T->P_in, S->P_out, 1, 2., mult_alg);
 
             S->PercolateDown();
             S->C_to_P.Multiply( S->C_out, S->P_out, 1, true);
@@ -891,8 +894,8 @@ namespace rsurfaces
             }
 
             
-            far->ApplyKernel( BCTKernelType::HighOrder, T->C_in, S->C_out, 1, 2.);
-           near->ApplyKernel( BCTKernelType::HighOrder, T->P_in, S->P_out, 1, 2.);
+            far->ApplyKernel( BCTKernelType::HighOrder, T->C_in, S->C_out, 1, 2., mult_alg);
+           near->ApplyKernel( BCTKernelType::HighOrder, T->P_in, S->P_out, 1, 2., mult_alg);
 
             S->PercolateDown();
             S->C_to_P.Multiply( S->C_out, S->P_out, 1, true);
@@ -903,8 +906,8 @@ namespace rsurfaces
                 hi_diag[i] =  ainv[i] * data[i];
             }
 
-            far->ApplyKernel( BCTKernelType::LowOrder, T->C_in, S->C_out, 1, 2.);
-           near->ApplyKernel( BCTKernelType::LowOrder, T->P_in, S->P_out, 1, 2.);
+            far->ApplyKernel( BCTKernelType::LowOrder, T->C_in, S->C_out, 1, 2., mult_alg);
+           near->ApplyKernel( BCTKernelType::LowOrder, T->P_in, S->P_out, 1, 2., mult_alg);
 
             S->PercolateDown();
             S->C_to_P.Multiply( S->C_out, S->P_out, 1, true);
