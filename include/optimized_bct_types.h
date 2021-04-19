@@ -1,7 +1,7 @@
 #pragma once
 
 #define EIGEN_NO_DEBUG
-#define MKL_DIRECT_CALL_SEQ_JIT
+//#define MKL_DIRECT_CALL_SEQ_JIT
 #define PROFILING
 
 #include <mkl.h>
