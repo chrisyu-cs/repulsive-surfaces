@@ -146,8 +146,10 @@ namespace rsurfaces
         void RequireMetrics();
         
         void FarFieldInteraction(); // Compute nonzero values of sparse far field interaction matrices.
+        void FarFieldInteraction_Legacy(); // Compute nonzero values of sparse far field interaction matrices.
 
         void NearFieldInteraction_CSR(); // Compute nonzero values of sparse near field interaction matrices in CSR format.
+        void NearFieldInteraction_CSR_Legacy(); // Compute nonzero values of sparse near field interaction matrices in CSR format.
 
         void NearFieldInteraction_VBSR(); // Compute nonzero values of sparse near field interaction matrices in VBSR format.
         
