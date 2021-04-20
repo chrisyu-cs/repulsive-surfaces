@@ -120,7 +120,6 @@ namespace rsurfaces
         MKLSparseMatrix DiffOp = MKLSparseMatrix( DiffOp0.rows(), DiffOp0.cols(), DiffOp0.outerIndexPtr(), DiffOp0.innerIndexPtr(), DiffOp0.valuePtr() ); // This is a sparse matrix in CSR format.
 
         // create a cluster tree
-        int split_threshold = 8;
         return new OptimizedClusterTree(
             &P_coords[0],      // coordinates used for clustering
             primitive_count,            // number of primitives
@@ -131,9 +130,7 @@ namespace rsurfaces
             near_dim,                 // number of dofs of P_near per mesh element; it is 7 for polylines and triangle meshes in 3D.
             &P_far[0],        // area, barycenter, and projector of mesh element
             far_dim,                 // number of dofs of P_far per mesh element; it is 10 for polylines and triangle meshes in 3D.
-            dim * dim,             // some estimate for the buffer size per vertex and cluster (usually the square of the dimension of the embedding space
             &ordering[0],      // some ordering of triangles
-            split_threshold,  // create clusters only with at most this many mesh elements in it
             DiffOp,            // the first-order differential operator belonging to the hi order term of the metric
             AvOp               // the zeroth-order differential operator belonging to the lo order term of the metric
         );
@@ -232,7 +229,6 @@ namespace rsurfaces
         MKLSparseMatrix DiffOp = MKLSparseMatrix( DiffOp0.rows(), DiffOp0.cols(), DiffOp0.outerIndexPtr(), DiffOp0.innerIndexPtr(), DiffOp0.valuePtr() ); // This is a sparse matrix in CSR format.
 
         // create a cluster tree
-        int split_threshold = 8;
         return new OptimizedClusterTree(
             &P_coords[0],      // coordinates used for clustering
             primitive_count,            // number of primitives
@@ -243,9 +239,7 @@ namespace rsurfaces
             near_dim,                 // number of dofs of P_near per mesh element; it is 7 for polylines and triangle meshes in 3D.
             &P_far[0],        // area, barycenter, and projector of mesh element
             far_dim,                 // number of dofs of P_far per mesh element; it is 10 for polylines and triangle meshes in 3D.
-            dim * dim,             // some estimate for the buffer size per vertex and cluster (usually the square of the dimension of the embedding space
             &ordering[0],      // some ordering of triangles
-            split_threshold,  // create clusters only with at most this many mesh elements in it
             DiffOp,            // the first-order differential operator belonging to the hi order term of the metric
             AvOp               // the zeroth-order differential operator belonging to the lo order term of the metric
         );
@@ -470,7 +464,6 @@ namespace rsurfaces
         MKLSparseMatrix DiffOp = MKLSparseMatrix( DiffOp0.rows(), DiffOp0.cols(), DiffOp0.outerIndexPtr(), DiffOp0.innerIndexPtr(), DiffOp0.valuePtr() ); // This is a sparse matrix in CSR format.
 
         // create a cluster tree
-        int split_threshold = 8;
         return new OptimizedClusterTree(
             &P_coords[0],      // coordinates used for clustering
             primitive_count,            // number of primitives
@@ -481,25 +474,21 @@ namespace rsurfaces
             near_dim,                 // number of dofs of P_data per mesh element; it is 7 for polylines and triangle meshes in 3D.
             &P_far[0],        // area, barycenter, and projector of mesh element
             far_dim,                 // number of dofs of P_data per mesh element; it is 10 for polylines and triangle meshes in 3D.
-            std::max( dim * dim, far_dim ),             // some estimate for the buffer size per vertex and cluster (usually the square of the dimension of the embedding space
             &ordering[0],      // some ordering of triangles
-            split_threshold,  // create clusters only with at most this many mesh elements in it
             DiffOp,            // the first-order differential operator belonging to the hi order term of the metric
             AvOp               // the zeroth-order differential operator belonging to the lo order term of the metric
         );
     } // CreateOptimizedBVH_Projectors
 
     
-    inline OptimizedBlockClusterTree * CreateOptimizedBCTFromBVH(OptimizedClusterTree* bvh, double alpha, double beta, double chi, bool exploit_symmetry_ = true, bool upper_triangular_ = false)
+    inline OptimizedBlockClusterTree * CreateOptimizedBCTFromBVH(OptimizedClusterTree* bvh, double alpha, double beta, double chi)
     {
         OptimizedBlockClusterTree *bct = new OptimizedBlockClusterTree(
             bvh,   // gets handed two pointers to instances of OptimizedClusterTree
             bvh,   // no problem with handing the same pointer twice; this is actually intended
             alpha, // first parameter of the energy (for the numerator)
             beta,  // second parameter of the energy (for the denominator)
-            chi,  // separation parameter; different gauge for thetas as before are the block clustering is performed slightly differently from before
-            exploit_symmetry_,
-            upper_triangular_
+            chi  // separation parameter; different gauge for thetas as before are the block clustering is performed slightly differently from before
         );
 
         return bct;

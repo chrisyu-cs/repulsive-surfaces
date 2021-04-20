@@ -6,7 +6,14 @@
 
 namespace rsurfaces
 {
-
+    
+    struct OptimizedBlockClusterTreeOptions
+    {
+        static bool exploit_symmetry;
+        static bool upper_triangular;
+        static NearFieldMultiplicationAlgorithm mult_alg;
+    };
+    
     class OptimizedBlockClusterTree
     {
     public:
@@ -35,7 +42,7 @@ namespace rsurfaces
             }
         }
 
-        OptimizedBlockClusterTree(OptimizedClusterTree* S_, OptimizedClusterTree* T_, const mreal alpha_, const mreal beta_, const mreal theta_, bool exploit_symmetry_ = true, bool upper_triangular_ = false);
+        OptimizedBlockClusterTree( OptimizedClusterTree* S_, OptimizedClusterTree* T_, const mreal alpha_, const mreal beta_, const mreal theta_ );
 
         ~OptimizedBlockClusterTree()
         {

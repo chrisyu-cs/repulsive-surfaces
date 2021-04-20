@@ -31,8 +31,6 @@ int main(int arg_count, char* arg_vec[])
     std::cout << "Called with MKL_DIRECT_CALL_SEQ_JIT deactivated." << std::endl;
 #endif
     
-    print("A");
-    
     try
     {
         po::options_description desc("Allowed options");
@@ -46,6 +44,8 @@ int main(int arg_count, char* arg_vec[])
         ("theta", po::value<mreal>(), "separation parameter for barnes-hut method")
         ("chi", po::value<mreal>(), "separation parameter for block cluster tree")
         ("thread_count", po::value<mint>(), "number of threads to be used")
+        ("split_threshold", po::value<mint>(), "maximal number of primitives per leaf cluster")
+        
         ("thread_step", po::value<mint>(), "increase number of threads by this in each iteration")
         
         ("burn_ins", po::value<mint>(), "number of burn-in iterations to use")
@@ -103,7 +103,12 @@ int main(int arg_count, char* arg_vec[])
             BM.thread_count = var_map["thread_count"].as<mint>();
             BM.max_thread_count = var_map["thread_count"].as<mint>();
         }
-
+        
+        if( var_map.count("split_threshold"))
+        {
+            OptimizedClusterTreeOptions::split_threshold = var_map["split_threshold"].as<mint>();
+        }
+        
         if( var_map.count("thread_step") )
         {
             BM.thread_step = var_map["thread_step"].as<mint>();
@@ -146,8 +151,6 @@ int main(int arg_count, char* arg_vec[])
         std::cerr << "Exception of unknown type!\n";
     }
     
-    print("B");
-    
     std::cout << std::setprecision(8);
     
     MeshUPtr u_mesh;
@@ -164,13 +167,10 @@ int main(int arg_count, char* arg_vec[])
 //    BM.TestMultiply();    
 //    BM.TestMKLOptimize();
 //    BM.TestVBSR();
+//    BM.TestHybrid();
+
+    BM.TestPrePost();
     
-    print("C");
-    
-    BM.TestHybrid();
-    
-    print("D");
-//    
 //    for( mint threads = 0; threads < BM.max_thread_count + 1; threads += BM.thread_step )
 //    {
 //        // 0 is the new 1. (Want to have steps, but also  a single-threaded run.

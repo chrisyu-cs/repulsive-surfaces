@@ -6,6 +6,13 @@
 namespace rsurfaces
 {
     
+    struct OptimizedClusterTreeOptions
+    {
+        static mint split_threshold;
+        static bool use_old_prepost;
+        static TreePercolationAlgorithm tree_perc_alg;
+    };
+    
     struct Cluster2 // slim POD container to hold only the data relevant for the construction phase in the tree, before it is serialized
     {
     public:
@@ -48,12 +55,9 @@ namespace rsurfaces
             const mint far_dim_,
             //                    const mreal * const restrict P_moments_,          // Interface to deal with higher order multipole expansion. Not used, yet.
             //                    const mint moment_count_,
-            const mint max_buffer_dim_,
             const mint * restrict const ordering_, // A suggested preordering of primitives; this gets applied before the clustering begins in the hope that this may improve the sorting within a cluster --- at least in the top level(s). This could, e.g., be the ordering obtained by a tree for  similar data set.
-            const mint split_threshold_,          // split a cluster if has this many or more primitives contained in it
-            MKLSparseMatrix &DiffOp,              // Asking now for MKLSparseMatrix instead of EigenMatrixCSR as input
-            MKLSparseMatrix &AvOp,                // Asking now for MKLSparseMatrix instead of EigenMatrixCSR as input
-            bool use_old_prepost_ = false
+            MKLSparseMatrix &DiffOp,
+            MKLSparseMatrix &AvOp
         );
 
         mint split_threshold = 8; // leaf clusters will contain split_threshold triangles or less; split_threshold = 8 might be good for cache.
@@ -132,7 +136,7 @@ namespace rsurfaces
         MKLSparseMatrix P_to_C;
         MKLSparseMatrix C_to_P;
 
-        TreePercolationAlgorithm tree_perc_alg = TreePercolationAlgorithm::Chunks;
+        TreePercolationAlgorithm tree_perc_alg = OptimizedClusterTreeOptions::tree_perc_alg;
         A_Vector<A_Vector<mint>> chunk_roots;
         mint tree_max_depth = 0;
         bool chunks_prepared = false;

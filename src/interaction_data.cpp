@@ -105,6 +105,7 @@ namespace rsurfaces
     void InteractionData::Prepare_CSR()
     {
         ptic("InteractionData::Prepare_CSR");
+
         #pragma omp parallel
         {
             #pragma omp single nowait
@@ -124,10 +125,10 @@ namespace rsurfaces
                 #pragma omp taskwait
             }
         }
-        
         // distribute workload
+
         BalanceWorkLoad( b_m, b_outer, thread_count, job_ptr);
-        
+
         ptoc("InteractionData::Prepare_CSR");
     }
 
@@ -681,7 +682,7 @@ namespace rsurfaces
 
 //                    mreal * vj_begin = T_input + cols * j_begin;
 //                    mreal * vj_end   = T_input + cols * j_end;
-//
+
 //                    std::copy( vj_begin, vj_end, ptr );
                     
                     cblas_dcopy( cols * nj, T_input + cols * j_begin, 1, ptr, 1);
@@ -692,8 +693,7 @@ namespace rsurfaces
                 mint mi = i_end - i_begin;
                 mreal * ui = S_output + cols * i_begin;
                 mint row_nnz = b_row_counters[b_i];
-                cblas_dgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, mi, cols, row_nnz, factor, values + outer[i_begin], row_nnz, v, cols, 1., ui, cols );
-
+                cblas_dgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, mi, cols, row_nnz, factor, values + outer[i_begin], row_nnz, v, cols, 0., ui, cols );
             }
         }
         ptoc("ApplyKernel_Hybrid");

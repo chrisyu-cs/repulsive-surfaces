@@ -2,6 +2,10 @@
 
 namespace rsurfaces
 {
+    mint OptimizedClusterTreeOptions::split_threshold = 8;
+    bool OptimizedClusterTreeOptions::use_old_prepost = false;
+    TreePercolationAlgorithm OptimizedClusterTreeOptions::tree_perc_alg = TreePercolationAlgorithm::Chunks;
+    
     Cluster2::Cluster2(mint begin_, mint end_, mint depth_)
     {
         begin = begin_;
@@ -27,17 +31,14 @@ namespace rsurfaces
        const mint far_dim_,
        //                    const mreal * const restrict P_moments_,          // Interface to deal with higher order multipole expansion. Not used, yet.
        //                    const mint moment_count_,
-       const mint max_buffer_dim_,
        const mint * restrict const ordering_, // A suggested preordering of primitives; this gets applied before the clustering begins in the hope that this may improve the sorting within a cluster --- at least in the top level(s). This could, e.g., be the ordering obtained by a tree for  similar data set.
-       const mint split_threshold_,          // split a cluster if has this many or more primitives contained in it
-       MKLSparseMatrix &DiffOp,              // Asking now for MKLSparseMatrix instead of EigenMatrixCSR as input
-       MKLSparseMatrix &AvOp,                 // Asking now for MKLSparseMatrix instead of EigenMatrixCSR as input
-       bool use_old_prepost_
+       MKLSparseMatrix &DiffOp,
+       MKLSparseMatrix &AvOp
     )
     {
         ptic("OptimizedClusterTree::OptimizedClusterTree");
 
-        use_old_prepost = use_old_prepost_;
+        use_old_prepost = OptimizedClusterTreeOptions::use_old_prepost;
         
         primitive_count = primitive_count_;
         hull_count = hull_count_;
@@ -45,7 +46,6 @@ namespace rsurfaces
         near_dim = near_dim_;
         far_dim = far_dim_;
 //        moment_count = moment_count_;
-        max_buffer_dim = 0;
 
 //        scratch_size = 12;
         mint nthreads;
@@ -56,9 +56,8 @@ namespace rsurfaces
 
         tree_thread_count = std::max( static_cast<mint>(1), nthreads );
              thread_count = std::max( static_cast<mint>(1), nthreads );
-        mint a = 1;
-
-        split_threshold = std::max( a, split_threshold_);
+        
+        split_threshold = std::max( static_cast<mint>(1), OptimizedClusterTreeOptions::split_threshold );
 
         P_coords = A_Vector<mreal * >( dim, nullptr );
 
@@ -106,7 +105,7 @@ namespace rsurfaces
                 #pragma omp task
                 {
                     mint s = std::max( dim * dim, far_dim);
-                    RequireBuffers( std::max( s, max_buffer_dim_ ) );
+                    RequireBuffers( std::max( s, max_buffer_dim ) );
                 }
                 #pragma omp task
                 {
@@ -596,7 +595,7 @@ namespace rsurfaces
         
         if( use_old_prepost )
         {
-            print("hi_pre old");
+//            print("hi_pre old");
             auto hi_perm = MKLSparseMatrix( dim * primitive_count, dim * primitive_count, dim * primitive_count );
             hi_perm.outer[ dim * primitive_count ] = dim * primitive_count;
 
@@ -617,7 +616,7 @@ namespace rsurfaces
         }
         else
         {
-            print("hi_pre new");
+//            print("hi_pre new");
             hi_pre = MKLSparseMatrix( DiffOp.m, DiffOp.n, DiffOp.nnz );
             mint * Douter = DiffOp.outer;
             mint * Dinner = DiffOp.inner;
@@ -663,7 +662,7 @@ namespace rsurfaces
                 
         if( use_old_prepost )
         {
-            print("lo_pre old");
+//            print("lo_pre old");
             auto lo_perm = MKLSparseMatrix( primitive_count, primitive_count, C_to_P.outer, P_ext_pos, P_near[0] ); // Copy
 
             lo_perm.Multiply( AvOp, lo_pre );
@@ -671,7 +670,7 @@ namespace rsurfaces
         }
         else
         {
-            print("lo_pre new");
+//            print("lo_pre new");
             
             lo_pre = MKLSparseMatrix( AvOp.m, AvOp.n, AvOp.nnz );
             mint * Douter = AvOp.outer;
@@ -734,7 +733,6 @@ namespace rsurfaces
             safe_alloc( C_out, cluster_count * max_buffer_dim, 0. );
             
         }
-        
         buffer_dim = cols;
         ptoc("RequireBuffers");
         
@@ -1209,7 +1207,7 @@ namespace rsurfaces
         ptoc("P_to_C.Multiply");
         
         ptic("PercolateUp");
-        PercolateUp();
+//        PercolateUp();
         ptoc("PercolateUp");
     
         ptoc("Pre");
