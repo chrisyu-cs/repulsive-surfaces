@@ -148,6 +148,9 @@ namespace rsurfaces
                 AvOp               // the zeroth-order differential operator belonging to the lo order term of the metric
             );
             
+            safe_free( P_far );
+            safe_free( P_near );
+            safe_free( P_coords );
             
             safe_free(idx);
             safe_free(idxdim);
