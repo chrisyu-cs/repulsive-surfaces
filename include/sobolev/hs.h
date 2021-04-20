@@ -191,18 +191,6 @@ namespace rsurfaces
 
             bool disableNearField = false;
 
-        private:
-            void addSimpleConstraintEntries(Eigen::MatrixXd &M) const;
-            void addSimpleConstraintTriplets(std::vector<Triplet> &triplets) const;
-            void initFromEnergy(SurfaceEnergy *energy_);
-            void precomputeSizes();
-
-            // Project the gradient into Hs by using the L^{-1} M L^{-1} factorization
-            template <typename V, typename Dst>
-            void ProjectSparse(const V &gradient, Dst &dest, double epsilon = 1e-10) const;
-            // Same as above but with the input/output being matrices
-            void ProjectSparseMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double epsilon = 1e-10) const;
-
             inline BCTPtr getBlockClusterTree() const
             {
                 if (!optBCT)
@@ -225,6 +213,18 @@ namespace rsurfaces
                 }
                 return optBCT;
             }
+
+        private:
+            void addSimpleConstraintEntries(Eigen::MatrixXd &M) const;
+            void addSimpleConstraintTriplets(std::vector<Triplet> &triplets) const;
+            void initFromEnergy(SurfaceEnergy *energy_);
+            void precomputeSizes();
+
+            // Project the gradient into Hs by using the L^{-1} M L^{-1} factorization
+            template <typename V, typename Dst>
+            void ProjectSparse(const V &gradient, Dst &dest, double epsilon = 1e-10) const;
+            // Same as above but with the input/output being matrices
+            void ProjectSparseMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double epsilon = 1e-10) const;
 
             mutable std::vector<MetricTerm*> metricTerms;
             OptimizedClusterTree *bvh;

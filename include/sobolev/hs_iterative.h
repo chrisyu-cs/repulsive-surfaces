@@ -19,7 +19,7 @@ namespace rsurfaces
         {
             ptic("ProjectUnconstrainedHsIterative");
             
-            OptimizedBlockClusterTree *bct = hs.getBlockClusterTree();
+            BCTPtr bct = hs.getBlockClusterTree();
 
             BCTMatrixReplacement fracL;
             fracL.addConstraintBlock(constraintBlock);

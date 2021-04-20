@@ -160,6 +160,7 @@ namespace rsurfaces
         template<typename OptBCTPtr>
         void AddObstacleCorrection(OptBCTPtr bct12)
         {
+            ptic("OptimizedBlockClusterTree::AddObstacleCorrection");
             // Suppose that bct11 = this;
             // The joint bct of the union of mesh1 and mesh2 can be written in block matrix for as
             //  bct = {
@@ -181,29 +182,29 @@ namespace rsurfaces
                 RequireMetrics();
                 bct12->RequireMetrics();
 
-                if( fr_near_factor != bct12->fr_near_factor )
+                if( far->fr_factor != bct12->far->fr_factor )
                 {
-                    wprint("AddToDiagonal: The values of fr_near_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+                    wprint("AddObstacleCorrection: The values of far->fr_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
                 }
-                if( fr_far_factor != bct12->fr_far_factor )
+                if( far->hi_factor != bct12->far->hi_factor )
                 {
-                    wprint("AddToDiagonal: The values of fr_far_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+                    wprint("AddObstacleCorrection: The values of far->hi_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
                 }
-                if( hi_near_factor != bct12->hi_near_factor )
+                if( far->lo_factor != bct12->far->lo_factor )
                 {
-                    wprint("AddToDiagonal: The values of hi_near_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+                    wprint("AddObstacleCorrection: The values of far->lo_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
                 }
-                if( hi_far_factor != bct12->hi_far_factor )
+                if( near->fr_factor != bct12->near->fr_factor )
                 {
-                    wprint("AddToDiagonal: The values of hi_far_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+                    wprint("AddObstacleCorrection: The values of near->fr_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
                 }
-                if( lo_near_factor != bct12->lo_near_factor )
+                if( near->hi_factor != bct12->near->hi_factor )
                 {
-                    wprint("AddToDiagonal: The values of lo_near_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+                    wprint("AddObstacleCorrection: The values of near->hi_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
                 }
-                if( lo_far_factor != bct12->lo_far_factor )
+                if( near->lo_factor != bct12->near->lo_factor )
                 {
-                    wprint("AddToDiagonal: The values of lo_far_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+                    wprint("AddObstacleCorrection: The values of near->lo_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
                 }
                 
                 mint n = T->primitive_count;
@@ -235,6 +236,7 @@ namespace rsurfaces
                     eprint("AddToDiagonal: The two instances of OptimizedBlockClusterTree are not compatible. Doing nothing.");
                 }
             }
+            ptoc("OptimizedBlockClusterTree::AddObstacleCorrection");
         }
         
         void PrintStats(){

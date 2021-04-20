@@ -71,7 +71,6 @@ add_subdirectory(deps/polyscope)
 # == Build our project stuff
 
 set(SRCS
-  src/energy/all_pairs_tpe.cpp
   src/energy/boundary_length.cpp
   src/energy/coulomb.cpp
   src/energy/implicit_attractor.cpp
@@ -150,43 +149,46 @@ set(SRCS2
     # add any other source files here
 )
 
+
 find_package(OpenMP REQUIRED)
 
-
-find_package(TBB REQUIRED)
-#message("TBB_INCLUDE_DIRS = ${TBB_INCLUDE_DIRS}")
-#message("TBB_LIBRARY_DIRS = ${TBB_LIBRARY_DIRS}")
-include_directories(${TBB_INCLUDE_DIRS})
-
-set(MKL_THREAD_LAYER "Intel OpenMP")
-#set(MKL_THREAD_LAYER "TBB")
 find_package(MKL REQUIRED)
-#message("MKL_INCLUDE_DIR = ${MKL_INCLUDE_DIR}")
-#message("MKL_LIBRARY_DIR = ${MKL_LIBRARY_DIR}")
+find_package(TBB REQUIRED)
 
-include_directories(${MKL_INCLUDE_DIR})
-link_directories(${MKL_LIBRARY_DIR})
+if(MKL_FOUND)
+    message("Intel MKL libraries found: ${MKL_LIBRARY}")
+    message("Include directories: ${MKL_INCLUDE_DIR}")
+    message("Intel library directories: ${MKL_LIBRARY_DIR}")
+    include_directories(${MKL_INCLUDE_DIR})
+    #  add_compile_definitions(EIGEN_USE_MKL_ALL)
+    link_directories(${MKL_LIBRARY_DIR})
+else()
+    message(WARNING "Intel MKL libraries not found")
+endif()
+
+if(TBB_FOUND)
+    include_directories(${TBB_INCLUDE_DIR})
+    link_directories(${TBB_LIBRARY_DIR})
+    message("Intel TBB libraries: ${TBB_LIBRARY}")
+    message("TBB include directories: ${TBB_INCLUDE_DIR}")
+    message("TBB library directories: ${TBB_LIBRARY_DIR}")
+else()
+    message(WARNING "Intel TBB not found")
+endif()
 
 
 
-find_library(BOOST_OPTS_LIB NAMES boost_program_options-mt boost_program_options)
-
+# To change the name of your executable, change "gc_project" in the lines below to whatever you want
 add_executable(rsurfaces "${SRCS}" "${SRCS1}")
-target_include_directories(rsurfaces PUBLIC "${TBB_INCLUDE_DIR}")
-target_include_directories(rsurfaces PUBLIC "${MKL_INCLUDE_DIR}")
 target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
-target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include" )
+target_link_libraries(rsurfaces geometry-central polyscope OpenMP::OpenMP_CXX)
 
-target_link_libraries(rsurfaces PUBLIC geometry-central polyscope OpenMP::OpenMP_CXX MKL::Shared)
+if(MKL_FOUND)
+    target_link_libraries(rsurfaces "-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lpthread -lm -ldl")
+endif()
 
-add_executable(runtest "${SRCS}" "${SRCS2}")
-target_include_directories(runtest PUBLIC "${TBB_INCLUDE_DIR}")
-target_include_directories(runtest PUBLIC "${MKL_INCLUDE_DIR}")
-target_include_directories(runtest PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
-target_include_directories(runtest PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include" )
+if(TBB_FOUND)
+    target_link_libraries(rsurfaces "-ltbb")
+endif()
 
-message("TBB_LIBRARIES = ${TBB_LIBRARIES}")
-
-#target_link_libraries(runtest PUBLIC "-L/opt/intel/oneapi/tbb/latest/lib -lmkl_tbb_thread")
-target_link_libraries(runtest PUBLIC geometry-central OpenMP::OpenMP_CXX ${BOOST_OPTS_LIB} MKL::Shared )
-
+target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include")
