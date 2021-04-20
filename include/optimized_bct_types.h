@@ -4,6 +4,19 @@
 #define MKL_DIRECT_CALL_SEQ_JIT
 #define PROFILING
 
+#define CACHE_LINE_WIDTH 64    // length of cache line measured in bytes
+#define CACHE_LINE_LENGHT 8    // length of cache line measured in number of doubles
+//#define restrict __restrict
+#define restrict
+
+#define ALIGN CACHE_LINE_WIDTH // MKL suggests 64-byte alignment
+#define CHUNK_SIZE CACHE_LINE_LENGHT
+#define RAGGED_SCHEDULE schedule( guided, CHUNK_SIZE)
+
+#define SAFE_ALLOCATE_WARNINGS
+
+//#define USE_NORMALS_ONLY // If defined, then CreateOptimizedBVH will create BVHs whose cluster data contain averaged normals. This may lead to incorrect terms in the far field of the lower order metric.
+
 #include <mkl.h>
 #include <tbb/cache_aligned_allocator.h>
 #include <algorithm>
@@ -21,16 +34,7 @@
 #include "bct_kernel_type.h"
 #include "profiler.h"
 
-#define CACHE_LINE_WIDTH 64    // length of cache line measured in bytes
-#define CACHE_LINE_LENGHT 8    // length of cache line measured in number of doubles
-//#define restrict __restrict
-#define restrict 
 
-#define ALIGN CACHE_LINE_WIDTH // MKL suggests 64-byte alignment
-#define CHUNK_SIZE CACHE_LINE_LENGHT
-#define RAGGED_SCHEDULE schedule( guided, CHUNK_SIZE)
-
-#define SAFE_ALLOCATE_WARNINGS
 
 namespace rsurfaces
 {
