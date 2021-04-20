@@ -18,8 +18,6 @@ namespace rsurfaces
 {
     using Constraints::ConstraintBase;
 
-    typedef std::shared_ptr<OptimizedBlockClusterTree> BCTPtr;
-
     namespace Hs
     {
         struct SchurComplement
@@ -196,7 +194,7 @@ namespace rsurfaces
                 if (!optBCT)
                 {
                     Vector2 exps = energy->GetExponents();
-                    optBCT = BCTPtr(CreateOptimizedBCTFromBVH(bvh, exps.x, exps.y, bh_theta));
+                    optBCT = CreateOptimizedBCTFromBVH(bvh, exps.x, exps.y, bh_theta);
                     optBCT->disableNearField = disableNearField;
                     if (disableNearField)
                     {
@@ -205,9 +203,13 @@ namespace rsurfaces
 
                     if (obstacleEnergy)
                     {
+                        std::cout << "    * Building obstacle BCT" << std::endl;
                         OptimizedClusterTree* obstacleBVH = obstacleEnergy->GetBVH();
-                        obstacleBCT = BCTPtr(new OptimizedBlockClusterTree(bvh, obstacleBVH, exps.x, exps.y, bh_theta));
+                        std::cout << "    * Got obstacle BVH " << obstacleBVH << " (" << obstacleBVH->cluster_count << " clusters)" << std::endl;
+                        obstacleBCT = std::make_shared<OptimizedBlockClusterTree>(bvh, obstacleBVH, exps.x, exps.y, bh_theta);
+                        std::cout << "    * Built obstacle BCT" << std::endl;
                         optBCT->AddObstacleCorrection(obstacleBCT);
+                        std::cout << "    * Added obstacle correction" << std::endl;
                     }
 
                 }

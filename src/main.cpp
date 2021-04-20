@@ -541,7 +541,7 @@ namespace rsurfaces
 
         
         OptimizedClusterTree * bvh = CreateOptimizedBVH(mesh, geom);
-        OptimizedBlockClusterTree * bct = CreateOptimizedBCTFromBVH(bvh, alpha, beta, chi);
+        BCTPtr bct = CreateOptimizedBCTFromBVH(bvh, alpha, beta, chi);
 
         mint vertex_count = mesh->nVertices();
         
@@ -844,7 +844,6 @@ namespace rsurfaces
         os.close();
 
         
-        delete bct;
         delete bvh;
 
         std::cout << "TestMultiply finished." << std::endl;

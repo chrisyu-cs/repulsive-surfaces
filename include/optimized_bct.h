@@ -275,4 +275,5 @@ namespace rsurfaces
 
     }; //OptimizedBlockClusterTree
 
+    typedef std::shared_ptr<OptimizedBlockClusterTree> BCTPtr;
 } // namespace rsurfaces

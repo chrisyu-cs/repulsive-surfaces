@@ -38,7 +38,6 @@
 
 namespace rsurfaces
 {
-
     // "In know only two types: integers and doubles..."
     typedef MKL_INT mint; // "machine integer" -- ensuring that we use the integer type requested by MKL. I find "MKL_INT" a bit clunky, though.
     typedef double mreal; // "machine real"

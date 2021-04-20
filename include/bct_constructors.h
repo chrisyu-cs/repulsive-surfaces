@@ -490,16 +490,14 @@ namespace rsurfaces
 #endif
     }
     
-    inline OptimizedBlockClusterTree * CreateOptimizedBCTFromBVH(OptimizedClusterTree* bvh, double alpha, double beta, double chi)
+    inline BCTPtr CreateOptimizedBCTFromBVH(OptimizedClusterTree* bvh, double alpha, double beta, double chi)
     {
-        OptimizedBlockClusterTree *bct = new OptimizedBlockClusterTree(
+        return std::make_shared<OptimizedBlockClusterTree>(
             bvh,   // gets handed two pointers to instances of OptimizedClusterTree
             bvh,   // no problem with handing the same pointer twice; this is actually intended
             alpha, // first parameter of the energy (for the numerator)
             beta,  // second parameter of the energy (for the denominator)
             chi  // separation parameter; different gauge for thetas as before are the block clustering is performed slightly differently from before
         );
-
-        return bct;
     } // CreateOptimizedBCTFromBVH
 } // namespace rsurfaces
