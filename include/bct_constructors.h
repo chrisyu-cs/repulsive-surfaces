@@ -20,7 +20,7 @@
 namespace rsurfaces
 {
 
-    inline OptimizedClusterTree * CreateOptimizedBVH(MeshPtr &mesh, GeomPtr &geom)
+    inline OptimizedClusterTree * CreateOptimizedBVH_Hybrid(MeshPtr &mesh, GeomPtr &geom)
     {
         geom->requireFaceAreas();
         geom->requireFaceNormals();
@@ -480,6 +480,10 @@ namespace rsurfaces
         );
     } // CreateOptimizedBVH_Projectors
 
+    inline OptimizedClusterTree * CreateOptimizedBVH(MeshPtr &mesh, GeomPtr &geom)
+    {
+        return CreateOptimizedBVH(mesh, geom);
+    }
     
     inline OptimizedBlockClusterTree * CreateOptimizedBCTFromBVH(OptimizedClusterTree* bvh, double alpha, double beta, double chi)
     {
