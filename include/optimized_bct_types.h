@@ -49,20 +49,23 @@ namespace rsurfaces
 
     inline void print(std::string s)
     {
-        std::cout << (std::string( 2 * (Timers::time_stack.size() + 1), ' ') + s) << std::endl;
+//        std::cout << (std::string( 2 * (Timers::time_stack.size() + 1), ' ') + s) << std::endl;
+        std::cout << s << std::endl;
     }
 
     template <typename T>
     inline void valprint(std::string s, T val)
     {
-        std::cout << (std::string( 2 * (Timers::time_stack.size() + 1), ' ') + s) << " = " << val <<  std::endl;
+//        std::cout << (std::string( 2 * (Timers::time_stack.size() + 1), ' ') + s) << " = " << val <<  std::endl;
+        std::cout << s << " = " << val << std::endl;
     }
     
     template <typename T>
     inline void valprint(std::string s, T * begin, T * end)
     {
-        std::cout << (std::string( 2 * (Timers::time_stack.size() + 1), ' ') + s) << " = [ ";
-        if( end > begin )
+//        std::cout << (std::string( 2 * (Timers::time_stack.size() + 1), ' ') + s) << " = [ ";
+        std::cout << s << " = [ ";
+        if( (begin) && end > begin )
         {
             for( T * ptr = begin; ptr < end-1 ; ++ptr)
             {
@@ -148,7 +151,7 @@ namespace rsurfaces
 // double allocation helpers
     
     template <typename T>
-    inline int safe_free( T * &  ptr )
+    int safe_free( T * &  ptr )
     {
         int wasallocated = (ptr != nullptr);
         if( wasallocated ){ mkl_free(ptr); ptr = nullptr; }
@@ -156,7 +159,7 @@ namespace rsurfaces
     }
     
     template <typename T>
-    inline int safe_alloc(T * &  ptr, size_t size)
+    int safe_alloc(T * &  ptr, size_t size)
     {
         int wasallocated = (ptr != nullptr);
         if( wasallocated )
@@ -167,11 +170,12 @@ namespace rsurfaces
             safe_free(ptr);
         }
         ptr = (T *) mkl_malloc ( size * sizeof(T), ALIGN );
+        
         return wasallocated;
     }
 
     template <typename T>
-    inline int safe_alloc( T * &  ptr, size_t size, T init)
+    int safe_alloc( T * &  ptr, size_t size, T init)
     {
         int wasallocated = safe_alloc(ptr, size);
         #pragma omp simd aligned( ptr : ALIGN )
@@ -183,7 +187,7 @@ namespace rsurfaces
     }
     
     template <typename T>
-    inline int safe_iota(T * & ptr, size_t size, T step = static_cast<T>(1) )
+    int safe_iota(T * & ptr, size_t size, T step = static_cast<T>(1) )
     {
         int wasallocated = safe_alloc(ptr, size);
         #pragma omp simd aligned( ptr : ALIGN )
@@ -1063,7 +1067,9 @@ namespace rsurfaces
     {
         MKL_CSR,
         Hybrid,
-        Eigen
+        Eigen,
+        VBSR
     };
     
 } // namespace rsurfaces
+

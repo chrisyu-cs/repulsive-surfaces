@@ -103,9 +103,11 @@ public:
                     case NearFieldMultiplicationAlgorithm::MKL_CSR :
                         ApplyKernel_CSR_MKL( values, T_input, S_output, cols, factor );
                         break;
+                        
                     case NearFieldMultiplicationAlgorithm::Eigen :
                         ApplyKernel_CSR_Eigen( values, T_input, S_output, cols, factor );
                         break;
+                        
                     default:
                         ApplyKernel_CSR_MKL( values, T_input, S_output, cols, factor );
                         break;
@@ -118,12 +120,19 @@ public:
                     case NearFieldMultiplicationAlgorithm::MKL_CSR :
                         ApplyKernel_CSR_MKL( values, T_input, S_output, cols, factor );
                         break;
+                        
                     case NearFieldMultiplicationAlgorithm::Hybrid :
                         ApplyKernel_Hybrid( values, T_input, S_output, cols, factor );
                         break;
+                        
+                    case NearFieldMultiplicationAlgorithm::VBSR :
+                        ApplyKernel_VBSR( values, T_input, S_output, cols, factor );
+                        break;
+                        
                     case NearFieldMultiplicationAlgorithm::Eigen :
                         ApplyKernel_CSR_Eigen( values, T_input, S_output, cols, factor );
                         break;
+                        
                     default:
                         ApplyKernel_CSR_MKL( values, T_input, S_output, cols, factor );
                         break;

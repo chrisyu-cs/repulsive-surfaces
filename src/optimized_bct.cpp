@@ -3,7 +3,11 @@
 namespace rsurfaces
 {
     
-    OptimizedBlockClusterTree::OptimizedBlockClusterTree(OptimizedClusterTree* S_, OptimizedClusterTree* T_, const mreal alpha_, const mreal beta_, const mreal theta_, bool exploit_symmetry_, bool upper_triangular_)
+    bool OptimizedBlockClusterTreeOptions::exploit_symmetry = true;
+    bool OptimizedBlockClusterTreeOptions::upper_triangular = false;
+    NearFieldMultiplicationAlgorithm OptimizedBlockClusterTreeOptions::mult_alg = NearFieldMultiplicationAlgorithm::MKL_CSR;
+    
+    OptimizedBlockClusterTree::OptimizedBlockClusterTree(OptimizedClusterTree* S_, OptimizedClusterTree* T_, const mreal alpha_, const mreal beta_, const mreal theta_ )
     {
         ptic("OptimizedBlockClusterTree::OptimizedBlockClusterTree");
         S = S_;
@@ -13,10 +17,12 @@ namespace rsurfaces
         
         theta2 = theta_ * theta_;
         is_symmetric = ( S == T );
-        exploit_symmetry = is_symmetric && exploit_symmetry_;
-        upper_triangular = is_symmetric && upper_triangular_;
+        exploit_symmetry = is_symmetric && OptimizedBlockClusterTreeOptions::exploit_symmetry;
+        upper_triangular = is_symmetric && OptimizedBlockClusterTreeOptions::upper_triangular;
         metrics_initialized = false;
 
+        mult_alg = OptimizedBlockClusterTreeOptions::mult_alg;
+        
         // TODO: Abort and throw error when S->dim != T->dim
         dim = std::min(S->dim, T->dim);
 
@@ -31,12 +37,11 @@ namespace rsurfaces
             thread_count = omp_get_num_threads();
             tree_thread_count = omp_get_num_threads();
         }
-
-        // tic("RequireBlockClusters");
+        
         RequireBlockClusters();
-        // toc("RequireBlockClusters");
 
         // TODO: The following line should be moved to InternalMultiply in order to delay matrix creation to a time when it is actually needed. Otherwise, using the BCT for line search (evaluating only the energy), the time for creating the matrices would be wasted.
+        
         RequireMetrics();
 
         ptoc("OptimizedBlockClusterTree::OptimizedBlockClusterTree");
@@ -298,20 +303,26 @@ namespace rsurfaces
         ptic("OptimizedBlockClusterTree::RequireMetrics");
         if( !metrics_initialized )
         {
+
             far->Prepare_CSR();
+
             FarFieldInteraction();
 
-            near->Prepare_CSR( S->leaf_cluster_count, S->leaf_cluster_ptr, T->leaf_cluster_count, T->leaf_cluster_ptr );
-            NearFieldInteraction_CSR();
-            
-//            near->Prepare_VBSR( S->leaf_cluster_count, S->leaf_cluster_ptr, T->leaf_cluster_count, T->leaf_cluster_ptr );
-//            NearFieldInteraction_VBSR();
-            
+            switch (mult_alg) {
+                case NearFieldMultiplicationAlgorithm::VBSR :
+                    near->Prepare_VBSR( S->leaf_cluster_count, S->leaf_cluster_ptr, T->leaf_cluster_count, T->leaf_cluster_ptr );
+                    NearFieldInteraction_VBSR();
+                    break;
+                    
+                default :
+                    near->Prepare_CSR( S->leaf_cluster_count, S->leaf_cluster_ptr, T->leaf_cluster_count, T->leaf_cluster_ptr );
+                    NearFieldInteraction_CSR();
+                    break;
+            }
 
             ComputeDiagonals();
 
             metrics_initialized = true;
-//          print("Done: RequireMetrics.");
         }
         ptoc("OptimizedBlockClusterTree::RequireMetrics");
     } // RequireMetrics
@@ -750,19 +761,12 @@ namespace rsurfaces
         ptic("OptimizedBlockClusterTree::Multiply(Eigen::MatrixXd &input, Eigen::MatrixXd &output, BCTKernelType type, bool addToResult)");
         // Top level routine for the user.
         // Optimized for in and output in row major order.
-
-        // toc("ComputeDiagonals");
-        //    tic("T->Pre");
+        
         T->Pre(input, type);
-        //    toc("T->Pre");
-
-        //    tic("InternalMultiply");
+        
         InternalMultiply(type);
-        //    toc("InternalMultiply");
-
-        //    tic("S->Post");
+        
         S->Post(output, type, addToResult);
-        //    toc("S->Post");
 
         ptoc("OptimizedBlockClusterTree::Multiply(Eigen::MatrixXd &input, Eigen::MatrixXd &output, BCTKernelType type, bool addToResult)");
     }; // Multiply
@@ -814,21 +818,21 @@ namespace rsurfaces
             mreal * in = T->P_in;
             mreal * out = T->P_out;
             
-            #pragma omp parallel for
-            for( mint i = 0; i < last; ++i )
-            {
-                cblas_daxpy( cols, diag[i], in + (cols * i), 1, out + (cols * i), 1 );
-            }
-            
-            // For some weird reason, the following cannot be vectorized...
-//            #pragma omp parallel for simd aligned( diag, in, out : ALIGN ) collapse(2)
+//            #pragma omp parallel for num_threads( thread_count )
 //            for( mint i = 0; i < last; ++i )
 //            {
-//                for( mint k = 0; k < cols; ++k )
-//                {
-//                    out[cols * i + k] += diag[i] * in[cols * i + k];
-//                }
+//                cblas_daxpy( cols, diag[i], in + (cols * i), 1, out + (cols * i), 1 );
 //            }
+            
+//             For some weird reason, the following cannot be vectorized...
+            #pragma omp parallel for simd aligned( diag, in, out : ALIGN ) collapse(2)
+            for( mint i = 0; i < last; ++i )
+            {
+                for( mint k = 0; k < cols; ++k )
+                {
+                    out[cols * i + k] += diag[i] * in[cols * i + k];
+                }
+            }
             
         }
         
@@ -845,7 +849,7 @@ namespace rsurfaces
             T->RequireBuffers(1);
 
             //Sloppily: hi_diag = hi_ker * P_near[0], where hi_ker is the kernel implemented in ApplyKernel
-
+            
             // Initialize the "diag" vector (weighted by the primitive weights)
             {
                 mreal * a = T->P_near[0];
@@ -857,25 +861,22 @@ namespace rsurfaces
                     diag[i] = a[i];
                 }
             }
-
-    //        print("T->P_to_C.Multiply");
+            
             T->P_to_C.Multiply( T->P_in, T->C_in, 1);
-    //        tic("T->PercolateUp");
+            
             T->PercolateUp();
-    //        toc("T->PercolateUp");
 
             safe_alloc( fr_diag, S->primitive_count );
             safe_alloc( hi_diag, S->primitive_count );
             safe_alloc( lo_diag, S->primitive_count );
 
-            
             // The factor of 2. in the last argument stems from the symmetry of the kernel
             far->ApplyKernel( BCTKernelType::FractionalOnly, T->C_in, S->C_out, 1, 2., mult_alg);
            near->ApplyKernel( BCTKernelType::FractionalOnly, T->P_in, S->P_out, 1, 2., mult_alg);
-
+            
             S->PercolateDown();
             S->C_to_P.Multiply( S->C_out, S->P_out, 1, true);
-
+            
 
             // TODO: Explain the hack of dividing by S->P_near[0][i] here to a future self so that he won't change this later.
             
@@ -895,22 +896,22 @@ namespace rsurfaces
             
             far->ApplyKernel( BCTKernelType::HighOrder, T->C_in, S->C_out, 1, 2., mult_alg);
            near->ApplyKernel( BCTKernelType::HighOrder, T->P_in, S->P_out, 1, 2., mult_alg);
-
+            
             S->PercolateDown();
             S->C_to_P.Multiply( S->C_out, S->P_out, 1, true);
-
+            
             #pragma omp parallel for simd aligned( ainv, hi_diag, data : ALIGN)
             for( mint i = 0; i < m; ++i )
             {
                 hi_diag[i] =  ainv[i] * data[i];
             }
-
+            
             far->ApplyKernel( BCTKernelType::LowOrder, T->C_in, S->C_out, 1, 2., mult_alg);
            near->ApplyKernel( BCTKernelType::LowOrder, T->P_in, S->P_out, 1, 2., mult_alg);
-
+            
             S->PercolateDown();
             S->C_to_P.Multiply( S->C_out, S->P_out, 1, true);
-
+            
             #pragma omp parallel for simd aligned( ainv, lo_diag, data : ALIGN)
             for( mint i = 0; i < m; ++i )
             {

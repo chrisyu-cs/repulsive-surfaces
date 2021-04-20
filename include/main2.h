@@ -684,14 +684,16 @@ namespace rsurfaces
                     mint repetitions = 20;
                     mint cols = 9;
                     
-                    
                     omp_set_num_threads(1);
                     mkl_set_num_threads(1);
                     
-                    auto tpe = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
+                    std::shared_ptr<TPEnergyBarnesHut0> tpe;
+                    std::shared_ptr<OptimizedBlockClusterTree> bct;
                     
-                    auto bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi);
+                    tpe = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
                     
+                    bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi);
+
                     mint n = bct->near->n;
                     mint m = bct->near->m;
                     
@@ -707,7 +709,7 @@ namespace rsurfaces
                     safe_alloc( u2_1, m * cols, 0.);
                     safe_alloc( u2_2, m * cols, 0.);
                     
-                    Eigen::Map<Eigen::VectorXd> ev ( v, n * cols );
+                    Eigen::Map<Eigen::VectorXd> V ( v, n * cols );
                     Eigen::Map<Eigen::VectorXd> U1_1 ( u1_1, m * cols );
                     Eigen::Map<Eigen::VectorXd> U1_2 ( u1_2, m * cols );
                     Eigen::Map<Eigen::VectorXd> U2_1 ( u2_1, m * cols );
@@ -752,7 +754,7 @@ namespace rsurfaces
                     mkl_set_num_threads(max_thread_count);
         
                     tpe = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
-        
+                    
                     bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi);
         
                     valprint("u2_1.norm()", U2_1.norm());
@@ -775,9 +777,7 @@ namespace rsurfaces
                     valprint("u2_1.norm()", U2_1.norm());
                     valprint("u2_2.norm()", U2_2.norm());
                     valprint("(u2_1-u2_2).norm()/u1_2.norm()",(U2_1-U2_2).norm()/U2_1.norm());
-                    
-                    valprint("(u2_1-u1_1).norm()/u1_1.norm()",(U2_1-U1_1).norm()/U1_1.norm());
-                    valprint("(u2_2-u1_2).norm()/u1_2.norm()",(U2_2-U1_2).norm()/U1_2.norm());
+
                     
                     safe_free(v);
                     safe_free(u1_1);
@@ -785,6 +785,90 @@ namespace rsurfaces
                     safe_free(u2_1);
                     safe_free(u2_2);
                 }
+        
+        
+        void TestPrePost()
+        {
+            OptimizedClusterTreeOptions::tree_perc_alg = TreePercolationAlgorithm::Sequential;
+            
+//            auto type = BCTKernelType::HighOrder;
+            auto type = BCTKernelType::LowOrder;
+            
+            
+            
+            std::vector<BCTKernelType> types { BCTKernelType::FractionalOnly, BCTKernelType::LowOrder, BCTKernelType::HighOrder };
+            
+            std::uniform_real_distribution<double> unif(-1.,1.);
+            std::default_random_engine re;
+            re.seed(std::chrono::system_clock::now().time_since_epoch().count());
+            
+            
+            mint repetitions = 1;
+            mint cols = 3;
+            
+            omp_set_num_threads(4);
+            mkl_set_num_threads(4);
+                        
+        
+            for( auto type : types)
+            {
+                OptimizedClusterTreeOptions::use_old_prepost = true;
+                auto * bvh_old = CreateOptimizedBVH(mesh1, geom1);
+                bvh_old->CleanseBuffers();
+
+                OptimizedClusterTreeOptions::use_old_prepost = false;
+                auto * bvh_new = CreateOptimizedBVH(mesh1, geom1);
+                bvh_new->CleanseBuffers();
+                
+                mint n = mesh1->nVertices();
+                mint m = bvh_old->cluster_count;
+                
+                Eigen::MatrixXd V ( n , cols );
+                for( mint i = 0; i < n; ++i)
+                {
+                    for( mint j = 0; j < cols; ++j)
+                    {
+                        V(i,j) = unif(re);
+                    }
+                }
+                Eigen::MatrixXd V0 = V;
+     
+                valprint("V.norm()", V.norm());
+                
+                tic("Old");
+                for( mint i = 0; i < repetitions; ++i)
+                {
+                    bvh_old->Pre( V, type);
+                }
+                toc("Old");
+                valprint("(V0-V).norm()/V0.norm()",(V0-V).norm()/V0.norm());
+                valprint("bvh_old->buffer_dim",bvh_old->buffer_dim);
+                Eigen::Map<Eigen::MatrixXd> U1 ( bvh_old->P_in, n, bvh_old->buffer_dim );
+                Eigen::Map<Eigen::MatrixXd> W1 ( bvh_old->C_in, m, bvh_old->buffer_dim );
+                
+                tic("New");
+                for( mint i = 0; i < repetitions; ++i)
+                {
+                    bvh_new->Pre( V, type);
+                }
+                toc("New");
+                valprint("(V0-V).norm()/V0.norm()",(V0-V).norm()/V0.norm());
+                valprint("bvh_new->buffer_dim",bvh_new->buffer_dim);
+                Eigen::Map<Eigen::MatrixXd> U2 ( bvh_new->P_in, n, bvh_new->buffer_dim );
+                Eigen::Map<Eigen::MatrixXd> W2 ( bvh_new->C_in, m, bvh_new->buffer_dim );
+                
+                valprint("U1.norm()", U1.norm());
+                valprint("U2.norm()", U2.norm());
+                valprint("(U1-U2).norm()/U1.norm()",(U1-U2).norm()/U1.norm());
+                valprint("W1.norm()", W1.norm());
+                valprint("W2.norm()", W2.norm());
+                valprint("(W1-W2).norm()/W1.norm()",(W1-W2).norm()/W1.norm());
+                
+                
+                delete bvh_old;
+                delete bvh_new;
+            }
+        }
         
     }; // Benchmarker
 } // namespace rsurfaces
