@@ -632,75 +632,82 @@ namespace rsurfaces
             
             // Using b_i and b_j for block (leaf cluster) positions.
             // Using i and j for primitive positions.
-            #pragma omp parallel for num_threads(thread_count) RAGGED_SCHEDULE
-            for (mint b_i = 0; b_i < b_m; ++b_i) // we are going to loop over all rows in block fashion
+            #pragma omp parallel num_threads(thread_count)
             {
-                mint k_begin = b_outer[b_i];
-                mint k_end = b_outer[b_i + 1];
+                mint thread = omp_get_thread_num();
                 
-                mint i_begin = b_row_ptr[b_i];
-                mint i_end = b_row_ptr[b_i + 1];
+                mint b_i_begin = near->job_ptr[ thread ];
+                mint b_i_end   = near->job_ptr[ thread + 1 ];
                 
-                for (mint i = i_begin; i < i_end; ++i) // looping over all rows i  in block row b_i
+                for( mint b_i = b_i_begin; b_i < b_i_end; ++ b_i)
                 {
-                    mint ptr = outer[i]; // get first nonzero position in row i; ptr will be used to keep track of the current position within values
+                    mint k_begin = b_outer[b_i];
+                    mint k_end = b_outer[b_i + 1];
                     
-                    mreal x1 = X1[i];
-                    mreal x2 = X2[i];
-                    mreal x3 = X3[i];
-                    mreal p11 = P11[i];
-                    mreal p12 = P12[i];
-                    mreal p13 = P13[i];
-                    mreal p22 = P22[i];
-                    mreal p23 = P23[i];
-                    mreal p33 = P33[i];
+                    mint i_begin = b_row_ptr[b_i];
+                    mint i_end = b_row_ptr[b_i + 1];
                     
-                    // From here on, the read-access to T->P_near is a bit cache-unfriendly.
-                    // However, the threads write to disjoint large consecutive blocks of memory. Because write is consecutively, false sharing is probably not an issue.
-                    
-                    for (mint k = k_begin; k < k_end; ++k) // loop over all blocks in block row b_i
+                    for (mint i = i_begin; i < i_end; ++i) // looping over all rows i  in block row b_i
                     {
+                        mint ptr = outer[i]; // get first nonzero position in row i; ptr will be used to keep track of the current position within values
                         
-                        mint b_j = b_inner[k]; // we are in block {b_i, b_j} now
+                        mreal x1 = X1[i];
+                        mreal x2 = X2[i];
+                        mreal x3 = X3[i];
+                        mreal p11 = P11[i];
+                        mreal p12 = P12[i];
+                        mreal p13 = P13[i];
+                        mreal p22 = P22[i];
+                        mreal p23 = P23[i];
+                        mreal p33 = P33[i];
                         
-                        mint j_begin = b_col_ptr[b_j];
-                        mint j_end = b_col_ptr[b_j + 1];
+                        // From here on, the read-access to T->P_near is a bit cache-unfriendly.
+                        // However, the threads write to disjoint large consecutive blocks of memory. Because write is consecutively, false sharing is probably not an issue.
                         
-                        #pragma omp simd aligned( Y1, Y2, Y3, Q11, Q12, Q13, Q22, Q23, Q33 : ALIGN )
-                        for (mint j = j_begin; j < j_end; ++j)
+                        for (mint k = k_begin; k < k_end; ++k) // loop over all blocks in block row b_i
                         {
-                            mreal delta_ij = (i == j);
-                            mreal v1 = Y1[j] - x1;
-                            mreal v2 = Y2[j] - x2;
-                            mreal v3 = Y3[j] - x3;
-                            mreal q11 = Q11[j];
-                            mreal q12 = Q12[j];
-                            mreal q13 = Q13[j];
-                            mreal q22 = Q22[j];
-                            mreal q23 = Q23[j];
-                            mreal q33 = Q33[j];
                             
-                            mreal rCosPhi2 = v1*(p11*v1 + p12*v2 + p13*v3) + v2*(p12*v1 + p22*v2 + p23*v3) + v3*(p13*v1 + p23*v2 + p33*v3);
-                            mreal rCosPsi2 = v1*(q11*v1 + q12*v2 + q13*v3) + v2*(q12*v1 + q22*v2 + q23*v3) + v3*(q13*v1 + q23*v2 + q33*v3);
-                            mreal r2 = v1 * v1 + v2 * v2 + v3 * v3 + delta_ij;
-                            mreal r4 = r2 * r2;
-                            mreal r6 = r4 * r2;
-                            mreal r8 = r4 * r4;
+                            mint b_j = b_inner[k]; // we are in block {b_i, b_j} now
                             
-                            // The following line makes up approx 2/3 of this function's runtime! This is why we avoid pow as much as possible and replace it with mypow.
-                            mreal hi = mypow(r2, hi_exponent); // I got it down to this single call to pow. We might want to generate a lookup table for it...
+                            mint j_begin = b_col_ptr[b_j];
+                            mint j_end = b_col_ptr[b_j + 1];
                             
-                            hi_values[ptr] = 2.0 * (1. - delta_ij) * hi; // The factor 2.0 might be suboptimal. That's what my Mathematica code uses (somewhat accidentally) and it seems to work fine.
-
-                            // Nasty trick to enforce vectorization without resorting to mypow or pos. Works only if intrinsic_dim is one of 1, 2, or 3.
-                            mreal mul = t1 * r4 + t2 * r6 + t3 * r8;
-                            
-                            fr_values[ptr] = (1. - delta_ij) / (hi * mul);
-                            
-                            lo_values[ptr] = (1. - delta_ij) * (rCosPhi2 + rCosPsi2) / r4 * hi;
-
-                            // Increment ptr, so that the next value is written to the next position.
-                            ++ptr;
+                            #pragma omp simd aligned( Y1, Y2, Y3, Q11, Q12, Q13, Q22, Q23, Q33 : ALIGN )
+                            for (mint j = j_begin; j < j_end; ++j)
+                            {
+                                mreal delta_ij = (i == j);
+                                mreal v1 = Y1[j] - x1;
+                                mreal v2 = Y2[j] - x2;
+                                mreal v3 = Y3[j] - x3;
+                                mreal q11 = Q11[j];
+                                mreal q12 = Q12[j];
+                                mreal q13 = Q13[j];
+                                mreal q22 = Q22[j];
+                                mreal q23 = Q23[j];
+                                mreal q33 = Q33[j];
+                                
+                                mreal rCosPhi2 = v1*(p11*v1 + p12*v2 + p13*v3) + v2*(p12*v1 + p22*v2 + p23*v3) + v3*(p13*v1 + p23*v2 + p33*v3);
+                                mreal rCosPsi2 = v1*(q11*v1 + q12*v2 + q13*v3) + v2*(q12*v1 + q22*v2 + q23*v3) + v3*(q13*v1 + q23*v2 + q33*v3);
+                                mreal r2 = v1 * v1 + v2 * v2 + v3 * v3 + delta_ij;
+                                mreal r4 = r2 * r2;
+                                mreal r6 = r4 * r2;
+                                mreal r8 = r4 * r4;
+                                
+                                // The following line makes up approx 2/3 of this function's runtime! This is why we avoid pow as much as possible and replace it with mypow.
+                                mreal hi = mypow(r2, hi_exponent); // I got it down to this single call to pow. We might want to generate a lookup table for it...
+                                
+                                hi_values[ptr] = 2.0 * (1. - delta_ij) * hi; // The factor 2.0 might be suboptimal. That's what my Mathematica code uses (somewhat accidentally) and it seems to work fine.
+                                
+                                // Nasty trick to enforce vectorization without resorting to mypow or pos. Works only if intrinsic_dim is one of 1, 2, or 3.
+                                mreal mul = t1 * r4 + t2 * r6 + t3 * r8;
+                                
+                                fr_values[ptr] = (1. - delta_ij) / (hi * mul);
+                                
+                                lo_values[ptr] = (1. - delta_ij) * (rCosPhi2 + rCosPsi2) / r4 * hi;
+                                
+                                // Increment ptr, so that the next value is written to the next position.
+                                ++ptr;
+                            }
                         }
                     }
                 }
@@ -728,71 +735,78 @@ namespace rsurfaces
             
             // Using b_i and b_j for block (leaf cluster) positions.
             // Using i and j for primitive positions.
-            #pragma omp parallel for num_threads(thread_count) RAGGED_SCHEDULE
-            for (mint b_i = 0; b_i < b_m; ++b_i) // we are going to loop over all rows in block fashion
+            #pragma omp parallel num_threads(thread_count)
             {
-                mint k_begin = b_outer[b_i];
-                mint k_end = b_outer[b_i + 1];
+                mint thread = omp_get_thread_num();
                 
-                mint i_begin = b_row_ptr[b_i];
-                mint i_end = b_row_ptr[b_i + 1];
+                mint b_i_begin = near->job_ptr[ thread ];
+                mint b_i_end   = near->job_ptr[ thread + 1 ];
                 
-                for (mint i = i_begin; i < i_end; ++i) // looping over all rows i  in block row b_i
+                for( mint b_i = b_i_begin; b_i < b_i_end; ++ b_i)
                 {
-                    mint ptr = outer[i]; // get first nonzero position in row i; ptr will be used to keep track of the current position within values
+                    mint k_begin = b_outer[b_i];
+                    mint k_end = b_outer[b_i + 1];
                     
-                    mreal x1 = X1[i];
-                    mreal x2 = X2[i];
-                    mreal x3 = X3[i];
-                    mreal n1 = N1[i];
-                    mreal n2 = N2[i];
-                    mreal n3 = N3[i];
+                    mint i_begin = b_row_ptr[b_i];
+                    mint i_end = b_row_ptr[b_i + 1];
                     
-                    // From here on, the read-access to T->P_near is a bit cache-unfriendly.
-                    // However, the threads write to disjoint large consecutive blocks of memory. Because write is consecutively, false sharing is probably not an issue.
-                    
-                    for (mint k = k_begin; k < k_end; ++k) // loop over all blocks in block row b_i
+                    for (mint i = i_begin; i < i_end; ++i) // looping over all rows i  in block row b_i
                     {
+                        mint ptr = outer[i]; // get first nonzero position in row i; ptr will be used to keep track of the current position within values
                         
-                        mint b_j = b_inner[k]; // we are in block {b_i, b_j} now
+                        mreal x1 = X1[i];
+                        mreal x2 = X2[i];
+                        mreal x3 = X3[i];
+                        mreal n1 = N1[i];
+                        mreal n2 = N2[i];
+                        mreal n3 = N3[i];
                         
-                        mint j_begin = b_col_ptr[b_j];
-                        mint j_end = b_col_ptr[b_j + 1];
+                        // From here on, the read-access to T->P_near is a bit cache-unfriendly.
+                        // However, the threads write to disjoint large consecutive blocks of memory. Because write is consecutively, false sharing is probably not an issue.
                         
-                        #pragma omp simd aligned( Y1, Y2, Y3, M1, M2, M3 : ALIGN )
-                        for (mint j = j_begin; j < j_end; ++j)
+                        for (mint k = k_begin; k < k_end; ++k) // loop over all blocks in block row b_i
                         {
-                            mreal delta_ij = (i == j);
                             
-                            mreal v1 = Y1[j] - x1;
-                            mreal v2 = Y2[j] - x2;
-                            mreal v3 = Y3[j] - x3;
-                            mreal m1 = M1[j];
-                            mreal m2 = M2[j];
-                            mreal m3 = M3[j];
+                            mint b_j = b_inner[k]; // we are in block {b_i, b_j} now
                             
-                            mreal rCosPhi = v1 * n1 + v2 * n2 + v3 * n3;
-                            mreal rCosPsi = v1 * m1 + v2 * m2 + v3 * m3;
-                            mreal r2 = v1 * v1 + v2 * v2 + v3 * v3 + delta_ij;
+                            mint j_begin = b_col_ptr[b_j];
+                            mint j_end = b_col_ptr[b_j + 1];
                             
-                            mreal r4 = r2 * r2;
-                            mreal r6 = r4 * r2;
-                            mreal r8 = r4 * r4;
-                            
-                            // The following line makes up approx 2/3 of this function's runtime! This is why we avoid pow as much as possible and replace it with mypow.
-                            mreal hi = mypow(r2, hi_exponent); // I got it down to this single call to pow. We might want to generate a lookup table for it...
-                            
-                            hi_values[ptr] = 2.0 * (1. - delta_ij) * hi; // The factor 2.0 might be suboptimal. That's what my Mathematica code uses (somewhat accidentally) and it seems to work fine.
-
-                            // Nasty trick to enforce vectorization without resorting to mypow or pos. Works only if intrinsic_dim is one of 1, 2, or 3.
-                            mreal mul = t1 * r4 + t2 * r6 + t3 * r8;
-                            
-                            fr_values[ptr] = (1. - delta_ij) / (hi * mul);
-                            
-                            lo_values[ptr] = (1. - delta_ij) * (rCosPhi * rCosPhi + rCosPsi * rCosPsi) / r4 * hi;
-                            
-                            // Increment ptr, so that the next value is written to the next position.
-                            ++ptr;
+                            #pragma omp simd aligned( Y1, Y2, Y3, M1, M2, M3 : ALIGN )
+                            for (mint j = j_begin; j < j_end; ++j)
+                            {
+                                mreal delta_ij = (i == j);
+                                
+                                mreal v1 = Y1[j] - x1;
+                                mreal v2 = Y2[j] - x2;
+                                mreal v3 = Y3[j] - x3;
+                                mreal m1 = M1[j];
+                                mreal m2 = M2[j];
+                                mreal m3 = M3[j];
+                                
+                                mreal rCosPhi = v1 * n1 + v2 * n2 + v3 * n3;
+                                mreal rCosPsi = v1 * m1 + v2 * m2 + v3 * m3;
+                                mreal r2 = v1 * v1 + v2 * v2 + v3 * v3 + delta_ij;
+                                
+                                mreal r4 = r2 * r2;
+                                mreal r6 = r4 * r2;
+                                mreal r8 = r4 * r4;
+                                
+                                // The following line makes up approx 2/3 of this function's runtime! This is why we avoid pow as much as possible and replace it with mypow.
+                                mreal hi = mypow(r2, hi_exponent); // I got it down to this single call to pow. We might want to generate a lookup table for it...
+                                
+                                hi_values[ptr] = 2.0 * (1. - delta_ij) * hi; // The factor 2.0 might be suboptimal. That's what my Mathematica code uses (somewhat accidentally) and it seems to work fine.
+                                
+                                // Nasty trick to enforce vectorization without resorting to mypow or pos. Works only if intrinsic_dim is one of 1, 2, or 3.
+                                mreal mul = t1 * r4 + t2 * r6 + t3 * r8;
+                                
+                                fr_values[ptr] = (1. - delta_ij) / (hi * mul);
+                                
+                                lo_values[ptr] = (1. - delta_ij) * (rCosPhi * rCosPhi + rCosPsi * rCosPsi) / r4 * hi;
+                                
+                                // Increment ptr, so that the next value is written to the next position.
+                                ++ptr;
+                            }
                         }
                     }
                 }
