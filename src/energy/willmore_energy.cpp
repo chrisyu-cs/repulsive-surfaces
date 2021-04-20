@@ -40,10 +40,6 @@ namespace rsurfaces
 
     double WillmoreEnergy::Value()
     {
-        mint vertex_count = mesh->nVertices();
-        FaceIndices fInds = mesh->getFaceIndices();
-        VertexIndices vInds = mesh->getVertexIndices();
-        
         requireMeanCurvatureVectors();
         geom->requireVertexDualAreas();
         
@@ -54,39 +50,37 @@ namespace rsurfaces
 
     void WillmoreEnergy::Differential( Eigen::MatrixXd &output )
     {
-        mint vertex_count = mesh->nVertices();
-        mint triangle_count = mesh->nFaces();
-        FaceIndices fInds = mesh->getFaceIndices();
-        VertexIndices vInds = mesh->getVertexIndices();
-
-        requireMeanCurvatureVectors();
-        geom->requireVertexPositions();
+        auto primitives = getPrimitiveIndices(mesh,geom);
+        auto x = getVertexPositions(mesh,geom);
         
-        auto buffer = Eigen::MatrixXd( triangle_count * 3, 3 );
+        mint vertex_count = x.rows();
+        mint dim = x.cols();
+        mint primitive_count = primitives.rows();
+        mint primitive_length = primitives.cols();
+        requireMeanCurvatureVectors();
 
+        auto buffer = Eigen::MatrixXd( primitive_count * primitive_length, dim );
+        
         mreal one_third = 1./3.;
         
-        for( auto face : mesh->faces() )
+        #pragma omp parallel
+        for( mint i = 0 ; i < primitive_count; ++i )
         {
-            mint i = fInds[face];
-
-            GCHalfedge he = face.halfedge();
-
-            mint i0 = vInds[he.vertex()];
-            mint i1 = vInds[he.next().vertex()];
-            mint i2 = vInds[he.next().next().vertex()];
+            mint i0 = primitives(i,0);
+            mint i1 = primitives(i,1);
+            mint i2 = primitives(i,2);
             
-            mreal x00 = geom->inputVertexPositions[i0][0];
-            mreal x01 = geom->inputVertexPositions[i0][1];
-            mreal x02 = geom->inputVertexPositions[i0][2];
+            mreal x00 = x(i0,0);
+            mreal x01 = x(i0,1);
+            mreal x02 = x(i0,2);
             
-            mreal x10 = geom->inputVertexPositions[i1][0];
-            mreal x11 = geom->inputVertexPositions[i1][1];
-            mreal x12 = geom->inputVertexPositions[i1][2];
+            mreal x10 = x(i1,0);
+            mreal x11 = x(i1,1);
+            mreal x12 = x(i1,2);
             
-            mreal x20 = geom->inputVertexPositions[i2][0];
-            mreal x21 = geom->inputVertexPositions[i2][1];
-            mreal x22 = geom->inputVertexPositions[i2][2];
+            mreal x20 = x(i2,0);
+            mreal x21 = x(i2,1);
+            mreal x22 = x(i2,2);
             
             mreal v00 = H( i0, 0 );
             mreal v01 = H( i0, 1 );
@@ -407,11 +401,6 @@ namespace rsurfaces
     Vector2 WillmoreEnergy::GetExponents()
     {
         return Vector2{1, 0};
-    }
-
-    void WillmoreEnergy::Update()
-    {
-        // Probably unneeded if H is recomputed every step
     }
     
     void WillmoreEnergy::AddMetricTerm(std::vector<MetricTerm*> &terms)

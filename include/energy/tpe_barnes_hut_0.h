@@ -14,13 +14,14 @@ namespace rsurfaces
     class TPEnergyBarnesHut0 : public SurfaceEnergy
     {
     public:
-        TPEnergyBarnesHut0( MeshPtr mesh_, GeomPtr geom_, mreal alpha_, mreal beta_, mreal theta_)
+        TPEnergyBarnesHut0( MeshPtr mesh_, GeomPtr geom_, mreal alpha_, mreal beta_, mreal theta_, mreal weight_ = 1. )
         {
             mesh = mesh_;
             geom = geom_;
             bvh = 0;
             alpha = alpha_;
             beta = beta_;
+            weight = weight_;
             theta = theta_;
             
             mreal intpart;
@@ -33,7 +34,9 @@ namespace rsurfaces
 
         ~TPEnergyBarnesHut0()
         {
+            ptic("~TPEnergyBarnesHut0");
             if (bvh) delete bvh;
+            ptoc("~TPEnergyBarnesHut0");
         }
         
         // Returns the current value of the energy.
@@ -64,6 +67,7 @@ namespace rsurfaces
     private:
         mreal alpha = 6.;
         mreal beta  = 12.;
+        mreal weight = 1.;
         mreal theta = 0.5;
         
         OptimizedClusterTree* bvh;

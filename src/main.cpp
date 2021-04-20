@@ -80,12 +80,16 @@ namespace rsurfaces
 
     void MainApp::TakeOptimizationStep(bool remeshAfter, bool showAreaRatios)
     {
+        ptic("MainApp::TakeOptimizationStep");
+        
         if (logPerformance && numSteps == 0)
         {
             logPerformanceLine();
         }
 
         long beforeStep = currentTimeMilliseconds();
+        
+        ptic("Switch");
         switch (methodChoice)
         {
         case GradientMethod::HsProjected:
@@ -125,7 +129,8 @@ namespace rsurfaces
         default:
             throw std::runtime_error("Unknown gradient method type.");
         }
-
+        ptoc("Switch");
+        
         if (remeshAfter)
         {
             bool doCollapse = (numSteps % 1 == 0);
@@ -139,9 +144,12 @@ namespace rsurfaces
             {
                 std::cout << "Vertices were not mutated this step." << std::endl;
             }
-
+            ptic("mesh->compress()");
             mesh->compress();
+            ptoc("mesh->compress()");
+            ptic("MainApp::instance->reregisterMesh();");
             MainApp::instance->reregisterMesh();
+            ptoc("MainApp::instance->reregisterMesh();");
         }
         else
         {
@@ -170,6 +178,7 @@ namespace rsurfaces
 
             psMesh->addVertexScalarQuantity("Area ratios", areaRatio);
         }
+        ptoc("MainApp::TakeOptimizationStep");
     }
 
     void MainApp::updateMeshPositions()
@@ -500,9 +509,357 @@ namespace rsurfaces
         numericalNormalDeriv(geom, vert, vert).Print();
     }
 
+    void MainApp::TestMultiply()
+    {
+        int threads;
+        #pragma omp parallel
+        {
+            threads = omp_get_num_threads();
+        }
+        
+        std::cout << std::setprecision(8);
+        std::cout << "\n  =====                   =====  " << std::endl;
+        std::cout << "=======   TestMultiply   =======" << std::endl;
+        std::cout << "  =====                   =====  " << std::endl;
+        std::cout << "\n"
+                  << std::endl;
+
+        double alpha = 6.;
+        double beta = 12.;
+        double weight = 1.;
+//        double theta = MainApp::instance->bh_theta;
+        double theta = 0.5;
+        double chi = theta;
+//        double chi = 0.8 * theta;
+
+        // mesh1 and geom1 represent the movable surface
+        auto mesh = rsurfaces::MainApp::instance->mesh;
+        auto geom = rsurfaces::MainApp::instance->geom;
+        
+        OptimizedClusterTreeOptions::use_old_prepost = false;
+        OptimizedClusterTreeOptions::tree_perc_alg = TreePercolationAlgorithm::Chunks;
+
+        
+        OptimizedClusterTree * bvh = CreateOptimizedBVH(mesh, geom);
+        OptimizedBlockClusterTree * bct = CreateOptimizedBCTFromBVH(bvh, alpha, beta, chi);
+
+        mint vertex_count = mesh->nVertices();
+        
+        Eigen::MatrixXd V (vertex_count, 3);
+        
+        for( mint i = 0; i < vertex_count; ++i )
+        {
+            for( mint j = 0; j < 3; ++ j)
+            {
+                V(i,j) = geom->inputVertexPositions[i][j];
+            }
+        }
+        
+        Eigen::MatrixXd U (vertex_count, 3);
+        std::ofstream os;
+        mreal * ptr;
+        mint n;
+        std::string name;
+        
+        
+// ####### FractionalOnly
+        
+        name = "FractionalOnly";
+        
+        U.setZero();
+        bct->Multiply(V,U, BCTKernelType::FractionalOnly);
+        
+        os.open("./Output_" + name + ".tsv");
+        for( mint i = 0; i < vertex_count; ++i )
+        {
+            os << U(i,0) << "\t";
+            os << U(i,1) << "\t";
+            os << U(i,2) << "\n";
+        }
+        os.close();
+        
+        os.open("./P_in_" + name + ".tsv");
+        ptr = bct->S->P_in;
+        n = bct->T->cluster_count * bct->T->buffer_dim;
+        for( mint i = 0; i < n-1; ++i )
+        {
+            os << ptr[i] << "\t";
+            
+        }
+        os << ptr[n-1];
+        os.close();
+        
+        os.open("./C_in_leaves_" + name + ".tsv");
+        ptr = bct->T->C_in;
+        n = bct->T->buffer_dim;
+        for( mint i = 0; i < bct->T->leaf_cluster_count; ++i )
+        {
+            for( mint k = 0; k < n; ++k )
+            os << ptr[ n * bct->T->leaf_clusters[i] + k ] << "\t";
+            
+        }
+        os.close();
+        
+        os.open("./C_in_" + name + ".tsv");
+        ptr = bct->T->C_in;
+        n = bct->T->cluster_count * bct->T->buffer_dim;
+        for( mint i = 0; i < n-1; ++i )
+        {
+            os << ptr[i] << "\t";
+            
+        }
+        os << ptr[n-1];
+        os.close();
+        
+        os.open("./C_out_" + name + ".tsv");
+        ptr = bct->S->C_out;
+        n = bct->S->cluster_count * bct->S->buffer_dim;
+        for( mint i = 0; i < n-1; ++i )
+        {
+            os << ptr[i] << "\t";
+            
+        }
+        os << ptr[n-1];
+        os.close();
+        
+        os.open("./P_out_" + name + ".tsv");
+        ptr = bct->S->P_out;
+        n = bct->S->cluster_count * bct->S->buffer_dim;
+        for( mint i = 0; i < n-1; ++i )
+        {
+            os << ptr[i] << "\t";
+            
+        }
+        os << ptr[n-1];
+        os.close();
+        
+        
+// ####### LowOrder
+                
+        name = "LowOrder";
+        
+        U.setZero();
+        bct->Multiply(V,U, BCTKernelType::LowOrder);
+        
+
+        os.open("./Output_" + name + ".tsv");
+        for( mint i = 0; i < vertex_count; ++i )
+        {
+            os << U(i,0) << "\t";
+            os << U(i,1) << "\t";
+            os << U(i,2) << "\n";
+        }
+        os.close();
+        
+        os.open("./P_in_" + name + ".tsv");
+        ptr = bct->S->P_in;
+        n = bct->T->cluster_count * bct->T->buffer_dim;
+        for( mint i = 0; i < n-1; ++i )
+        {
+            os << ptr[i] << "\t";
+            
+        }
+        os << ptr[n-1];
+        os.close();
+        
+        os.open("./C_in_leaves_" + name + ".tsv");
+        ptr = bct->T->C_in;
+        n = bct->T->buffer_dim;
+        for( mint i = 0; i < bct->T->leaf_cluster_count; ++i )
+        {
+            for( mint k = 0; k < n; ++k )
+            os << ptr[ n * bct->T->leaf_clusters[i] + k ] << "\t";
+            
+        }
+        os.close();
+        
+        os.open("./C_in_" + name + ".tsv");
+        ptr = bct->T->C_in;
+        n = bct->T->cluster_count * bct->T->buffer_dim;
+        for( mint i = 0; i < n-1; ++i )
+        {
+            os << ptr[i] << "\t";
+            
+        }
+        os << ptr[n-1];
+        os.close();
+        
+        os.open("./C_out_" + name + ".tsv");
+        ptr = bct->S->C_out;
+        n = bct->S->cluster_count * bct->S->buffer_dim;
+        for( mint i = 0; i < n-1; ++i )
+        {
+            os << ptr[i] << "\t";
+            
+        }
+        os << ptr[n-1];
+        os.close();
+        
+        os.open("./P_out_" + name + ".tsv");
+        ptr = bct->S->P_out;
+        n = bct->S->cluster_count * bct->S->buffer_dim;
+        for( mint i = 0; i < n-1; ++i )
+        {
+            os << ptr[i] << "\t";
+            
+        }
+        os << ptr[n-1];
+        os.close();
+        
+        
+// ####### LowOrder
+                
+        name = "HighOrder";
+        
+        U.setZero();
+        bct->Multiply(V,U, BCTKernelType::HighOrder);
+        
+
+        os.open("./Output_" + name + ".tsv");
+        for( mint i = 0; i < vertex_count; ++i )
+        {
+            os << U(i,0) << "\t";
+            os << U(i,1) << "\t";
+            os << U(i,2) << "\n";
+        }
+        os.close();
+        
+        os.open("./P_in_" + name + ".tsv");
+        ptr = bct->S->P_in;
+        n = bct->T->cluster_count * bct->T->buffer_dim;
+        for( mint i = 0; i < n-1; ++i )
+        {
+            os << ptr[i] << "\t";
+            
+        }
+        os << ptr[n-1];
+        os.close();
+        
+        os.open("./C_in_leaves_" + name + ".tsv");
+        ptr = bct->T->C_in;
+        n = bct->T->buffer_dim;
+        for( mint i = 0; i < bct->T->leaf_cluster_count; ++i )
+        {
+            for( mint k = 0; k < n; ++k )
+            os << ptr[ n * bct->T->leaf_clusters[i] + k ] << "\t";
+            
+        }
+        os.close();
+        
+        os.open("./C_in_" + name + ".tsv");
+        ptr = bct->T->C_in;
+        n = bct->T->cluster_count * bct->T->buffer_dim;
+        for( mint i = 0; i < n-1; ++i )
+        {
+            os << ptr[i] << "\t";
+            
+        }
+        os << ptr[n-1];
+        os.close();
+        
+
+        os.open("./C_out_" + name + ".tsv");
+        ptr = bct->S->C_out;
+        n = bct->S->cluster_count * bct->S->buffer_dim;
+        for( mint i = 0; i < n-1; ++i )
+        {
+            os << ptr[i] << "\t";
+            
+        }
+        os << ptr[n-1];
+        os.close();
+        
+        os.open("./P_out_" + name + ".tsv");
+        ptr = bct->S->P_out;
+        n = bct->S->cluster_count * bct->S->buffer_dim;
+        for( mint i = 0; i < n-1; ++i )
+        {
+            os << ptr[i] << "\t";
+            
+        }
+        os << ptr[n-1];
+        os.close();
+        
+
+
+        
+        os.open("./Far_FractionalOnly.tsv");
+        ptr = bct->far->fr_values;
+        for( mint i = 0; i < bct->far->nnz-1; ++i )
+        {
+            os << ptr[i] << "\t";
+
+        }
+        os << ptr[bct->far->nnz-1];
+        os.close();
+        os.open("./Far_LowOrder.tsv");
+        ptr = bct->far->lo_values;
+        for( mint i = 0; i < bct->far->nnz-1; ++i )
+        {
+            os << ptr[i] << "\t";
+
+        }
+        os << ptr[bct->far->nnz-1];
+        os.close();
+
+        os.open("./Far_HighOrder.tsv");
+        ptr = bct->far->hi_values;
+        for( mint i = 0; i < bct->far->nnz-1; ++i )
+        {
+            os << ptr[i] << "\t";
+
+        }
+        os << ptr[bct->far->nnz-1];
+        os.close();
+
+
+
+        os.open("./Near_FractionalOnly.tsv");
+        ptr = bct->near->fr_values;
+        for( mint i = 0; i < bct->near->nnz-1; ++i )
+        {
+            os << ptr[i] << "\t";
+
+        }
+        os << ptr[bct->near->nnz-1];
+        os.close();
+        os.open("./Near_LowOrder.tsv");
+        ptr = bct->near->lo_values;
+        for( mint i = 0; i < bct->near->nnz-1; ++i )
+        {
+            os << ptr[i] << "\t";
+
+        }
+        os << ptr[bct->near->nnz-1];
+        os.close();
+
+        os.open("./Near_HighOrder.tsv");
+        ptr = bct->near->hi_values;
+        for( mint i = 0; i < bct->near->nnz-1; ++i )
+        {
+            os << ptr[i] << "\t";
+
+        }
+        os << ptr[bct->near->nnz-1];
+        os.close();
+
+        
+        delete bct;
+        delete bvh;
+
+        std::cout << "TestMultiply finished." << std::endl;
+    }
+        
     void MainApp::TestObstacle0()
     {
-        std::cout << std::setprecision(16);
+        int threads;
+        #pragma omp parallel
+        {
+            threads = omp_get_num_threads();
+        }
+        ClearProfile("./TestObstacle0_" + std::to_string(threads)+ ".tsv");
+        
+        std::cout << std::setprecision(8);
         std::cout << "\n  =====                   =====  " << std::endl;
         std::cout << "=======   TestObstacle0   =======" << std::endl;
         std::cout << "  =====                   =====  " << std::endl;
@@ -511,13 +868,18 @@ namespace rsurfaces
 
         double alpha = 6.;
         double beta = 12.;
+        double weight = 1.;
+//        double theta = MainApp::instance->bh_theta;
         double theta = 0.25;
+        double chi = theta;
+//        double chi = 0.8 * theta;
 
         // mesh1 and geom1 represent the movable surface
         auto mesh1 = rsurfaces::MainApp::instance->mesh;
         auto geom1 = rsurfaces::MainApp::instance->geom;
 
         // Load obstacle
+//        std::string filename = "../scenes/Bunny/bunny-10p.obj";
         std::string filename = "../scenes/Bunny/bunny.obj";
         MeshUPtr umesh;
         GeomUPtr ugeom;
@@ -528,26 +890,39 @@ namespace rsurfaces
         polyscope::SurfaceMesh *psMesh = polyscope::registerSurfaceMesh(mesh_name, ugeom->inputVertexPositions, umesh->getFaceVertexList(), polyscopePermutations(*umesh));
         // mesh2 and geom2 represent the pinned obstacle
         MeshPtr mesh2 = std::move(umesh);
-        GeomPtr geom2 = std::move(ugeom);
+        std::shared_ptr<VertexPositionGeometry> geom2 = std::move(ugeom);
 
+        mint primitive_count1 = mesh1->nVertices();
+        mint primitive_count2 = mesh2->nVertices();
+        
         tic("Create bvh1");
         OptimizedClusterTree *bvh1 = CreateOptimizedBVH(mesh1, geom1);
+        OptimizedClusterTree *bvh1_nl = CreateOptimizedBVH_Normals(mesh1, geom1);
+        OptimizedClusterTree *bvh1_pr = CreateOptimizedBVH_Projectors(mesh1, geom1);
         toc("Create bvh1");
         tic("Create bvh2");
         OptimizedClusterTree *bvh2 = CreateOptimizedBVH(mesh2, geom2);
+        OptimizedClusterTree *bvh2_nl = CreateOptimizedBVH_Normals(mesh2, geom2);
+        OptimizedClusterTree *bvh2_pr = CreateOptimizedBVH_Projectors(mesh2, geom2);
         toc("Create bvh2");
 
         tic("Create bct11");
-        auto bct11 = std::make_shared<OptimizedBlockClusterTree>(bvh1, bvh1, alpha, beta, theta);
+        auto bct11 = std::make_shared<OptimizedBlockClusterTree>(bvh1, bvh1, alpha, beta, chi);
+        auto bct11_nl = std::make_shared<OptimizedBlockClusterTree>(bvh1_nl, bvh1_nl, alpha, beta, chi);
+        auto bct11_pr = std::make_shared<OptimizedBlockClusterTree>(bvh1_pr, bvh1_pr, alpha, beta, chi);
         toc("Create bct11");
         tic("Create bct12");
-        auto bct12 = std::make_shared<OptimizedBlockClusterTree>(bvh1, bvh2, alpha, beta, theta);
+        auto bct12 = std::make_shared<OptimizedBlockClusterTree>(bvh1, bvh2, alpha, beta, chi);
+        auto bct12_nl = std::make_shared<OptimizedBlockClusterTree>(bvh1_nl, bvh2_nl, alpha, beta, chi);
+        auto bct12_pr = std::make_shared<OptimizedBlockClusterTree>(bvh1_pr, bvh2_pr, alpha, beta, chi);
         toc("Create bct12");
 
         // The transpose of bct12 and thus not needed.
         //auto bct21 = std::make_shared<OptimizedBlockClusterTree>(bvh2, bvh1, alpha, beta, theta);
         tic("Create bct22");
-        auto bct22 = std::make_shared<OptimizedBlockClusterTree>(bvh2, bvh2, alpha, beta, theta);
+        auto bct22 = std::make_shared<OptimizedBlockClusterTree>(bvh2, bvh2, alpha, beta, chi);
+        auto bct22_nl = std::make_shared<OptimizedBlockClusterTree>(bvh2_nl, bvh2_nl, alpha, beta, chi);
+        auto bct22_pr = std::make_shared<OptimizedBlockClusterTree>(bvh2_pr, bvh2_pr, alpha, beta, chi);
         toc("Create bct22");
 
         bct11->PrintStats();
@@ -570,223 +945,535 @@ namespace rsurfaces
         // Afterwards, bct1->Multiply will also multiply with the metric contribution of the obstacle.
         tic("Modifying bct11 to include the terms with respect to the obstacle.");
         bct11->AddObstacleCorrection(bct12.get());
+        bct11_nl->AddObstacleCorrection(bct12_nl.get());
+        bct11_pr->AddObstacleCorrection(bct12_pr.get());
         toc("Modifying bct11 to include the terms with respect to the obstacle.");
 
+        mint energy_count = 7;
+        
         // the self-interaction energy of mesh1
-        auto tpe_fm_11 = std::make_shared<TPEnergyMultipole0>(mesh1, geom1, bct11.get(), alpha, beta);
-        auto tpe_bh_11 = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta);
-        auto tpe_ex_11 = std::make_shared<TPEnergyAllPairs>(mesh1, geom1, alpha, beta);
+        auto tpe_fm_11 = std::make_shared<TPEnergyMultipole0>(mesh1, geom1, bct11.get(), alpha, beta, weight);
+        auto tpe_fm_nl_11 = std::make_shared<TPEnergyMultipole_Normals0>(mesh1, geom1, bct11_nl.get(), alpha, beta, weight);
+        auto tpe_fm_pr_11 = std::make_shared<TPEnergyMultipole_Projectors0>(mesh1, geom1, bct11_pr.get(), alpha, beta, weight);
+        auto tpe_bh_11 = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
+        auto tpe_bh_pr_11 = std::make_shared<TPEnergyBarnesHut_Projectors0>(mesh1, geom1, alpha, beta, theta, weight);
+        auto tpe_ex_11 = std::make_shared<TPEnergyAllPairs>(mesh1, geom1, alpha, beta, weight);
+        auto tpe_ex_pr_11 = std::make_shared<TPEnergyAllPairs_Projectors>(mesh1, geom1, alpha, beta, weight);
 
         // the interaction energy between mesh1 and mesh2
-        auto tpe_fm_12 = std::make_shared<TPObstacleMultipole0>(mesh1, geom1, bct12.get(), alpha, beta);
-        auto tpe_bh_12 = std::make_shared<TPObstacleBarnesHut0>(mesh1, geom1, tpe_bh_11.get(), mesh2, geom2, alpha, beta, theta, 1);
-        auto tpe_ex_12 = std::make_shared<TPObstacleAllPairs>(mesh1, geom1, tpe_bh_11.get(), mesh2, geom2, alpha, beta);
+        auto tpe_fm_12 = std::make_shared<TPObstacleMultipole0>(mesh1, geom1, bct12.get(), alpha, beta, weight);
+        auto tpe_fm_nl_12 = std::make_shared<TPObstacleMultipole_Normals0>(mesh1, geom1, bct12_nl.get(), alpha, beta, weight);
+        auto tpe_fm_pr_12 = std::make_shared<TPObstacleMultipole_Projectors0>(mesh1, geom1, bct12_pr.get(), alpha, beta, weight);
+        auto tpe_bh_12 = std::make_shared<TPObstacleBarnesHut0>(mesh1, geom1, tpe_bh_11.get(), mesh2, geom2, alpha, beta, theta, weight);
+        auto tpe_bh_pr_12 = std::make_shared<TPObstacleBarnesHut_Projectors0>(mesh1, geom1, tpe_bh_pr_11.get(), mesh2, geom2, alpha, beta, theta, weight);
+        auto tpe_ex_12 = std::make_shared<TPObstacleAllPairs>(mesh1, geom1, tpe_bh_11.get(), mesh2, geom2, alpha, beta, weight);
+        auto tpe_ex_pr_12 = std::make_shared<TPObstacleAllPairs_Projectors>(mesh1, geom1, tpe_bh_pr_11.get(), mesh2, geom2, alpha, beta, weight);
 
         // the self-interaction energy of mesh2; since mesh2 is the obstacle here, this is not needed in practice; I used this here only for test purposes and in order to see how much "work" is saved by this approach.
-        auto tpe_fm_22 = std::make_shared<TPEnergyMultipole0>(mesh2, geom2, bct22.get(), alpha, beta);
-        auto tpe_bh_22 = std::make_shared<TPEnergyBarnesHut0>(mesh2, geom2, alpha, beta, theta);
-        auto tpe_ex_22 = std::make_shared<TPEnergyAllPairs>(mesh2, geom2, alpha, beta);
+        auto tpe_fm_22 = std::make_shared<TPEnergyMultipole0>(mesh2, geom2, bct22.get(), alpha, beta, weight);
+        auto tpe_fm_nl_22 = std::make_shared<TPEnergyMultipole_Normals0>(mesh2, geom2, bct22_nl.get(), alpha, beta, weight);
+        auto tpe_fm_pr_22 = std::make_shared<TPEnergyMultipole_Projectors0>(mesh2, geom2, bct22_pr.get(), alpha, beta, weight);
+        auto tpe_bh_22 = std::make_shared<TPEnergyBarnesHut0>(mesh2, geom2, alpha, beta, theta, weight);
+        auto tpe_bh_pr_22 = std::make_shared<TPEnergyBarnesHut_Projectors0>(mesh2, geom2, alpha, beta, theta, weight);
+        auto tpe_ex_22 = std::make_shared<TPEnergyAllPairs>(mesh2, geom2, alpha, beta, weight);
+        auto tpe_ex_pr_22 = std::make_shared<TPEnergyAllPairs_Projectors>(mesh2, geom2, alpha, beta, weight);
 
         // the energies tpe_**_11, tpe_**_12, tpe_**_22 are gauged such that their sum equals the tangent-point energy of the union of mesh1 and mesh2.
 
         double E_fm_11, E_fm_12, E_fm_22;
+        double E_fm_nl_11, E_fm_nl_12, E_fm_nl_22;
+        double E_fm_pr_11, E_fm_pr_12, E_fm_pr_22;
         double E_bh_11, E_bh_12, E_bh_22;
+        double E_bh_pr_11, E_bh_pr_12, E_bh_pr_22;
         double E_ex_11, E_ex_12, E_ex_22;
+        double E_ex_pr_11, E_ex_pr_12, E_ex_pr_22;
 
-        Eigen::MatrixXd DE_fm_11(mesh1->nVertices(), 3);
-        Eigen::MatrixXd DE_fm_12(mesh1->nVertices(), 3);
-        Eigen::MatrixXd DE_fm_22(mesh2->nVertices(), 3);
-        Eigen::MatrixXd DE_bh_11(mesh1->nVertices(), 3);
-        Eigen::MatrixXd DE_bh_12(mesh1->nVertices(), 3);
-        Eigen::MatrixXd DE_bh_22(mesh2->nVertices(), 3);
-        Eigen::MatrixXd DE_ex_11(mesh1->nVertices(), 3);
-        Eigen::MatrixXd DE_ex_12(mesh1->nVertices(), 3);
-        Eigen::MatrixXd DE_ex_22(mesh1->nVertices(), 3);
+        Eigen::MatrixXd DE_fm_11(primitive_count1, 3);
+        Eigen::MatrixXd DE_fm_12(primitive_count1, 3);
+        Eigen::MatrixXd DE_fm_22(primitive_count2, 3);
+        
+        Eigen::MatrixXd DE_fm_nl_11(primitive_count1, 3);
+        Eigen::MatrixXd DE_fm_nl_12(primitive_count1, 3);
+        Eigen::MatrixXd DE_fm_nl_22(primitive_count2, 3);
+        
+        Eigen::MatrixXd DE_fm_pr_11(primitive_count1, 3);
+        Eigen::MatrixXd DE_fm_pr_12(primitive_count1, 3);
+        Eigen::MatrixXd DE_fm_pr_22(primitive_count2, 3);
+        
+        Eigen::MatrixXd DE_bh_11(primitive_count1, 3);
+        Eigen::MatrixXd DE_bh_12(primitive_count1, 3);
+        Eigen::MatrixXd DE_bh_22(primitive_count2, 3);
+        
+        Eigen::MatrixXd DE_bh_pr_11(primitive_count1, 3);
+        Eigen::MatrixXd DE_bh_pr_12(primitive_count1, 3);
+        Eigen::MatrixXd DE_bh_pr_22(primitive_count2, 3);
+        
+        Eigen::MatrixXd DE_ex_11(primitive_count1, 3);
+        Eigen::MatrixXd DE_ex_12(primitive_count1, 3);
+        Eigen::MatrixXd DE_ex_22(primitive_count2, 3);
+        
+        Eigen::MatrixXd DE_ex_pr_11(primitive_count1, 3);
+        Eigen::MatrixXd DE_ex_pr_12(primitive_count1, 3);
+        Eigen::MatrixXd DE_ex_pr_22(primitive_count2, 3);
 
         std::cout << "Using integer exponents." << std::endl;
 
+        mint counter = 0;
+        mint count = energy_count * 6;
         tic();
-        tpe_ex_11->Update();
         E_ex_11 = tpe_ex_11->Value();
         mreal t_ex_11 = toc();
-        std::cout << "done 1" << std::endl;
+        std::cout << "done " << ++counter << " / " << count << std::endl;
 
         tic();
-        tpe_ex_12->Update();
         E_ex_12 = tpe_ex_12->Value();
         mreal t_ex_12 = toc();
-        std::cout << "done 2" << std::endl;
+        std::cout << "done " << ++counter << " / " << count << std::endl;
 
         tic();
-        tpe_ex_22->Update();
         E_ex_22 = tpe_ex_22->Value();
         mreal t_ex_22 = toc();
-        std::cout << "done 3" << std::endl;
+        std::cout << "done " << ++counter << " / " << count << std::endl;
 
         tic();
         DE_ex_11.setZero();
         tpe_ex_11->Differential(DE_ex_11);
         mreal Dt_ex_11 = toc();
-        std::cout << "done 4" << std::endl;
+        std::cout << "done " << ++counter << " / " << count << std::endl;
 
         tic();
         DE_ex_12.setZero();
         tpe_ex_12->Differential(DE_ex_12);
         mreal Dt_ex_12 = toc();
-        std::cout << "done 5" << std::endl;
+        std::cout << "done " << ++counter << " / " << count << std::endl;
 
         tic();
         DE_ex_22.setZero();
         tpe_ex_22->Differential(DE_ex_22);
         mreal Dt_ex_22 = toc();
-        std::cout << "done 6" << std::endl;
+        std::cout << "done " << ++counter << " / " << count << std::endl;
 
         //######################################
+        
         tic();
-        tpe_bh_11->Update();
+        E_ex_pr_11 = tpe_ex_pr_11->Value();
+        mreal t_ex_pr_11 = toc();
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+
+        tic();
+//        tpe_ex_pr_12->Update();
+        E_ex_pr_12 = tpe_ex_pr_12->Value();
+        mreal t_ex_pr_12 = toc();
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+
+        tic();
+        E_ex_pr_22 = tpe_ex_pr_22->Value();
+        mreal t_ex_pr_22 = toc();
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+
+        tic();
+        DE_ex_pr_11.setZero();
+        tpe_ex_pr_11->Differential(DE_ex_pr_11);
+        mreal Dt_ex_pr_11 = toc();
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+
+        tic();
+        DE_ex_pr_12.setZero();
+        tpe_ex_pr_12->Differential(DE_ex_pr_12);
+        mreal Dt_ex_pr_12 = toc();
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+
+        tic();
+        DE_ex_pr_22.setZero();
+        tpe_ex_pr_22->Differential(DE_ex_pr_22);
+        mreal Dt_ex_pr_22 = toc();
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+
+        //######################################
+        
+        tic();
         E_bh_11 = tpe_bh_11->Value();
         mreal t_bh_11 = toc();
-        std::cout << "done 7" << std::endl;
+        std::cout << "done " << ++counter << " / " << count << std::endl;
 
         tic();
-        tpe_bh_12->Update();
+//        tpe_bh_12->Update();
         E_bh_12 = tpe_bh_12->Value();
         mreal t_bh_12 = toc();
-        std::cout << "done 8" << std::endl;
+        std::cout << "done " << ++counter << " / " << count << std::endl;
 
         tic();
-        tpe_bh_22->Update();
         E_bh_22 = tpe_bh_22->Value();
         mreal t_bh_22 = toc();
-        std::cout << "done 9" << std::endl;
+        std::cout << "done " << ++counter << " / " << count << std::endl;
 
         tic();
         DE_bh_11.setZero();
         tpe_bh_11->Differential(DE_bh_11);
         mreal Dt_bh_11 = toc();
-        std::cout << "done 10" << std::endl;
+        std::cout << "done " << ++counter << " / " << count << std::endl;
 
         tic();
         DE_bh_12.setZero();
         tpe_bh_12->Differential(DE_bh_12);
         mreal Dt_bh_12 = toc();
-        std::cout << "done 11" << std::endl;
+        std::cout << "done " << ++counter << " / " << count << std::endl;
 
         tic();
         DE_bh_22.setZero();
         tpe_bh_22->Differential(DE_bh_22);
         mreal Dt_bh_22 = toc();
-        std::cout << "done 12" << std::endl;
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+        
+        //######################################
+        
+        
+        tic();
+        E_bh_pr_11 = tpe_bh_pr_11->Value();
+        mreal t_bh_pr_11 = toc();
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+
+        tic();
+//        tpe_bh_12->Update();
+        E_bh_pr_12 = tpe_bh_pr_12->Value();
+        mreal t_bh_pr_12 = toc();
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+
+        tic();
+        E_bh_pr_22 = tpe_bh_pr_22->Value();
+        mreal t_bh_pr_22 = toc();
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+
+        tic();
+        DE_bh_pr_11.setZero();
+        tpe_bh_pr_11->Differential(DE_bh_pr_11);
+        mreal Dt_bh_pr_11 = toc();
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+
+        tic();
+        DE_bh_pr_12.setZero();
+        tpe_bh_pr_12->Differential(DE_bh_pr_12);
+        mreal Dt_bh_pr_12 = toc();
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+
+        tic();
+        DE_bh_pr_22.setZero();
+        tpe_bh_pr_22->Differential(DE_bh_pr_22);
+        mreal Dt_bh_pr_22 = toc();
+        std::cout << "done " << ++counter << " / " << count << std::endl;
 
         //######################################
+        
         tic();
-        //        tpe_fm_11->Update();
+        E_fm_nl_11 = tpe_fm_nl_11->Value();
+        mreal t_fm_nl_11 = toc();
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+
+        tic();
+        E_fm_nl_12 = tpe_fm_nl_12->Value();
+        mreal t_fm_nl_12 = toc();
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+
+        tic();
+        E_fm_nl_22 = tpe_fm_nl_22->Value();
+        mreal t_fm_nl_22 = toc();
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+
+        tic();
+        DE_fm_nl_11.setZero();
+        tpe_fm_nl_11->Differential(DE_fm_nl_11);
+        mreal Dt_fm_nl_11 = toc();
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+
+        tic();
+        DE_fm_nl_12.setZero();
+        tpe_fm_nl_12->Differential(DE_fm_nl_12);
+        mreal Dt_fm_nl_12 = toc();
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+
+        tic();
+        DE_fm_nl_22.setZero();
+        tpe_fm_nl_22->Differential(DE_fm_nl_22);
+        mreal Dt_fm_nl_22 = toc();
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+        
+        //######################################
+        
+        tic();
         E_fm_11 = tpe_fm_11->Value();
         mreal t_fm_11 = toc();
-        std::cout << "done 13" << std::endl;
+        std::cout << "done " << ++counter << " / " << count << std::endl;
 
         tic();
-        //        tpe_fm_12->Update();
         E_fm_12 = tpe_fm_12->Value();
         mreal t_fm_12 = toc();
-        std::cout << "done 14" << std::endl;
+        std::cout << "done " << ++counter << " / " << count << std::endl;
 
         tic();
-        //        tpe_fm_22->Update();
         E_fm_22 = tpe_fm_22->Value();
         mreal t_fm_22 = toc();
-        std::cout << "done 15" << std::endl;
+        std::cout << "done " << ++counter << " / " << count << std::endl;
 
         tic();
         DE_fm_11.setZero();
         tpe_fm_11->Differential(DE_fm_11);
         mreal Dt_fm_11 = toc();
-        std::cout << "done 16" << std::endl;
+        std::cout << "done " << ++counter << " / " << count << std::endl;
 
         tic();
         DE_fm_12.setZero();
         tpe_fm_12->Differential(DE_fm_12);
         mreal Dt_fm_12 = toc();
-        std::cout << "done 17" << std::endl;
-
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+        
         tic();
         DE_fm_22.setZero();
         tpe_fm_22->Differential(DE_fm_22);
         mreal Dt_fm_22 = toc();
-        std::cout << "done 18" << std::endl;
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+        
+        
+        //######################################
+        tic();
+        E_fm_pr_11 = tpe_fm_pr_11->Value();
+        mreal t_fm_pr_11 = toc();
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+
+        tic();
+        E_fm_pr_12 = tpe_fm_pr_12->Value();
+        mreal t_fm_pr_12 = toc();
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+
+        tic();
+        E_fm_pr_22 = tpe_fm_pr_22->Value();
+        mreal t_fm_pr_22 = toc();
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+
+        tic();
+        DE_fm_pr_11.setZero();
+        tpe_fm_pr_11->Differential(DE_fm_pr_11);
+        mreal Dt_fm_pr_11 = toc();
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+
+        tic();
+        DE_fm_pr_12.setZero();
+        tpe_fm_pr_12->Differential(DE_fm_pr_12);
+        mreal Dt_fm_pr_12 = toc();
+        std::cout << "done " << ++counter << " / " << count << std::endl;
+
+        tic();
+        DE_fm_pr_22.setZero();
+        tpe_fm_pr_22->Differential(DE_fm_pr_22);
+        mreal Dt_fm_pr_22 = toc();
+        std::cout << "done " << ++counter << " / " << count << std::endl;
 
         //######################################
 
-        int w = 22;
+        int w1 = 21;
+        int w  = 13;
+//
+//        std::string line = "--------------------------------------------------------------------------------------------------------------------------------------------------------------------";
+        std::string line = std::string( 3 * energy_count + w1 + w * energy_count, '-');
+        std::cout   << std::left;
+        std::cout   << std::setw(w1) << ""
+                    << " | " << std::setw(w) << "exact"
+                    << " | " << std::setw(w) << "pr"
+                    << " | " << std::setw(w) << "BH"
+                    << " | " << std::setw(w) << "BH_pr"
+                    << " | " << std::setw(w) << "FMM"
+                    << " | " << std::setw(w) << "FMM_pr"
+                    << " | " << std::setw(w) << "FMM_nl"
+                    << std::endl;
 
-        std::cout << std::left;
-        std::cout << std::setw(w) << ""
-                  << " | " << std::setw(w) << "exact"
-                  << " | " << std::setw(w) << "BH"
-                  << " | " << std::setw(w) << "FMM" << std::endl;
+        std::cout   << line << std::endl;
 
-        std::cout << "------------------------------------------------------------------------------------------------" << std::endl;
+        std::cout   << std::setw(w1) << "  E_11 "
+                    << " | " << std::setw(w) << E_ex_11
+                    << " | " << std::setw(w) << E_ex_pr_11
+                    << " | " << std::setw(w) << E_bh_11
+                    << " | " << std::setw(w) << E_bh_pr_11
+                    << " | " << std::setw(w) << E_fm_11
+                    << " | " << std::setw(w) << E_fm_pr_11
+                    << " | " << std::setw(w) << E_fm_nl_11
+                    << std::endl;
 
-        std::cout << std::setw(w) << "  E_11 error (%) "
-                  << " | " << std::setw(w) << fabs(E_ex_11 / E_ex_11 - 1) * 100
-                  << " | " << std::setw(w) << fabs(E_bh_11 / E_ex_11 - 1) * 100
-                  << " | " << std::setw(w) << fabs(E_fm_11 / E_ex_11 - 1) * 100
-                  << std::endl;
+        std::cout   << std::setw(w1) << "  E_12 "
+                    << " | " << std::setw(w) << E_ex_12
+                    << " | " << std::setw(w) << E_ex_pr_12
+                    << " | " << std::setw(w) << E_bh_12
+                    << " | " << std::setw(w) << E_bh_pr_12
+                    << " | " << std::setw(w) << E_fm_12
+                    << " | " << std::setw(w) << E_fm_pr_12
+                    << " | " << std::setw(w) << E_fm_nl_12
+                    << std::endl;
 
-        std::cout << std::setw(w) << "  E_12 error (%) "
-                  << " | " << std::setw(w) << fabs(E_ex_12 / E_ex_12 - 1) * 100
-                  << " | " << std::setw(w) << fabs(E_bh_12 / E_ex_12 - 1) * 100
-                  << " | " << std::setw(w) << fabs(E_fm_12 / E_ex_12 - 1) * 100
-                  << std::endl;
+        std::cout   << std::setw(w1) << "  E_22 "
+                    << " | " << std::setw(w) << E_ex_22
+                    << " | " << std::setw(w) << E_ex_pr_22
+                    << " | " << std::setw(w) << E_bh_22
+                    << " | " << std::setw(w) << E_bh_pr_22
+                    << " | " << std::setw(w) << E_fm_22
+                    << " | " << std::setw(w) << E_fm_pr_22
+                    << " | " << std::setw(w) << E_fm_nl_22
+                    << std::endl;
+        
+        
+        std::cout   << "\n";
+        std::cout   << std::setw(w1) << ""
+                    << " | " << std::setw(w) << "exact"
+                    << " | " << std::setw(w) << "pr"
+                    << " | " << std::setw(w) << "BH"
+                    << " | " << std::setw(w) << "BH_pr"
+                    << " | " << std::setw(w) << "FMM"
+                    << " | " << std::setw(w) << "FMM_pr"
+                    << " | " << std::setw(w) << "FMM_nl"
+                    << std::endl;
 
-        std::cout << std::setw(w) << "  E_22 error (%) "
-                  << " | " << std::setw(w) << fabs(E_ex_12 / E_ex_12 - 1) * 100
-                  << " | " << std::setw(w) << fabs(E_bh_22 / E_ex_22 - 1) * 100
-                  << " | " << std::setw(w) << fabs(E_fm_22 / E_ex_22 - 1) * 100
-                  << std::endl;
+        std::cout   << line << std::endl;
 
-        std::cout << std::setw(w) << " DE_11 error (%) "
-                  << " | " << std::setw(w) << (DE_ex_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
-                  << " | " << std::setw(w) << (DE_bh_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
-                  << " | " << std::setw(w) << (DE_fm_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
-                  << std::endl;
+        std::cout   << std::setw(w1) << "  E_11 error (%) "
+                    << " | " << std::setw(w) << fabs(E_ex_11 / E_ex_11 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_ex_pr_11 / E_ex_11 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_bh_11 / E_ex_11 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_bh_pr_11 / E_ex_11 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_fm_11 / E_ex_11 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_fm_pr_11 / E_ex_11 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_fm_nl_11 / E_ex_11 - 1) * 100
+                    << std::endl;
 
-        std::cout << std::setw(w) << " DE_12 error (%) "
-                  << " | " << std::setw(w) << (DE_ex_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
-                  << " | " << std::setw(w) << (DE_bh_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
-                  << " | " << std::setw(w) << (DE_fm_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
-                  << std::endl;
+        std::cout   << std::setw(w1) << "  E_12 error (%) "
+                    << " | " << std::setw(w) << fabs(E_ex_12 / E_ex_12 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_ex_pr_12 / E_ex_12 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_bh_12 / E_ex_12 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_bh_pr_12 / E_ex_12 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_fm_12 / E_ex_12 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_fm_pr_12 / E_ex_12 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_fm_nl_12 / E_ex_12 - 1) * 100
+                    << std::endl;
 
-        std::cout << std::setw(w) << " DE_22 error (%) "
-                  << " | " << std::setw(w) << (DE_ex_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
-                  << " | " << std::setw(w) << (DE_bh_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
-                  << " | " << std::setw(w) << (DE_fm_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
-                  << std::endl;
+        std::cout   << std::setw(w1) << "  E_22 error (%) "
+                    << " | " << std::setw(w) << fabs(E_ex_22 / E_ex_22 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_ex_pr_22 / E_ex_22 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_bh_22 / E_ex_22 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_bh_pr_22 / E_ex_22 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_fm_22 / E_ex_22 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_fm_pr_22 / E_ex_22 - 1) * 100
+                    << " | " << std::setw(w) << fabs(E_fm_nl_22 / E_ex_22 - 1) * 100
+                    << std::endl;
 
-        std::cout << "\n"
-                  << std::endl;
-        std::cout << std::setw(w) << ""
-                  << " | " << std::setw(w) << "exact"
-                  << " | " << std::setw(w) << "BH"
-                  << " | " << std::setw(w) << "FMM"
-                  << std::endl;
+        std::cout   << std::setw(w1) << " DE_11 error (%) "
+                    << " | " << std::setw(w) << (DE_ex_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
+                    << " | " << std::setw(w) << (DE_ex_pr_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
+                    << " | " << std::setw(w) << (DE_bh_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
+                    << " | " << std::setw(w) << (DE_bh_pr_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
+                    << " | " << std::setw(w) << (DE_fm_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
+                    << " | " << std::setw(w) << (DE_fm_pr_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
+                    << " | " << std::setw(w) << (DE_fm_nl_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
+                    << std::endl;
 
-        std::cout << "------------------------------------------------------------------------------------------------" << std::endl;
+        std::cout   << std::setw(w1) << " DE_12 error (%) "
+                    << " | " << std::setw(w) << (DE_ex_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
+                    << " | " << std::setw(w) << (DE_ex_pr_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
+                    << " | " << std::setw(w) << (DE_bh_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
+                    << " | " << std::setw(w) << (DE_bh_pr_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
+                    << " | " << std::setw(w) << (DE_fm_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
+                    << " | " << std::setw(w) << (DE_fm_pr_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
+                    << " | " << std::setw(w) << (DE_fm_nl_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
+                    << std::endl;
 
-        std::cout << std::setw(w) << "  E_11 time  (s) "
-                  << " | " << std::setw(w) << t_ex_11 << " | " << std::setw(w) << t_bh_11 << " | " << std::setw(w) << t_fm_11 << std::endl;
-        std::cout << std::setw(w) << "  E_12 time  (s) "
-                  << " | " << std::setw(w) << t_ex_12 << " | " << std::setw(w) << t_bh_12 << " | " << std::setw(w) << t_fm_12 << std::endl;
-        std::cout << std::setw(w) << "  E_22 time  (s) "
-                  << " | " << std::setw(w) << t_ex_22 << " | " << std::setw(w) << t_bh_22 << " | " << std::setw(w) << t_fm_22 << std::endl;
-        std::cout << std::setw(w) << " DE_11 time  (s) "
-                  << " | " << std::setw(w) << Dt_ex_11 << " | " << std::setw(w) << Dt_bh_11 << " | " << std::setw(w) << Dt_fm_11 << std::endl;
-        std::cout << std::setw(w) << " DE_12 time  (s) "
-                  << " | " << std::setw(w) << Dt_ex_12 << " | " << std::setw(w) << Dt_bh_12 << " | " << std::setw(w) << Dt_fm_12 << std::endl;
-        std::cout << std::setw(w) << " DE_22 time  (s) "
-                  << " | " << std::setw(w) << Dt_ex_22 << " | " << std::setw(w) << Dt_bh_22 << " | " << std::setw(w) << Dt_fm_22 << std::endl;
+        std::cout   << std::setw(w1) << " DE_22 error (%) "
+                    << " | " << std::setw(w) << (DE_ex_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
+                    << " | " << std::setw(w) << (DE_ex_pr_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
+                    << " | " << std::setw(w) << (DE_bh_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
+                    << " | " << std::setw(w) << (DE_bh_pr_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
+                    << " | " << std::setw(w) << (DE_fm_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
+                    << " | " << std::setw(w) << (DE_fm_pr_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
+                    << " | " << std::setw(w) << (DE_fm_nl_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
+                    << std::endl;
+        
+
+        std::cout   << "\n"
+                    << std::endl;
+        std::cout   << std::setw(w1) << ""
+                    << " | " << std::setw(w) << "exact"
+                    << " | " << std::setw(w) << "pr"
+                    << " | " << std::setw(w) << "BH"
+                    << " | " << std::setw(w) << "BH_pr"
+                    << " | " << std::setw(w) << "FMM"
+                    << " | " << std::setw(w) << "FMM_pr"
+                    << " | " << std::setw(w) << "FMM_nl"
+                    << std::endl;
+
+        std::cout   << line << std::endl;
+
+        std::cout   << std::setw(w1) << "  E_11 time  (s) "
+                    << " | " << std::setw(w) << t_ex_11
+                    << " | " << std::setw(w) << t_ex_pr_11
+                    << " | " << std::setw(w) << t_bh_11
+                    << " | " << std::setw(w) << t_bh_pr_11
+                    << " | " << std::setw(w) << t_fm_11
+                    << " | " << std::setw(w) << t_fm_pr_11
+                    << " | " << std::setw(w) << t_fm_nl_11
+                    << std::endl;
+        
+        std::cout   << std::setw(w1) << "  E_12 time  (s) "
+                    << " | " << std::setw(w) << t_ex_12
+                    << " | " << std::setw(w) << t_ex_pr_12
+                    << " | " << std::setw(w) << t_bh_12
+                    << " | " << std::setw(w) << t_bh_pr_12
+                    << " | " << std::setw(w) << t_fm_12
+                    << " | " << std::setw(w) << t_fm_pr_12
+                    << " | " << std::setw(w) << t_fm_nl_12
+                    << std::endl;
+        
+        std::cout   << std::setw(w1) << "  E_22 time  (s) "
+                    << " | " << std::setw(w) << t_ex_22
+                    << " | " << std::setw(w) << t_ex_pr_22
+                    << " | " << std::setw(w) << t_bh_22
+                    << " | " << std::setw(w) << t_bh_pr_22
+                    << " | " << std::setw(w) << t_fm_22
+                    << " | " << std::setw(w) << t_fm_pr_22
+                    << " | " << std::setw(w) << t_fm_nl_22
+                    << std::endl;
+        
+        std::cout   << std::setw(w1) << " DE_11 time  (s) "
+                    << " | " << std::setw(w) << Dt_ex_11
+                    << " | " << std::setw(w) << Dt_ex_pr_11
+                    << " | " << std::setw(w) << Dt_bh_11
+                    << " | " << std::setw(w) << Dt_bh_pr_11
+                    << " | " << std::setw(w) << Dt_fm_11
+                    << " | " << std::setw(w) << Dt_fm_pr_11
+                    << " | " << std::setw(w) << Dt_fm_nl_11
+                    << std::endl;
+        
+        std::cout   << std::setw(w1) << " DE_12 time  (s) "
+                    << " | " << std::setw(w) << Dt_ex_12
+                    << " | " << std::setw(w) << Dt_ex_pr_12
+                    << " | " << std::setw(w) << Dt_bh_12
+                    << " | " << std::setw(w) << Dt_bh_pr_12
+                    << " | " << std::setw(w) << Dt_fm_12
+                    << " | " << std::setw(w) << Dt_fm_pr_12
+                    << " | " << std::setw(w) << Dt_fm_nl_12
+                    << std::endl;
+        
+        std::cout   << std::setw(w1) << " DE_22 time  (s) "
+                    << " | " << std::setw(w) << Dt_ex_22
+                    << " | " << std::setw(w) << Dt_ex_pr_22
+                    << " | " << std::setw(w) << Dt_bh_22
+                    << " | " << std::setw(w) << Dt_bh_pr_22
+                    << " | " << std::setw(w) << Dt_fm_22
+                    << " | " << std::setw(w) << Dt_fm_pr_22
+                    << " | " << std::setw(w) << Dt_fm_nl_22
+                    << std::endl;
 
         delete bvh1;
+        
+//        std::ofstream file;
+//        file.open("./Profile.tsv");
+//        WriteProfile(file);
+//        file.close();
+        
+        
     } // TestObstacle0
 
     void MainApp::TestBarnesHut0()
@@ -1358,10 +2045,17 @@ void customCallback()
         MainApp::instance->CreateAndDestroyBVH();
     }
 
+    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
+    if (ImGui::Button("TestMultiply", ImVec2{ITEM_WIDTH, 0}))
+    {
+        MainApp::instance->TestMultiply();
+    }
+    
     if (ImGui::Button("Test Willmore", ImVec2{ITEM_WIDTH, 0}))
     {
         MainApp::instance->TestWillmore();
     }
+    
     ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
     if (ImGui::Button("Test TPObstacle0", ImVec2{ITEM_WIDTH, 0}))
     {

@@ -17,7 +17,7 @@ namespace rsurfaces
     public:
         ~TPObstacleMultipole0(){};
         
-        TPObstacleMultipole0( MeshPtr mesh_, GeomPtr geom_, OptimizedBlockClusterTree * bct_, mreal alpha_, mreal beta_)
+        TPObstacleMultipole0( MeshPtr mesh_, GeomPtr geom_, OptimizedBlockClusterTree * bct_, mreal alpha_, mreal beta_, mreal weight_ )
         {
             mesh = mesh_;
             geom = geom_;
@@ -25,9 +25,10 @@ namespace rsurfaces
             
             alpha = alpha_;
             beta = beta_;
+            weight = weight_;
             
-            mreal intpart;
-            use_int = (std::modf( alpha, &intpart) == 0.0) && (std::modf( beta/2, &intpart) == 0.0);
+            
+            use_int = true;
         }
         
         // Returns the current value of the energy.
@@ -50,13 +51,13 @@ namespace rsurfaces
         
         OptimizedBlockClusterTree * GetBCT();
         
-        bool use_int = false;
-    
+        bool use_int = true;
     private:
         OptimizedBlockClusterTree * bct = nullptr;
         
         mreal alpha = 6.;
         mreal beta  = 12.;
+        mreal weight  = 1.;
         
         template<typename T1, typename T2>
         mreal FarField( T1 alpha, T2 betahalf);

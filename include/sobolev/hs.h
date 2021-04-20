@@ -191,18 +191,6 @@ namespace rsurfaces
 
             bool disableNearField = false;
 
-        private:
-            void addSimpleConstraintEntries(Eigen::MatrixXd &M) const;
-            void addSimpleConstraintTriplets(std::vector<Triplet> &triplets) const;
-            void initFromEnergy(SurfaceEnergy *energy_);
-            void precomputeSizes();
-
-            // Project the gradient into Hs by using the L^{-1} M L^{-1} factorization
-            template <typename V, typename Dst>
-            void ProjectSparse(const V &gradient, Dst &dest, double epsilon = 1e-10) const;
-            // Same as above but with the input/output being matrices
-            void ProjectSparseMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double epsilon = 1e-10) const;
-
             inline BCTPtr getBlockClusterTree() const
             {
                 if (!optBCT)
@@ -225,6 +213,18 @@ namespace rsurfaces
                 }
                 return optBCT;
             }
+
+        private:
+            void addSimpleConstraintEntries(Eigen::MatrixXd &M) const;
+            void addSimpleConstraintTriplets(std::vector<Triplet> &triplets) const;
+            void initFromEnergy(SurfaceEnergy *energy_);
+            void precomputeSizes();
+
+            // Project the gradient into Hs by using the L^{-1} M L^{-1} factorization
+            template <typename V, typename Dst>
+            void ProjectSparse(const V &gradient, Dst &dest, double epsilon = 1e-10) const;
+            // Same as above but with the input/output being matrices
+            void ProjectSparseMat(const Eigen::MatrixXd &gradient, Eigen::MatrixXd &dest, double epsilon = 1e-10) const;
 
             mutable std::vector<MetricTerm*> metricTerms;
             OptimizedClusterTree *bvh;
@@ -250,6 +250,8 @@ namespace rsurfaces
         template <typename V, typename Dst>
         void HsMetric::ProjectSparse(const V &gradientCol, Dst &dest, double epsilon) const
         {
+            ptic("HsMetric::ProjectSparse");
+            
             size_t nRows = topLeftNumRows();
 
             if (!factorizedLaplacian.initialized)
@@ -290,11 +292,15 @@ namespace rsurfaces
 
             // Multiply by L^{-1} again by solving Lx = b
             dest = factorizedLaplacian.Solve(mid);
+            
+            ptoc("HsMetric::ProjectSparse");
         }
 
         template <typename Inverse, typename HsPtr>
         void GetSchurComplement(const HsPtr hs, SchurComplement &dest)
         {
+            ptic("GetSchurComplement");
+            
             size_t nVerts = hs->mesh->nVertices();
             size_t compNRows = 0;
             size_t bigNRows = hs->topLeftNumRows();
@@ -351,6 +357,8 @@ namespace rsurfaces
 
             // Now we've multiplied A^{-1} C^T, so just multiply this with C and negate it
             dest.M_A = -dest.C * dest.Ainv_CT;
+            
+            ptoc("GetSchurComplement");
         }
 
         class SparseInverse

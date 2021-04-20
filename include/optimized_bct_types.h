@@ -1,5 +1,22 @@
 #pragma once
 
+#define EIGEN_NO_DEBUG
+#define MKL_DIRECT_CALL_SEQ_JIT
+#define PROFILING
+
+#define CACHE_LINE_WIDTH 64    // length of cache line measured in bytes
+#define CACHE_LINE_LENGHT 8    // length of cache line measured in number of doubles
+//#define restrict __restrict
+#define restrict
+
+#define ALIGN CACHE_LINE_WIDTH // MKL suggests 64-byte alignment
+#define CHUNK_SIZE CACHE_LINE_LENGHT
+#define RAGGED_SCHEDULE schedule( guided, CHUNK_SIZE)
+
+#define SAFE_ALLOCATE_WARNINGS
+
+//#define USE_NORMALS_ONLY // If defined, then CreateOptimizedBVH will create BVHs whose cluster data contain averaged normals. This may lead to incorrect terms in the far field of the lower order metric.
+
 #include <mkl.h>
 #include <tbb/cache_aligned_allocator.h>
 #include <algorithm>
@@ -15,9 +32,9 @@
 #include <Eigen/Sparse>
 #include <iostream>
 #include "bct_kernel_type.h"
+#include "profiler.h"
 
-#define restrict __restrict
-#define ALIGN 32
+
 
 namespace rsurfaces
 {
@@ -25,20 +42,6 @@ namespace rsurfaces
     // "In know only two types: integers and doubles..."
     typedef MKL_INT mint; // "machine integer" -- ensuring that we use the integer type requested by MKL. I find "MKL_INT" a bit clunky, though.
     typedef double mreal; // "machine real"
-
-    mreal * mreal_alloc(size_t size);
-    mreal * mreal_alloc(size_t size, mreal init);
-    void  mreal_free(mreal * ptr);
-    mint * mint_alloc(size_t size);
-    mint * mint_alloc(size_t size, mint init);
-    void  mint_free(mint * ptr);
-
-
-    typedef Eigen::SparseMatrix<mreal, Eigen::RowMajor, mint> EigenMatrixCSR;
-    typedef Eigen::SparseMatrix<mreal> EigenMatrixCSC;
-
-    typedef Eigen::Matrix<mreal, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> EigenMatrixRM;
-    typedef Eigen::MatrixXd EigenMatrixCM;
 
     class Timers
     {
@@ -50,18 +53,47 @@ namespace rsurfaces
 
     inline void print(std::string s)
     {
-        std::cout << (std::string( 2 * (Timers::time_stack.size() + 1), ' ') + s) << std::endl;
+//        std::cout << (std::string( 2 * (Timers::time_stack.size() + 1), ' ') + s) << std::endl;
+        std::cout << s << std::endl;
     }
 
-    inline void valprint(std::string s, mint val)
+    template <typename T>
+    inline void valprint(std::string s, T val)
     {
-        std::cout << (std::string( 2 * (Timers::time_stack.size() + 1), ' ') + s) << " = " << val <<  std::endl;
+//        std::cout << (std::string( 2 * (Timers::time_stack.size() + 1), ' ') + s) << " = " << val <<  std::endl;
+        std::cout << s << " = " << val << std::endl;
     }
-
-    inline void valprint(std::string s, mreal val)
+    
+    template <typename T>
+    inline void valprint(std::string s, T * begin, T * end)
     {
-        std::cout << (std::string( 2 * (Timers::time_stack.size() + 1), ' ') + s) << " = " << val <<  std::endl;
+//        std::cout << (std::string( 2 * (Timers::time_stack.size() + 1), ' ') + s) << " = [ ";
+        std::cout << s << " = [ ";
+        if( (begin) && end > begin )
+        {
+            for( T * ptr = begin; ptr < end-1 ; ++ptr)
+            {
+                std::cout << *ptr << ", ";
+            }
+            std::cout << *(end-1);
+        }
+        std::cout << " ]" << std::endl;
     }
+    
+//    template <typename T>
+//    inline void valprint(std::string s, mint * begin, mint * end, T * array)
+//    {
+//        std::cout << (std::string( 2 * (Timers::time_stack.size() + 1), ' ') + s) << " = [ ";
+//        if( end > begin )
+//        {
+//            for( T * ptr = begin; ptr < end-1 ; ++ptr)
+//            {
+//                std::cout << array[*ptr] << ", ";
+//            }
+//            std::cout << array[*end];
+//        }
+//        std::cout << " ]" << std::endl;
+//    }
 
     inline void eprint(std::string s)
     {
@@ -118,6 +150,70 @@ namespace rsurfaces
             return 0.;
         }
     }
+    
+    
+// double allocation helpers
+    
+    template <typename T>
+    int safe_free( T * &  ptr )
+    {
+        int wasallocated = (ptr != nullptr);
+        if( wasallocated ){ mkl_free(ptr); ptr = nullptr; }
+        return !wasallocated;
+    }
+    
+    template <typename T>
+    int safe_alloc(T * &  ptr, size_t size)
+    {
+        int wasallocated = (ptr != nullptr);
+        if( wasallocated )
+        {
+#ifdef SAFE_ALLOCATE_WARNINGS
+            wprint("safe_alloc: Pointer was not NULL. Calling safe_free to prevent memory leak.");
+#endif
+            safe_free(ptr);
+        }
+        ptr = (T *) mkl_malloc ( size * sizeof(T), ALIGN );
+        
+        return wasallocated;
+    }
+
+    template <typename T>
+    int safe_alloc( T * &  ptr, size_t size, T init)
+    {
+        int wasallocated = safe_alloc(ptr, size);
+        #pragma omp simd aligned( ptr : ALIGN )
+        for( size_t i = 0; i < size; ++i )
+        {
+            ptr[i] = init;
+        }
+        return wasallocated;
+    }
+    
+    template <typename T>
+    int safe_iota(T * & ptr, size_t size, T step = static_cast<T>(1) )
+    {
+        int wasallocated = safe_alloc(ptr, size);
+        #pragma omp simd aligned( ptr : ALIGN )
+        for( size_t i = 0; i < size; i+=step )
+        {
+            ptr[i] = i;
+        }
+        return wasallocated;
+    }
+    
+    template <typename T>
+    inline void partial_sum( T * begin, T * end)
+    {
+        std::partial_sum( begin, end, begin );
+    }
+
+
+    typedef Eigen::SparseMatrix<mreal, Eigen::RowMajor, mint> EigenMatrixCSR;
+    typedef Eigen::SparseMatrix<mreal> EigenMatrixCSC;
+
+    typedef Eigen::Matrix<mreal, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> EigenMatrixRM;
+    typedef Eigen::MatrixXd EigenMatrixCM;
 
     // I am not that knowledgable about allocators; tbb::cache_aligned_allocator seemed to work well for allocating thread-owned vectors. And I simply used it for the rest, too, because should also provide good alignment for SIMD instructions (used in MKL routines). DO NOT USE A_Vector OR A_Deque FOR MANY SMALL ARRAYS. I typically allicate only very large arrays, so the exrta memory consumption should not be an issue.
     template <typename T>
@@ -147,8 +243,8 @@ namespace rsurfaces
         PardisoData(){};
     
         ~PardisoData(){
-            mint_free(perm);
-            mint_free(iparm);
+            safe_free(perm);
+            safe_free(iparm);
         };
         
         // Copy constructor
@@ -162,7 +258,7 @@ namespace rsurfaces
             if( P.perm )
             {
                 const mint * const restrict ptr = P.perm;
-                perm = mint_alloc(n);
+                safe_alloc( perm, n );
                 #pragma omp simd aligned( perm, ptr : ALIGN)
                 for( mint i = 0; i < n; ++i )
                 {
@@ -172,7 +268,7 @@ namespace rsurfaces
             if( P.iparm )
             {
                 const mint * const restrict ptr = P.iparm;
-                iparm = mint_alloc(64);
+                safe_alloc( iparm, 64);
                 #pragma omp simd aligned( iparm, ptr : ALIGN)
                 for( mint i = 0; i < 64; ++i )
                 {
@@ -237,9 +333,9 @@ namespace rsurfaces
             nnz = nnz_;
             P.n = n;
         
-            outer  =  mint_alloc( m + 1 );
-            inner  =  mint_alloc( nnz );
-            values = mreal_alloc( nnz );
+            safe_alloc( outer, m + 1 );
+            safe_alloc( inner, nnz );
+            safe_alloc( values, nnz );
             outer[0] = 0;
             outer[m_] = nnz;
         
@@ -256,9 +352,9 @@ namespace rsurfaces
             nnz = outer_[m];
             P.n = n;
             
-            outer  =  mint_alloc( m + 1 );
-            inner  =  mint_alloc( nnz );
-            values = mreal_alloc( nnz );
+            safe_alloc( outer, m + 1 );
+            safe_alloc( inner, nnz );
+            safe_alloc( values, nnz );
         
             #pragma omp simd aligned( outer : ALIGN )
             for( mint i = 0; i < m+1; ++i)
@@ -295,9 +391,9 @@ namespace rsurfaces
                 eprint("in MKLSparseMatrix: outer_B[0] != 0.");
             }
         
-            outer  =  mint_alloc( m + 1 );
-            inner  =  mint_alloc( nnz );
-            values = mreal_alloc( nnz );
+            safe_alloc( outer, m + 1 );
+            safe_alloc( inner, nnz );
+            safe_alloc( values, nnz );
         
             outer[0] = 0;
         
@@ -335,9 +431,9 @@ namespace rsurfaces
                 eprint("in MKLSparseMatrix &operator=(MKLSparseMatrix const &B): B.outer[0] != 0.");
             }
             
-            outer  =  mint_alloc( m + 1 );
-            inner  =  mint_alloc( nnz );
-            values = mreal_alloc( nnz );
+            safe_alloc( outer, m + 1 );
+            safe_alloc( inner, nnz );
+            safe_alloc( values, nnz );
             
             #pragma omp simd aligned( outer : ALIGN )
             for( mint i = 0; i <= m; ++i)
@@ -387,8 +483,6 @@ namespace rsurfaces
         };
     
         ~MKLSparseMatrix(){
-            
-//            print("~MKLSparseMatrix()");
 //            PrintStats();
             if( P.symfactorized || P.numfactorized )
             {
@@ -402,9 +496,9 @@ namespace rsurfaces
                 pardiso (P.pt.data(), &maxfct, &mnum, &P.mtype, &phase, &n, values, outer, inner, P.perm, &nrhs, P.iparm, &msglvl, &ddum, &ddum, &error);
             }
             
-            mint_free( outer );
-            mint_free( inner );
-            mreal_free( values );
+            safe_free( outer );
+            safe_free( inner );
+            safe_free( values );
         };
         
         
@@ -625,6 +719,21 @@ namespace rsurfaces
         
         void Transpose( MKLSparseMatrix & AT)
         {
+
+            MKLVersion Version;
+            mkl_get_version(&Version);
+            mint mkl_version = Version.MajorVersion;
+//            MKLVersion Version;
+//            mkl_get_version(&Version);
+//            printf("Major version:           %d\n",Version.MajorVersion);
+//            printf("Minor version:           %d\n",Version.MinorVersion);
+//            printf("Update version:          %d\n",Version.UpdateVersion);
+//            printf("Product status:          %s\n",Version.ProductStatus);
+//            printf("Build:                   %s\n",Version.Build);
+//            printf("Platform:                %s\n",Version.Platform);
+//            printf("Processor optimization:  %s\n",Version.Processor);
+//            printf("================================================================\n");
+//            printf("\n");
             
             sparse_status_t stat;
             sparse_matrix_t csrA = nullptr;
@@ -650,7 +759,16 @@ namespace rsurfaces
             
             sparse_index_base_t indexing = SPARSE_INDEX_BASE_ZERO;
             
-            stat = mkl_sparse_d_export_csr( csrAT, &indexing, &rows_AT, &cols_AT, &outerB_AT, &outerE_AT, &inner_AT, &values_AT ); // It's not logical to swap rows_AT and cols_AT...
+            if( mkl_version >=2020)
+            {
+                stat = mkl_sparse_d_export_csr( csrAT, &indexing, &rows_AT, &cols_AT, &outerB_AT, &outerE_AT, &inner_AT, &values_AT );
+            }
+            else
+            {
+                // MKL 2019.0.1 requires this one for a weird reason
+                stat = mkl_sparse_d_export_csr( csrAT, &indexing, &cols_AT, &rows_AT, &outerB_AT, &outerE_AT, &inner_AT, &values_AT ); // It's not logical to swap rows_AT and cols_AT...
+            }
+            
             if (stat)
             {
                 eprint("in MKLSparseMatrix::Transpose: mkl_sparse_d_export_csr returned " + std::to_string(stat) );
@@ -673,8 +791,8 @@ namespace rsurfaces
             else
             {
                 P.pt = A_Vector<void*>(64);
-                P.iparm = mint_alloc(64);
-                P.perm = mint_alloc(m);
+                safe_alloc( P.iparm, 64 );
+                safe_alloc( P.perm , m);
                 
                 for ( mint i = 0; i < m; ++i )
                 {
@@ -933,4 +1051,29 @@ namespace rsurfaces
     }
 
 
+    // This function reads in a list job_acc_costs of accumuated costs, then allocates job_ptr as a vector of size thread_count + 1, and writes the work distribution to it.
+    // Aasigns threads to consecutive chunks jobs, ..., job_ptr[k+1]-1 of jobs.
+    // Uses a binary search to find the chunk boundaries.
+    // The cost of the i-th job is job_acc_costs[i+1] - job_acc_costs[i].
+    // The cost of the k-th thread goes from job no job_ptr[k] to job no job_ptr[k+1] (as always in C/C++, job_ptr[k+1] points _after_ the last job.
+    void BalanceWorkLoad( mint job_count, mint * job_acc_costs, mint thread_count, mint * & job_ptr );
+    
+    
+    
+    enum class TreePercolationAlgorithm
+    {
+        Tasks,
+        Sequential,
+        Chunks
+    };
+    
+    enum class NearFieldMultiplicationAlgorithm
+    {
+        MKL_CSR,
+        Hybrid,
+        Eigen,
+        VBSR
+    };
+    
 } // namespace rsurfaces
+

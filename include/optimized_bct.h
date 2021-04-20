@@ -6,7 +6,14 @@
 
 namespace rsurfaces
 {
-
+    
+    struct OptimizedBlockClusterTreeOptions
+    {
+        static bool exploit_symmetry;
+        static bool upper_triangular;
+        static NearFieldMultiplicationAlgorithm mult_alg;
+    };
+    
     class OptimizedBlockClusterTree
     {
     public:
@@ -35,15 +42,31 @@ namespace rsurfaces
             }
         }
 
-        bool disableNearField = false;
-
-        OptimizedBlockClusterTree(OptimizedClusterTree* S_, OptimizedClusterTree* T_, const mreal alpha_, const mreal beta_, const mreal theta_, bool exploit_symmetry_ = true, bool upper_triangular_ = false);
+        OptimizedBlockClusterTree( OptimizedClusterTree* S_, OptimizedClusterTree* T_, const mreal alpha_, const mreal beta_, const mreal theta_ );
 
         ~OptimizedBlockClusterTree()
-        {   
-            mreal_free(hi_diag);
-            mreal_free(lo_diag);
-            mreal_free(fr_diag);
+        {
+            ptic("~OptimizedBlockClusterTree");
+            #pragma omp parallel
+            {
+                #pragma omp single
+                {
+                    #pragma omp task
+                    {
+                        safe_free(hi_diag);
+                    }
+                    #pragma omp task
+                    {
+                        safe_free(lo_diag);
+                    }
+                    #pragma omp task
+                    {
+                        safe_free(fr_diag);
+                    }
+                    #pragma omp taskwait
+                }
+            }
+            ptoc("~OptimizedBlockClusterTree");
         };
 
         mutable OptimizedClusterTree* S; // "left" OptimizedClusterTree (output side of matrix-vector multiplication)
@@ -61,17 +84,6 @@ namespace rsurfaces
         mreal hi_exponent = -0.5 * (2.0 * (2.0 / 3.0) + 2.0); // The only exponent we have to use for pow to compute matrix entries. All other exponents have been optimized away.
                                                               //    mreal fr_exponent;
 
-
-        // Scaling parameters for the matrix-vector product.
-        // E.g. one can perform  u = hi_factor * A_hi * v. With MKL, this comes at no cost, because it is fused into the matrix multiplications anyways.
-        mreal hi_far_factor = 1.;
-        mreal lo_far_factor = 1.;
-        mreal fr_far_factor = 1.;
-        
-        mreal hi_near_factor = 1.;
-        mreal lo_near_factor = 1.;
-        mreal fr_near_factor = 1.;
-
         // Product of the kernel matrix with the constant-1-vector.
         // Need to be updated if hi_factor, lo_factor, or fr_factor are changed!
         // Assumed to be in EXTERNAL ORDERING!
@@ -82,18 +94,21 @@ namespace rsurfaces
         // TODO: Maybe these "diag" - vectors should become members to S and T?
         // Remark: If S != T, the "diags" are not used.
 
+        bool block_clusters_initialized = false;
         bool metrics_initialized = false;
         bool is_symmetric = false;
         bool exploit_symmetry = false;
         bool upper_triangular = false;
-        
-        // If exploit_symmetry != 1, S == T is assume and only roughly half the block clusters are generated during the split pass performed by CreateBlockClusters.
-        // If upper_triangular != 0 and if exploit_symmetry != 0, only the upper triangle of the interaction matrices will be generated. --> CreateBlockClusters will be faster.
-        // If exploit_symmetry 1= 1 and upper_triangular 1= 0 then the block cluster twins are generated _at the end_ of the splitting pass by CreateBlockClusters.
+        bool disableNearField = false;
+        // If exploit_symmetry != 1, S == T is assume and only roughly half the block clusters are generated during the split pass performed by RequireBlockClusters.
+        // If upper_triangular != 0 and if exploit_symmetry != 0, only the upper triangle of the interaction matrices will be generated. --> RequireBlockClusters will be faster.
+        // If exploit_symmetry 1= 1 and upper_triangular 1= 0 then the block cluster twins are generated _at the end_ of the splitting pass by RequireBlockClusters.
 
         std::shared_ptr<InteractionData> far;  // far and near are data containers for far and near field, respectively.
         std::shared_ptr<InteractionData> near; // They also perform the matrix-vector products.
 
+        NearFieldMultiplicationAlgorithm mult_alg = NearFieldMultiplicationAlgorithm::Hybrid;
+        
         mreal FarFieldEnergy0();
         mreal DFarFieldEnergy0Helper();
         mreal NearFieldEnergy0();
@@ -116,7 +131,7 @@ namespace rsurfaces
 
         //private:  // made public only for debugging
 
-        void CreateBlockClusters(); // Creates InteractionData far and near for far and near field, respectively.
+        void RequireBlockClusters(); // Creates InteractionData far and near for far and near field, respectively.
 
         void SplitBlockCluster(
             A_Vector<A_Deque<mint>> &sep_i,  //  +
@@ -131,9 +146,13 @@ namespace rsurfaces
         void RequireMetrics();
         
         void FarFieldInteraction(); // Compute nonzero values of sparse far field interaction matrices.
+        void FarFieldInteraction_Legacy(); // Compute nonzero values of sparse far field interaction matrices.
 
-        void NearFieldInteractionCSR(); // Compute nonzero values of sparse near field interaction matrices in CSR format.
+        void NearFieldInteraction_CSR(); // Compute nonzero values of sparse near field interaction matrices in CSR format.
+        void NearFieldInteraction_CSR_Legacy(); // Compute nonzero values of sparse near field interaction matrices in CSR format.
 
+        void NearFieldInteraction_VBSR(); // Compute nonzero values of sparse near field interaction matrices in VBSR format.
+        
         void InternalMultiply(BCTKernelType type) const;
 
         void ComputeDiagonals();
@@ -141,6 +160,7 @@ namespace rsurfaces
         template<typename OptBCTPtr>
         void AddObstacleCorrection(OptBCTPtr bct12)
         {
+            ptic("OptimizedBlockClusterTree::AddObstacleCorrection");
             // Suppose that bct11 = this;
             // The joint bct of the union of mesh1 and mesh2 can be written in block matrix for as
             //  bct = {
@@ -162,29 +182,29 @@ namespace rsurfaces
                 RequireMetrics();
                 bct12->RequireMetrics();
 
-                if( fr_near_factor != bct12->fr_near_factor )
+                if( far->fr_factor != bct12->far->fr_factor )
                 {
-                    wprint("AddToDiagonal: The values of fr_near_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+                    wprint("AddObstacleCorrection: The values of far->fr_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
                 }
-                if( fr_far_factor != bct12->fr_far_factor )
+                if( far->hi_factor != bct12->far->hi_factor )
                 {
-                    wprint("AddToDiagonal: The values of fr_far_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+                    wprint("AddObstacleCorrection: The values of far->hi_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
                 }
-                if( hi_near_factor != bct12->hi_near_factor )
+                if( far->lo_factor != bct12->far->lo_factor )
                 {
-                    wprint("AddToDiagonal: The values of hi_near_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+                    wprint("AddObstacleCorrection: The values of far->lo_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
                 }
-                if( hi_far_factor != bct12->hi_far_factor )
+                if( near->fr_factor != bct12->near->fr_factor )
                 {
-                    wprint("AddToDiagonal: The values of hi_far_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+                    wprint("AddObstacleCorrection: The values of near->fr_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
                 }
-                if( lo_near_factor != bct12->lo_near_factor )
+                if( near->hi_factor != bct12->near->hi_factor )
                 {
-                    wprint("AddToDiagonal: The values of lo_near_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+                    wprint("AddObstacleCorrection: The values of near->hi_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
                 }
-                if( lo_far_factor != bct12->lo_far_factor )
+                if( near->lo_factor != bct12->near->lo_factor )
                 {
-                    wprint("AddToDiagonal: The values of lo_far_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+                    wprint("AddObstacleCorrection: The values of near->lo_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
                 }
                 
                 mint n = T->primitive_count;
@@ -216,6 +236,7 @@ namespace rsurfaces
                     eprint("AddToDiagonal: The two instances of OptimizedBlockClusterTree are not compatible. Doing nothing.");
                 }
             }
+            ptoc("OptimizedBlockClusterTree::AddObstacleCorrection");
         }
         
         void PrintStats(){

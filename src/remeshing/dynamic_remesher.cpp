@@ -6,6 +6,8 @@ namespace rsurfaces
     {
         DynamicRemesher::DynamicRemesher(MeshPtr mesh_, GeomPtr geom_, GeomPtr geomOrig_)
         {
+            ptic("DynamicRemesher");
+            
             mesh = mesh_;
             geom = geom_;
             geomOrig = geomOrig_;
@@ -38,6 +40,8 @@ namespace rsurfaces
             flippingMode = FlippingMode::Delaunay;
 
             curvatureAdaptive = false;
+            
+            ptoc("DynamicRemesher");
         }
 
         void DynamicRemesher::SetModes(RemeshingMode rMode, SmoothingMode sMode, FlippingMode fMode)
@@ -55,6 +59,8 @@ namespace rsurfaces
 
         bool DynamicRemesher::Remesh(int numIters, bool changeTopology)
         {
+            ptic("DynamicRemesher::Remesh");
+            
             bool didSplitOrCollapse = false;
             switch (remeshingMode)
             {
@@ -101,6 +107,9 @@ namespace rsurfaces
                 break;
             }
             geom->refreshQuantities();
+            
+            ptoc("DynamicRemesher::Remesh");
+            
             return didSplitOrCollapse;
         }
 

@@ -24,7 +24,6 @@ namespace rsurfaces
     typedef surface::VertexData<size_t> VertexIndices;
     typedef surface::FaceData<size_t> FaceIndices;
 
-    
     // if MeshUPtr == std::unique_ptr<surface::HalfedgeMesh>
     inline std::tuple<MeshUPtr, GeomUPtr, std::unique_ptr<surface::CornerData<Vector2>>>
     readParameterizedMesh(std::string filename, std::string type = "")
@@ -50,6 +49,7 @@ namespace rsurfaces
 //    {
 //        return surface::readParameterizedSurfaceMesh(filename, type);
 //    };
+    
     
     class BVHNode6D;
 

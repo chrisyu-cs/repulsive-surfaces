@@ -23,9 +23,9 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STR
   # using Clang (linux or apple) or GCC
   message("Using clang/gcc compiler flags")
   SET(BASE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Werror -Xpreprocessor -fopenmp ")
-  SET(DISABLED_WARNINGS " -Wno-unknown-warning-option -Wno-pass-failed -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-copy -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field -Wno-range-loop-analysis")
-  #SET(BASE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Xpreprocessor -fopenmp -gline-tables-only -gcolumn-info -Rpass=loop-vectorize")
-  #SET(DISABLED_WARNINGS " -Wno-unknown-warning-option -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-copy -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field -Wno-range-loop-analysis")
+  SET(DISABLED_WARNINGS " -Wno-unknown-warning-option -Wno-pass-failed -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-copy -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field -Wno-range-loop-analysis -Wno-macro-redefined -Wno-writable-strings")
+  #SET(BASE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Xpreprocessor -fopenmp -gline-tables-only -gcolumn-info")
+  #SET(DISABLED_WARNINGS " -Wno-unknown-warning-option -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-copy -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field -Wno-range-loop-analysis  -Wno-macro-redefined, -Wno-writable-strings")
   SET(TRACE_INCLUDES " -H -Wno-error=unused-command-line-argument")
         
   if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
@@ -62,14 +62,15 @@ else()
   message( FATAL_ERROR "Unrecognized compiler [${CMAKE_CXX_COMPILER_ID}]" )
 endif()
 
-
 # == Deps
+
 add_subdirectory(deps/geometry-central)
+
 add_subdirectory(deps/polyscope)
 
 # == Build our project stuff
 
-set(SRCS 
+set(SRCS
   src/energy/boundary_length.cpp
   src/energy/coulomb.cpp
   src/energy/implicit_attractor.cpp
@@ -82,11 +83,21 @@ set(SRCS
   src/energy/squared_error.cpp
   src/energy/willmore_energy.cpp
   src/energy/tpe_multipole_0.cpp
+  src/energy/tpe_multipole_nl_0.cpp
+  src/energy/tpe_multipole_pr_0.cpp
   src/energy/tpe_barnes_hut_0.cpp
+  src/energy/tpe_barnes_hut_pr_0.cpp
   src/energy/tpe_all_pairs.cpp
+  src/energy/tpe_all_pairs_pr.cpp
   src/energy/tp_obstacle_multipole_0.cpp
+  src/energy/tp_obstacle_multipole_nl_0.cpp
+  src/energy/tp_obstacle_multipole_pr_0.cpp
   src/energy/tp_obstacle_barnes_hut_0.cpp
+  src/energy/tp_obstacle_barnes_hut_pr_0.cpp
   src/energy/tp_obstacle_all_pairs.cpp
+  src/energy/tp_obstacle_all_pairs_pr.cpp
+  src/energy/tp_pointcloud_obstacle_barnes_hut_0.cpp
+  src/energy/tp_pointnormalcloud_obstacle_barnes_hut_0.cpp
   src/implicit/implicit_surface.cpp
   src/implicit/simple_surfaces.cpp
   src/marchingcubes/CIsoSurface.cpp
@@ -111,13 +122,10 @@ set(SRCS
   src/sobolev/constraints/vertex_normal.cpp
   src/sobolev/constraints/vertex_pin.cpp
   src/spatial/convolution_kernel.cpp
-  src/optimized_bct_types.cpp
-  src/optimized_cluster_tree.cpp
-  src/optimized_bct.cpp
   src/fractional_laplacian.cpp
   src/interaction_data.cpp
   src/line_search.cpp
-  src/main.cpp
+  src/profiler.cpp
   src/matrix_utils.cpp
   src/metric_term.cpp
   src/obj_writer.cpp
@@ -125,8 +133,22 @@ set(SRCS
   src/surface_derivatives.cpp
   src/surface_flow.cpp
   src/derivative_assembler.cpp
-	# add any other source files here
+  src/optimized_bct_types.cpp
+  src/optimized_bct.cpp
+  src/optimized_cluster_tree.cpp
+    # add any other source files here
 )
+
+set(SRCS1
+  src/main.cpp
+    # add any other source files here
+)
+
+set(SRCS2
+  src/main2.cpp
+    # add any other source files here
+)
+
 
 find_package(OpenMP REQUIRED)
 
@@ -157,7 +179,7 @@ endif()
 
 
 # To change the name of your executable, change "gc_project" in the lines below to whatever you want
-add_executable(rsurfaces "${SRCS}")
+add_executable(rsurfaces "${SRCS}" "${SRCS1}")
 target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 target_link_libraries(rsurfaces geometry-central polyscope OpenMP::OpenMP_CXX)
 
@@ -170,4 +192,3 @@ if(TBB_FOUND)
 endif()
 
 target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include")
-
