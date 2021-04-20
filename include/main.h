@@ -38,6 +38,7 @@ namespace rsurfaces
 
         void CreateAndDestroyBVH();
         void TestWillmore();
+        void TestMultiply();
         void TestObstacle0();
         void TestBarnesHut0();
         void TestNewMVProduct();
