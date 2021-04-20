@@ -58,6 +58,7 @@ namespace rsurfaces
         logPerformance = false;
         referenceEnergy = 0;
         exitWhenDone = false;
+        totalObstacleVolume = 0;
     }
 
     void MainApp::logPerformanceLine()
@@ -1008,6 +1009,8 @@ namespace rsurfaces
                                                                         kernel->alpha, kernel->beta, bh_theta, weight);
         flow->AddObstacleEnergy(obstacleEnergy);
         std::cout << "Added " << filename << " as obstacle with weight " << weight << std::endl;
+
+        totalObstacleVolume += totalVolume(sharedObsGeom, sharedObsMesh);
     }
 
     void MainApp::AddImplicitBarrier(scene::ImplicitBarrierData &barrierData)
@@ -1887,6 +1890,13 @@ int main(int argc, char **argv)
     for (scene::ImplicitBarrierData &barrierData : data.implicitBarriers)
     {
         MainApp::instance->AddImplicitBarrier(barrierData);
+    }
+
+    if (data.autoComputeVolumeTarget)
+    {
+        double targetVol = MainApp::instance->totalObstacleVolume * data.autoVolumeTargetRatio;
+        std::cout << "Retargeting volume constraint to value " << targetVol << " (" << data.autoVolumeTargetRatio << "x obstacle volume)" << std::endl;
+        MainApp::instance->flow->retargetSchurConstraintOfType<Constraints::TotalVolumeConstraint>(targetVol);
     }
 
     MainApp::instance->updateMeshPositions();

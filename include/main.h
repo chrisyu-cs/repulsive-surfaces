@@ -84,6 +84,7 @@ namespace rsurfaces
         long timeSpentSoFar;
         scene::SceneData sceneData;
         bool exitWhenDone;
+        double totalObstacleVolume;
 
     private:
         int implicitCount = 0;

@@ -320,6 +320,13 @@ namespace rsurfaces
                 data.implicitBarriers.push_back(implData);
             }
 
+            else if (parts[0] == "autotarget_volume")
+            {
+                std::cout << "Will ignore volume constraint parameters and auto-compute targets based on obstacle volume." << std::endl;
+                data.autoComputeVolumeTarget = true;
+                data.autoVolumeTargetRatio = stod(parts[1]);
+            }
+
             else if (parts[0] == "method")
             {
                 data.defaultMethod = methodOfName(parts[1]);

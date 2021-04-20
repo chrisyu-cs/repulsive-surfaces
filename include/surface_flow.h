@@ -66,6 +66,32 @@ namespace rsurfaces
             return c;
         }
 
+        template <typename Constraint>
+        inline ConstraintPack& findPackOfSchurConstraintType()
+        {
+            for (ConstraintPack &c : schurConstraints)
+            {
+                if (dynamic_cast<Constraint*>(c.constraint))
+                {
+                    return c;
+                }
+            }
+            throw std::runtime_error("No Schur constraint of the given type found.");
+        }
+
+        inline void retargetSchurConstraint(ConstraintPack &c, double newValue)
+        {
+            double curTarget = c.constraint->getTargetValue();
+            double diff = newValue - curTarget;
+            c.stepSize = diff / c.iterationsLeft;
+        }
+
+        template <typename Constraint>
+        inline void retargetSchurConstraintOfType(double newValue)
+        {
+            retargetSchurConstraint(findPackOfSchurConstraintType<Constraint>(), newValue);
+        }
+
         bool allowBarycenterShift;
         bool verticesMutated;
         bool disableNearField;

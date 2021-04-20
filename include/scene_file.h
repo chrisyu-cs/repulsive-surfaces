@@ -87,6 +87,8 @@ namespace rsurfaces
             std::string performanceLogFile = "performance.csv";
             GradientMethod defaultMethod = GradientMethod::HsProjectedIterative;
             bool disableNearField = false;
+            bool autoComputeVolumeTarget = false;
+            double autoVolumeTargetRatio = 1;
         };
 
         template <class Container>
