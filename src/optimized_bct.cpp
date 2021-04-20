@@ -936,7 +936,7 @@ namespace rsurfaces
         mint n = T->lo_pre.n; // Expected length for a vector of scalars
         if ((input.size() >= cols * n) && (output.size() >= cols * n))
         {
-            // the acual multiplication
+            // the actual multiplication
 
             T->Pre(input.data(), cols, type);
 
@@ -944,11 +944,11 @@ namespace rsurfaces
 
             S->Post(output.data(), cols, type, addToResult);
 
-//            // TODO: Henrik wonders why he did this.
-//            if (type == BCTKernelType::HighOrder || type == BCTKernelType::LowOrder)
-//            {
-//                output *= 0.5;
-//            }
+            // TODO: Henrik wonders why he did this.
+            if (type == BCTKernelType::HighOrder || type == BCTKernelType::LowOrder)
+            {
+                output *= 0.5;
+            }
         }
         else
         {
