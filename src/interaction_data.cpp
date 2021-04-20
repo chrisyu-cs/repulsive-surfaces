@@ -105,7 +105,7 @@ namespace rsurfaces
     void InteractionData::Prepare_CSR()
     {
         ptic("InteractionData::Prepare_CSR");
-
+        
         #pragma omp parallel
         {
             #pragma omp single nowait
@@ -126,10 +126,11 @@ namespace rsurfaces
             }
         }
         // distribute workload
-
+        
         BalanceWorkLoad( b_m, b_outer, thread_count, job_ptr);
-
+        
         ptoc("InteractionData::Prepare_CSR");
+        
     }
 
 
@@ -175,136 +176,141 @@ namespace rsurfaces
         
         nnz = outer[m];
         
-//        tic("Allocate nonzero values");
-        #pragma omp parallel
+        if( nnz > 0 )
         {
-            #pragma omp single nowait
+    //        tic("Allocate nonzero values");
+            #pragma omp parallel
             {
-                #pragma omp task
+                #pragma omp single nowait
                 {
-                    safe_alloc( b_row_ptr, b_m + 1 );
-                    #pragma omp simd
-                    for( mint i = 0; i < b_m + 1; ++i )
+                    #pragma omp task
                     {
-                        b_row_ptr[i] = b_row_ptr_[i];
+                        safe_alloc( b_row_ptr, b_m + 1 );
+                        #pragma omp simd
+                        for( mint i = 0; i < b_m + 1; ++i )
+                        {
+                            b_row_ptr[i] = b_row_ptr_[i];
+                        }
                     }
-                }
-                #pragma omp task
-                {
-                    safe_alloc( b_col_ptr, b_n + 1 );
-                    #pragma omp simd
-                    for( mint i = 0; i < b_n + 1; ++i )
+                    #pragma omp task
                     {
-                        b_col_ptr[i] = b_col_ptr_[i];
+                        safe_alloc( b_col_ptr, b_n + 1 );
+                        #pragma omp simd
+                        for( mint i = 0; i < b_n + 1; ++i )
+                        {
+                            b_col_ptr[i] = b_col_ptr_[i];
+                        }
                     }
+                    #pragma omp task
+                    {
+                        safe_alloc( inner, nnz );
+                    }
+                    #pragma omp task
+                    {
+                        safe_alloc( hi_values, nnz );
+                    }
+                    #pragma omp task
+                    {
+                        safe_alloc( lo_values, nnz );
+                    }
+                    #pragma omp task
+                    {
+                        safe_alloc( fr_values,nnz );
+                    }
+                    #pragma omp taskwait
                 }
-                #pragma omp task
-                {
-                    safe_alloc( inner, nnz );
-                }
-                #pragma omp task
-                {
-                    safe_alloc( hi_values, nnz );
-                }
-                #pragma omp task
-                {
-                    safe_alloc( lo_values, nnz );
-                }
-                #pragma omp task
-                {
-                    safe_alloc( fr_values,nnz );
-                }
-                #pragma omp taskwait
             }
-        }
-//        toc("Allocate nonzero values");
-        
-        // Computing inner for CSR format.
-        #pragma omp parallel for num_threads(thread_count) RAGGED_SCHEDULE
-        for( mint b_i = 0; b_i < b_m; ++ b_i )                  // we are going to loop over all rows in block fashion
-        {
-            // for each row i, write the column indices consecutively
-            
-            mint k_begin = b_outer[b_i];
-            mint k_end   = b_outer[b_i+1];
-            
-            mint i_begin = b_row_ptr[b_i];
-            mint i_end   = b_row_ptr[b_i+1];
-            
-            for( mint i = i_begin; i < i_end; ++i )                             // looping over all rows i  in block row b_i
+    //        toc("Allocate nonzero values");
+
+            // Computing inner for CSR format.
+            #pragma omp parallel for num_threads(thread_count) RAGGED_SCHEDULE
+            for( mint b_i = 0; b_i < b_m; ++ b_i )                  // we are going to loop over all rows in block fashion
             {
-                mint ptr = outer[i];                            // get first nonzero position in row i; ptr will be used to keep track of the current position within inner
+                // for each row i, write the column indices consecutively
                 
-                for( mint k = k_begin; k < k_end; ++k )         // loop over all block in block row b_i
+                mint k_begin = b_outer[b_i];
+                mint k_end   = b_outer[b_i+1];
+                
+                mint i_begin = b_row_ptr[b_i];
+                mint i_end   = b_row_ptr[b_i+1];
+                
+                for( mint i = i_begin; i < i_end; ++i )                             // looping over all rows i  in block row b_i
                 {
-                    mint b_j = b_inner[k];                      // we are in block {b_i, b_j}
+                    mint ptr = outer[i];                            // get first nonzero position in row i; ptr will be used to keep track of the current position within inner
                     
-                    mint j_begin = b_col_ptr[b_j];
-                    mint j_end   = b_col_ptr[b_j+1];
-                    #pragma omp simd aligned( inner : ALIGN )
-                    for( mint j = j_begin; j < j_end; ++j )     // write the column indices for row i
+                    for( mint k = k_begin; k < k_end; ++k )         // loop over all block in block row b_i
                     {
-                        inner[ptr] = j;
-                        ptr++;
+                        mint b_j = b_inner[k];                      // we are in block {b_i, b_j}
+                        
+                        mint j_begin = b_col_ptr[b_j];
+                        mint j_end   = b_col_ptr[b_j+1];
+                        #pragma omp simd aligned( inner : ALIGN )
+                        for( mint j = j_begin; j < j_end; ++j )     // write the column indices for row i
+                        {
+                            inner[ptr] = j;
+                            ptr++;
+                        }
                     }
                 }
             }
-        }
-
-        safe_alloc( block_ptr, b_nnz );
-        block_ptr[0] = 0;
-        
-        auto entries_before_block_row = A_Vector<mint>( b_m + 1 );
-
-        // Creation of block pointers. Can be used for VBSR. Included here for debugging and for performance tests.
-        
-        #pragma omp parallel for num_threads(thread_count) RAGGED_SCHEDULE
-        for( mint b_i = 0; b_i < b_m; ++b_i )
-        {
-            //        mint entries_before = b_row_counters[ b_i ];
-            mint mi = b_row_ptr[ b_i + 1 ] -  b_row_ptr[ b_i ];
-            entries_before_block_row[b_i+1] = mi * b_row_counters[ b_i ];
-        }
-        
-//        for( mint b_i = 0; b_i < b_m; ++b_i )
-//        {
-//            entries_before_block_row[b_i+1] += entries_before_block_row[b_i];
-//        }
-        
-        partial_sum( &entries_before_block_row[0], &entries_before_block_row[0] +b_m + 1);
-        
-        #pragma omp parallel for num_threads(thread_count)
-        for( mint b_i = 0; b_i < b_m; ++b_i )
-        {
-            mint entries_before_kth_block = entries_before_block_row[b_i];
             
-            mint mi = b_row_ptr[ b_i + 1 ] -  b_row_ptr[ b_i ];
+            safe_alloc( block_ptr, b_nnz );
+            block_ptr[0] = 0;
             
-            for( mint k =  b_outer[ b_i ]; k < b_outer[ b_i + 1 ]; ++k)
+            auto entries_before_block_row = A_Vector<mint>( b_m + 1 );
+
+            // Creation of block pointers. Can be used for VBSR. Included here for debugging and for performance tests.
+            
+            #pragma omp parallel for num_threads(thread_count) RAGGED_SCHEDULE
+            for( mint b_i = 0; b_i < b_m; ++b_i )
             {
-                // k-th block is {b_i, b_j}
-                mint j =  b_inner[k];
-                mint nj = b_col_ptr[j + 1] - b_col_ptr[j];
-                // k-th block has size mi * nj
-                entries_before_kth_block += mi * nj;
-                block_ptr[k+1] = entries_before_kth_block;
+                //        mint entries_before = b_row_counters[ b_i ];
+                mint mi = b_row_ptr[ b_i + 1 ] -  b_row_ptr[ b_i ];
+                entries_before_block_row[b_i+1] = mi * b_row_counters[ b_i ];
             }
+            
+    //        for( mint b_i = 0; b_i < b_m; ++b_i )
+    //        {
+    //            entries_before_block_row[b_i+1] += entries_before_block_row[b_i];
+    //        }
+
+            partial_sum( &entries_before_block_row[0], &entries_before_block_row[0] +b_m + 1);
+            
+            #pragma omp parallel for num_threads(thread_count)
+            for( mint b_i = 0; b_i < b_m; ++b_i )
+            {
+                mint entries_before_kth_block = entries_before_block_row[b_i];
+                
+                mint mi = b_row_ptr[ b_i + 1 ] -  b_row_ptr[ b_i ];
+                
+                for( mint k =  b_outer[ b_i ]; k < b_outer[ b_i + 1 ]; ++k)
+                {
+                    // k-th block is {b_i, b_j}
+                    mint j =  b_inner[k];
+                    mint nj = b_col_ptr[j + 1] - b_col_ptr[j];
+                    // k-th block has size mi * nj
+                    entries_before_kth_block += mi * nj;
+                    block_ptr[k+1] = entries_before_kth_block;
+                }
+            }
+            
+            // distribute workload
+            mint * b_row_acc_costs = nullptr;
+            safe_alloc( b_row_acc_costs, b_m);
+            b_row_acc_costs[0] = 0;
+            #pragma omp parallel for simd num_threads(thread_count) aligned( b_row_acc_costs, b_row_counters, b_row_ptr : ALIGN )
+            for( mint b_i = 0; b_i < b_m; ++b_i)
+            {
+                b_row_acc_costs[b_i+1] = b_row_counters[b_i] * (b_row_ptr[b_i + 1] - b_row_ptr[b_i]);
+            }
+            partial_sum( b_row_acc_costs, b_row_acc_costs + b_m + 1 );
+
+            BalanceWorkLoad( b_m, b_row_acc_costs, thread_count, job_ptr);
+
+            safe_free(b_row_acc_costs);
+
+            max_row_counter = *std::max_element(b_row_counters, b_row_counters + b_m);
         }
-        
-        // distribute workload
-        mint * b_row_acc_costs = nullptr;
-        safe_alloc( b_row_acc_costs, b_m);
-        b_row_acc_costs[0] = 0;
-        #pragma omp parallel for simd num_threads(thread_count) aligned( b_row_acc_costs, b_row_counters, b_row_ptr : ALIGN )
-        for( mint b_i = 0; b_i < b_m; ++b_i)
-        {
-            b_row_acc_costs[b_i+1] = b_row_counters[b_i] * (b_row_ptr[b_i + 1] - b_row_ptr[b_i]);
-        }
-        partial_sum( b_row_acc_costs, b_row_acc_costs + b_m + 1 );
-        
-        BalanceWorkLoad( b_m, b_row_acc_costs, thread_count, job_ptr);
-        
-        safe_free(b_row_acc_costs);
         
         ptoc("InteractionData::Prepare_CSR( mint b_m_, mint * b_row_ptr_, mint b_n_, mint * b_col_ptr_ )");
     }
@@ -590,46 +596,51 @@ namespace rsurfaces
     void InteractionData::ApplyKernel_VBSR( mreal * values, mreal * T_input, mreal * S_output, mint cols, mreal factor ) // sparse matrix-vector multiplication using mkl_sparse_d_mm
     {
 
-        
+        ptic("ApplyKernel_VBSR");
 //        print("ApplyKernel_VBSR - near field");
         
-        ptic("ApplyKernel_VBSR");
-        #pragma omp parallel num_threads(thread_count)
+        #pragma omp parallel for simd num_threads(thread_count) aligned(S_output : ALIGN )
+        for( mint j = 0; j < cols * m; ++ j)
         {
-            mint b_i_begin = job_ptr[ omp_get_thread_num()     ];
-            mint b_i_end   = job_ptr[ omp_get_thread_num() + 1 ];
-            
-            for( mint b_i = b_i_begin; b_i < b_i_end; ++ b_i)
-            {
-                // i-th chunk ui of output is a mi x cols matrix
-                mint mi = b_row_ptr[b_i + 1] - b_row_ptr[b_i];
-                mreal * ui = S_output + cols * b_row_ptr[b_i];
-                
-//                mint i_begin = b_row_ptr[ b_i     ];
-//                mint i_end   = b_row_ptr[ b_i + 1 ];
-                
-                mint k_begin = b_outer[ b_i     ];
-                mint k_end   = b_outer[ b_i + 1 ];
-                
-                for( mint k = k_begin; k < k_end; ++ k)
-                {
-                    mint b_j = b_inner[k];
-                    mint j_begin = b_col_ptr[b_j];
-                    mint j_end = b_col_ptr[b_j+1];
-                    
-                    // block Aij is a densemi x nj matrix
-                    
+            S_output[j] = 0.;
+        }
 
-                    mreal * Aij = values + block_ptr[k];
+        if( b_nnz > 0 )
+        {
+            #pragma omp parallel num_threads(thread_count)
+            {
+                mint b_i_begin = job_ptr[ omp_get_thread_num()     ];
+                mint b_i_end   = job_ptr[ omp_get_thread_num() + 1 ];
+                
+                for( mint b_i = b_i_begin; b_i < b_i_end; ++ b_i)
+                {
+                    // i-th chunk ui of output is a mi x cols matrix
+                    mint mi = b_row_ptr[b_i + 1] - b_row_ptr[b_i];
+                    mreal * ui = S_output + cols * b_row_ptr[b_i];
                     
-                    mint nj = b_col_ptr[b_j + 1] - b_col_ptr[b_j];
+    //                mint i_begin = b_row_ptr[ b_i     ];
+    //                mint i_end   = b_row_ptr[ b_i + 1 ];
                     
-                    // j-th chunk vj of input is a nj x cols matrix
-                    mreal * vj = T_input + cols * b_col_ptr[b_j];
-                    cblas_dgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, mi, cols, nj, 1., Aij, nj, vj, cols, 1., ui, cols );
-//                                                                                                               ^
-//                                                                                                               |
-//                                                                                                               +--- add- into
+                    mint k_begin = b_outer[ b_i     ];
+                    mint k_end   = b_outer[ b_i + 1 ];
+                    
+                    for( mint k = k_begin; k < k_end; ++ k)
+                    {
+                        mint b_j = b_inner[k];
+                        mint j_begin = b_col_ptr[b_j];
+                        mint j_end = b_col_ptr[b_j+1];
+                        
+                        // block Aij is a densemi x nj matrix
+                        
+
+                        mreal * Aij = values + block_ptr[k];
+                        
+                        mint nj = b_col_ptr[b_j + 1] - b_col_ptr[b_j];
+                        
+                        // j-th chunk vj of input is a nj x cols matrix
+                        mreal * vj = T_input + cols * b_col_ptr[b_j];
+                        cblas_dgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, mi, cols, nj, 1., Aij, nj, vj, cols, 0., ui, cols );
+                    }
                 }
             }
         }
@@ -639,61 +650,67 @@ namespace rsurfaces
     
     void InteractionData::ApplyKernel_Hybrid( mreal * values, mreal * T_input, mreal * S_output, mint cols, mreal factor ) // sparse matrix-vector multiplication using mkl_sparse_d_mm
     {
-
-//        print("ApplyKernel_Hybrid - near field");
+        ptic("ApplyKernel_Hybrid");
         
-        mint max_len = *std::max_element(b_row_counters, b_row_counters + b_m);
-        auto thread_input_buffers = A_Vector<A_Vector<mreal>> (thread_count);
-
-        #pragma omp parallel num_threads(thread_count)
+        #pragma omp parallel for simd num_threads(thread_count) aligned(S_output : ALIGN )
+        for( mint j = 0; j < cols * m; ++ j)
         {
-            mint thread = omp_get_thread_num();
-            thread_input_buffers[thread].resize( max_len * cols);
+            S_output[j] = 0;
         }
         
-        
-        ptic("ApplyKernel_Hybrid");
-        #pragma omp parallel num_threads(thread_count)
+        if( nnz > 0 )
         {
-            mint thread = omp_get_thread_num();
-            mreal * v = &thread_input_buffers[thread][0];
             
-            mint b_i_begin = job_ptr[ thread ];
-            mint b_i_end   = job_ptr[ thread + 1 ];
-            
-            for( mint b_i = b_i_begin; b_i < b_i_end; ++ b_i)
+            auto thread_input_buffers = A_Vector<A_Vector<mreal>> (thread_count);
+
+            #pragma omp parallel num_threads(thread_count)
             {
-                mint i_begin = b_row_ptr[ b_i ];
-                mint i_end   = b_row_ptr[ b_i + 1 ];
-                
-
-                mint k_begin = b_outer[ b_i ];
-                mint k_end   = b_outer[ b_i + 1 ];
-                
-                mreal * ptr = v;
-                
-                for( mint k = k_begin; k < k_end; ++ k)
-                {
-                    mint b_j = b_inner[k];
-                    mint j_begin = b_col_ptr[b_j];
-                    mint j_end = b_col_ptr[b_j+1];
+                mint thread = omp_get_thread_num();
+                thread_input_buffers[thread].resize( max_row_counter * cols);
+            }
             
-                    mint nj = j_end - j_begin;
-
-//                    mreal * vj_begin = T_input + cols * j_begin;
-//                    mreal * vj_end   = T_input + cols * j_end;
-
-//                    std::copy( vj_begin, vj_end, ptr );
-                    
-                    cblas_dcopy( cols * nj, T_input + cols * j_begin, 1, ptr, 1);
-                    
-                    ptr += cols * nj;
-                }
+            #pragma omp parallel num_threads(thread_count)
+            {
+                mint thread = omp_get_thread_num();
+                mreal * v = &thread_input_buffers[thread][0];
                 
-                mint mi = i_end - i_begin;
-                mreal * ui = S_output + cols * i_begin;
-                mint row_nnz = b_row_counters[b_i];
-                cblas_dgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, mi, cols, row_nnz, factor, values + outer[i_begin], row_nnz, v, cols, 0., ui, cols );
+                mint b_i_begin = job_ptr[ thread ];
+                mint b_i_end   = job_ptr[ thread + 1 ];
+                
+                for( mint b_i = b_i_begin; b_i < b_i_end; ++ b_i)
+                {
+                    mint i_begin = b_row_ptr[ b_i ];
+                    mint i_end   = b_row_ptr[ b_i + 1 ];
+                    
+
+                    mint k_begin = b_outer[ b_i ];
+                    mint k_end   = b_outer[ b_i + 1 ];
+                    
+                    mreal * ptr = v;
+                    
+                    for( mint k = k_begin; k < k_end; ++ k)
+                    {
+                        mint b_j = b_inner[k];
+                        mint j_begin = b_col_ptr[b_j];
+                        mint j_end = b_col_ptr[b_j+1];
+                
+                        mint nj = j_end - j_begin;
+
+    //                    mreal * vj_begin = T_input + cols * j_begin;
+    //                    mreal * vj_end   = T_input + cols * j_end;
+
+    //                    std::copy( vj_begin, vj_end, ptr );
+                        
+                        cblas_dcopy( cols * nj, T_input + cols * j_begin, 1, ptr, 1);
+                        
+                        ptr += cols * nj;
+                    }
+                    
+                    mint mi = i_end - i_begin;
+                    mreal * ui = S_output + cols * i_begin;
+                    mint row_nnz = b_row_counters[b_i];
+                    cblas_dgemm( CblasRowMajor, CblasNoTrans, CblasNoTrans, mi, cols, row_nnz, factor, values + outer[i_begin], row_nnz, v, cols, 0., ui, cols );
+                }
             }
         }
         ptoc("ApplyKernel_Hybrid");

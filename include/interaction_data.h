@@ -150,6 +150,7 @@ public:
     }; // ApplyKernel
 
     mint * job_ptr = nullptr;
+    mint max_row_counter = 0;
     
     void ApplyKernel_VBSR     ( mreal * values, mreal * T_input, mreal * S_output, mint cols, mreal factor = 1. );
     void ApplyKernel_CSR_MKL  ( mreal * values, mreal * T_input, mreal * S_output, mint cols, mreal factor = 1. );
