@@ -482,7 +482,8 @@ namespace rsurfaces
 
     inline OptimizedClusterTree * CreateOptimizedBVH(MeshPtr &mesh, GeomPtr &geom)
     {
-        return CreateOptimizedBVH(mesh, geom);
+//        return CreateOptimizedBVH_Hybrid(mesh, geom);
+        return CreateOptimizedBVH_Normals(mesh, geom);
     }
     
     inline OptimizedBlockClusterTree * CreateOptimizedBCTFromBVH(OptimizedClusterTree* bvh, double alpha, double beta, double chi)
