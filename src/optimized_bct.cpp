@@ -350,7 +350,7 @@ namespace rsurfaces
         
         if( S->far_dim == 10 && T->far_dim == 10 )
         {
-            // using projectors on clusters
+//            print("FarFieldInteraction: Using projectors on clusters.");
             
             // Dunno why "restrict" helps with C_far. It is actually a lie here.
             mreal const * restrict const X1 = S->C_far[1];
@@ -430,7 +430,7 @@ namespace rsurfaces
         }
         else
         {
-            // using normals on clusters (not correct!)
+//            print("FarFieldInteraction: Using normals on clusters.");
             
             // Dunno why "restrict" helps with C_far. It is actually a lie here.
             mreal const * restrict const X1 = S->C_far[1];
@@ -607,6 +607,8 @@ namespace rsurfaces
         {
             // using projectors on primitives (correct, but normals are more efficient)
             
+            print("NearFieldInteraction_CSR: Using projectors on primitives.");
+            
             // Dunno why "restrict" helps with P_near. It is actually a lie here if S = S.
             mreal const * restrict const X1 = S->P_near[1];
             mreal const * restrict const X2 = S->P_near[2];
@@ -706,7 +708,8 @@ namespace rsurfaces
         }
         else
         {
-            // using normals on primitives (correct)
+            // using normals on primitives (correct and fast)
+            print("NearFieldInteraction_CSR: Using normals on primitives.");
             
             // Dunno why "restrict" helps with P_near. It is actually a lie here if S = S.
             mreal const * restrict const X1 = &S->P_near[1][0];

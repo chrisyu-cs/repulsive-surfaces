@@ -164,7 +164,7 @@ int main(int arg_count, char* arg_vec[])
     BM.Prepare();
 
     BM.thread_count = BM.max_thread_count;
-//    BM.TestMultiply();    
+    BM.TestMultiply();    
 //    BM.TestMKLOptimize();
 //    BM.TestVBSR();
 //    BM.TestHybrid();

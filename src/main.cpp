@@ -509,6 +509,347 @@ namespace rsurfaces
         numericalNormalDeriv(geom, vert, vert).Print();
     }
 
+    void MainApp::TestMultiply()
+    {
+        int threads;
+        #pragma omp parallel
+        {
+            threads = omp_get_num_threads();
+        }
+        
+        std::cout << std::setprecision(8);
+        std::cout << "\n  =====                   =====  " << std::endl;
+        std::cout << "=======   TestMultiply   =======" << std::endl;
+        std::cout << "  =====                   =====  " << std::endl;
+        std::cout << "\n"
+                  << std::endl;
+
+        double alpha = 6.;
+        double beta = 12.;
+        double weight = 1.;
+//        double theta = MainApp::instance->bh_theta;
+        double theta = 0.5;
+        double chi = theta;
+//        double chi = 0.8 * theta;
+
+        // mesh1 and geom1 represent the movable surface
+        auto mesh = rsurfaces::MainApp::instance->mesh;
+        auto geom = rsurfaces::MainApp::instance->geom;
+        
+        OptimizedClusterTreeOptions::use_old_prepost = false;
+        OptimizedClusterTreeOptions::tree_perc_alg = TreePercolationAlgorithm::Chunks;
+
+        
+        OptimizedClusterTree * bvh = CreateOptimizedBVH(mesh, geom);
+        OptimizedBlockClusterTree * bct = CreateOptimizedBCTFromBVH(bvh, alpha, beta, chi);
+
+        mint vertex_count = mesh->nVertices();
+        
+        Eigen::MatrixXd V (vertex_count, 3);
+        
+        for( mint i = 0; i < vertex_count; ++i )
+        {
+            for( mint j = 0; j < 3; ++ j)
+            {
+                V(i,j) = geom->inputVertexPositions[i][j];
+            }
+        }
+        
+        Eigen::MatrixXd U (vertex_count, 3);
+        std::ofstream os;
+        mreal * ptr;
+        mint n;
+        std::string name;
+        
+        
+// ####### FractionalOnly
+        
+        name = "FractionalOnly";
+        
+        U.setZero();
+        bct->Multiply(V,U, BCTKernelType::FractionalOnly);
+        
+        os.open("./Output_" + name + ".tsv");
+        for( mint i = 0; i < vertex_count; ++i )
+        {
+            os << U(i,0) << "\t";
+            os << U(i,1) << "\t";
+            os << U(i,2) << "\n";
+        }
+        os.close();
+        
+        os.open("./P_in_" + name + ".tsv");
+        ptr = bct->S->P_in;
+        n = bct->T->cluster_count * bct->T->buffer_dim;
+        for( mint i = 0; i < n-1; ++i )
+        {
+            os << ptr[i] << "\t";
+            
+        }
+        os << ptr[n-1];
+        os.close();
+        
+        os.open("./C_in_leaves_" + name + ".tsv");
+        ptr = bct->T->C_in;
+        n = bct->T->buffer_dim;
+        for( mint i = 0; i < bct->T->leaf_cluster_count; ++i )
+        {
+            for( mint k = 0; k < n; ++k )
+            os << ptr[ n * bct->T->leaf_clusters[i] + k ] << "\t";
+            
+        }
+        os.close();
+        
+        os.open("./C_in_" + name + ".tsv");
+        ptr = bct->T->C_in;
+        n = bct->T->cluster_count * bct->T->buffer_dim;
+        for( mint i = 0; i < n-1; ++i )
+        {
+            os << ptr[i] << "\t";
+            
+        }
+        os << ptr[n-1];
+        os.close();
+        
+        os.open("./C_out_" + name + ".tsv");
+        ptr = bct->S->C_out;
+        n = bct->S->cluster_count * bct->S->buffer_dim;
+        for( mint i = 0; i < n-1; ++i )
+        {
+            os << ptr[i] << "\t";
+            
+        }
+        os << ptr[n-1];
+        os.close();
+        
+        os.open("./P_out_" + name + ".tsv");
+        ptr = bct->S->P_out;
+        n = bct->S->cluster_count * bct->S->buffer_dim;
+        for( mint i = 0; i < n-1; ++i )
+        {
+            os << ptr[i] << "\t";
+            
+        }
+        os << ptr[n-1];
+        os.close();
+        
+        
+// ####### LowOrder
+                
+        name = "LowOrder";
+        
+        U.setZero();
+        bct->Multiply(V,U, BCTKernelType::LowOrder);
+        
+
+        os.open("./Output_" + name + ".tsv");
+        for( mint i = 0; i < vertex_count; ++i )
+        {
+            os << U(i,0) << "\t";
+            os << U(i,1) << "\t";
+            os << U(i,2) << "\n";
+        }
+        os.close();
+        
+        os.open("./P_in_" + name + ".tsv");
+        ptr = bct->S->P_in;
+        n = bct->T->cluster_count * bct->T->buffer_dim;
+        for( mint i = 0; i < n-1; ++i )
+        {
+            os << ptr[i] << "\t";
+            
+        }
+        os << ptr[n-1];
+        os.close();
+        
+        os.open("./C_in_leaves_" + name + ".tsv");
+        ptr = bct->T->C_in;
+        n = bct->T->buffer_dim;
+        for( mint i = 0; i < bct->T->leaf_cluster_count; ++i )
+        {
+            for( mint k = 0; k < n; ++k )
+            os << ptr[ n * bct->T->leaf_clusters[i] + k ] << "\t";
+            
+        }
+        os.close();
+        
+        os.open("./C_in_" + name + ".tsv");
+        ptr = bct->T->C_in;
+        n = bct->T->cluster_count * bct->T->buffer_dim;
+        for( mint i = 0; i < n-1; ++i )
+        {
+            os << ptr[i] << "\t";
+            
+        }
+        os << ptr[n-1];
+        os.close();
+        
+        os.open("./C_out_" + name + ".tsv");
+        ptr = bct->S->C_out;
+        n = bct->S->cluster_count * bct->S->buffer_dim;
+        for( mint i = 0; i < n-1; ++i )
+        {
+            os << ptr[i] << "\t";
+            
+        }
+        os << ptr[n-1];
+        os.close();
+        
+        os.open("./P_out_" + name + ".tsv");
+        ptr = bct->S->P_out;
+        n = bct->S->cluster_count * bct->S->buffer_dim;
+        for( mint i = 0; i < n-1; ++i )
+        {
+            os << ptr[i] << "\t";
+            
+        }
+        os << ptr[n-1];
+        os.close();
+        
+        
+// ####### LowOrder
+                
+        name = "HighOrder";
+        
+        U.setZero();
+        bct->Multiply(V,U, BCTKernelType::HighOrder);
+        
+
+        os.open("./Output_" + name + ".tsv");
+        for( mint i = 0; i < vertex_count; ++i )
+        {
+            os << U(i,0) << "\t";
+            os << U(i,1) << "\t";
+            os << U(i,2) << "\n";
+        }
+        os.close();
+        
+        os.open("./P_in_" + name + ".tsv");
+        ptr = bct->S->P_in;
+        n = bct->T->cluster_count * bct->T->buffer_dim;
+        for( mint i = 0; i < n-1; ++i )
+        {
+            os << ptr[i] << "\t";
+            
+        }
+        os << ptr[n-1];
+        os.close();
+        
+        os.open("./C_in_leaves_" + name + ".tsv");
+        ptr = bct->T->C_in;
+        n = bct->T->buffer_dim;
+        for( mint i = 0; i < bct->T->leaf_cluster_count; ++i )
+        {
+            for( mint k = 0; k < n; ++k )
+            os << ptr[ n * bct->T->leaf_clusters[i] + k ] << "\t";
+            
+        }
+        os.close();
+        
+        os.open("./C_in_" + name + ".tsv");
+        ptr = bct->T->C_in;
+        n = bct->T->cluster_count * bct->T->buffer_dim;
+        for( mint i = 0; i < n-1; ++i )
+        {
+            os << ptr[i] << "\t";
+            
+        }
+        os << ptr[n-1];
+        os.close();
+        
+
+        os.open("./C_out_" + name + ".tsv");
+        ptr = bct->S->C_out;
+        n = bct->S->cluster_count * bct->S->buffer_dim;
+        for( mint i = 0; i < n-1; ++i )
+        {
+            os << ptr[i] << "\t";
+            
+        }
+        os << ptr[n-1];
+        os.close();
+        
+        os.open("./P_out_" + name + ".tsv");
+        ptr = bct->S->P_out;
+        n = bct->S->cluster_count * bct->S->buffer_dim;
+        for( mint i = 0; i < n-1; ++i )
+        {
+            os << ptr[i] << "\t";
+            
+        }
+        os << ptr[n-1];
+        os.close();
+        
+
+
+        
+        os.open("./Far_FractionalOnly.tsv");
+        ptr = bct->far->fr_values;
+        for( mint i = 0; i < bct->far->nnz-1; ++i )
+        {
+            os << ptr[i] << "\t";
+
+        }
+        os << ptr[bct->far->nnz-1];
+        os.close();
+        os.open("./Far_LowOrder.tsv");
+        ptr = bct->far->lo_values;
+        for( mint i = 0; i < bct->far->nnz-1; ++i )
+        {
+            os << ptr[i] << "\t";
+
+        }
+        os << ptr[bct->far->nnz-1];
+        os.close();
+
+        os.open("./Far_HighOrder.tsv");
+        ptr = bct->far->hi_values;
+        for( mint i = 0; i < bct->far->nnz-1; ++i )
+        {
+            os << ptr[i] << "\t";
+
+        }
+        os << ptr[bct->far->nnz-1];
+        os.close();
+
+
+
+        os.open("./Near_FractionalOnly.tsv");
+        ptr = bct->near->fr_values;
+        for( mint i = 0; i < bct->near->nnz-1; ++i )
+        {
+            os << ptr[i] << "\t";
+
+        }
+        os << ptr[bct->near->nnz-1];
+        os.close();
+        os.open("./Near_LowOrder.tsv");
+        ptr = bct->near->lo_values;
+        for( mint i = 0; i < bct->near->nnz-1; ++i )
+        {
+            os << ptr[i] << "\t";
+
+        }
+        os << ptr[bct->near->nnz-1];
+        os.close();
+
+        os.open("./Near_HighOrder.tsv");
+        ptr = bct->near->hi_values;
+        for( mint i = 0; i < bct->near->nnz-1; ++i )
+        {
+            os << ptr[i] << "\t";
+
+        }
+        os << ptr[bct->near->nnz-1];
+        os.close();
+
+        
+        delete bct;
+        delete bvh;
+
+        std::cout << "TestMultiply finished." << std::endl;
+    }
+        
     void MainApp::TestObstacle0()
     {
         int threads;
@@ -528,8 +869,10 @@ namespace rsurfaces
         double alpha = 6.;
         double beta = 12.;
         double weight = 1.;
-        double theta = MainApp::instance->bh_theta;
-        double chi = 0.8 * theta;
+//        double theta = MainApp::instance->bh_theta;
+        double theta = 0.25;
+        double chi = theta;
+//        double chi = 0.8 * theta;
 
         // mesh1 and geom1 represent the movable surface
         auto mesh1 = rsurfaces::MainApp::instance->mesh;
@@ -1702,10 +2045,17 @@ void customCallback()
         MainApp::instance->CreateAndDestroyBVH();
     }
 
+    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
+    if (ImGui::Button("TestMultiply", ImVec2{ITEM_WIDTH, 0}))
+    {
+        MainApp::instance->TestMultiply();
+    }
+    
     if (ImGui::Button("Test Willmore", ImVec2{ITEM_WIDTH, 0}))
     {
         MainApp::instance->TestWillmore();
     }
+    
     ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
     if (ImGui::Button("Test TPObstacle0", ImVec2{ITEM_WIDTH, 0}))
     {

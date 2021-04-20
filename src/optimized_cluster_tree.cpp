@@ -542,7 +542,7 @@ namespace rsurfaces
 
     void OptimizedClusterTree::ComputePrePost( MKLSparseMatrix & DiffOp, MKLSparseMatrix & AvOp )
     {
-        ptic("OptimizedClusterTree::ComputePrePost");
+    //    tic("Create pre and post");
 
         P_to_C = MKLSparseMatrix( cluster_count, primitive_count, primitive_count );
         P_to_C.outer[0] = 0;
@@ -550,8 +550,10 @@ namespace rsurfaces
         C_to_P = MKLSparseMatrix(primitive_count, cluster_count, primitive_count );
         C_to_P.outer[primitive_count] = primitive_count;
         
+
         safe_alloc( leaf_cluster_ptr, leaf_cluster_count + 1  );
         leaf_cluster_ptr[0] = 0;
+    //    P_leaf = A_Vector<mint>( primitive_count );
 
         #pragma omp parallel for
         for( mint i = 0; i < leaf_cluster_count; ++i )
@@ -565,22 +567,23 @@ namespace rsurfaces
                 C_to_P.inner[k] = leaf;
             }
         }
-        
+
         {
             mreal * x = C_to_P.values;
-            mint * i  = C_to_P.outer;
             mreal * y = P_to_C.values;
+            mint * i  = C_to_P.outer;
             mint * j  = P_to_C.inner;
-            #pragma omp parallel for
+            #pragma omp simd aligned ( x, y, i, j  : ALIGN )
             for( mint k = 0; k < primitive_count; ++k )
             {
                 x[k] = 1.;
                 y[k] = 1.;
+                
                 i[k] = k;
                 j[k] = k;
             }
         }
-        
+
         for (mint C = 0; C < cluster_count; ++C)
         {
             if( C_left[C] >= 0)
@@ -592,128 +595,208 @@ namespace rsurfaces
                 P_to_C.outer[C + 1] = P_to_C.outer[C] + C_end[C] - C_begin[C];
             }
         }
-        
-        if( use_old_prepost )
+
+        auto hi_perm = MKLSparseMatrix( dim * primitive_count, dim * primitive_count, dim * primitive_count );
+        hi_perm.outer[ dim * primitive_count ] = dim * primitive_count;
+
+        #pragma omp parallel for
+        for( mint i = 0; i < primitive_count; ++i )
         {
-//            print("hi_pre old");
-            auto hi_perm = MKLSparseMatrix( dim * primitive_count, dim * primitive_count, dim * primitive_count );
-            hi_perm.outer[ dim * primitive_count ] = dim * primitive_count;
-
-            #pragma omp parallel for
-            for( mint i = 0; i < primitive_count; ++i )
+            mreal a = P_near[0][i];
+            for( mint k = 0; k < dim; ++k )
             {
-                mreal a = P_near[0][i];
-                for( mint k = 0; k < dim; ++k )
-                {
-                    mint to = dim * i + k;
-                    hi_perm.outer [ to ] = to;
-                    hi_perm.inner [ to ] = dim * P_ext_pos[i] + k;
-                    hi_perm.values[ to ] = a;
-                }
-            }
-
-            hi_perm.Multiply( DiffOp, hi_pre );
-        }
-        else
-        {
-//            print("hi_pre new");
-            hi_pre = MKLSparseMatrix( DiffOp.m, DiffOp.n, DiffOp.nnz );
-            mint * Douter = DiffOp.outer;
-            mint * Dinner = DiffOp.inner;
-            mreal * Dvalues = DiffOp.values;
-            mint * Pouter = hi_pre.outer;
-            mint * Pinner = hi_pre.inner;
-            mreal * Pvalues = hi_pre.values;
-
-            // permuting block rows of DiffOp (dim rows per block row)
-            #pragma omp parallel for
-            for( mint i = 0; i < primitive_count; ++i)
-            {
-                mint j = P_ext_pos[i];
-                mint from = dim * j;
-                mint to = dim * i;
-                #pragma omp simd aligned( Pouter, Douter : ALIGN )
-                for( mint k = 0; k < dim; ++k)
-                {
-                    Pouter[to + k + 1] = Douter[from + k + 1] - Douter[from + k];
-                }
-            }
-            partial_sum( Pouter, Pouter + hi_pre.m + 1);
-
-            #pragma omp parallel for
-            for( mint i = 0; i < primitive_count; ++i)
-            {
-                mreal a = P_far[0][i];
-                mint j = P_ext_pos[i];
-                mint from = Douter[dim * j];
-                mint last = Douter[dim * (j+1)] - from;
-                mint to = Douter[dim * i];
-
-                #pragma omp simd aligned( Dinner, Dvalues, Pinner, Pvalues : ALIGN )
-                for( mint k = 0; k < last; ++k )
-                {
-                    Pinner[to + k] = Dinner[from + k];
-                    Pvalues[to + k] = a * Dvalues[from + k];
-                }
+                mint to = dim * i + k;
+                hi_perm.outer [ to ] = to;
+                hi_perm.inner [ to ] = dim * P_ext_pos[i] + k;
+                hi_perm.values[ to ] = a;
             }
         }
+
+        hi_perm.Multiply( DiffOp, hi_pre );
 
         hi_pre.Transpose( hi_post );
-                
-        if( use_old_prepost )
-        {
-//            print("lo_pre old");
-            auto lo_perm = MKLSparseMatrix( primitive_count, primitive_count, C_to_P.outer, P_ext_pos, P_near[0] ); // Copy
 
-            lo_perm.Multiply( AvOp, lo_pre );
+        auto lo_perm = MKLSparseMatrix( primitive_count, primitive_count, C_to_P.outer, P_ext_pos, P_near[0] ); // Copy
 
-        }
-        else
-        {
-//            print("lo_pre new");
-            
-            lo_pre = MKLSparseMatrix( AvOp.m, AvOp.n, AvOp.nnz );
-            mint * Douter = AvOp.outer;
-            mint * Dinner = AvOp.inner;
-            mreal * Dvalues = AvOp.values;
-            mint * Pouter = lo_pre.outer;
-            mint * Pinner = lo_pre.inner;
-            mreal * Pvalues = lo_pre.values;
+        lo_perm.Multiply( AvOp, lo_pre );
 
-            // permuting rows of AvOps
-            #pragma omp parallel for
-            for( mint i = 0; i < primitive_count; ++i)
-            {
-                mint j = P_ext_pos[i];
-                mint from = j;
-                mint to = i;
-                Pouter[to + 1] = Douter[from + 1] - Douter[from ];
-            }
-        
-            std::partial_sum( lo_pre.outer, lo_pre.outer + lo_pre.m + 1, lo_pre.outer );
-            
-            #pragma omp parallel for
-            for( mint i = 0; i < primitive_count; ++i)
-            {
-                mreal a = P_far[0][i];
-                mint j = P_ext_pos[i];
-                mint from = Douter[j];
-                mint last = Douter[j+1] - from;
-                mint to = Douter[i];
-
-                #pragma omp simd aligned( Dinner, Dvalues, Pinner, Pvalues : ALIGN )
-                for( mint k = 0; k < last; ++k )
-                {
-                    Pinner[to + k] = Dinner[from + k];
-                    Pvalues[to + k] = a * Dvalues[from + k];
-                }
-            }
-        }
-        
         lo_pre.Transpose( lo_post );
-        
-        ptoc("OptimizedClusterTree::ComputePrePost");
     } // ComputePrePost
+    
+//    void OptimizedClusterTree::ComputePrePost( MKLSparseMatrix & DiffOp, MKLSparseMatrix & AvOp )
+//    {
+//        ptic("OptimizedClusterTree::ComputePrePost");
+//
+//        P_to_C = MKLSparseMatrix( cluster_count, primitive_count, primitive_count );
+//        P_to_C.outer[0] = 0;
+//
+//        C_to_P = MKLSparseMatrix(primitive_count, cluster_count, primitive_count );
+//        C_to_P.outer[primitive_count] = primitive_count;
+//        
+//        safe_alloc( leaf_cluster_ptr, leaf_cluster_count + 1  );
+//        leaf_cluster_ptr[0] = 0;
+//
+//        #pragma omp parallel for
+//        for( mint i = 0; i < leaf_cluster_count; ++i )
+//        {
+//            mint leaf = leaf_clusters[i];
+//            mint begin = C_begin[leaf];
+//            mint end   = C_end  [leaf];
+//            leaf_cluster_ptr[ i + 1 ] = end;
+//            for( mint k = begin; k < end; ++k )
+//            {
+//                C_to_P.inner[k] = leaf;
+//            }
+//        }
+//        
+//        {
+//            mreal * x = C_to_P.values;
+//            mint * i  = C_to_P.outer;
+//            mreal * y = P_to_C.values;
+//            mint * j  = P_to_C.inner;
+//            #pragma omp parallel for
+//            for( mint k = 0; k < primitive_count; ++k )
+//            {
+//                x[k] = 1.;
+//                y[k] = 1.;
+//                i[k] = k;
+//                j[k] = k;
+//            }
+//        }
+//        
+//        for (mint C = 0; C < cluster_count; ++C)
+//        {
+//            if( C_left[C] >= 0)
+//            {
+//                P_to_C.outer[C + 1] = P_to_C.outer[C];
+//            }
+//            else
+//            {
+//                P_to_C.outer[C + 1] = P_to_C.outer[C] + C_end[C] - C_begin[C];
+//            }
+//        }
+//        
+//        if( use_old_prepost )
+//        {
+////            print("hi_pre old");
+//            auto hi_perm = MKLSparseMatrix( dim * primitive_count, dim * primitive_count, dim * primitive_count );
+//            hi_perm.outer[ dim * primitive_count ] = dim * primitive_count;
+//
+//            #pragma omp parallel for
+//            for( mint i = 0; i < primitive_count; ++i )
+//            {
+//                mreal a = P_near[0][i];
+//                for( mint k = 0; k < dim; ++k )
+//                {
+//                    mint to = dim * i + k;
+//                    hi_perm.outer [ to ] = to;
+//                    hi_perm.inner [ to ] = dim * P_ext_pos[i] + k;
+//                    hi_perm.values[ to ] = a;
+//                }
+//            }
+//
+//            hi_perm.Multiply( DiffOp, hi_pre );
+//        }
+//        else
+//        {
+////            print("hi_pre new");
+//            hi_pre = MKLSparseMatrix( DiffOp.m, DiffOp.n, DiffOp.nnz );
+//            mint * Douter = DiffOp.outer;
+//            mint * Dinner = DiffOp.inner;
+//            mreal * Dvalues = DiffOp.values;
+//            mint * Pouter = hi_pre.outer;
+//            mint * Pinner = hi_pre.inner;
+//            mreal * Pvalues = hi_pre.values;
+//
+//            // permuting block rows of DiffOp (dim rows per block row)
+//            #pragma omp parallel for
+//            for( mint i = 0; i < primitive_count; ++i)
+//            {
+//                mint j = P_ext_pos[i];
+//                mint from = dim * j;
+//                mint to = dim * i;
+//                #pragma omp simd aligned( Pouter, Douter : ALIGN )
+//                for( mint k = 0; k < dim; ++k)
+//                {
+//                    Pouter[to + k + 1] = Douter[from + k + 1] - Douter[from + k];
+//                }
+//            }
+//            partial_sum( Pouter, Pouter + hi_pre.m + 1);
+//
+//            #pragma omp parallel for
+//            for( mint i = 0; i < primitive_count; ++i)
+//            {
+//                mreal a = P_far[0][i];
+//                mint j = P_ext_pos[i];
+//                mint from = Douter[dim * j];
+//                mint last = Douter[dim * (j+1)] - from;
+//                mint to = Douter[dim * i];
+//
+//                #pragma omp simd aligned( Dinner, Dvalues, Pinner, Pvalues : ALIGN )
+//                for( mint k = 0; k < last; ++k )
+//                {
+//                    Pinner[to + k] = Dinner[from + k];
+//                    Pvalues[to + k] = a * Dvalues[from + k];
+//                }
+//            }
+//        }
+//
+//        hi_pre.Transpose( hi_post );
+//                
+//        if( use_old_prepost )
+//        {
+////            print("lo_pre old");
+//            auto lo_perm = MKLSparseMatrix( primitive_count, primitive_count, C_to_P.outer, P_ext_pos, P_near[0] ); // Copy
+//
+//            lo_perm.Multiply( AvOp, lo_pre );
+//
+//        }
+//        else
+//        {
+////            print("lo_pre new");
+//            
+//            lo_pre = MKLSparseMatrix( AvOp.m, AvOp.n, AvOp.nnz );
+//            mint * Douter = AvOp.outer;
+//            mint * Dinner = AvOp.inner;
+//            mreal * Dvalues = AvOp.values;
+//            mint * Pouter = lo_pre.outer;
+//            mint * Pinner = lo_pre.inner;
+//            mreal * Pvalues = lo_pre.values;
+//
+//            // permuting rows of AvOps
+//            #pragma omp parallel for
+//            for( mint i = 0; i < primitive_count; ++i)
+//            {
+//                mint j = P_ext_pos[i];
+//                mint from = j;
+//                mint to = i;
+//                Pouter[to + 1] = Douter[from + 1] - Douter[from ];
+//            }
+//        
+//            std::partial_sum( lo_pre.outer, lo_pre.outer + lo_pre.m + 1, lo_pre.outer );
+//            
+//            #pragma omp parallel for
+//            for( mint i = 0; i < primitive_count; ++i)
+//            {
+//                mreal a = P_far[0][i];
+//                mint j = P_ext_pos[i];
+//                mint from = Douter[j];
+//                mint last = Douter[j+1] - from;
+//                mint to = Douter[i];
+//
+//                #pragma omp simd aligned( Dinner, Dvalues, Pinner, Pvalues : ALIGN )
+//                for( mint k = 0; k < last; ++k )
+//                {
+//                    Pinner[to + k] = Dinner[from + k];
+//                    Pvalues[to + k] = a * Dvalues[from + k];
+//                }
+//            }
+//        }
+//        
+//        lo_pre.Transpose( lo_post );
+//        
+//        ptoc("OptimizedClusterTree::ComputePrePost");
+//    } // ComputePrePost
     
     void OptimizedClusterTree::RequireBuffers( const mint cols )
     {
@@ -792,11 +875,11 @@ namespace rsurfaces
         ptic("PercolateUp");
         switch (tree_perc_alg) {
             case TreePercolationAlgorithm::Chunks :
-//                print("Using Chunks");
+//                print("Using Chunks for percolation");
                 PercolateUp_Chunks();
                 break;
             case TreePercolationAlgorithm::Tasks :
-//                print("Using Tasks");
+//                print("Using Tasks for percolation");
                 #pragma omp parallel
                 {
                     #pragma omp single nowait
@@ -806,12 +889,12 @@ namespace rsurfaces
                 }
                 break;
             case TreePercolationAlgorithm::Sequential :
-//                print("Using Sequential");
+//                print("Using Sequential for percolation");
                 PercolateUp_Seq( 0 );
                 break;
                 
             default:
-//                print("Using Tasks");
+//                print("Using Tasks for percolation");
                 #pragma omp parallel
                 {
                     #pragma omp single nowait
@@ -1093,8 +1176,6 @@ namespace rsurfaces
         }
     }; // PercolateDown_Seq
     
-    
-    
     void OptimizedClusterTree::PercolateUp_Tasks( const mint C, const mint free_thread_count )
     {
         // C = cluster index
@@ -1105,9 +1186,9 @@ namespace rsurfaces
         if( (L >= 0) && (R >= 0) )
         {
             // If not a leaf, compute the values of the children first.
-            #pragma omp task final(free_thread_count<1) shared( L, free_thread_count )
+            #pragma omp task final(free_thread_count<1)  shared( L, free_thread_count )
                 PercolateUp_Tasks( L, free_thread_count/2 );
-            #pragma omp task final(free_thread_count<1) shared( R, free_thread_count )
+            #pragma omp task final(free_thread_count<1)  shared( R, free_thread_count )
                 PercolateUp_Tasks( R, free_thread_count-free_thread_count/2 );
             #pragma omp taskwait
             
@@ -1116,12 +1197,12 @@ namespace rsurfaces
             #pragma omp simd aligned( C_in : ALIGN )
             for( mint k = 0; k < buffer_dim; ++k )
             {
-                // Overwrite, not add-into. Thus cleansing is not required.
+                // Overwrite, not add-into. Thus cleansing is not needed.
                 C_in[ buffer_dim * C + k ] = C_in[ buffer_dim * L + k ] + C_in[ buffer_dim * R + k ];
             }
         }
         
-    }; // PercolateUp_Tasks
+    }; // PercolateUp
 
 
     void OptimizedClusterTree::PercolateDown_Tasks(const mint C, const mint free_thread_count )
@@ -1206,9 +1287,7 @@ namespace rsurfaces
         P_to_C.Multiply( P_in, C_in, buffer_dim );  // Beware: The derivative operator increases the number of columns!
         ptoc("P_to_C.Multiply");
         
-        ptic("PercolateUp");
-//        PercolateUp();
-        ptoc("PercolateUp");
+        PercolateUp();
     
         ptoc("Pre");
     }; // Pre
@@ -1275,9 +1354,7 @@ namespace rsurfaces
             wprint("Expected number of columns  = " + std::to_string( expected_dim ) + " is greater than requested number of columns " + std::to_string( cols ) + ". Truncating output. Result is very likely unexpected." );
         }
         
-        ptic("PercolateDown");
         PercolateDown();
-        ptoc("PercolateDown");
         
         // Add data from leaf clusters into data on primitives
         ptic("C_to_P.Multiply");
