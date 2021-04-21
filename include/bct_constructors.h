@@ -278,12 +278,12 @@ namespace rsurfaces
                 Vector3 p3 = geom->inputVertexPositions[i2];
                 
                 P_far_[7 * i + 0] = P_near_[7 * i + 0] = geom->faceAreas[face];
-                P_far_[7 * i + 0] = P_near_[7 * i + 1] = athird * (p1.x + p2.x + p3.x);
-                P_far_[7 * i + 0] = P_near_[7 * i + 2] = athird * (p1.y + p2.y + p3.y);
-                P_far_[7 * i + 0] = P_near_[7 * i + 3] = athird * (p1.z + p2.z + p3.z);
-                P_far_[7 * i + 0] = P_near_[7 * i + 4] = geom->faceNormals[face].x;
-                P_far_[7 * i + 0] = P_near_[7 * i + 5] = geom->faceNormals[face].y;
-                P_far_[7 * i + 0] = P_near_[7 * i + 6] = geom->faceNormals[face].z;
+                P_far_[7 * i + 1] = P_near_[7 * i + 1] = athird * (p1.x + p2.x + p3.x);
+                P_far_[7 * i + 2] = P_near_[7 * i + 2] = athird * (p1.y + p2.y + p3.y);
+                P_far_[7 * i + 3] = P_near_[7 * i + 3] = athird * (p1.z + p2.z + p3.z);
+                P_far_[7 * i + 4] = P_near_[7 * i + 4] = geom->faceNormals[face].x;
+                P_far_[7 * i + 5] = P_near_[7 * i + 5] = geom->faceNormals[face].y;
+                P_far_[7 * i + 6] = P_near_[7 * i + 6] = geom->faceNormals[face].z;
             }
             bvh->SemiStaticUpdate( &P_near_[0], &P_far_[0] );
         }
@@ -308,20 +308,20 @@ namespace rsurfaces
                     Vector3 p3 = geom->inputVertexPositions[i2];
                     
                     P_far_[10 * i + 0] = P_near_[10 * i + 0] = geom->faceAreas[face];
-                    P_far_[10 * i + 0] = P_near_[10 * i + 0] = athird * (p1.x + p2.x + p3.x);
-                    P_far_[10 * i + 0] = P_near_[10 * i + 0] = athird * (p1.y + p2.y + p3.y);
-                    P_far_[10 * i + 0] = P_near_[10 * i + 0] = athird * (p1.z + p2.z + p3.z);
+                    P_far_[10 * i + 1] = P_near_[10 * i + 1] = athird * (p1.x + p2.x + p3.x);
+                    P_far_[10 * i + 2] = P_near_[10 * i + 2] = athird * (p1.y + p2.y + p3.y);
+                    P_far_[10 * i + 3] = P_near_[10 * i + 3] = athird * (p1.z + p2.z + p3.z);
                     
                     mreal n1 = geom->faceNormals[face].x;
                     mreal n2 = geom->faceNormals[face].y;
                     mreal n3 = geom->faceNormals[face].z;
                     
                     P_near_[10 * i + 4] = P_far_[10 * i + 4] = n1 * n1;
-                    P_near_[10 * i + 4] = P_far_[10 * i + 5] = n1 * n2;
-                    P_near_[10 * i + 4] = P_far_[10 * i + 6] = n1 * n3;
-                    P_near_[10 * i + 4] = P_far_[10 * i + 7] = n2 * n2;
-                    P_near_[10 * i + 4] = P_far_[10 * i + 8] = n2 * n3;
-                    P_near_[10 * i + 4] = P_far_[10 * i + 9] = n3 * n3;
+                    P_near_[10 * i + 5] = P_far_[10 * i + 5] = n1 * n2;
+                    P_near_[10 * i + 6] = P_far_[10 * i + 6] = n1 * n3;
+                    P_near_[10 * i + 7] = P_far_[10 * i + 7] = n2 * n2;
+                    P_near_[10 * i + 8] = P_far_[10 * i + 8] = n2 * n3;
+                    P_near_[10 * i + 9] = P_far_[10 * i + 9] = n3 * n3;
                 }
             }
             else
@@ -343,9 +343,9 @@ namespace rsurfaces
                     Vector3 p3 = geom->inputVertexPositions[i2];
                     
                     P_far_[10 * i + 0] = P_near_[7 * i + 0] = geom->faceAreas[face];
-                    P_far_[10 * i + 0] = P_near_[7 * i + 0] = athird * (p1.x + p2.x + p3.x);
-                    P_far_[10 * i + 0] = P_near_[7 * i + 0] = athird * (p1.y + p2.y + p3.y);
-                    P_far_[10 * i + 0] = P_near_[7 * i + 0] = athird * (p1.z + p2.z + p3.z);
+                    P_far_[10 * i + 1] = P_near_[7 * i + 1] = athird * (p1.x + p2.x + p3.x);
+                    P_far_[10 * i + 2] = P_near_[7 * i + 2] = athird * (p1.y + p2.y + p3.y);
+                    P_far_[10 * i + 3] = P_near_[7 * i + 3] = athird * (p1.z + p2.z + p3.z);
                     
                     mreal n1 = geom->faceNormals[face].x;
                     mreal n2 = geom->faceNormals[face].y;

@@ -849,6 +849,23 @@ namespace rsurfaces
         std::cout << "TestMultiply finished." << std::endl;
     }
         
+    
+    void MainApp::TestUpdate()
+    {
+        auto tpe = std::make_shared<TPEnergyBarnesHut0>(mesh, geom, 6., 12., 0.5, 1.);
+        
+        auto mesh = rsurfaces::MainApp::instance->mesh;
+        auto geom = rsurfaces::MainApp::instance->geom;
+        
+        
+        valprint("Energy",tpe->Value());
+        
+        UpdateOptimizedBVH(tpe->GetBVH(), mesh, geom);
+        
+        valprint("Energy",tpe->Value());
+        
+    } // TestUpdate
+    
     void MainApp::TestObstacle0()
     {
         int threads;
@@ -2048,6 +2065,11 @@ void customCallback()
     if (ImGui::Button("TestMultiply", ImVec2{ITEM_WIDTH, 0}))
     {
         MainApp::instance->TestMultiply();
+    }
+
+    if (ImGui::Button("Test Update", ImVec2{ITEM_WIDTH, 0}))
+    {
+        MainApp::instance->TestUpdate();
     }
     
     if (ImGui::Button("Test Willmore", ImVec2{ITEM_WIDTH, 0}))

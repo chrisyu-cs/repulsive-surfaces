@@ -39,6 +39,7 @@ namespace rsurfaces
         void CreateAndDestroyBVH();
         void TestWillmore();
         void TestMultiply();
+        void TestUpdate();
         void TestObstacle0();
         void TestBarnesHut0();
         void PlotGradients();
