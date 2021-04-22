@@ -658,7 +658,7 @@ namespace rsurfaces
             S_output[j] = 0;
         }
         
-        if( nnz > 0 )
+        if( nnz > 0 && factor != 0. )
         {
             
             auto thread_input_buffers = A_Vector<A_Vector<mreal>> (thread_count);

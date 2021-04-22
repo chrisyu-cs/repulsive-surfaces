@@ -8,14 +8,14 @@ namespace rsurfaces
     
     Cluster2::Cluster2(mint begin_, mint end_, mint depth_)
     {
-        begin = begin_;
-        end = end_;
-        depth = depth_;
-        max_depth = depth_;
-        descendant_count = 0;
-        descendant_leaf_count = 0;
-        left = nullptr;
-        right = nullptr;
+        begin = begin_;                 // first primitive in cluster
+        end = end_;                     // first primitive after cluster
+        depth = depth_;                 // depth of cluster in BVH
+        max_depth = depth_;             // maximal depth of all descendants of this cluster
+        descendant_count = 0;           // number of descendents of cluster, _this cluster included_
+        descendant_leaf_count = 0;      // number of leaf descendents of cluster
+        left = nullptr;                 // left child
+        right = nullptr;                // right child
     }; // struct Cluster2
 
     // Solving interface problems by using standard types. This way, things are easier to port. For example, I can call this from Mathematica for faster debugging.
@@ -944,19 +944,23 @@ namespace rsurfaces
     
     void OptimizedClusterTree::RequireChunks()
     {
+        
         ptic("RequireChunks");
-        if( !chunks_prepared)
+        if( !chunks_prepared )
         {
+            print("a");
             
-//            print("RequireChunks");
+            //TODO: This partitioning strategy may cause that some threads will stay idle during the percolation passes. This is caused by our requirement that each chunks is at least as long as cache line in order to mend false sharing. Should happen only for really cause meshes for which parallelization won't scale anyways.
+            
             mint chunk_size = CACHE_LINE_LENGHT * ( (cluster_count + thread_count * CACHE_LINE_LENGHT - 1)  / ( thread_count * CACHE_LINE_LENGHT ) );
+            
             chunk_roots = A_Vector<A_Vector<mint>> ( thread_count );
-//            std::cout << "chunk_size = " << chunk_size << std::endl;
-//            std::cout << "cluster_count = " << cluster_count << std::endl;
 
-            #pragma omp parallel for num_threads(thread_count) schedule( static, 1)
-            for( mint thread = 0; thread < thread_count; ++thread )
+            safe_alloc( C_is_chunk_root, cluster_count, false );
+            
+            #pragma omp parallel num_threads(thread_count)
             {
+                mint thread = omp_get_thread_num();
                 
                 chunk_roots[thread].reserve( tree_max_depth + 1 );
                 
@@ -965,23 +969,26 @@ namespace rsurfaces
                 
                 // first cluster in chunk
                 mint C = chunk_size * thread;
-                mint C_prev = C;
-                // C_next[C]-1 is the last cluster in the subtree with root C.
-                // The cluster C is "good" w.r.t. the thread, if and only if it is contained in the chunk, if and only if ( C_next[C] - 1 <= last - 1).
-                while( C_next[C] < last) // ensure that we do not reference past the end of C_next.
+                
+                if( 0 <= C < cluster_count ) // A fix for the problem reported by Caleb.
                 {
-                    chunk_roots[thread].push_back(C);
-                    C = C_next[C];
-                }
-                if( C_next[C] == last )
-                {
-                    // subtree of last C fits tightly into chunk
-                    chunk_roots[thread].push_back(C);
-                }
-                else
-                {
-                    // subtree of last C does not fit into chunk; use a breadth-first scan to find the max subtrees of C that do fit into chunk.
-                    requireChunks(C, last, thread);
+                    // C_next[C]-1 is the last cluster in the subtree with root C.
+                    // The cluster C is "good" w.r.t. the thread, if and only if it is contained in the chunk, if and only if ( C_next[C] - 1 <= last - 1).
+                    while( C_next[C] < last ) // ensure that we do not reference past the end of C_next.
+                    {
+                        chunk_roots[thread].push_back(C);
+                        C = C_next[C];
+                    }
+                    if( C_next[C] == last )
+                    {
+                        // subtree of last C fits tightly into chunk
+                        chunk_roots[thread].push_back(C);
+                    }
+                    else
+                    {
+                        // subtree of last C does not fit into chunk; use a breadth-first scan to find the max subtrees of C that do fit into chunk.
+                        requireChunks(C, last, thread);
+                    }
                 }
                 
             }
@@ -994,13 +1001,13 @@ namespace rsurfaces
 //            std::cout << "Writing chunks to " << f << "." << std::endl;
 //            os.open(f);
             
-            safe_alloc( C_is_chunk_root, cluster_count, false );
-            
+
+            // this is probably fastest in sequential mode; complexity should be bounded by 2 * tree_max_depth * thread_count.
             for( mint thread = 0; thread < thread_count; ++ thread)
             {
                 mint * restrict ptr = &chunk_roots[thread][0];
                 mint n = chunk_roots[thread].size();
-                
+
                 for( mint i = 0; i < n; ++i )
                 {
 //                    os << ptr[i] << "\t ";
@@ -1010,6 +1017,7 @@ namespace rsurfaces
 //            os.close();
             
             chunks_prepared = true;
+            print("b");
         }
 
         ptoc("RequireChunks");
@@ -1088,7 +1096,6 @@ namespace rsurfaces
 
     void OptimizedClusterTree::PercolateDown_Chunks()
     {
-        
         RequireChunks();
         
         // Treats the chunk roots of the tree as leaves and does a sequential downward percolation.
