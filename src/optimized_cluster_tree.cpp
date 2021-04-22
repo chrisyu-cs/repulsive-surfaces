@@ -948,8 +948,6 @@ namespace rsurfaces
         ptic("RequireChunks");
         if( !chunks_prepared )
         {
-            print("a");
-            
             //TODO: This partitioning strategy may cause that some threads will stay idle during the percolation passes. This is caused by our requirement that each chunks is at least as long as cache line in order to mend false sharing. Should happen only for really cause meshes for which parallelization won't scale anyways.
             
             mint chunk_size = CACHE_LINE_LENGHT * ( (cluster_count + thread_count * CACHE_LINE_LENGHT - 1)  / ( thread_count * CACHE_LINE_LENGHT ) );
@@ -1017,7 +1015,6 @@ namespace rsurfaces
 //            os.close();
             
             chunks_prepared = true;
-            print("b");
         }
 
         ptoc("RequireChunks");
