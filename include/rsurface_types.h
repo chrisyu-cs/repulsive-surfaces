@@ -10,9 +10,9 @@
 namespace rsurfaces
 {
     using namespace geometrycentral;
-    typedef std::unique_ptr<surface::HalfedgeMesh> MeshUPtr;
+    typedef std::unique_ptr<surface::SurfaceMesh> MeshUPtr;
     typedef std::unique_ptr<surface::VertexPositionGeometry> GeomUPtr;
-    typedef std::shared_ptr<surface::HalfedgeMesh> MeshPtr;
+    typedef std::shared_ptr<surface::SurfaceMesh> MeshPtr;
     typedef std::shared_ptr<surface::VertexPositionGeometry> GeomPtr;
     typedef std::shared_ptr<surface::CornerData<Vector2>> UVDataPtr;
     typedef surface::Vertex GCVertex;
@@ -28,13 +28,13 @@ namespace rsurfaces
     inline std::tuple<MeshUPtr, GeomUPtr, std::unique_ptr<surface::CornerData<Vector2>>>
     readParameterizedMesh(std::string filename, std::string type = "")
     {
-        return surface::readParameterizedManifoldSurfaceMesh(filename, type);
+        return surface::readParameterizedSurfaceMesh(filename, type);
     };
     
     inline std::tuple<MeshUPtr, GeomUPtr>
     readMesh(std::string filename, std::string type = "")
     {
-        return surface::readManifoldSurfaceMesh(filename, type);
+        return surface::readSurfaceMesh(filename, type);
     };
     
 //    // if MeshUPtr == std::unique_ptr<surface::SurfaceMesh>

@@ -225,7 +225,7 @@ namespace rsurfaces
 //            {
 //                geometry->inputVertexPositions[i] = geometry->inputVertexPositions[i+1];
 //            }
-           mesh->collapseEdgeTriangular(e);
+           //mesh->collapseEdgeTriangular(e);
         }
         
         void testCollapseEdge(MeshPtr const &mesh, GeomPtr const &geometry, int index)
@@ -360,7 +360,7 @@ namespace rsurfaces
         }
         void testEdge(MeshPtr const &mesh, GeomPtr const &geometry, int index)
         {
-            for(Edge e : mesh->edges()){
+            /*for(Edge e : mesh->edges()){
                 if((int)e.getIndex() == index){
                     Vector3 newPos = edgeMidpoint(mesh, geometry, e);
                     Halfedge he = mesh->splitEdgeTriangular(e);
@@ -374,7 +374,7 @@ namespace rsurfaces
             std::cerr<<"Here2!"<<std::endl;
             mesh->compress();
             std::cerr<<"Here3!"<<std::endl;
-            
+            */
         }
         void testFace(MeshPtr const &mesh, GeomPtr const &geometry, int index)
         {
@@ -608,7 +608,7 @@ namespace rsurfaces
         
         bool adjustEdgeLengths(MeshPtr const &mesh, GeomPtr const &geometry, GeomPtr const &geometryOriginal, double flatLength, double epsilon, double minLength, bool curvatureAdaptive)
         {
-            bool didSplitOrCollapse = false;
+            /*bool didSplitOrCollapse = false;
             // queues of edges to CHECK to change
             std::vector<Edge> toSplit;
             std::vector<Edge> toCollapse;
@@ -672,7 +672,8 @@ namespace rsurfaces
             //std::cerr<<"hereeee"<<std::endl;
             mesh->compress();
             geometry->refreshQuantities();
-            return didSplitOrCollapse;
+            return didSplitOrCollapse;*/
+            return false;
         }
 
         void remesh(MeshPtr const &mesh, GeomPtr const &geometry, GeomPtr const &geometryOriginal){
