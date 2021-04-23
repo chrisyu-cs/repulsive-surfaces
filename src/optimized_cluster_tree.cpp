@@ -4,7 +4,9 @@ namespace rsurfaces
 {
     mint OptimizedClusterTreeOptions::split_threshold = 8;
     bool OptimizedClusterTreeOptions::use_old_prepost = false;
-    TreePercolationAlgorithm OptimizedClusterTreeOptions::tree_perc_alg = TreePercolationAlgorithm::Chunks;
+//    TreePercolationAlgorithm OptimizedClusterTreeOptions::tree_perc_alg = TreePercolationAlgorithm::Chunks;
+//    TreePercolationAlgorithm OptimizedClusterTreeOptions::tree_perc_alg = TreePercolationAlgorithm::Tasks;
+        TreePercolationAlgorithm OptimizedClusterTreeOptions::tree_perc_alg = TreePercolationAlgorithm::Sequential;
     
     Cluster2::Cluster2(mint begin_, mint end_, mint depth_)
     {
