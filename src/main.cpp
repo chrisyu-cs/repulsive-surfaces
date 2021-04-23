@@ -1901,6 +1901,7 @@ namespace rsurfaces
 bool run = false;
 bool takeScreenshots = false;
 bool saveOBJs = false;
+bool skipEveryOther = true;
 uint screenshotNum = 0;
 uint objNum = 0;
 bool uiNormalizeView = false;
@@ -1981,6 +1982,7 @@ void customCallback()
         saveOBJ(MainApp::instance->mesh, MainApp::instance->geom, MainApp::instance->geomOrig, objNum++);
     }
     ImGui::Checkbox("Log performance", &MainApp::instance->logPerformance);
+    ImGui::Checkbox("Skip odd frames", &skipEveryOther);
     ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
     ImGui::Checkbox("Show area ratios", &areaRatios);
 
@@ -2029,6 +2031,10 @@ void customCallback()
     if (ImGui::Button("Take 1 step", ImVec2{ITEM_WIDTH, 0}) || run)
     {
         MainApp::instance->TakeOptimizationStep(remesh, areaRatios);
+        if( skipEveryOther )
+        {
+           MainApp::instance->TakeOptimizationStep(remesh, areaRatios);
+        }
 
         if (takeScreenshots)
         {
