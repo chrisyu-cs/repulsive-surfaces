@@ -968,25 +968,22 @@ namespace rsurfaces
                 // first cluster in chunk
                 mint C = chunk_size * thread;
                 
-                if( 0 <= C < cluster_count ) // A fix for the problem reported by Caleb.
+                // C_next[C]-1 is the last cluster in the subtree with root C.
+                // The cluster C is "good" w.r.t. the thread, if and only if it is contained in the chunk, if and only if ( C_next[C] - 1 <= last - 1).
+                while( ( 0 <= C < cluster_count ) && (C_next[C] < last) ) // ensure that we do not reference past the end of C_next.
                 {
-                    // C_next[C]-1 is the last cluster in the subtree with root C.
-                    // The cluster C is "good" w.r.t. the thread, if and only if it is contained in the chunk, if and only if ( C_next[C] - 1 <= last - 1).
-                    while( C_next[C] < last ) // ensure that we do not reference past the end of C_next.
-                    {
-                        chunk_roots[thread].push_back(C);
-                        C = C_next[C];
-                    }
-                    if( C_next[C] == last )
-                    {
-                        // subtree of last C fits tightly into chunk
-                        chunk_roots[thread].push_back(C);
-                    }
-                    else
-                    {
-                        // subtree of last C does not fit into chunk; use a breadth-first scan to find the max subtrees of C that do fit into chunk.
-                        requireChunks(C, last, thread);
-                    }
+                    chunk_roots[thread].push_back(C);
+                    C = C_next[C];
+                }
+                if( C_next[C] == last )
+                {
+                    // subtree of last C fits tightly into chunk
+                    chunk_roots[thread].push_back(C);
+                }
+                else
+                {
+                    // subtree of last C does not fit into chunk; use a breadth-first scan to find the max subtrees of C that do fit into chunk.
+                    requireChunks(C, last, thread);
                 }
                 
             }
