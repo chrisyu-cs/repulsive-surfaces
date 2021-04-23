@@ -1,0 +1,5 @@
+repel_mesh TorusWeave_1_3_low.obj 6 12
+constrain barycenter
+constrain area
+iteration_limit 20000
+
