@@ -4,7 +4,9 @@ namespace rsurfaces
 {
     mint OptimizedClusterTreeOptions::split_threshold = 8;
     bool OptimizedClusterTreeOptions::use_old_prepost = false;
-    TreePercolationAlgorithm OptimizedClusterTreeOptions::tree_perc_alg = TreePercolationAlgorithm::Chunks;
+//    TreePercolationAlgorithm OptimizedClusterTreeOptions::tree_perc_alg = TreePercolationAlgorithm::Chunks;
+//    TreePercolationAlgorithm OptimizedClusterTreeOptions::tree_perc_alg = TreePercolationAlgorithm::Tasks;
+    TreePercolationAlgorithm OptimizedClusterTreeOptions::tree_perc_alg = TreePercolationAlgorithm::Sequential;
     
     Cluster2::Cluster2(mint begin_, mint end_, mint depth_)
     {
@@ -985,7 +987,6 @@ namespace rsurfaces
                     // subtree of last C does not fit into chunk; use a breadth-first scan to find the max subtrees of C that do fit into chunk.
                     requireChunks(C, last, thread);
                 }
-                
             }
             
 
@@ -1046,14 +1047,27 @@ namespace rsurfaces
     {
         RequireChunks();
         
-        #pragma omp parallel for num_threads(thread_count) schedule( static, 1)
-        for( mint thread = 0; thread < thread_count; ++thread )
+        #pragma omp parallel num_threads(thread_count) shared(chunk_roots)
         {
-            for( const auto & C: chunk_roots[thread] ) {
-                
-                // Takes the subtree of each chunk root and does the percolation.
-                PercolateUp_Seq( C );
+            mint thread = omp_get_thread_num();
+            
+            mint * clusters = &chunk_roots[thread][0];
+            mint begin = 0;
+            mint end = begin + chunk_roots[thread].size();
+
+            for( mint i = begin; i < end; ++i )
+            {
+                PercolateUp_Seq( clusters[i] );
             }
+            
+//            if( chunk_roots[thread].size() > 0 )
+//            {
+//                for( const auto & C: chunk_roots[thread] ) {
+//
+//                    // Takes the subtree of each chunk root and does the percolation.
+//                    PercolateUp_Seq( C );
+//                }
+//            }
         }
         
         // Now the chunk roots and everything below them is already updated. We only have to process the tip of the tree. We do it sequentially, treating the chunk roots now as the leaves of the tree:
@@ -1097,13 +1111,26 @@ namespace rsurfaces
         
         // Now the chunk roots and everything above is updated. We can now process everything below the chunk roots in parallel.
     
-        #pragma omp parallel for num_threads(thread_count) schedule( static, 1)
-        for( mint thread = 0; thread < thread_count; ++thread )
+        #pragma omp parallel num_threads(thread_count)
         {
-            for( const auto & C: chunk_roots[thread] ) {
-                // Takes the subtree of each chunk root and does the percolation.
-                PercolateDown_Seq( C );
+            mint thread = omp_get_thread_num();
+            
+            mint * clusters = &chunk_roots[thread][0];
+            mint begin = 0;
+            mint end = begin + chunk_roots[thread].size();
+
+            for( mint i = begin; i < end; ++i )
+            {
+                PercolateDown_Seq( clusters[i] );
             }
+            
+//            if( chunk_roots[thread].size() > 0 )
+//            {
+//                for( const auto & C: chunk_roots[thread] ) {
+//                    // Takes the subtree of each chunk root and does the percolation.
+//                    PercolateDown_Seq( C );
+//                }
+//            }
         }
     }; // PercolateDown_Chunks
     

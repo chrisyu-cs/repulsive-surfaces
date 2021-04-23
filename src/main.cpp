@@ -2480,6 +2480,11 @@ int main(int argc, char **argv)
 
     std::cout << "Using Eigen version " << EIGEN_WORLD_VERSION << "." << EIGEN_MAJOR_VERSION << "." << EIGEN_MINOR_VERSION << std::endl;
 
+    MKLVersion Version;
+    mkl_get_version(&Version);
+    
+    std::cout << "Using MKL version " << Version.MajorVersion << "." << Version.MinorVersion << "." << Version.UpdateVersion << std::endl;
+    
     // Parse args
     try
     {
