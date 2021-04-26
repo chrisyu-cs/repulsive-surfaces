@@ -21,7 +21,8 @@ namespace rsurfaces
             alpha = alpha_;
             beta = beta_;
             weight = weight_;
-            
+            mesh = mesh_;
+            geom = geom_;
             
             mreal intpart;
             use_int = (std::modf( alpha, &intpart) == 0.0) && (std::modf( beta/2, &intpart) == 0.0);
