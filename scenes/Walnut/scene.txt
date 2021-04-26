@@ -1,7 +1,8 @@
 repel_mesh inside.obj 6 12
 constrain barycenter
-constrain area 10 300
-constrain volume 5 300
-obstacle shell2.obj .5
-iteration_limit 300
+constrain area 8 200
+# constrain volume 5 600
+minimize volume_deviation 10
+obstacle shell2.obj 0.5
+iteration_limit 220
 
