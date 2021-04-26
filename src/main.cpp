@@ -2342,10 +2342,6 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::sce
         {
             std::cout << "Using Barnes-Hut energy with theta = " << theta << "." << std::endl;
             TPEnergyBarnesHut0 *bh = new TPEnergyBarnesHut0(m.kernel->mesh, m.kernel->geom, m.kernel->alpha, m.kernel->beta, theta);
-            if (scene.disableNearField)
-            {
-                throw std::runtime_error("disable_near_field has not yet been ported to the new energy.");
-            }
             energy = bh;
         }
     }

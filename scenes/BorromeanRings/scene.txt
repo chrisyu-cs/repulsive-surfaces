@@ -1,0 +1,5 @@
+repel_mesh borromean.obj 6 12
+constrain area
+constrain barycenter
+disable_near_field
+iteration_limit 200

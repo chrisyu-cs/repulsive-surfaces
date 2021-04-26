@@ -24,10 +24,7 @@ namespace rsurfaces
         virtual void MultiplyAdd(Eigen::VectorXd &vec, Eigen::VectorXd &result) const
         {
             bct->MultiplyV3(vec, result, BCTKernelType::HighOrder, true);
-            if (!bct->disableNearField)
-            {
-                bct->MultiplyV3(vec, result, rsurfaces::BCTKernelType::LowOrder, true);
-            }
+            bct->MultiplyV3(vec, result, rsurfaces::BCTKernelType::LowOrder, true);
         }
 
         private:

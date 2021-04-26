@@ -1,0 +1,4 @@
+repel_mesh hopf.obj 6 12
+constrain area
+constrain barycenter
+iteration_limit 200
