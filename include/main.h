@@ -51,7 +51,7 @@ namespace rsurfaces
         void HandlePicking();
 
         void TakeOptimizationStep(bool remeshAfter, bool showAreaRatios);
-        void AddObstacle(std::string filename, double weight, bool recenter);
+        void AddObstacle(std::string filename, double weight, bool recenter, bool asPointCloud);
         void AddPotential(scene::PotentialType pType, double weight);
         void AddImplicitBarrier(scene::ImplicitBarrierData &implicitBarrier);
 

@@ -256,7 +256,7 @@ namespace rsurfaces
                 }
                 data.constraints.push_back(consData);
             }
-            else if (parts[0] == "obstacle")
+            else if (parts[0] == "obstacle" || parts[0] == "point_cloud_obstacle")
             {
                 ObstacleData obsData;
                 obsData.obstacleName = dir_root + parts[1];
@@ -272,6 +272,8 @@ namespace rsurfaces
                 {
                     obsData.weight = 1;
                 }
+                obsData.asPointCloud = (parts[0] == "point_cloud_obstacle");
+
                 data.obstacles.push_back(obsData);
             }
 

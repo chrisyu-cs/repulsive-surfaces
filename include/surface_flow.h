@@ -19,7 +19,7 @@ namespace rsurfaces
     public:
         SurfaceFlow(SurfaceEnergy *energy_);
         void AddAdditionalEnergy(SurfaceEnergy *extraEnergy);
-        void AddObstacleEnergy(TPObstacleBarnesHut0 *obsEnergy);
+        void AddObstacleEnergy(SurfaceEnergy *obsEnergy);
 
         void StepL2Unconstrained();
         void StepL2Projected();
@@ -109,7 +109,7 @@ namespace rsurfaces
         Vector3 origBarycenter;
         Constraints::BarycenterComponentsConstraint *secretBarycenter;
         LBFGSOptimizer* lbfgs;
-        TPObstacleBarnesHut0* obstacleEnergy;
+        SurfaceEnergy* obstacleEnergy;
 
         size_t addConstraintTriplets(std::vector<Triplet> &triplets, bool includeSchur);
         

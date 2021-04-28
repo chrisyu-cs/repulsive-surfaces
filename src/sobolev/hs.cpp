@@ -131,7 +131,7 @@ namespace rsurfaces
             return (beta - 2.0) / alpha;
         }
 
-        HsMetric::HsMetric(std::vector<SurfaceEnergy*> energies, TPObstacleBarnesHut0* obstacleEnergy_,
+        HsMetric::HsMetric(std::vector<SurfaceEnergy*> energies, SurfaceEnergy* obstacleEnergy_,
                            std::vector<SimpleProjectorConstraint *> &spcs,
                            std::vector<ConstraintPack> &schurs)
             : simpleConstraints(spcs), newtonConstraints(schurs)

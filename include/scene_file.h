@@ -52,6 +52,7 @@ namespace rsurfaces
             std::string obstacleName;
             double weight;
             bool recenter = false;
+            bool asPointCloud = false;
         };
 
         enum class ImplicitType

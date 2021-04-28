@@ -1,0 +1,7 @@
+repel_mesh sphere80k-half.obj 6 12
+constrain volume 0.09 200
+constrain barycenter
+point_cloud_obstacle spot_triangulated.obj 1
+iteration_limit 220
+allow_barycenter_shift
+

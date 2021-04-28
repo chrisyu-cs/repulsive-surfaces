@@ -44,7 +44,7 @@ namespace rsurfaces
         class HsMetric
         {
         public:
-            HsMetric(std::vector<SurfaceEnergy*> energies, TPObstacleBarnesHut0 *obstacleEnergy_,
+            HsMetric(std::vector<SurfaceEnergy*> energies, SurfaceEnergy *obstacleEnergy_,
                      std::vector<Constraints::SimpleProjectorConstraint *> &spcs,
                      std::vector<ConstraintPack> &schurs);
             ~HsMetric();
@@ -239,7 +239,7 @@ namespace rsurfaces
             SurfaceEnergy *energy;
             std::vector<SurfaceEnergy*> extraEnergies;
 
-            TPObstacleBarnesHut0 *obstacleEnergy;
+            SurfaceEnergy *obstacleEnergy;
             bool usedDefaultConstraint;
 
             mutable SparseFactorization factorizedLaplacian;

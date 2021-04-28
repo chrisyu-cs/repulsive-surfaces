@@ -42,7 +42,7 @@ namespace rsurfaces
         energies.push_back(extraEnergy);
     }
 
-    void SurfaceFlow::AddObstacleEnergy(TPObstacleBarnesHut0 *obsEnergy)
+    void SurfaceFlow::AddObstacleEnergy(SurfaceEnergy *obsEnergy)
     {
         obstacleEnergy = obsEnergy;
         AddAdditionalEnergy(obstacleEnergy);

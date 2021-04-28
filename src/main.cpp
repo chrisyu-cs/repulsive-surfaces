@@ -4,6 +4,7 @@
 #include "geometrycentral/surface/halfedge_mesh.h"
 #include "geometrycentral/surface/meshio.h"
 #include "geometrycentral/surface/vertex_position_geometry.h"
+#include "polyscope/point_cloud.h"
 
 #include "../deps/polyscope/deps/args/args/args.hxx"
 #include "imgui.h"
@@ -81,14 +82,14 @@ namespace rsurfaces
     void MainApp::TakeOptimizationStep(bool remeshAfter, bool showAreaRatios)
     {
         ptic("MainApp::TakeOptimizationStep");
-        
+
         if (logPerformance && numSteps == 0)
         {
             logPerformanceLine();
         }
 
         long beforeStep = currentTimeMilliseconds();
-        
+
         ptic("Switch");
         switch (methodChoice)
         {
@@ -130,7 +131,7 @@ namespace rsurfaces
             throw std::runtime_error("Unknown gradient method type.");
         }
         ptoc("Switch");
-        
+
         if (remeshAfter)
         {
             bool doCollapse = (numSteps % 1 == 0);
@@ -512,11 +513,11 @@ namespace rsurfaces
     void MainApp::TestMultiply()
     {
         int threads;
-        #pragma omp parallel
+#pragma omp parallel
         {
             threads = omp_get_num_threads();
         }
-        
+
         std::cout << std::setprecision(8);
         std::cout << "\n  =====                   =====  " << std::endl;
         std::cout << "=======   TestMultiply   =======" << std::endl;
@@ -527,354 +528,318 @@ namespace rsurfaces
         double alpha = 6.;
         double beta = 12.;
         double weight = 1.;
-//        double theta = MainApp::instance->bh_theta;
+        //        double theta = MainApp::instance->bh_theta;
         double theta = 0.5;
         double chi = theta;
-//        double chi = 0.8 * theta;
+        //        double chi = 0.8 * theta;
 
         // mesh1 and geom1 represent the movable surface
         auto mesh = rsurfaces::MainApp::instance->mesh;
         auto geom = rsurfaces::MainApp::instance->geom;
-        
+
         OptimizedClusterTreeOptions::use_old_prepost = false;
         OptimizedClusterTreeOptions::tree_perc_alg = TreePercolationAlgorithm::Chunks;
 
-        
-        OptimizedClusterTree * bvh = CreateOptimizedBVH(mesh, geom);
+        OptimizedClusterTree *bvh = CreateOptimizedBVH(mesh, geom);
         BCTPtr bct = CreateOptimizedBCTFromBVH(bvh, alpha, beta, chi);
 
         mint vertex_count = mesh->nVertices();
-        
-        Eigen::MatrixXd V (vertex_count, 3);
-        
-        for( mint i = 0; i < vertex_count; ++i )
+
+        Eigen::MatrixXd V(vertex_count, 3);
+
+        for (mint i = 0; i < vertex_count; ++i)
         {
-            for( mint j = 0; j < 3; ++ j)
+            for (mint j = 0; j < 3; ++j)
             {
-                V(i,j) = geom->inputVertexPositions[i][j];
+                V(i, j) = geom->inputVertexPositions[i][j];
             }
         }
-        
-        Eigen::MatrixXd U (vertex_count, 3);
+
+        Eigen::MatrixXd U(vertex_count, 3);
         std::ofstream os;
-        mreal * ptr;
+        mreal *ptr;
         mint n;
         std::string name;
-        
-        
-// ####### FractionalOnly
-        
+
+        // ####### FractionalOnly
+
         name = "FractionalOnly";
-        
+
         U.setZero();
-        bct->Multiply(V,U, BCTKernelType::FractionalOnly);
-        
+        bct->Multiply(V, U, BCTKernelType::FractionalOnly);
+
         os.open("./Output_" + name + ".tsv");
-        for( mint i = 0; i < vertex_count; ++i )
+        for (mint i = 0; i < vertex_count; ++i)
         {
-            os << U(i,0) << "\t";
-            os << U(i,1) << "\t";
-            os << U(i,2) << "\n";
+            os << U(i, 0) << "\t";
+            os << U(i, 1) << "\t";
+            os << U(i, 2) << "\n";
         }
         os.close();
-        
+
         os.open("./P_in_" + name + ".tsv");
         ptr = bct->S->P_in;
         n = bct->T->cluster_count * bct->T->buffer_dim;
-        for( mint i = 0; i < n-1; ++i )
+        for (mint i = 0; i < n - 1; ++i)
         {
             os << ptr[i] << "\t";
-            
         }
-        os << ptr[n-1];
+        os << ptr[n - 1];
         os.close();
-        
+
         os.open("./C_in_leaves_" + name + ".tsv");
         ptr = bct->T->C_in;
         n = bct->T->buffer_dim;
-        for( mint i = 0; i < bct->T->leaf_cluster_count; ++i )
+        for (mint i = 0; i < bct->T->leaf_cluster_count; ++i)
         {
-            for( mint k = 0; k < n; ++k )
-            os << ptr[ n * bct->T->leaf_clusters[i] + k ] << "\t";
-            
+            for (mint k = 0; k < n; ++k)
+                os << ptr[n * bct->T->leaf_clusters[i] + k] << "\t";
         }
         os.close();
-        
+
         os.open("./C_in_" + name + ".tsv");
         ptr = bct->T->C_in;
         n = bct->T->cluster_count * bct->T->buffer_dim;
-        for( mint i = 0; i < n-1; ++i )
+        for (mint i = 0; i < n - 1; ++i)
         {
             os << ptr[i] << "\t";
-            
         }
-        os << ptr[n-1];
+        os << ptr[n - 1];
         os.close();
-        
+
         os.open("./C_out_" + name + ".tsv");
         ptr = bct->S->C_out;
         n = bct->S->cluster_count * bct->S->buffer_dim;
-        for( mint i = 0; i < n-1; ++i )
+        for (mint i = 0; i < n - 1; ++i)
         {
             os << ptr[i] << "\t";
-            
         }
-        os << ptr[n-1];
+        os << ptr[n - 1];
         os.close();
-        
+
         os.open("./P_out_" + name + ".tsv");
         ptr = bct->S->P_out;
         n = bct->S->cluster_count * bct->S->buffer_dim;
-        for( mint i = 0; i < n-1; ++i )
+        for (mint i = 0; i < n - 1; ++i)
         {
             os << ptr[i] << "\t";
-            
         }
-        os << ptr[n-1];
+        os << ptr[n - 1];
         os.close();
-        
-        
-// ####### LowOrder
-                
+
+        // ####### LowOrder
+
         name = "LowOrder";
-        
+
         U.setZero();
-        bct->Multiply(V,U, BCTKernelType::LowOrder);
-        
+        bct->Multiply(V, U, BCTKernelType::LowOrder);
 
         os.open("./Output_" + name + ".tsv");
-        for( mint i = 0; i < vertex_count; ++i )
+        for (mint i = 0; i < vertex_count; ++i)
         {
-            os << U(i,0) << "\t";
-            os << U(i,1) << "\t";
-            os << U(i,2) << "\n";
+            os << U(i, 0) << "\t";
+            os << U(i, 1) << "\t";
+            os << U(i, 2) << "\n";
         }
         os.close();
-        
+
         os.open("./P_in_" + name + ".tsv");
         ptr = bct->S->P_in;
         n = bct->T->cluster_count * bct->T->buffer_dim;
-        for( mint i = 0; i < n-1; ++i )
+        for (mint i = 0; i < n - 1; ++i)
         {
             os << ptr[i] << "\t";
-            
         }
-        os << ptr[n-1];
+        os << ptr[n - 1];
         os.close();
-        
+
         os.open("./C_in_leaves_" + name + ".tsv");
         ptr = bct->T->C_in;
         n = bct->T->buffer_dim;
-        for( mint i = 0; i < bct->T->leaf_cluster_count; ++i )
+        for (mint i = 0; i < bct->T->leaf_cluster_count; ++i)
         {
-            for( mint k = 0; k < n; ++k )
-            os << ptr[ n * bct->T->leaf_clusters[i] + k ] << "\t";
-            
+            for (mint k = 0; k < n; ++k)
+                os << ptr[n * bct->T->leaf_clusters[i] + k] << "\t";
         }
         os.close();
-        
+
         os.open("./C_in_" + name + ".tsv");
         ptr = bct->T->C_in;
         n = bct->T->cluster_count * bct->T->buffer_dim;
-        for( mint i = 0; i < n-1; ++i )
+        for (mint i = 0; i < n - 1; ++i)
         {
             os << ptr[i] << "\t";
-            
         }
-        os << ptr[n-1];
+        os << ptr[n - 1];
         os.close();
-        
+
         os.open("./C_out_" + name + ".tsv");
         ptr = bct->S->C_out;
         n = bct->S->cluster_count * bct->S->buffer_dim;
-        for( mint i = 0; i < n-1; ++i )
+        for (mint i = 0; i < n - 1; ++i)
         {
             os << ptr[i] << "\t";
-            
         }
-        os << ptr[n-1];
+        os << ptr[n - 1];
         os.close();
-        
+
         os.open("./P_out_" + name + ".tsv");
         ptr = bct->S->P_out;
         n = bct->S->cluster_count * bct->S->buffer_dim;
-        for( mint i = 0; i < n-1; ++i )
+        for (mint i = 0; i < n - 1; ++i)
         {
             os << ptr[i] << "\t";
-            
         }
-        os << ptr[n-1];
+        os << ptr[n - 1];
         os.close();
-        
-        
-// ####### LowOrder
-                
+
+        // ####### LowOrder
+
         name = "HighOrder";
-        
+
         U.setZero();
-        bct->Multiply(V,U, BCTKernelType::HighOrder);
-        
+        bct->Multiply(V, U, BCTKernelType::HighOrder);
 
         os.open("./Output_" + name + ".tsv");
-        for( mint i = 0; i < vertex_count; ++i )
+        for (mint i = 0; i < vertex_count; ++i)
         {
-            os << U(i,0) << "\t";
-            os << U(i,1) << "\t";
-            os << U(i,2) << "\n";
+            os << U(i, 0) << "\t";
+            os << U(i, 1) << "\t";
+            os << U(i, 2) << "\n";
         }
         os.close();
-        
+
         os.open("./P_in_" + name + ".tsv");
         ptr = bct->S->P_in;
         n = bct->T->cluster_count * bct->T->buffer_dim;
-        for( mint i = 0; i < n-1; ++i )
+        for (mint i = 0; i < n - 1; ++i)
         {
             os << ptr[i] << "\t";
-            
         }
-        os << ptr[n-1];
+        os << ptr[n - 1];
         os.close();
-        
+
         os.open("./C_in_leaves_" + name + ".tsv");
         ptr = bct->T->C_in;
         n = bct->T->buffer_dim;
-        for( mint i = 0; i < bct->T->leaf_cluster_count; ++i )
+        for (mint i = 0; i < bct->T->leaf_cluster_count; ++i)
         {
-            for( mint k = 0; k < n; ++k )
-            os << ptr[ n * bct->T->leaf_clusters[i] + k ] << "\t";
-            
+            for (mint k = 0; k < n; ++k)
+                os << ptr[n * bct->T->leaf_clusters[i] + k] << "\t";
         }
         os.close();
-        
+
         os.open("./C_in_" + name + ".tsv");
         ptr = bct->T->C_in;
         n = bct->T->cluster_count * bct->T->buffer_dim;
-        for( mint i = 0; i < n-1; ++i )
+        for (mint i = 0; i < n - 1; ++i)
         {
             os << ptr[i] << "\t";
-            
         }
-        os << ptr[n-1];
+        os << ptr[n - 1];
         os.close();
-        
 
         os.open("./C_out_" + name + ".tsv");
         ptr = bct->S->C_out;
         n = bct->S->cluster_count * bct->S->buffer_dim;
-        for( mint i = 0; i < n-1; ++i )
+        for (mint i = 0; i < n - 1; ++i)
         {
             os << ptr[i] << "\t";
-            
         }
-        os << ptr[n-1];
+        os << ptr[n - 1];
         os.close();
-        
+
         os.open("./P_out_" + name + ".tsv");
         ptr = bct->S->P_out;
         n = bct->S->cluster_count * bct->S->buffer_dim;
-        for( mint i = 0; i < n-1; ++i )
+        for (mint i = 0; i < n - 1; ++i)
         {
             os << ptr[i] << "\t";
-            
         }
-        os << ptr[n-1];
+        os << ptr[n - 1];
         os.close();
-        
 
-
-        
         os.open("./Far_FractionalOnly.tsv");
         ptr = bct->far->fr_values;
-        for( mint i = 0; i < bct->far->nnz-1; ++i )
+        for (mint i = 0; i < bct->far->nnz - 1; ++i)
         {
             os << ptr[i] << "\t";
-
         }
-        os << ptr[bct->far->nnz-1];
+        os << ptr[bct->far->nnz - 1];
         os.close();
         os.open("./Far_LowOrder.tsv");
         ptr = bct->far->lo_values;
-        for( mint i = 0; i < bct->far->nnz-1; ++i )
+        for (mint i = 0; i < bct->far->nnz - 1; ++i)
         {
             os << ptr[i] << "\t";
-
         }
-        os << ptr[bct->far->nnz-1];
+        os << ptr[bct->far->nnz - 1];
         os.close();
 
         os.open("./Far_HighOrder.tsv");
         ptr = bct->far->hi_values;
-        for( mint i = 0; i < bct->far->nnz-1; ++i )
+        for (mint i = 0; i < bct->far->nnz - 1; ++i)
         {
             os << ptr[i] << "\t";
-
         }
-        os << ptr[bct->far->nnz-1];
+        os << ptr[bct->far->nnz - 1];
         os.close();
-
-
 
         os.open("./Near_FractionalOnly.tsv");
         ptr = bct->near->fr_values;
-        for( mint i = 0; i < bct->near->nnz-1; ++i )
+        for (mint i = 0; i < bct->near->nnz - 1; ++i)
         {
             os << ptr[i] << "\t";
-
         }
-        os << ptr[bct->near->nnz-1];
+        os << ptr[bct->near->nnz - 1];
         os.close();
         os.open("./Near_LowOrder.tsv");
         ptr = bct->near->lo_values;
-        for( mint i = 0; i < bct->near->nnz-1; ++i )
+        for (mint i = 0; i < bct->near->nnz - 1; ++i)
         {
             os << ptr[i] << "\t";
-
         }
-        os << ptr[bct->near->nnz-1];
+        os << ptr[bct->near->nnz - 1];
         os.close();
 
         os.open("./Near_HighOrder.tsv");
         ptr = bct->near->hi_values;
-        for( mint i = 0; i < bct->near->nnz-1; ++i )
+        for (mint i = 0; i < bct->near->nnz - 1; ++i)
         {
             os << ptr[i] << "\t";
-
         }
-        os << ptr[bct->near->nnz-1];
+        os << ptr[bct->near->nnz - 1];
         os.close();
 
-        
         delete bvh;
 
         std::cout << "TestMultiply finished." << std::endl;
     }
-        
-    
+
     void MainApp::TestUpdate()
     {
         auto tpe = std::make_shared<TPEnergyBarnesHut0>(mesh, geom, 6., 12., 0.5, 1.);
-        
+
         auto mesh = rsurfaces::MainApp::instance->mesh;
         auto geom = rsurfaces::MainApp::instance->geom;
-        
-        
-        valprint("Energy",tpe->Value());
-        
+
+        valprint("Energy", tpe->Value());
+
         UpdateOptimizedBVH(tpe->GetBVH(), mesh, geom);
-        
-        valprint("Energy",tpe->Value());
-        
+
+        valprint("Energy", tpe->Value());
+
     } // TestUpdate
-    
+
     void MainApp::TestObstacle0()
     {
         int threads;
-        #pragma omp parallel
+#pragma omp parallel
         {
             threads = omp_get_num_threads();
         }
-        ClearProfile("./TestObstacle0_" + std::to_string(threads)+ ".tsv");
-        
+        ClearProfile("./TestObstacle0_" + std::to_string(threads) + ".tsv");
+
         std::cout << std::setprecision(8);
         std::cout << "\n  =====                   =====  " << std::endl;
         std::cout << "=======   TestObstacle0   =======" << std::endl;
@@ -885,17 +850,17 @@ namespace rsurfaces
         double alpha = 6.;
         double beta = 12.;
         double weight = 1.;
-//        double theta = MainApp::instance->bh_theta;
+        //        double theta = MainApp::instance->bh_theta;
         double theta = 0.25;
         double chi = theta;
-//        double chi = 0.8 * theta;
+        //        double chi = 0.8 * theta;
 
         // mesh1 and geom1 represent the movable surface
         auto mesh1 = rsurfaces::MainApp::instance->mesh;
         auto geom1 = rsurfaces::MainApp::instance->geom;
 
         // Load obstacle
-//        std::string filename = "../scenes/Bunny/bunny-10p.obj";
+        //        std::string filename = "../scenes/Bunny/bunny-10p.obj";
         std::string filename = "../scenes/Bunny/bunny.obj";
         MeshUPtr umesh;
         GeomUPtr ugeom;
@@ -910,7 +875,7 @@ namespace rsurfaces
 
         mint primitive_count1 = mesh1->nVertices();
         mint primitive_count2 = mesh2->nVertices();
-        
+
         tic("Create bvh1");
         OptimizedClusterTree *bvh1 = CreateOptimizedBVH(mesh1, geom1);
         OptimizedClusterTree *bvh1_nl = CreateOptimizedBVH_Normals(mesh1, geom1);
@@ -966,7 +931,7 @@ namespace rsurfaces
         toc("Modifying bct11 to include the terms with respect to the obstacle.");
 
         mint energy_count = 7;
-        
+
         // the self-interaction energy of mesh1
         auto tpe_fm_11 = std::make_shared<TPEnergyMultipole0>(mesh1, geom1, bct11.get(), alpha, beta, weight);
         auto tpe_fm_nl_11 = std::make_shared<TPEnergyMultipole_Normals0>(mesh1, geom1, bct11_nl.get(), alpha, beta, weight);
@@ -1007,27 +972,27 @@ namespace rsurfaces
         Eigen::MatrixXd DE_fm_11(primitive_count1, 3);
         Eigen::MatrixXd DE_fm_12(primitive_count1, 3);
         Eigen::MatrixXd DE_fm_22(primitive_count2, 3);
-        
+
         Eigen::MatrixXd DE_fm_nl_11(primitive_count1, 3);
         Eigen::MatrixXd DE_fm_nl_12(primitive_count1, 3);
         Eigen::MatrixXd DE_fm_nl_22(primitive_count2, 3);
-        
+
         Eigen::MatrixXd DE_fm_pr_11(primitive_count1, 3);
         Eigen::MatrixXd DE_fm_pr_12(primitive_count1, 3);
         Eigen::MatrixXd DE_fm_pr_22(primitive_count2, 3);
-        
+
         Eigen::MatrixXd DE_bh_11(primitive_count1, 3);
         Eigen::MatrixXd DE_bh_12(primitive_count1, 3);
         Eigen::MatrixXd DE_bh_22(primitive_count2, 3);
-        
+
         Eigen::MatrixXd DE_bh_pr_11(primitive_count1, 3);
         Eigen::MatrixXd DE_bh_pr_12(primitive_count1, 3);
         Eigen::MatrixXd DE_bh_pr_22(primitive_count2, 3);
-        
+
         Eigen::MatrixXd DE_ex_11(primitive_count1, 3);
         Eigen::MatrixXd DE_ex_12(primitive_count1, 3);
         Eigen::MatrixXd DE_ex_22(primitive_count2, 3);
-        
+
         Eigen::MatrixXd DE_ex_pr_11(primitive_count1, 3);
         Eigen::MatrixXd DE_ex_pr_12(primitive_count1, 3);
         Eigen::MatrixXd DE_ex_pr_22(primitive_count2, 3);
@@ -1070,14 +1035,14 @@ namespace rsurfaces
         std::cout << "done " << ++counter << " / " << count << std::endl;
 
         //######################################
-        
+
         tic();
         E_ex_pr_11 = tpe_ex_pr_11->Value();
         mreal t_ex_pr_11 = toc();
         std::cout << "done " << ++counter << " / " << count << std::endl;
 
         tic();
-//        tpe_ex_pr_12->Update();
+        //        tpe_ex_pr_12->Update();
         E_ex_pr_12 = tpe_ex_pr_12->Value();
         mreal t_ex_pr_12 = toc();
         std::cout << "done " << ++counter << " / " << count << std::endl;
@@ -1106,14 +1071,14 @@ namespace rsurfaces
         std::cout << "done " << ++counter << " / " << count << std::endl;
 
         //######################################
-        
+
         tic();
         E_bh_11 = tpe_bh_11->Value();
         mreal t_bh_11 = toc();
         std::cout << "done " << ++counter << " / " << count << std::endl;
 
         tic();
-//        tpe_bh_12->Update();
+        //        tpe_bh_12->Update();
         E_bh_12 = tpe_bh_12->Value();
         mreal t_bh_12 = toc();
         std::cout << "done " << ++counter << " / " << count << std::endl;
@@ -1140,17 +1105,16 @@ namespace rsurfaces
         tpe_bh_22->Differential(DE_bh_22);
         mreal Dt_bh_22 = toc();
         std::cout << "done " << ++counter << " / " << count << std::endl;
-        
+
         //######################################
-        
-        
+
         tic();
         E_bh_pr_11 = tpe_bh_pr_11->Value();
         mreal t_bh_pr_11 = toc();
         std::cout << "done " << ++counter << " / " << count << std::endl;
 
         tic();
-//        tpe_bh_12->Update();
+        //        tpe_bh_12->Update();
         E_bh_pr_12 = tpe_bh_pr_12->Value();
         mreal t_bh_pr_12 = toc();
         std::cout << "done " << ++counter << " / " << count << std::endl;
@@ -1179,7 +1143,7 @@ namespace rsurfaces
         std::cout << "done " << ++counter << " / " << count << std::endl;
 
         //######################################
-        
+
         tic();
         E_fm_nl_11 = tpe_fm_nl_11->Value();
         mreal t_fm_nl_11 = toc();
@@ -1212,9 +1176,9 @@ namespace rsurfaces
         tpe_fm_nl_22->Differential(DE_fm_nl_22);
         mreal Dt_fm_nl_22 = toc();
         std::cout << "done " << ++counter << " / " << count << std::endl;
-        
+
         //######################################
-        
+
         tic();
         E_fm_11 = tpe_fm_11->Value();
         mreal t_fm_11 = toc();
@@ -1241,14 +1205,13 @@ namespace rsurfaces
         tpe_fm_12->Differential(DE_fm_12);
         mreal Dt_fm_12 = toc();
         std::cout << "done " << ++counter << " / " << count << std::endl;
-        
+
         tic();
         DE_fm_22.setZero();
         tpe_fm_22->Differential(DE_fm_22);
         mreal Dt_fm_22 = toc();
         std::cout << "done " << ++counter << " / " << count << std::endl;
-        
-        
+
         //######################################
         tic();
         E_fm_pr_11 = tpe_fm_pr_11->Value();
@@ -1286,210 +1249,207 @@ namespace rsurfaces
         //######################################
 
         int w1 = 21;
-        int w  = 13;
-//
-//        std::string line = "--------------------------------------------------------------------------------------------------------------------------------------------------------------------";
-        std::string line = std::string( 3 * energy_count + w1 + w * energy_count, '-');
-        std::cout   << std::left;
-        std::cout   << std::setw(w1) << ""
-                    << " | " << std::setw(w) << "exact"
-                    << " | " << std::setw(w) << "pr"
-                    << " | " << std::setw(w) << "BH"
-                    << " | " << std::setw(w) << "BH_pr"
-                    << " | " << std::setw(w) << "FMM"
-                    << " | " << std::setw(w) << "FMM_pr"
-                    << " | " << std::setw(w) << "FMM_nl"
-                    << std::endl;
+        int w = 13;
+        //
+        //        std::string line = "--------------------------------------------------------------------------------------------------------------------------------------------------------------------";
+        std::string line = std::string(3 * energy_count + w1 + w * energy_count, '-');
+        std::cout << std::left;
+        std::cout << std::setw(w1) << ""
+                  << " | " << std::setw(w) << "exact"
+                  << " | " << std::setw(w) << "pr"
+                  << " | " << std::setw(w) << "BH"
+                  << " | " << std::setw(w) << "BH_pr"
+                  << " | " << std::setw(w) << "FMM"
+                  << " | " << std::setw(w) << "FMM_pr"
+                  << " | " << std::setw(w) << "FMM_nl"
+                  << std::endl;
 
-        std::cout   << line << std::endl;
+        std::cout << line << std::endl;
 
-        std::cout   << std::setw(w1) << "  E_11 "
-                    << " | " << std::setw(w) << E_ex_11
-                    << " | " << std::setw(w) << E_ex_pr_11
-                    << " | " << std::setw(w) << E_bh_11
-                    << " | " << std::setw(w) << E_bh_pr_11
-                    << " | " << std::setw(w) << E_fm_11
-                    << " | " << std::setw(w) << E_fm_pr_11
-                    << " | " << std::setw(w) << E_fm_nl_11
-                    << std::endl;
+        std::cout << std::setw(w1) << "  E_11 "
+                  << " | " << std::setw(w) << E_ex_11
+                  << " | " << std::setw(w) << E_ex_pr_11
+                  << " | " << std::setw(w) << E_bh_11
+                  << " | " << std::setw(w) << E_bh_pr_11
+                  << " | " << std::setw(w) << E_fm_11
+                  << " | " << std::setw(w) << E_fm_pr_11
+                  << " | " << std::setw(w) << E_fm_nl_11
+                  << std::endl;
 
-        std::cout   << std::setw(w1) << "  E_12 "
-                    << " | " << std::setw(w) << E_ex_12
-                    << " | " << std::setw(w) << E_ex_pr_12
-                    << " | " << std::setw(w) << E_bh_12
-                    << " | " << std::setw(w) << E_bh_pr_12
-                    << " | " << std::setw(w) << E_fm_12
-                    << " | " << std::setw(w) << E_fm_pr_12
-                    << " | " << std::setw(w) << E_fm_nl_12
-                    << std::endl;
+        std::cout << std::setw(w1) << "  E_12 "
+                  << " | " << std::setw(w) << E_ex_12
+                  << " | " << std::setw(w) << E_ex_pr_12
+                  << " | " << std::setw(w) << E_bh_12
+                  << " | " << std::setw(w) << E_bh_pr_12
+                  << " | " << std::setw(w) << E_fm_12
+                  << " | " << std::setw(w) << E_fm_pr_12
+                  << " | " << std::setw(w) << E_fm_nl_12
+                  << std::endl;
 
-        std::cout   << std::setw(w1) << "  E_22 "
-                    << " | " << std::setw(w) << E_ex_22
-                    << " | " << std::setw(w) << E_ex_pr_22
-                    << " | " << std::setw(w) << E_bh_22
-                    << " | " << std::setw(w) << E_bh_pr_22
-                    << " | " << std::setw(w) << E_fm_22
-                    << " | " << std::setw(w) << E_fm_pr_22
-                    << " | " << std::setw(w) << E_fm_nl_22
-                    << std::endl;
-        
-        
-        std::cout   << "\n";
-        std::cout   << std::setw(w1) << ""
-                    << " | " << std::setw(w) << "exact"
-                    << " | " << std::setw(w) << "pr"
-                    << " | " << std::setw(w) << "BH"
-                    << " | " << std::setw(w) << "BH_pr"
-                    << " | " << std::setw(w) << "FMM"
-                    << " | " << std::setw(w) << "FMM_pr"
-                    << " | " << std::setw(w) << "FMM_nl"
-                    << std::endl;
+        std::cout << std::setw(w1) << "  E_22 "
+                  << " | " << std::setw(w) << E_ex_22
+                  << " | " << std::setw(w) << E_ex_pr_22
+                  << " | " << std::setw(w) << E_bh_22
+                  << " | " << std::setw(w) << E_bh_pr_22
+                  << " | " << std::setw(w) << E_fm_22
+                  << " | " << std::setw(w) << E_fm_pr_22
+                  << " | " << std::setw(w) << E_fm_nl_22
+                  << std::endl;
 
-        std::cout   << line << std::endl;
+        std::cout << "\n";
+        std::cout << std::setw(w1) << ""
+                  << " | " << std::setw(w) << "exact"
+                  << " | " << std::setw(w) << "pr"
+                  << " | " << std::setw(w) << "BH"
+                  << " | " << std::setw(w) << "BH_pr"
+                  << " | " << std::setw(w) << "FMM"
+                  << " | " << std::setw(w) << "FMM_pr"
+                  << " | " << std::setw(w) << "FMM_nl"
+                  << std::endl;
 
-        std::cout   << std::setw(w1) << "  E_11 error (%) "
-                    << " | " << std::setw(w) << fabs(E_ex_11 / E_ex_11 - 1) * 100
-                    << " | " << std::setw(w) << fabs(E_ex_pr_11 / E_ex_11 - 1) * 100
-                    << " | " << std::setw(w) << fabs(E_bh_11 / E_ex_11 - 1) * 100
-                    << " | " << std::setw(w) << fabs(E_bh_pr_11 / E_ex_11 - 1) * 100
-                    << " | " << std::setw(w) << fabs(E_fm_11 / E_ex_11 - 1) * 100
-                    << " | " << std::setw(w) << fabs(E_fm_pr_11 / E_ex_11 - 1) * 100
-                    << " | " << std::setw(w) << fabs(E_fm_nl_11 / E_ex_11 - 1) * 100
-                    << std::endl;
+        std::cout << line << std::endl;
 
-        std::cout   << std::setw(w1) << "  E_12 error (%) "
-                    << " | " << std::setw(w) << fabs(E_ex_12 / E_ex_12 - 1) * 100
-                    << " | " << std::setw(w) << fabs(E_ex_pr_12 / E_ex_12 - 1) * 100
-                    << " | " << std::setw(w) << fabs(E_bh_12 / E_ex_12 - 1) * 100
-                    << " | " << std::setw(w) << fabs(E_bh_pr_12 / E_ex_12 - 1) * 100
-                    << " | " << std::setw(w) << fabs(E_fm_12 / E_ex_12 - 1) * 100
-                    << " | " << std::setw(w) << fabs(E_fm_pr_12 / E_ex_12 - 1) * 100
-                    << " | " << std::setw(w) << fabs(E_fm_nl_12 / E_ex_12 - 1) * 100
-                    << std::endl;
+        std::cout << std::setw(w1) << "  E_11 error (%) "
+                  << " | " << std::setw(w) << fabs(E_ex_11 / E_ex_11 - 1) * 100
+                  << " | " << std::setw(w) << fabs(E_ex_pr_11 / E_ex_11 - 1) * 100
+                  << " | " << std::setw(w) << fabs(E_bh_11 / E_ex_11 - 1) * 100
+                  << " | " << std::setw(w) << fabs(E_bh_pr_11 / E_ex_11 - 1) * 100
+                  << " | " << std::setw(w) << fabs(E_fm_11 / E_ex_11 - 1) * 100
+                  << " | " << std::setw(w) << fabs(E_fm_pr_11 / E_ex_11 - 1) * 100
+                  << " | " << std::setw(w) << fabs(E_fm_nl_11 / E_ex_11 - 1) * 100
+                  << std::endl;
 
-        std::cout   << std::setw(w1) << "  E_22 error (%) "
-                    << " | " << std::setw(w) << fabs(E_ex_22 / E_ex_22 - 1) * 100
-                    << " | " << std::setw(w) << fabs(E_ex_pr_22 / E_ex_22 - 1) * 100
-                    << " | " << std::setw(w) << fabs(E_bh_22 / E_ex_22 - 1) * 100
-                    << " | " << std::setw(w) << fabs(E_bh_pr_22 / E_ex_22 - 1) * 100
-                    << " | " << std::setw(w) << fabs(E_fm_22 / E_ex_22 - 1) * 100
-                    << " | " << std::setw(w) << fabs(E_fm_pr_22 / E_ex_22 - 1) * 100
-                    << " | " << std::setw(w) << fabs(E_fm_nl_22 / E_ex_22 - 1) * 100
-                    << std::endl;
+        std::cout << std::setw(w1) << "  E_12 error (%) "
+                  << " | " << std::setw(w) << fabs(E_ex_12 / E_ex_12 - 1) * 100
+                  << " | " << std::setw(w) << fabs(E_ex_pr_12 / E_ex_12 - 1) * 100
+                  << " | " << std::setw(w) << fabs(E_bh_12 / E_ex_12 - 1) * 100
+                  << " | " << std::setw(w) << fabs(E_bh_pr_12 / E_ex_12 - 1) * 100
+                  << " | " << std::setw(w) << fabs(E_fm_12 / E_ex_12 - 1) * 100
+                  << " | " << std::setw(w) << fabs(E_fm_pr_12 / E_ex_12 - 1) * 100
+                  << " | " << std::setw(w) << fabs(E_fm_nl_12 / E_ex_12 - 1) * 100
+                  << std::endl;
 
-        std::cout   << std::setw(w1) << " DE_11 error (%) "
-                    << " | " << std::setw(w) << (DE_ex_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
-                    << " | " << std::setw(w) << (DE_ex_pr_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
-                    << " | " << std::setw(w) << (DE_bh_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
-                    << " | " << std::setw(w) << (DE_bh_pr_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
-                    << " | " << std::setw(w) << (DE_fm_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
-                    << " | " << std::setw(w) << (DE_fm_pr_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
-                    << " | " << std::setw(w) << (DE_fm_nl_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
-                    << std::endl;
+        std::cout << std::setw(w1) << "  E_22 error (%) "
+                  << " | " << std::setw(w) << fabs(E_ex_22 / E_ex_22 - 1) * 100
+                  << " | " << std::setw(w) << fabs(E_ex_pr_22 / E_ex_22 - 1) * 100
+                  << " | " << std::setw(w) << fabs(E_bh_22 / E_ex_22 - 1) * 100
+                  << " | " << std::setw(w) << fabs(E_bh_pr_22 / E_ex_22 - 1) * 100
+                  << " | " << std::setw(w) << fabs(E_fm_22 / E_ex_22 - 1) * 100
+                  << " | " << std::setw(w) << fabs(E_fm_pr_22 / E_ex_22 - 1) * 100
+                  << " | " << std::setw(w) << fabs(E_fm_nl_22 / E_ex_22 - 1) * 100
+                  << std::endl;
 
-        std::cout   << std::setw(w1) << " DE_12 error (%) "
-                    << " | " << std::setw(w) << (DE_ex_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
-                    << " | " << std::setw(w) << (DE_ex_pr_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
-                    << " | " << std::setw(w) << (DE_bh_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
-                    << " | " << std::setw(w) << (DE_bh_pr_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
-                    << " | " << std::setw(w) << (DE_fm_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
-                    << " | " << std::setw(w) << (DE_fm_pr_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
-                    << " | " << std::setw(w) << (DE_fm_nl_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
-                    << std::endl;
+        std::cout << std::setw(w1) << " DE_11 error (%) "
+                  << " | " << std::setw(w) << (DE_ex_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
+                  << " | " << std::setw(w) << (DE_ex_pr_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
+                  << " | " << std::setw(w) << (DE_bh_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
+                  << " | " << std::setw(w) << (DE_bh_pr_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
+                  << " | " << std::setw(w) << (DE_fm_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
+                  << " | " << std::setw(w) << (DE_fm_pr_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
+                  << " | " << std::setw(w) << (DE_fm_nl_11 - DE_ex_11).norm() / DE_ex_11.norm() * 100
+                  << std::endl;
 
-        std::cout   << std::setw(w1) << " DE_22 error (%) "
-                    << " | " << std::setw(w) << (DE_ex_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
-                    << " | " << std::setw(w) << (DE_ex_pr_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
-                    << " | " << std::setw(w) << (DE_bh_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
-                    << " | " << std::setw(w) << (DE_bh_pr_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
-                    << " | " << std::setw(w) << (DE_fm_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
-                    << " | " << std::setw(w) << (DE_fm_pr_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
-                    << " | " << std::setw(w) << (DE_fm_nl_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
-                    << std::endl;
-        
+        std::cout << std::setw(w1) << " DE_12 error (%) "
+                  << " | " << std::setw(w) << (DE_ex_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
+                  << " | " << std::setw(w) << (DE_ex_pr_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
+                  << " | " << std::setw(w) << (DE_bh_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
+                  << " | " << std::setw(w) << (DE_bh_pr_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
+                  << " | " << std::setw(w) << (DE_fm_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
+                  << " | " << std::setw(w) << (DE_fm_pr_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
+                  << " | " << std::setw(w) << (DE_fm_nl_12 - DE_ex_12).norm() / DE_ex_12.norm() * 100
+                  << std::endl;
 
-        std::cout   << "\n"
-                    << std::endl;
-        std::cout   << std::setw(w1) << ""
-                    << " | " << std::setw(w) << "exact"
-                    << " | " << std::setw(w) << "pr"
-                    << " | " << std::setw(w) << "BH"
-                    << " | " << std::setw(w) << "BH_pr"
-                    << " | " << std::setw(w) << "FMM"
-                    << " | " << std::setw(w) << "FMM_pr"
-                    << " | " << std::setw(w) << "FMM_nl"
-                    << std::endl;
+        std::cout << std::setw(w1) << " DE_22 error (%) "
+                  << " | " << std::setw(w) << (DE_ex_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
+                  << " | " << std::setw(w) << (DE_ex_pr_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
+                  << " | " << std::setw(w) << (DE_bh_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
+                  << " | " << std::setw(w) << (DE_bh_pr_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
+                  << " | " << std::setw(w) << (DE_fm_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
+                  << " | " << std::setw(w) << (DE_fm_pr_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
+                  << " | " << std::setw(w) << (DE_fm_nl_22 - DE_ex_22).norm() / DE_ex_22.norm() * 100
+                  << std::endl;
 
-        std::cout   << line << std::endl;
+        std::cout << "\n"
+                  << std::endl;
+        std::cout << std::setw(w1) << ""
+                  << " | " << std::setw(w) << "exact"
+                  << " | " << std::setw(w) << "pr"
+                  << " | " << std::setw(w) << "BH"
+                  << " | " << std::setw(w) << "BH_pr"
+                  << " | " << std::setw(w) << "FMM"
+                  << " | " << std::setw(w) << "FMM_pr"
+                  << " | " << std::setw(w) << "FMM_nl"
+                  << std::endl;
 
-        std::cout   << std::setw(w1) << "  E_11 time  (s) "
-                    << " | " << std::setw(w) << t_ex_11
-                    << " | " << std::setw(w) << t_ex_pr_11
-                    << " | " << std::setw(w) << t_bh_11
-                    << " | " << std::setw(w) << t_bh_pr_11
-                    << " | " << std::setw(w) << t_fm_11
-                    << " | " << std::setw(w) << t_fm_pr_11
-                    << " | " << std::setw(w) << t_fm_nl_11
-                    << std::endl;
-        
-        std::cout   << std::setw(w1) << "  E_12 time  (s) "
-                    << " | " << std::setw(w) << t_ex_12
-                    << " | " << std::setw(w) << t_ex_pr_12
-                    << " | " << std::setw(w) << t_bh_12
-                    << " | " << std::setw(w) << t_bh_pr_12
-                    << " | " << std::setw(w) << t_fm_12
-                    << " | " << std::setw(w) << t_fm_pr_12
-                    << " | " << std::setw(w) << t_fm_nl_12
-                    << std::endl;
-        
-        std::cout   << std::setw(w1) << "  E_22 time  (s) "
-                    << " | " << std::setw(w) << t_ex_22
-                    << " | " << std::setw(w) << t_ex_pr_22
-                    << " | " << std::setw(w) << t_bh_22
-                    << " | " << std::setw(w) << t_bh_pr_22
-                    << " | " << std::setw(w) << t_fm_22
-                    << " | " << std::setw(w) << t_fm_pr_22
-                    << " | " << std::setw(w) << t_fm_nl_22
-                    << std::endl;
-        
-        std::cout   << std::setw(w1) << " DE_11 time  (s) "
-                    << " | " << std::setw(w) << Dt_ex_11
-                    << " | " << std::setw(w) << Dt_ex_pr_11
-                    << " | " << std::setw(w) << Dt_bh_11
-                    << " | " << std::setw(w) << Dt_bh_pr_11
-                    << " | " << std::setw(w) << Dt_fm_11
-                    << " | " << std::setw(w) << Dt_fm_pr_11
-                    << " | " << std::setw(w) << Dt_fm_nl_11
-                    << std::endl;
-        
-        std::cout   << std::setw(w1) << " DE_12 time  (s) "
-                    << " | " << std::setw(w) << Dt_ex_12
-                    << " | " << std::setw(w) << Dt_ex_pr_12
-                    << " | " << std::setw(w) << Dt_bh_12
-                    << " | " << std::setw(w) << Dt_bh_pr_12
-                    << " | " << std::setw(w) << Dt_fm_12
-                    << " | " << std::setw(w) << Dt_fm_pr_12
-                    << " | " << std::setw(w) << Dt_fm_nl_12
-                    << std::endl;
-        
-        std::cout   << std::setw(w1) << " DE_22 time  (s) "
-                    << " | " << std::setw(w) << Dt_ex_22
-                    << " | " << std::setw(w) << Dt_ex_pr_22
-                    << " | " << std::setw(w) << Dt_bh_22
-                    << " | " << std::setw(w) << Dt_bh_pr_22
-                    << " | " << std::setw(w) << Dt_fm_22
-                    << " | " << std::setw(w) << Dt_fm_pr_22
-                    << " | " << std::setw(w) << Dt_fm_nl_22
-                    << std::endl;
+        std::cout << line << std::endl;
+
+        std::cout << std::setw(w1) << "  E_11 time  (s) "
+                  << " | " << std::setw(w) << t_ex_11
+                  << " | " << std::setw(w) << t_ex_pr_11
+                  << " | " << std::setw(w) << t_bh_11
+                  << " | " << std::setw(w) << t_bh_pr_11
+                  << " | " << std::setw(w) << t_fm_11
+                  << " | " << std::setw(w) << t_fm_pr_11
+                  << " | " << std::setw(w) << t_fm_nl_11
+                  << std::endl;
+
+        std::cout << std::setw(w1) << "  E_12 time  (s) "
+                  << " | " << std::setw(w) << t_ex_12
+                  << " | " << std::setw(w) << t_ex_pr_12
+                  << " | " << std::setw(w) << t_bh_12
+                  << " | " << std::setw(w) << t_bh_pr_12
+                  << " | " << std::setw(w) << t_fm_12
+                  << " | " << std::setw(w) << t_fm_pr_12
+                  << " | " << std::setw(w) << t_fm_nl_12
+                  << std::endl;
+
+        std::cout << std::setw(w1) << "  E_22 time  (s) "
+                  << " | " << std::setw(w) << t_ex_22
+                  << " | " << std::setw(w) << t_ex_pr_22
+                  << " | " << std::setw(w) << t_bh_22
+                  << " | " << std::setw(w) << t_bh_pr_22
+                  << " | " << std::setw(w) << t_fm_22
+                  << " | " << std::setw(w) << t_fm_pr_22
+                  << " | " << std::setw(w) << t_fm_nl_22
+                  << std::endl;
+
+        std::cout << std::setw(w1) << " DE_11 time  (s) "
+                  << " | " << std::setw(w) << Dt_ex_11
+                  << " | " << std::setw(w) << Dt_ex_pr_11
+                  << " | " << std::setw(w) << Dt_bh_11
+                  << " | " << std::setw(w) << Dt_bh_pr_11
+                  << " | " << std::setw(w) << Dt_fm_11
+                  << " | " << std::setw(w) << Dt_fm_pr_11
+                  << " | " << std::setw(w) << Dt_fm_nl_11
+                  << std::endl;
+
+        std::cout << std::setw(w1) << " DE_12 time  (s) "
+                  << " | " << std::setw(w) << Dt_ex_12
+                  << " | " << std::setw(w) << Dt_ex_pr_12
+                  << " | " << std::setw(w) << Dt_bh_12
+                  << " | " << std::setw(w) << Dt_bh_pr_12
+                  << " | " << std::setw(w) << Dt_fm_12
+                  << " | " << std::setw(w) << Dt_fm_pr_12
+                  << " | " << std::setw(w) << Dt_fm_nl_12
+                  << std::endl;
+
+        std::cout << std::setw(w1) << " DE_22 time  (s) "
+                  << " | " << std::setw(w) << Dt_ex_22
+                  << " | " << std::setw(w) << Dt_ex_pr_22
+                  << " | " << std::setw(w) << Dt_bh_22
+                  << " | " << std::setw(w) << Dt_bh_pr_22
+                  << " | " << std::setw(w) << Dt_fm_22
+                  << " | " << std::setw(w) << Dt_fm_pr_22
+                  << " | " << std::setw(w) << Dt_fm_nl_22
+                  << std::endl;
 
         delete bvh1;
-        
-//        std::ofstream file;
-//        file.open("./Profile.tsv");
-//        WriteProfile(file);
-//        file.close();
-        
-        
+
+        //        std::ofstream file;
+        //        file.open("./Profile.tsv");
+        //        WriteProfile(file);
+        //        file.close();
+
     } // TestObstacle0
 
     void MainApp::TestBarnesHut0()
@@ -1681,7 +1641,7 @@ namespace rsurfaces
         }
     };
 
-    void MainApp::AddObstacle(std::string filename, double weight, bool recenter)
+    void MainApp::AddObstacle(std::string filename, double weight, bool recenter, bool asPointCloud)
     {
         MeshUPtr obstacleMesh;
         GeomUPtr obstacleGeometry;
@@ -1702,14 +1662,49 @@ namespace rsurfaces
         }
 
         std::string mesh_name = polyscope::guessNiceNameFromPath(filename);
-        polyscope::SurfaceMesh *psMesh = polyscope::registerSurfaceMesh(mesh_name, obstacleGeometry->inputVertexPositions,
-                                                                        obstacleMesh->getFaceVertexList(), polyscopePermutations(*obstacleMesh));
+
+        if (asPointCloud)
+        {
+            polyscope::PointCloud *pointCloud = polyscope::registerPointCloud(mesh_name, obstacleGeometry->inputVertexPositions);
+        }
+
+        else
+        {
+            polyscope::SurfaceMesh *psMesh = polyscope::registerSurfaceMesh(mesh_name, obstacleGeometry->inputVertexPositions,
+                                                                            obstacleMesh->getFaceVertexList(), polyscopePermutations(*obstacleMesh));
+        }
 
         MeshPtr sharedObsMesh = std::move(obstacleMesh);
         GeomPtr sharedObsGeom = std::move(obstacleGeometry);
 
-        TPObstacleBarnesHut0 *obstacleEnergy = new TPObstacleBarnesHut0(mesh, geom, flow->BaseEnergy(), sharedObsMesh, sharedObsGeom,
-                                                                        kernel->alpha, kernel->beta, bh_theta, weight);
+        SurfaceEnergy *obstacleEnergy = 0;
+
+        if (asPointCloud)
+        {
+            size_t nVerts = sharedObsMesh->nVertices();
+
+            Eigen::VectorXd wts;
+            wts.setOnes(nVerts);
+
+            Eigen::MatrixXd pos;
+            pos.setZero(nVerts, 3);
+
+            for (size_t i = 0; i < nVerts; i++)
+            {
+                Vector3 v = sharedObsGeom->inputVertexPositions[i];
+                MatrixUtils::SetRowFromVector3(pos, i, v);
+            }
+
+            obstacleEnergy = new TPPointCloudObstacleBarnesHut0(mesh, geom, flow->BaseEnergy(), wts, pos,
+                                                                kernel->alpha, kernel->beta, bh_theta, weight);
+        }
+
+        else
+        {
+            obstacleEnergy = new TPObstacleBarnesHut0(mesh, geom, flow->BaseEnergy(), sharedObsMesh, sharedObsGeom,
+                                                      kernel->alpha, kernel->beta, bh_theta, weight);
+        }
+
         flow->AddObstacleEnergy(obstacleEnergy);
         std::cout << "Added " << filename << " as obstacle with weight " << weight << std::endl;
 
@@ -1901,7 +1896,7 @@ namespace rsurfaces
 bool run = false;
 bool takeScreenshots = false;
 bool saveOBJs = false;
-bool skipEveryOther = true;
+bool skipEveryOther = false;
 uint screenshotNum = 0;
 uint objNum = 0;
 bool uiNormalizeView = false;
@@ -2031,9 +2026,9 @@ void customCallback()
     if (ImGui::Button("Take 1 step", ImVec2{ITEM_WIDTH, 0}) || run)
     {
         MainApp::instance->TakeOptimizationStep(remesh, areaRatios);
-        if( skipEveryOther )
+        if (skipEveryOther)
         {
-           MainApp::instance->TakeOptimizationStep(remesh, areaRatios);
+            MainApp::instance->TakeOptimizationStep(remesh, areaRatios);
         }
 
         if (takeScreenshots)
@@ -2077,12 +2072,12 @@ void customCallback()
     {
         MainApp::instance->TestUpdate();
     }
-    
+
     if (ImGui::Button("Test Willmore", ImVec2{ITEM_WIDTH, 0}))
     {
         MainApp::instance->TestWillmore();
     }
-    
+
     ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
     if (ImGui::Button("Test TPObstacle0", ImVec2{ITEM_WIDTH, 0}))
     {
@@ -2105,78 +2100,10 @@ void customCallback()
     ImGui::BeginGroup();
     ImGui::Indent(INDENT);
 
-    // Section for remeshing tests
-    if (ImGui::Button("Fix Delaunay"))
-    {
-        remeshing::fixDelaunay(MainApp::instance->mesh, MainApp::instance->geom);
-        MainApp::instance->mesh->validateConnectivity();
-        MainApp::instance->reregisterMesh();
-    }
-    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
-
-    if (ImGui::Button("Laplacian smooth"))
-    {
-        remeshing::smoothByLaplacian(MainApp::instance->mesh, MainApp::instance->geom);
-        MainApp::instance->reregisterMesh();
-    }
-
-    if (ImGui::Button("Circumcenter smooth"))
-    {
-        remeshing::smoothByCircumcenter(MainApp::instance->mesh, MainApp::instance->geom);
-        MainApp::instance->reregisterMesh();
-    }
-    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
-
-    if (ImGui::Button("Laplacian opt"))
-    {
-        for (int i = 0; i < 10; i++)
-        {
-            remeshing::smoothByLaplacian(MainApp::instance->mesh, MainApp::instance->geom);
-            remeshing::fixDelaunay(MainApp::instance->mesh, MainApp::instance->geom);
-        }
-        MainApp::instance->reregisterMesh();
-    }
-
-    if (ImGui::Button("Circumcenter opt"))
-    {
-        for (int i = 0; i < 10; i++)
-        {
-            remeshing::smoothByCircumcenter(MainApp::instance->mesh, MainApp::instance->geom);
-            remeshing::fixDelaunay(MainApp::instance->mesh, MainApp::instance->geom);
-        }
-        MainApp::instance->reregisterMesh();
-    }
-    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
-    if (ImGui::Button("Adjust edge lengths"))
-    {
-        remeshing::adjustEdgeLengths(MainApp::instance->mesh, MainApp::instance->geom, MainApp::instance->geomOrig, 0.01, 0.1, 0.001);
-        MainApp::instance->reregisterMesh();
-    }
-
-    if (ImGui::Button("Adjust vert degrees"))
-    {
-        remeshing::adjustVertexDegrees(MainApp::instance->mesh, MainApp::instance->geom);
-        MainApp::instance->reregisterMesh();
-    }
-    ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
-
-    if (ImGui::Button("Face Weight Smooth"))
-    {
-        FaceData<double> faceWeight(*(MainApp::instance->mesh));
-        for (int i = 0; i < 100; i++)
-        {
-            for (Face f : (MainApp::instance->mesh)->faces())
-            {
-                faceWeight[f] = 10 * (-remeshing::findBarycenter((MainApp::instance->geom), f).z + 1.5) + 0;
-            }
-            remeshing::smoothByFaceWeight(MainApp::instance->mesh, MainApp::instance->geom, faceWeight);
-            //         remeshing::fixDelaunay(MainApp::instance->mesh, MainApp::instance->geom);
-        }
-        MainApp::instance->reregisterMesh();
-    }
     if (ImGui::Button("Remesh"))
     {
-        remeshing::remesh(MainApp::instance->mesh, MainApp::instance->geom, MainApp::instance->geomOrig);
+        MainApp::instance->remesher.Remesh(5, true);
+        MainApp::instance->mesh->compress();
         MainApp::instance->reregisterMesh();
     }
     ImGui::EndGroup();
@@ -2484,9 +2411,9 @@ int main(int argc, char **argv)
 
     MKLVersion Version;
     mkl_get_version(&Version);
-    
+
     std::cout << "Using MKL version " << Version.MajorVersion << "." << Version.MinorVersion << "." << Version.UpdateVersion << std::endl;
-    
+
     // Parse args
     try
     {
@@ -2607,7 +2534,7 @@ int main(int argc, char **argv)
     }
     for (scene::ObstacleData &obs : data.obstacles)
     {
-        MainApp::instance->AddObstacle(obs.obstacleName, obs.weight, obs.recenter);
+        MainApp::instance->AddObstacle(obs.obstacleName, obs.weight, obs.recenter, obs.asPointCloud);
     }
     for (scene::ImplicitBarrierData &barrierData : data.implicitBarriers)
     {

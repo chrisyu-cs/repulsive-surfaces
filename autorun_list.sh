@@ -4,5 +4,5 @@ for i in `cat $1`
 do
 	fname="${dir}/${i}"
 	echo "Running ${fname}..."
-	./build/bin/rsurfaces $fname --autolog
+	./build/bin/rsurfaces $fname --autolog --threads 1
 done
