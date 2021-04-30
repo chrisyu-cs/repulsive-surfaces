@@ -80,7 +80,7 @@ namespace rsurfaces
             std::vector<ObstacleData> obstacles;
             std::vector<ConstraintData> constraints;
             std::vector<PotentialData> potentials;
-            std::vector<size_t> vertexPins;
+            std::vector<VertexPinData> vertexPins;
             std::vector<size_t> vertexNormals;
             std::vector<ImplicitBarrierData> implicitBarriers;
             int iterationLimit = 0;

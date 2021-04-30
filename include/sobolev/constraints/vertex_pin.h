@@ -6,6 +6,12 @@ namespace rsurfaces
 {
     namespace Constraints
     {
+        struct PinOffset
+        {
+            Vector3 offsetStep;
+            size_t numIterations;
+        };
+
         class VertexPinConstraint : public SimpleProjectorConstraint
         {
         public:
@@ -17,11 +23,13 @@ namespace rsurfaces
             virtual size_t nRows();
             virtual void ProjectConstraint(MeshPtr &mesh, GeomPtr &geom);
         
-            void pinVertices(const MeshPtr &mesh, const GeomPtr &geom, std::vector<size_t> &indices_);
+            void pinVertices(const MeshPtr &mesh, const GeomPtr &geom, std::vector<size_t> &pinData);
+            void pinVertices(const MeshPtr &mesh, const GeomPtr &geom, std::vector<VertexPinData> &pinData);
 
         private:
             std::vector<size_t> indices;
             std::vector<Vector3> initPositions;
+            std::vector<PinOffset> offsets;
         };
     } // namespace Constraints
 } // namespace rsurfaces

@@ -224,10 +224,37 @@ namespace rsurfaces
                 {
                     std::cout << "WARNING: Vertex pins currently do not work with splits or collapses." << std::endl;
                     std::cout << "Make sure to change the remeshing mode to \"smooth + flip\"." << std::endl;
-                    for (size_t i = 2; i < parts.size(); i++)
+                    size_t i = 2;
+                    bool hasMove = false;
+                    size_t pinsStart = data.vertexPins.size();
+
+                    for (i = 2; i < parts.size(); i++)
                     {
+                        if (parts[i] == "move")
+                        {
+                            hasMove = true;
+                            break;
+                        }
                         size_t pin = stoul(parts[i]);
-                        data.vertexPins.push_back(pin);
+                        data.vertexPins.push_back(VertexPinData{pin, Vector3{0, 0, 0}, 0});
+                    }
+
+                    if (hasMove)
+                    {
+                        double offX = stod(parts[i+1]);
+                        double offY = stod(parts[i+2]); 
+                        double offZ = stod(parts[i+3]); 
+                        size_t iters = stoul(parts[i+4]);
+                        Vector3 pinOff{offX, offY, offZ};
+
+                        std::cout << "Setting offset for pins " << pinsStart << " - " << data.vertexPins.size()
+                            << " to " << pinOff << " over " << iters << " iterations" << std::endl;
+
+                        for (size_t j = pinsStart; j < data.vertexPins.size(); j++)
+                        {
+                            data.vertexPins[j].offset = pinOff;
+                            data.vertexPins[j].iterations = iters;
+                        }
                     }
                 }
 
