@@ -194,19 +194,34 @@ namespace rsurfaces
                 if (!optBCT)
                 {
                     Vector2 exps = energy->GetExponents();
-                    optBCT = CreateOptimizedBCTFromBVH(bvh, exps.x, exps.y, bh_theta);
-                    optBCT->disableNearField = disableNearField;
+                    // Configuring BCT
+                    BCTSettings settings;
                     if (disableNearField)
                     {
-                        std::cout << "    * BCT near-field interactions are disabled." << std::endl;
+                        // This actually turns off both the near and far field of the the low order term. Still somewhat experimental and maybe obsolete.
+                        settings.near_lo_modifier = 0.;
+                        settings.far_lo_modifier = 0.;
+                        std::cout << "    * Low-order near-field interactions in metric BCT are disabled." << std::endl;
                     }
+                    // Now this tells the BCT to multiply the metrics by the energy's weight.
+                    optBCT = CreateOptimizedBCTFromBVH(bvh, exps.x, exps.y, bh_theta, energy->GetWeight(), settings);
+
 
                     if (obstacleEnergy)
                     {
                         std::cout << "    * Building obstacle BCT" << std::endl;
                         OptimizedClusterTree* obstacleBVH = obstacleEnergy->GetBVH();
                         std::cout << "    * Got obstacle BVH " << obstacleBVH << " (" << obstacleBVH->cluster_count << " clusters)" << std::endl;
-                        obstacleBCT = std::make_shared<OptimizedBlockClusterTree>(bvh, obstacleBVH, exps.x, exps.y, bh_theta);
+                        BCTSettings settings;
+                        if (disableNearField)
+                        {
+                            settings.near_lo_modifier = 0.;
+                            settings.far_lo_modifier = 0.;
+                            std::cout << "    * Low-order near-field interactions in obstacle BCT are disabled." << std::endl;
+                        }
+                        // Now this tells the BCT to multiply the metrics by the obstacleEnergy's weight.
+                        // Should be useful for regularization/penalty scenarios in which one wants to apply extremely large weights.
+                        obstacleBCT = std::make_shared<OptimizedBlockClusterTree>(bvh, obstacleBVH, exps.x, exps.y, bh_theta, obstacleEnergy->GetWeight(), settings);
                         std::cout << "    * Built obstacle BCT" << std::endl;
                         optBCT->AddObstacleCorrection(obstacleBCT);
                         std::cout << "    * Added obstacle correction" << std::endl;

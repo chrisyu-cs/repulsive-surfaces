@@ -537,8 +537,6 @@ namespace rsurfaces
         auto mesh = rsurfaces::MainApp::instance->mesh;
         auto geom = rsurfaces::MainApp::instance->geom;
 
-        OptimizedClusterTreeOptions::use_old_prepost = false;
-        OptimizedClusterTreeOptions::tree_perc_alg = TreePercolationAlgorithm::Chunks;
 
         OptimizedClusterTree *bvh = CreateOptimizedBVH(mesh, geom);
         BCTPtr bct = CreateOptimizedBCTFromBVH(bvh, alpha, beta, chi);

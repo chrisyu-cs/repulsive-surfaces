@@ -20,7 +20,7 @@
 namespace rsurfaces
 {
 
-    inline OptimizedClusterTree * CreateOptimizedBVH_Hybrid(MeshPtr &mesh, GeomPtr &geom)
+    inline OptimizedClusterTree * CreateOptimizedBVH_Hybrid( MeshPtr &mesh, GeomPtr &geom, BVHSettings settings = BVHDefaultSettings )
     {
         geom->requireFaceAreas();
         geom->requireFaceNormals();
@@ -132,11 +132,12 @@ namespace rsurfaces
             far_dim,                 // number of dofs of P_far per mesh element; it is 10 for polylines and triangle meshes in 3D.
             &ordering[0],      // some ordering of triangles
             DiffOp,            // the first-order differential operator belonging to the hi order term of the metric
-            AvOp               // the zeroth-order differential operator belonging to the lo order term of the metric
+            AvOp,               // the zeroth-order differential operator belonging to the lo order term of the metric
+            settings
         );
     } // CreateOptimizedBVH
     
-    inline OptimizedClusterTree * CreateOptimizedBVH_Normals(MeshPtr &mesh, GeomPtr &geom)
+    inline OptimizedClusterTree * CreateOptimizedBVH_Normals( MeshPtr &mesh, GeomPtr &geom, BVHSettings settings = BVHDefaultSettings )
     {
         geom->requireFaceAreas();
         geom->requireFaceNormals();
@@ -241,11 +242,12 @@ namespace rsurfaces
             far_dim,                 // number of dofs of P_far per mesh element; it is 10 for polylines and triangle meshes in 3D.
             &ordering[0],      // some ordering of triangles
             DiffOp,            // the first-order differential operator belonging to the hi order term of the metric
-            AvOp               // the zeroth-order differential operator belonging to the lo order term of the metric
+            AvOp,              // the zeroth-order differential operator belonging to the lo order term of the metric
+            settings
         );
-    } // CreateOptimizedBVH_Normls
+    } // CreateOptimizedBVH_Normals
 
-    inline void UpdateOptimizedBVH(OptimizedClusterTree * bvh, MeshPtr &mesh, GeomPtr &geom)
+    inline void UpdateOptimizedBVH( OptimizedClusterTree * bvh, MeshPtr &mesh, GeomPtr &geom, BVHSettings settings = BVHDefaultSettings)
     {
 //        bvh->UpdateWithNewPositions(mesh, geom);
         
@@ -368,7 +370,7 @@ namespace rsurfaces
         }
     } // UpdateOptimizedBVH
 
-    inline OptimizedClusterTree * CreateOptimizedBVH_Projectors(MeshPtr &mesh, GeomPtr &geom)
+    inline OptimizedClusterTree * CreateOptimizedBVH_Projectors( MeshPtr &mesh, GeomPtr &geom, BVHSettings settings = BVHDefaultSettings )
     {
         geom->requireFaceAreas();
         geom->requireFaceNormals();
@@ -476,28 +478,31 @@ namespace rsurfaces
             far_dim,                 // number of dofs of P_data per mesh element; it is 10 for polylines and triangle meshes in 3D.
             &ordering[0],      // some ordering of triangles
             DiffOp,            // the first-order differential operator belonging to the hi order term of the metric
-            AvOp               // the zeroth-order differential operator belonging to the lo order term of the metric
+            AvOp,               // the zeroth-order differential operator belonging to the lo order term of the metric
+            settings
         );
     } // CreateOptimizedBVH_Projectors
 
-    inline OptimizedClusterTree * CreateOptimizedBVH(MeshPtr &mesh, GeomPtr &geom)
+    inline OptimizedClusterTree * CreateOptimizedBVH(MeshPtr &mesh, GeomPtr &geom, BVHSettings settings = BVHDefaultSettings )
     {
 #ifdef USE_NORMALS_ONLY
         wprint("CreateOptimizedBVH: effectively using CreateOptimizedBVH_Normals. This is likely to cause errors in the far field interaction matrix");
-        return CreateOptimizedBVH_Normals(mesh, geom);
+        return CreateOptimizedBVH_Normals(mesh, geom, settings);
 #else
-        return CreateOptimizedBVH_Hybrid(mesh, geom);
+        return CreateOptimizedBVH_Hybrid(mesh, geom, settings);
 #endif
     }
     
-    inline BCTPtr CreateOptimizedBCTFromBVH(OptimizedClusterTree* bvh, double alpha, double beta, double chi)
+    inline BCTPtr CreateOptimizedBCTFromBVH(OptimizedClusterTree* bvh, double alpha, double beta, double chi, double weight = 1., BCTSettings settings = BCTDefaultSettings)
     {
         return std::make_shared<OptimizedBlockClusterTree>(
             bvh,   // gets handed two pointers to instances of OptimizedClusterTree
             bvh,   // no problem with handing the same pointer twice; this is actually intended
             alpha, // first parameter of the energy (for the numerator)
             beta,  // second parameter of the energy (for the denominator)
-            chi  // separation parameter; different gauge for thetas as before are the block clustering is performed slightly differently from before
+            chi,  // separation parameter; different gauge for thetas as before are the block clustering is performed slightly differently from before
+            weight,
+            settings
         );
     } // CreateOptimizedBCTFromBVH
 } // namespace rsurfaces

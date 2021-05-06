@@ -6,12 +6,17 @@
 namespace rsurfaces
 {
     
-    struct OptimizedClusterTreeOptions
+    struct BVHSettings
     {
-        static mint split_threshold;
-        static bool use_old_prepost;
-        static TreePercolationAlgorithm tree_perc_alg;
+        mint split_threshold = 8;
+//        bool use_old_prepost = false;
+        //    TreePercolationAlgorithm tree_perc_alg = TreePercolationAlgorithm::Chunks;
+        //    TreePercolationAlgorithm tree_perc_alg = TreePercolationAlgorithm::Tasks;
+        TreePercolationAlgorithm tree_perc_alg = TreePercolationAlgorithm::Sequential;
     };
+
+    // a global instance to store default settings
+    extern BVHSettings BVHDefaultSettings;
     
     struct Cluster2 // slim POD container to hold only the data relevant for the construction phase in the tree, before it is serialized
     {
@@ -57,10 +62,9 @@ namespace rsurfaces
             //                    const mint moment_count_,
             const mint * restrict const ordering_, // A suggested preordering of primitives; this gets applied before the clustering begins in the hope that this may improve the sorting within a cluster --- at least in the top level(s). This could, e.g., be the ordering obtained by a tree for  similar data set.
             MKLSparseMatrix &DiffOp,
-            MKLSparseMatrix &AvOp
+            MKLSparseMatrix &AvOp,
+            BVHSettings settings_ = BVHDefaultSettings
         );
-
-        mint split_threshold = 8; // leaf clusters will contain split_threshold triangles or less; split_threshold = 8 might be good for cache.
         mint dim = 3;
         mint near_dim = 7; // = 1 + 3 + 3 for weight, center, normal, stored consecutively
         mint far_dim = 10; // = 1 + 3 + 3 * (3 + 1)/2 for weight, center, projector, stored consecutively
@@ -75,7 +79,7 @@ namespace rsurfaces
         mint buffer_dim = 0;
         //        mint moment_count = 22;
 
-        bool use_old_prepost = false;
+        BVHSettings settings;
         
         mint *restrict P_ext_pos = nullptr;        // Reordering of primitives; crucial for communication with outside world
         mint *restrict inverse_ordering = nullptr; // Inverse ordering of the above; crucial for communication with outside world
@@ -136,7 +140,6 @@ namespace rsurfaces
         MKLSparseMatrix P_to_C;
         MKLSparseMatrix C_to_P;
 
-        TreePercolationAlgorithm tree_perc_alg = OptimizedClusterTreeOptions::tree_perc_alg;
         A_Vector<A_Vector<mint>> chunk_roots;
         mint tree_max_depth = 0;
         bool chunks_prepared = false;
