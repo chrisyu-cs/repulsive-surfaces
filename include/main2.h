@@ -4,14 +4,15 @@
 #include "geometrycentral/surface/meshio.h"
 #include "geometrycentral/surface/vertex_position_geometry.h"
 
-#include <boost/program_options.hpp>
-namespace po = boost::program_options;
+//#include <boost/program_options.hpp>
+//namespace po = boost::program_options;
+#include "../deps/polyscope/deps/args/args/args.hxx"
 
 #include <omp.h>
 #include <mkl.h>
 #include <mkl_spblas.h>
 
-#include <tbb/task_scheduler_init.h>
+//#include <tbb/task_scheduler_init.h>
 #include <memory>
 #include <Eigen/Core>
 
@@ -75,10 +76,11 @@ namespace rsurfaces
             
             print("BVH");
             ptic("BVH");
+            
             auto tpe_bh_11 = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
             ptoc("BVH");
 
-            tpe_bh_11->GetBVH()->tree_perc_alg = tree_perc_alg;
+            tpe_bh_11->GetBVH()->settings.tree_perc_alg = tree_perc_alg;
             
             if( iter < 0)
             {
@@ -145,8 +147,11 @@ namespace rsurfaces
             
             print("Multiply MKL CSR");
             ptic("Multiply MKL CSR");
-            bct11 = std::make_shared<OptimizedBlockClusterTree>(tpe_bh_11->GetBVH(), tpe_bh_11->GetBVH(), alpha, beta, chi);
-            bct11->mult_alg = NearFieldMultiplicationAlgorithm::MKL_CSR;
+            
+            BCTSettings settings;
+            
+            settings.mult_alg = NearFieldMultiplicationAlgorithm::MKL_CSR;
+            bct11 = std::make_shared<OptimizedBlockClusterTree>(tpe_bh_11->GetBVH(), tpe_bh_11->GetBVH(), alpha, beta, chi, weight, settings);
             for( mint k = 0; k < 20; ++k)
             {
                 ptic("Multiply Fractional");
@@ -166,8 +171,8 @@ namespace rsurfaces
 
             print("Multiply Hybrid");
             ptic("Multiply Hybrid");
-            bct11 = std::make_shared<OptimizedBlockClusterTree>(tpe_bh_11->GetBVH(), tpe_bh_11->GetBVH(), alpha, beta, chi);
-            bct11->mult_alg = NearFieldMultiplicationAlgorithm::Hybrid;
+            settings.mult_alg = NearFieldMultiplicationAlgorithm::Hybrid;
+            bct11 = std::make_shared<OptimizedBlockClusterTree>(tpe_bh_11->GetBVH(), tpe_bh_11->GetBVH(), alpha, beta, chi, weight, settings);
             for( mint k = 0; k < 20; ++k)
             {
                 ptic("Multiply Fractional");
@@ -222,7 +227,7 @@ namespace rsurfaces
             //        tpe_bh_11->Differential(DE_11);
             
             ptic("Multiply");
-            auto bct11 = std::make_shared<OptimizedBlockClusterTree>(tpe_bh_11->GetBVH(), tpe_bh_11->GetBVH(), alpha, beta, chi);
+            auto bct11 = std::make_shared<OptimizedBlockClusterTree>(tpe_bh_11->GetBVH(), tpe_bh_11->GetBVH(), alpha, beta, chi, weight );
             //            for( mint k = 0; k < 20; ++k)
             //            {
             //                ptic("Multiply Fractional");
@@ -270,19 +275,19 @@ namespace rsurfaces
             
             T->CleanseBuffers();
             std::copy( v.data(), v.data() + n, T->C_in );
-            T->tree_perc_alg = TreePercolationAlgorithm::Tasks;
+            T->settings.tree_perc_alg = TreePercolationAlgorithm::Tasks;
             T->PercolateUp();
             std::copy( T->C_in, T->C_in + n, u0.data() );
             
             T->CleanseBuffers();
             std::copy( v.data(), v.data() + n, T->C_in );
-            T->tree_perc_alg = TreePercolationAlgorithm::Sequential;
+            T->settings.tree_perc_alg = TreePercolationAlgorithm::Sequential;
             T->PercolateUp();
             std::copy( T->C_in, T->C_in + n, u1.data() );
             
             T->CleanseBuffers();
             std::copy( v.data(), v.data() +n, T->C_in );
-            T->tree_perc_alg = TreePercolationAlgorithm::Chunks;
+            T->settings.tree_perc_alg = TreePercolationAlgorithm::Chunks;
             T->PercolateUp();
             std::copy( T->C_in, T->C_in + n, u2.data() );
             
@@ -303,7 +308,7 @@ namespace rsurfaces
             tic("Tasks");
             T->CleanseBuffers();
             std::copy( v.data(), v.data() + n, T->C_out );
-            T->tree_perc_alg = TreePercolationAlgorithm::Tasks;
+            T->settings.tree_perc_alg = TreePercolationAlgorithm::Tasks;
             T->PercolateDown();
             std::copy( T->C_out, T->C_out + n, u0.data() );
             toc("Tasks");
@@ -311,7 +316,7 @@ namespace rsurfaces
             tic("Sequential");
             T->CleanseBuffers();
             std::copy( v.data(), v.data() + n, T->C_out );
-            T->tree_perc_alg = TreePercolationAlgorithm::Sequential;
+            T->settings.tree_perc_alg = TreePercolationAlgorithm::Sequential;
             T->PercolateDown();
             std::copy( T->C_out, T->C_out + n, u1.data() );
             toc("Sequential");
@@ -319,7 +324,7 @@ namespace rsurfaces
             tic("Chunks");
             T->CleanseBuffers();
             std::copy( v.data(), v.data() + n, T->C_out );
-            T->tree_perc_alg = TreePercolationAlgorithm::Chunks;
+            T->settings.tree_perc_alg = TreePercolationAlgorithm::Chunks;
             T->PercolateDown();
             std::copy( T->C_out, T->C_out + n, u2.data() );
             toc("Chunks");
@@ -364,21 +369,21 @@ namespace rsurfaces
             U0.setZero();
             T->CleanseBuffers();
             S->CleanseBuffers();
-            bct11->S->tree_perc_alg = TreePercolationAlgorithm::Tasks;
+            bct11->S->settings.tree_perc_alg = TreePercolationAlgorithm::Tasks;
             bct11->Multiply(V,U0,type, false);
             
             Eigen::MatrixXd U1 ( m , cols );
             U1.setZero();
             T->CleanseBuffers();
             S->CleanseBuffers();
-            bct11->S->tree_perc_alg = TreePercolationAlgorithm::Sequential;
+            bct11->S->settings.tree_perc_alg = TreePercolationAlgorithm::Sequential;
             bct11->Multiply(V,U1,type, false);
             
             Eigen::MatrixXd U2 ( m , cols );
             U2.setZero();
             T->CleanseBuffers();
             S->CleanseBuffers();
-            bct11->S->tree_perc_alg = TreePercolationAlgorithm::Chunks;
+            bct11->S->settings.tree_perc_alg = TreePercolationAlgorithm::Chunks;
             bct11->Multiply(V,U2,type, false);
 
             valprint("(V-V0).norm()", (V-V0).norm() );
@@ -401,7 +406,7 @@ namespace rsurfaces
 //            auto tpe_bh_11 = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
 //
 //
-//            auto bct11 = std::make_shared<OptimizedBlockClusterTree>(tpe_bh_11->GetBVH(), tpe_bh_11->GetBVH(), alpha, beta, chi);
+//            auto bct11 = std::make_shared<OptimizedBlockClusterTree>(tpe_bh_11->GetBVH(), tpe_bh_11->GetBVH(), alpha, beta, chi, weight);
 //
 //
 //
@@ -480,7 +485,7 @@ namespace rsurfaces
 //            auto tpe_bh_11 = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
 //
 //
-//            auto bct11 = std::make_shared<OptimizedBlockClusterTree>(tpe_bh_11->GetBVH(), tpe_bh_11->GetBVH(), alpha, beta, chi);
+//            auto bct11 = std::make_shared<OptimizedBlockClusterTree>(tpe_bh_11->GetBVH(), tpe_bh_11->GetBVH(), alpha, beta, chi, weight);
 //
 //
 //            MKLSparseMatrix matrix = bct11->S->P_to_C;
@@ -566,7 +571,7 @@ namespace rsurfaces
 //            
 //            auto tpe = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
 //
-//            auto bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi);
+//            auto bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi, weight);
 //
 //            mint n = bct->near->n;
 //            mint m = bct->near->m;
@@ -612,7 +617,7 @@ namespace rsurfaces
 //            
 //            tpe = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
 //
-//            bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi);
+//            bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi, weight);
 //            
 //            for( mint i = 0; i < n * cols; ++i)
 //            {
@@ -646,7 +651,7 @@ namespace rsurfaces
 //            
 //            tpe = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
 //
-//            bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi);
+//            bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi, weight);
 //            
 //            for( mint i = 0; i < n * cols; ++i)
 //            {
@@ -692,7 +697,7 @@ namespace rsurfaces
                     
                     tpe = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
                     
-                    bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi);
+                    bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi, weight);
 
                     mint n = bct->near->n;
                     mint m = bct->near->m;
@@ -755,7 +760,7 @@ namespace rsurfaces
         
                     tpe = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
                     
-                    bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi);
+                    bct = std::make_shared<OptimizedBlockClusterTree>(tpe->GetBVH(), tpe->GetBVH(), alpha, beta, chi, weight);
         
                     valprint("u2_1.norm()", U2_1.norm());
                     valprint("u2_2.norm()", U2_2.norm());
@@ -787,87 +792,158 @@ namespace rsurfaces
                 }
         
         
-        void TestPrePost()
+//        void TestPrePost()
+//        {
+////            OptimizedClusterTreeOptions::tree_perc_alg = TreePercolationAlgorithm::Sequential;
+//
+////            auto type = BCTKernelType::HighOrder;
+//            auto type = BCTKernelType::LowOrder;
+//
+//
+//
+//            std::vector<BCTKernelType> types { BCTKernelType::FractionalOnly, BCTKernelType::LowOrder, BCTKernelType::HighOrder };
+//
+//            std::uniform_real_distribution<double> unif(-1.,1.);
+//            std::default_random_engine re;
+//            re.seed(std::chrono::system_clock::now().time_since_epoch().count());
+//
+//
+//            mint repetitions = 1;
+//            mint cols = 3;
+//
+//            omp_set_num_threads(4);
+//            mkl_set_num_threads(4);
+//
+//
+//            for( auto type : types)
+//            {
+////                OptimizedClusterTreeOptions::use_old_prepost = true;
+//                auto * bvh_old = CreateOptimizedBVH(mesh1, geom1);
+//                bvh_old->CleanseBuffers();
+//
+////                OptimizedClusterTreeOptions::use_old_prepost = false;
+//                auto * bvh_new = CreateOptimizedBVH(mesh1, geom1);
+//                bvh_new->CleanseBuffers();
+//
+//                mint n = mesh1->nVertices();
+//                mint m = bvh_old->cluster_count;
+//
+//                Eigen::MatrixXd V ( n , cols );
+//                for( mint i = 0; i < n; ++i)
+//                {
+//                    for( mint j = 0; j < cols; ++j)
+//                    {
+//                        V(i,j) = unif(re);
+//                    }
+//                }
+//                Eigen::MatrixXd V0 = V;
+//
+//                valprint("V.norm()", V.norm());
+//
+//                tic("Old");
+//                for( mint i = 0; i < repetitions; ++i)
+//                {
+//                    bvh_old->Pre( V, type);
+//                }
+//                toc("Old");
+//                valprint("(V0-V).norm()/V0.norm()",(V0-V).norm()/V0.norm());
+//                valprint("bvh_old->buffer_dim",bvh_old->buffer_dim);
+//                Eigen::Map<Eigen::MatrixXd> U1 ( bvh_old->P_in, n, bvh_old->buffer_dim );
+//                Eigen::Map<Eigen::MatrixXd> W1 ( bvh_old->C_in, m, bvh_old->buffer_dim );
+//
+//                tic("New");
+//                for( mint i = 0; i < repetitions; ++i)
+//                {
+//                    bvh_new->Pre( V, type);
+//                }
+//                toc("New");
+//                valprint("(V0-V).norm()/V0.norm()",(V0-V).norm()/V0.norm());
+//                valprint("bvh_new->buffer_dim",bvh_new->buffer_dim);
+//                Eigen::Map<Eigen::MatrixXd> U2 ( bvh_new->P_in, n, bvh_new->buffer_dim );
+//                Eigen::Map<Eigen::MatrixXd> W2 ( bvh_new->C_in, m, bvh_new->buffer_dim );
+//
+//                valprint("U1.norm()", U1.norm());
+//                valprint("U2.norm()", U2.norm());
+//                valprint("(U1-U2).norm()/U1.norm()",(U1-U2).norm()/U1.norm());
+//                valprint("W1.norm()", W1.norm());
+//                valprint("W2.norm()", W2.norm());
+//                valprint("(W1-W2).norm()/W1.norm()",(W1-W2).norm()/W1.norm());
+//
+//
+//                delete bvh_old;
+//                delete bvh_new;
+//            }
+//        }
+        
+        
+        void TestBatch()
         {
-            OptimizedClusterTreeOptions::tree_perc_alg = TreePercolationAlgorithm::Sequential;
+            ptic("TestBatch");
+            auto tpe_bh = std::make_shared<TPEnergyBarnesHut0>( mesh1, geom1, alpha, beta, theta, weight );
             
-//            auto type = BCTKernelType::HighOrder;
-            auto type = BCTKernelType::LowOrder;
+            tpe_bh->GetBVH()->PrintToFile( path + "/" + "OptimizedClusterTree.tsv");
+
+            BCTSettings settings;
+            settings.mult_alg = NearFieldMultiplicationAlgorithm::Hybrid;
+//            settings.mult_alg = NearFieldMultiplicationAlgorithm::MKL_CSR;
+            auto bct = std::make_shared<OptimizedBlockClusterTree>( tpe_bh->GetBVH(), tpe_bh->GetBVH(), alpha, beta, chi, weight, settings );
             
+            mint n = mesh1->nVertices();
             
+            mint k = 3;
+            mint mult = 3;
+            mint kk = k * mult;
             
-            std::vector<BCTKernelType> types { BCTKernelType::FractionalOnly, BCTKernelType::LowOrder, BCTKernelType::HighOrder };
+            Eigen::MatrixXd VV( n , kk );
+            Eigen::MatrixXd WW( n , kk );
+            Eigen::MatrixXd V ( n , k );
+            Eigen::MatrixXd W ( n , k );
+            
+            WW.setZero();
+            W.setZero();
             
             std::uniform_real_distribution<double> unif(-1.,1.);
             std::default_random_engine re;
-            re.seed(std::chrono::system_clock::now().time_since_epoch().count());
             
-            
-            mint repetitions = 1;
-            mint cols = 3;
-            
-            omp_set_num_threads(4);
-            mkl_set_num_threads(4);
-                        
-        
-            for( auto type : types)
+            for( mint i = 0; i < n; ++i)
             {
-                OptimizedClusterTreeOptions::use_old_prepost = true;
-                auto * bvh_old = CreateOptimizedBVH(mesh1, geom1);
-                bvh_old->CleanseBuffers();
-
-                OptimizedClusterTreeOptions::use_old_prepost = false;
-                auto * bvh_new = CreateOptimizedBVH(mesh1, geom1);
-                bvh_new->CleanseBuffers();
-                
-                mint n = mesh1->nVertices();
-                mint m = bvh_old->cluster_count;
-                
-                Eigen::MatrixXd V ( n , cols );
-                for( mint i = 0; i < n; ++i)
+                for( mint j = 0; j < kk; ++j)
                 {
-                    for( mint j = 0; j < cols; ++j)
-                    {
-                        V(i,j) = unif(re);
-                    }
+                    VV(i,j) = unif(re);
                 }
-                Eigen::MatrixXd V0 = V;
-     
-                valprint("V.norm()", V.norm());
-                
-                tic("Old");
-                for( mint i = 0; i < repetitions; ++i)
-                {
-                    bvh_old->Pre( V, type);
-                }
-                toc("Old");
-                valprint("(V0-V).norm()/V0.norm()",(V0-V).norm()/V0.norm());
-                valprint("bvh_old->buffer_dim",bvh_old->buffer_dim);
-                Eigen::Map<Eigen::MatrixXd> U1 ( bvh_old->P_in, n, bvh_old->buffer_dim );
-                Eigen::Map<Eigen::MatrixXd> W1 ( bvh_old->C_in, m, bvh_old->buffer_dim );
-                
-                tic("New");
-                for( mint i = 0; i < repetitions; ++i)
-                {
-                    bvh_new->Pre( V, type);
-                }
-                toc("New");
-                valprint("(V0-V).norm()/V0.norm()",(V0-V).norm()/V0.norm());
-                valprint("bvh_new->buffer_dim",bvh_new->buffer_dim);
-                Eigen::Map<Eigen::MatrixXd> U2 ( bvh_new->P_in, n, bvh_new->buffer_dim );
-                Eigen::Map<Eigen::MatrixXd> W2 ( bvh_new->C_in, m, bvh_new->buffer_dim );
-                
-                valprint("U1.norm()", U1.norm());
-                valprint("U2.norm()", U2.norm());
-                valprint("(U1-U2).norm()/U1.norm()",(U1-U2).norm()/U1.norm());
-                valprint("W1.norm()", W1.norm());
-                valprint("W2.norm()", W2.norm());
-                valprint("(W1-W2).norm()/W1.norm()",(W1-W2).norm()/W1.norm());
-                
-                
-                delete bvh_old;
-                delete bvh_new;
             }
+            
+            for( mint i = 0; i < n; ++i)
+            {
+                for( mint j = 0; j < k; ++j)
+                {
+                    V(i,j) = unif(re);
+                }
+            }
+            
+            print("Batch");
+            ptic("Batch");
+            for( mint i = 0; i < iterations; ++i )
+            {
+                bct->Multiply( VV, WW, BCTKernelType::FractionalOnly );
+                bct->Multiply( VV, WW, BCTKernelType::LowOrder );
+                bct->Multiply( VV, WW, BCTKernelType::HighOrder );
+            }
+            ptoc("Batch");
+            valprint("bct->S->buffer_size",bct->S->buffer_dim);
+            
+            print("Single");
+            ptic("Single");
+            for( mint i = 0; i < iterations * mult; ++i )
+            {
+                bct->Multiply( V, W, BCTKernelType::FractionalOnly );
+                bct->Multiply( V, W, BCTKernelType::LowOrder );
+                bct->Multiply( V, W, BCTKernelType::HighOrder );
+            }
+            ptoc("Single");
+            valprint("bct->S->buffer_size",bct->S->buffer_dim);
+            
+            ptoc("TestBatch");
         }
         
     }; // Benchmarker

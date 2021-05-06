@@ -8,16 +8,12 @@ int main(int arg_count, char* arg_vec[])
 {
     using namespace rsurfaces;
     
-    namespace po = boost::program_options;
-    
     auto BM = Benchmarker();
     
 #pragma omp parallel
     {
         BM.thread_count = BM.max_thread_count = omp_get_num_threads();
     }
-    
-    po::options_description desc("Allowed options");
     
 #ifdef PROFILING
     std::cout << "Profiling activated." << std::endl;
@@ -31,125 +27,125 @@ int main(int arg_count, char* arg_vec[])
     std::cout << "Called with MKL_DIRECT_CALL_SEQ_JIT deactivated." << std::endl;
 #endif
     
+    std::cout << "Using Eigen version " << EIGEN_WORLD_VERSION << "." << EIGEN_MAJOR_VERSION << "." << EIGEN_MINOR_VERSION << std::endl;
+    
+    MKLVersion Version;
+    mkl_get_version(&Version);
+    
+    std::cout << "Using MKL version " << Version.MajorVersion << "." << Version.MinorVersion << "." << Version.UpdateVersion << std::endl;
+    
+    
+    args::ArgumentParser parser("geometry-central & Polyscope example project");
+
+    args::ValueFlag<std::string> mesh_Flag(parser, "mesh", "file of mesh to use as variable", {"mesh"});
+    args::ValueFlag<std::string> path_Flag(parser, "path", "path to store data", {"path"});
+    args::ValueFlag<std::string> profile_name_Flag(parser, "profile_name", "file base name of profile file", {"profile_name"});
+    
+    args::ValueFlag<mreal> alpha_Flag(parser, "alpha", "first TP parameter (numerator)", {"alpha"});
+    args::ValueFlag<mreal> beta_Flag(parser, "beta", "second TP parameter (denominator)", {"beta"});
+    args::ValueFlag<mreal> theta_Flag(parser, "theta", "separation parameter for barnes-hut method", {"theta"});
+    args::ValueFlag<mreal> chi_Flag(parser, "chi", "separation parameter for block cluster tree", {"chi"});
+    args::ValueFlag<mint> thread_Flag(parser, "threads", "number of threads to be used", {"threads"});
+    args::ValueFlag<mint> split_threshold_Flag(parser, "split_threshold", "maximal number of primitives per leaf cluster", {"split_threshold"});
+    
+    args::ValueFlag<mint> thread_step_Flag(parser, "thread_step", "increase number of threads by this in each iteration", {"thread_step"});
+    args::ValueFlag<mint> burn_ins_Flag(parser, "burn_ins", "number of burn-in iterations to use", {"burn_ins"});
+    args::ValueFlag<mint> iterations_Flag(parser, "iterations", "number of iterations to use for the benchmark", {"iterations"});
+    args::ValueFlag<mint> tree_perc_alg_Flag(parser, "tree_perc_alg", "algorithm used for tree percolation. Possible values are 0 (sequential algorithm), 1 (using OpenMP tasks -- no scalable!), and 2 (an attempt to achieve better scalability)", {"tree_perc_alg"});
+    
+    // Parse args
     try
     {
-        po::options_description desc("Allowed options");
-        desc.add_options()
-        ("help", "produce help message")
-        ("mesh", po::value<std::string>(), "file of mesh to use as variable")
-        ("path", po::value<std::string>(), "path to store data")
-        ("profile_name", po::value<std::string>(), "file base name of profile file")
-        ("alpha", po::value<mreal>(), "file name of mesh to use as variable")
-        ("beta", po::value<mreal>(), "file name of mesh to use as variable")
-        ("theta", po::value<mreal>(), "separation parameter for barnes-hut method")
-        ("chi", po::value<mreal>(), "separation parameter for block cluster tree")
-        ("thread_count", po::value<mint>(), "number of threads to be used")
-        ("split_threshold", po::value<mint>(), "maximal number of primitives per leaf cluster")
-        
-        ("thread_step", po::value<mint>(), "increase number of threads by this in each iteration")
-        
-        ("burn_ins", po::value<mint>(), "number of burn-in iterations to use")
-        ("iterations", po::value<mint>(), "number of iterations to use for the benchmark")
-        
-        ("tree_perc_alg", po::value<mint>(), "algorithm used for tree percolation. Possible values are 0 (sequential algorithm), 1 (using OpenMP tasks -- no scalable!), and 2 (an attempt to achieve better scalability).");
-        
-        po::variables_map var_map;
-        po::store(po::parse_command_line(arg_count, arg_vec, desc), var_map);
-        po::notify(var_map);
-        
-        if( var_map.count("help") )
-        {
-            std::cout << desc << "\n";
-            return 0;
-        }
-        
-        if( var_map.count("mesh") )
-        {
-            BM.obj1 = var_map["mesh"].as<std::string>();
-        }
-        
-        if( var_map.count("profile_name") )
-        {
-            BM.profile_name = var_map["profile_name"].as<std::string>();
-        }
-        
-        if( var_map.count("path") )
-        {
-            BM.path = var_map["path"].as<std::string>();
-        }
-        
-        if( var_map.count("theta") )
-        {
-            BM.theta = var_map["theta"].as<mreal>();
-        }
-        
-        if( var_map.count("chi") )
-        {
-            BM.chi = var_map["chi"].as<mreal>();
-        }
-
-        if( var_map.count("alpha") )
-        {
-            BM.alpha = var_map["alpha"].as<mreal>();
-        }
-
-        if( var_map.count("beta") )
-        {
-            BM.beta = var_map["beta"].as<mreal>();
-        }
-
-        if( var_map.count("thread_count") )
-        {
-            BM.thread_count = var_map["thread_count"].as<mint>();
-            BM.max_thread_count = var_map["thread_count"].as<mint>();
-        }
-        
-        if( var_map.count("split_threshold"))
-        {
-            OptimizedClusterTreeOptions::split_threshold = var_map["split_threshold"].as<mint>();
-        }
-        
-        if( var_map.count("thread_step") )
-        {
-            BM.thread_step = var_map["thread_step"].as<mint>();
-        }
-
-        if( var_map.count("burn_ins"))
-        {
-            BM.burn_ins = var_map["burn_ins"].as<mint>();
-        }
-
-        if( var_map.count("iterations") )
-        {
-            BM.iterations = var_map["iterations"].as<mint>();
-        }
-
-        if( var_map.count("tree_perc_alg") )
-        {
-            switch( var_map["tree_perc_alg"].as<mint>() )
-            {
-                case 1:
-                    BM.tree_perc_alg = TreePercolationAlgorithm::Tasks;
-                    break;
-                case 2:
-                    BM.tree_perc_alg = TreePercolationAlgorithm::Chunks;
-                    break;
-                case 0:
-                    BM.tree_perc_alg = TreePercolationAlgorithm::Sequential;
-                    break;
-                default:
-                    BM.tree_perc_alg = TreePercolationAlgorithm::Tasks;
-                    break;
-            }
-        }
+        parser.ParseCLI(arg_count, arg_vec);
     }
-    catch(std::exception& e) {
-        std::cerr << "error: " << e.what() << std::endl;
+    catch (args::Help)
+    {
+        std::cout << parser;
+        return 0;
+    }
+    catch (args::ParseError e)
+    {
+        std::cerr << e.what() << std::endl;
+        std::cerr << parser;
         return 1;
     }
-    catch(...) {
-        std::cerr << "Exception of unknown type!\n";
+
+    if (mesh_Flag)
+    {
+        BM.obj1 = args::get(mesh_Flag);
     }
+    if (profile_name_Flag)
+    {
+        BM.profile_name = args::get(profile_name_Flag);
+    }
+    if (path_Flag)
+    {
+        BM.path = args::get(path_Flag);
+    }
+
+    
+
+    if (theta_Flag)
+    {
+        BM.theta = args::get(theta_Flag);
+    }
+    if (chi_Flag)
+    {
+        BM.chi = args::get(chi_Flag);
+    }
+    
+
+    if (alpha_Flag)
+    {
+        BM.alpha = args::get(alpha_Flag);
+    }
+    if (beta_Flag)
+    {
+        BM.beta = args::get(beta_Flag);
+    }
+
+    if (thread_Flag)
+    {
+        BM.thread_count = args::get(thread_Flag);
+        BM.max_thread_count = args::get(thread_Flag);
+    }
+    
+    
+    if (split_threshold_Flag)
+    {
+        BVHDefaultSettings.split_threshold = args::get(split_threshold_Flag);
+    }
+    if (thread_step_Flag)
+    {
+        BM.thread_step = args::get(thread_step_Flag);
+    }
+    if (burn_ins_Flag)
+    {
+        BM.burn_ins = args::get(burn_ins_Flag);
+    }
+    if (iterations_Flag)
+    {
+        BM.iterations = args::get(iterations_Flag);
+    }
+    if (tree_perc_alg_Flag)
+    {
+        switch( args::get(tree_perc_alg_Flag) )
+        {
+            case 1:
+                BM.tree_perc_alg = TreePercolationAlgorithm::Tasks;
+                break;
+            case 2:
+                BM.tree_perc_alg = TreePercolationAlgorithm::Chunks;
+                break;
+            case 0:
+                BM.tree_perc_alg = TreePercolationAlgorithm::Sequential;
+                break;
+            default:
+                BM.tree_perc_alg = TreePercolationAlgorithm::Tasks;
+                break;
+        }
+    }
+        
     
     std::cout << std::setprecision(8);
     
@@ -161,15 +157,23 @@ int main(int arg_count, char* arg_vec[])
     std::tie(u_mesh, u_geom) = readMesh(BM.obj1);
     BM.mesh1 = std::move(u_mesh);
     BM.geom1 = std::move(u_geom);
+    
+    BM.thread_count = BM.max_thread_count;
+    omp_set_num_threads(BM.thread_count);
+    mkl_set_num_threads(BM.thread_count);
+    BM.PrintStats();
+    
     BM.Prepare();
 
-    BM.thread_count = BM.max_thread_count;
-    BM.TestMultiply();    
+    
+//    BM.TestMultiply();
 //    BM.TestMKLOptimize();
 //    BM.TestVBSR();
 //    BM.TestHybrid();
 
-    BM.TestPrePost();
+    BM.TestBatch();
+
+//    BM.TestPrePost();
     
 //    for( mint threads = 0; threads < BM.max_thread_count + 1; threads += BM.thread_step )
 //    {
