@@ -89,7 +89,6 @@ namespace rsurfaces
 
         long beforeStep = currentTimeMilliseconds();
         
-        ptic("Switch");
         switch (methodChoice)
         {
         case GradientMethod::HsProjected:
@@ -129,7 +128,6 @@ namespace rsurfaces
         default:
             throw std::runtime_error("Unknown gradient method type.");
         }
-        ptoc("Switch");
         
         if (remeshAfter)
         {

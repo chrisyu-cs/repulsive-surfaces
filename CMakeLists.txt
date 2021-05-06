@@ -176,19 +176,25 @@ else()
     message(WARNING "Intel TBB not found")
 endif()
 
-
-
-# To change the name of your executable, change "gc_project" in the lines below to whatever you want
-add_executable(rsurfaces "${SRCS}" "${SRCS1}")
-target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
-target_link_libraries(rsurfaces geometry-central polyscope OpenMP::OpenMP_CXX)
+add_library(rsurf "${SRCS}")
+target_include_directories(rsurf PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
+target_link_libraries(rsurf geometry-central polyscope OpenMP::OpenMP_CXX)
 
 if(MKL_FOUND)
-    target_link_libraries(rsurfaces "-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lpthread -lm -ldl")
+    target_link_libraries(rsurf "-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lpthread -lm -ldl")
 endif()
 
 if(TBB_FOUND)
-    target_link_libraries(rsurfaces "-ltbb")
+    target_link_libraries(rsurf "-ltbb")
 endif()
 
-target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include")
+target_include_directories(rsurf PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include")
+
+
+add_executable( rsurfaces "${SRCS1}" )
+target_link_libraries( rsurfaces rsurf )
+    
+add_executable( runtest "${SRCS2}" )
+target_link_libraries( runtest rsurf )
+    
+

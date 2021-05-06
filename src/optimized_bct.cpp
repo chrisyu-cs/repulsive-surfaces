@@ -311,8 +311,11 @@ namespace rsurfaces
             
             switch (settings.mult_alg) {
                 case NearFieldMultiplicationAlgorithm::VBSR :
+
                     near->Prepare_VBSR( S->leaf_cluster_count, S->leaf_cluster_ptr, T->leaf_cluster_count, T->leaf_cluster_ptr );
+
                     NearFieldInteraction_VBSR();
+
                     break;
                     
                 default :
@@ -660,6 +663,7 @@ namespace rsurfaces
     
     void OptimizedBlockClusterTree::NearFieldInteraction_VBSR()
     {
+        print("OptimizedBlockClusterTree::NearFieldInteraction_VBSR");
         ptic("OptimizedBlockClusterTree::NearFieldInteraction_VBSR");
         mint b_m = near->b_m;
         // Getting the pointers first to reduce indexing within the loops. Together with const + restrict, this gains about 5% runtime improvement.
@@ -830,11 +834,11 @@ namespace rsurfaces
         {
             if ((input.size() < cols * n))
             {
-                eprint(" in OptimizedBlockClusterTree::Multiply: input vector is to short because" + std::to_string(input.size()) + " < " + std::to_string(cols) + " * " + std::to_string(n) + ".");
+                eprint(" in OptimizedBlockClusterTree::Multiply: input vector is too short because " + std::to_string(input.size()) + " < " + std::to_string(cols) + " * " + std::to_string(n) + ".");
             }
             if ((output.size() < cols * n))
             {
-                eprint(" in OptimizedBlockClusterTree::Multiply: input vector is to short because" + std::to_string(output.size()) + " < " + std::to_string(cols) + " * " + std::to_string(n) + ".");
+                eprint(" in OptimizedBlockClusterTree::Multiply: input vector is too short because " + std::to_string(output.size()) + " < " + std::to_string(cols) + " * " + std::to_string(n) + ".");
             }
         }
         

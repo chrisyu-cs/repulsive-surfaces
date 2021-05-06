@@ -18,7 +18,7 @@ namespace rsurfaces
         // CAUTION: Currently, we have no faster matrix-vector multiplication for upper triangular matrices, so upper_triangular == false is the default.
     
         // determines which algorithm should be employed by far->ApplyKernel and near->ApplyKernel
-        NearFieldMultiplicationAlgorithm mult_alg = NearFieldMultiplicationAlgorithm::MKL_CSR;
+        NearFieldMultiplicationAlgorithm mult_alg = NearFieldMultiplicationAlgorithm::Hybrid;
     
         // This allows one to modify the weights of the 6 matrices.
         // near_lo_modifier = 0. and far_lo_modifier = 1. might be interesting for handling surfaces with selfintersections such as the Klein bottle.

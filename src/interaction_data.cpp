@@ -330,6 +330,7 @@ namespace rsurfaces
         // TODO: b_row_counters is needed only for computing block_ptr, which is only required for VBSR format (which we do not implement here).
         // TODO: Anyways, I leave it as uncommented code for potential later use.
         
+        print("A");
         #pragma omp parallel for num_threads(thread_count) RAGGED_SCHEDULE
         for( mint b_i = 0; b_i < b_m; ++b_i )
         {
@@ -344,7 +345,7 @@ namespace rsurfaces
             }
             b_row_counters[b_i] = b_row_counter;
         }
-        
+        print("B");
         //        tic("Allocate nonzero values");
         #pragma omp parallel
         {
@@ -388,7 +389,7 @@ namespace rsurfaces
             }
         }
         //        toc("Allocate nonzero values");
-        
+        print("C");
         // Computing inner for CSR format.
         #pragma omp parallel for num_threads(thread_count) RAGGED_SCHEDULE
         for( mint b_i = 0; b_i < b_m; ++ b_i )                  // we are going to loop over all rows in block fashion
@@ -420,7 +421,7 @@ namespace rsurfaces
                 }
             }
         }
-        
+        print("D");
         safe_alloc( block_ptr, b_nnz );
         block_ptr[0] = 0;
         
@@ -437,7 +438,7 @@ namespace rsurfaces
         }
         
         partial_sum( &entries_before_block_row[0], &entries_before_block_row[0] +b_m + 1);
-        
+        print("E");
         #pragma omp parallel for num_threads(thread_count) RAGGED_SCHEDULE
         for( mint b_i = 0; b_i < b_m; ++b_i )
         {
@@ -455,7 +456,7 @@ namespace rsurfaces
                 block_ptr[k+1] = entries_before_kth_block;
             }
         }
-        
+        print("F");
         // distribute workload
         mint * b_row_acc_costs = nullptr;
         safe_alloc( b_row_acc_costs, b_m);
@@ -466,10 +467,11 @@ namespace rsurfaces
             b_row_acc_costs[b_i+1] = b_row_counters[b_i] * (b_row_ptr[b_i + 1] - b_row_ptr[b_i]);
         }
         partial_sum( b_row_acc_costs, b_row_acc_costs + b_m + 1 );
-        
+        print("G");
         BalanceWorkLoad( b_m, b_row_acc_costs, thread_count, job_ptr);
-        
+        print("H");
         safe_free(b_row_acc_costs);
+        print("I");
         ptoc("InteractionData::Prepare_VBSR( mint b_m_, mint * b_row_ptr_, mint b_n_, mint * b_col_ptr_ )");
     }
     

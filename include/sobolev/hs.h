@@ -273,27 +273,32 @@ namespace rsurfaces
             }
 
             // Multiply by L^{-1} once by solving Lx = b
+            ptic("Backsubstitution");
             Eigen::VectorXd mid = factorizedLaplacian.Solve(gradientCol);
-
+            ptoc("Backsubstitution");
             if (!bvh)
             {
                 throw std::runtime_error("Must have a BVH to use sparse approximation");
             }
-
             else
             {
                 getBlockClusterTree()->MultiplyV3(mid, mid, BCTKernelType::FractionalOnly);
             }
 
+            ptic("Nullify");
             // Re-zero out Lagrange multipliers, since the first solve
             // will have left some junk in them
             for (size_t i = 3 * mesh->nVertices(); i < nRows; i++)
             {
                 mid(i) = 0;
             }
-
+            ptoc("Nullify");
+            
             // Multiply by L^{-1} again by solving Lx = b
+            
+            ptic("Backsubstitution");
             dest = factorizedLaplacian.Solve(mid);
+            ptoc("Backsubstitution");
             
             ptoc("HsMetric::ProjectSparse");
         }
