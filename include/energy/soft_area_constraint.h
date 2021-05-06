@@ -33,6 +33,6 @@ namespace rsurfaces
 
     private:
         double initialArea;
-        double weight;
+        double weight = 1.;
     };
 }

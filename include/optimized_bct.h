@@ -126,7 +126,6 @@ namespace rsurfaces
         bool block_clusters_initialized = false;
         bool metrics_initialized = false;
         bool is_symmetric = false;
-        bool disableNearField = false;
         std::shared_ptr<InteractionData> far;  // far and near are data containers for far and near field, respectively.
         std::shared_ptr<InteractionData> near; // They also perform the matrix-vector products.
         
@@ -203,30 +202,30 @@ namespace rsurfaces
                 RequireMetrics();
                 bct12->RequireMetrics();
 
-                if( far->fr_factor != bct12->far->fr_factor )
-                {
-                    wprint("AddObstacleCorrection: The values of far->fr_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
-                }
-                if( far->hi_factor != bct12->far->hi_factor )
-                {
-                    wprint("AddObstacleCorrection: The values of far->hi_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
-                }
-                if( far->lo_factor != bct12->far->lo_factor )
-                {
-                    wprint("AddObstacleCorrection: The values of far->lo_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
-                }
-                if( near->fr_factor != bct12->near->fr_factor )
-                {
-                    wprint("AddObstacleCorrection: The values of near->fr_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
-                }
-                if( near->hi_factor != bct12->near->hi_factor )
-                {
-                    wprint("AddObstacleCorrection: The values of near->hi_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
-                }
-                if( near->lo_factor != bct12->near->lo_factor )
-                {
-                    wprint("AddObstacleCorrection: The values of near->lo_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
-                }
+//                if( far->fr_factor != bct12->far->fr_factor )
+//                {
+//                    wprint("AddObstacleCorrection: The values of far->fr_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+//                }
+//                if( far->hi_factor != bct12->far->hi_factor )
+//                {
+//                    wprint("AddObstacleCorrection: The values of far->hi_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+//                }
+//                if( far->lo_factor != bct12->far->lo_factor )
+//                {
+//                    wprint("AddObstacleCorrection: The values of far->lo_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+//                }
+//                if( near->fr_factor != bct12->near->fr_factor )
+//                {
+//                    wprint("AddObstacleCorrection: The values of near->fr_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+//                }
+//                if( near->hi_factor != bct12->near->hi_factor )
+//                {
+//                    wprint("AddObstacleCorrection: The values of near->hi_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+//                }
+//                if( near->lo_factor != bct12->near->lo_factor )
+//                {
+//                    wprint("AddObstacleCorrection: The values of near->lo_factor of the two instances of OptimizedBlockClusterTree do not coincide.");
+//                }
                 
                 mint n = T->primitive_count;
                 

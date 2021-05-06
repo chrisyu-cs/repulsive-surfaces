@@ -12,7 +12,7 @@ namespace rsurfaces
         // Multiply the metric term with vec, and add the product to result.
         virtual void MultiplyAdd(Eigen::VectorXd &vec, Eigen::VectorXd &result) const = 0;
     };
-
+    
     class BCTMetricTerm : public MetricTerm
     {
         public:
@@ -24,10 +24,7 @@ namespace rsurfaces
         virtual void MultiplyAdd(Eigen::VectorXd &vec, Eigen::VectorXd &result) const
         {
             bct->MultiplyV3(vec, result, BCTKernelType::HighOrder, true);
-            if (!bct->disableNearField)
-            {
-                bct->MultiplyV3(vec, result, rsurfaces::BCTKernelType::LowOrder, true);
-            }
+            bct->MultiplyV3(vec, result, BCTKernelType::LowOrder, true);
         }
 
         private:

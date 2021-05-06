@@ -70,7 +70,7 @@ namespace rsurfaces
         
         mreal alpha = 6.;
         mreal beta  = 12.;
-        mreal weight  = 1.;
+        mreal weight = 1.;
         
         template<typename T1, typename T2>
         mreal FarField( T1 alpha, T2 betahalf);

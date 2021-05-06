@@ -37,6 +37,6 @@ namespace rsurfaces {
         VertexDataWrapper originalPositions;
 
     private:
-        double weight;
+        double weight = 1.;
     };
 }

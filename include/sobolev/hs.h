@@ -194,19 +194,31 @@ namespace rsurfaces
                 if (!optBCT)
                 {
                     Vector2 exps = energy->GetExponents();
-                    optBCT = CreateOptimizedBCTFromBVH(bvh, exps.x, exps.y, bh_theta);
-                    optBCT->disableNearField = disableNearField;
+                    mreal weight = energy->GetWeight();
+                    BCTSettings settings;
                     if (disableNearField)
                     {
-                        std::cout << "    * BCT near-field interactions are disabled." << std::endl;
+                        settings.near_lo_modifier = 0.;
+                        settings.far_lo_modifier = 0.;
+                        std::cout << "    * Low-order near-field interactions in metric BCT are disabled." << std::endl;
                     }
+                    optBCT = CreateOptimizedBCTFromBVH(bvh, exps.x, exps.y, bh_theta, weight, settings);
+
 
                     if (obstacleEnergy)
                     {
                         std::cout << "    * Building obstacle BCT" << std::endl;
                         OptimizedClusterTree* obstacleBVH = obstacleEnergy->GetBVH();
+                        mreal weight = obstacleEnergy->GetWeight();
                         std::cout << "    * Got obstacle BVH " << obstacleBVH << " (" << obstacleBVH->cluster_count << " clusters)" << std::endl;
-                        obstacleBCT = std::make_shared<OptimizedBlockClusterTree>(bvh, obstacleBVH, exps.x, exps.y, bh_theta);
+                        BCTSettings settings;
+                        if (disableNearField)
+                        {
+                            settings.near_lo_modifier = 0.;
+                            settings.far_lo_modifier = 0.;
+                            std::cout << "    * Low-order near-field interactions in obstacle BCT are disabled." << std::endl;
+                        }
+                        obstacleBCT = std::make_shared<OptimizedBlockClusterTree>(bvh, obstacleBVH, exps.x, exps.y, bh_theta, weight, settings);
                         std::cout << "    * Built obstacle BCT" << std::endl;
                         optBCT->AddObstacleCorrection(obstacleBCT);
                         std::cout << "    * Added obstacle correction" << std::endl;
@@ -247,7 +259,7 @@ namespace rsurfaces
             mutable BCTPtr obstacleBCT;
             mutable bool schurComplementComputed;
             mutable SchurComplement schurComplement;
-        };
+        }; // HsMetric
 
         template <typename V, typename Dst>
         void HsMetric::ProjectSparse(const V &gradientCol, Dst &dest, double epsilon) const

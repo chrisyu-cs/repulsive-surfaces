@@ -67,8 +67,8 @@ namespace rsurfaces
     private:
         mreal alpha = 6.;
         mreal beta  = 12.;
-        mreal weight = 1.;
         mreal theta = 0.5;
+        mreal weight = 1.;
         
         OptimizedClusterTree* bvh;
         

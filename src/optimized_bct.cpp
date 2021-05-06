@@ -329,13 +329,13 @@ namespace rsurfaces
             
             //IMPORTANT factors of far and near have to be set _before_ ComputeDiagonals is called!
             
-            far->fr_factor = weight;
-            far->lo_factor = weight;
-            far->hi_factor = weight;
+            far->fr_factor = weight * settings.far_fr_modifier;
+            far->lo_factor = weight * settings.far_lo_modifier;
+            far->hi_factor = weight * settings.far_hi_modifier;
             
-            near->fr_factor = weight;
-            near->lo_factor = weight;
-            near->hi_factor = weight;
+            near->fr_factor = weight * settings.near_fr_modifier;
+            near->lo_factor = weight * settings.near_lo_modifier;
+            near->hi_factor = weight * settings.near_hi_modifier;
             
             ComputeDiagonals();
             

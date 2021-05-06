@@ -74,7 +74,6 @@ namespace rsurfaces
         mreal beta  = 12.;
         mreal weight = 1.;
         
-        
         template<typename T1, typename T2>
         mreal Energy( T1 alpha, T2 betahalf);
         

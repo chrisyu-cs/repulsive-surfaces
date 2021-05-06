@@ -32,6 +32,6 @@ namespace rsurfaces
         virtual double GetTheta();
 
     private:
-        double weight;
+        double weight = 1.;
     };
 }

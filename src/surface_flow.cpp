@@ -849,4 +849,82 @@ namespace rsurfaces
         return energies[0];
     }
 
+    
+    void SurfaceFlow::StepProjectedGradientHenrik()
+    {
+        ptic("SurfaceFlow::StepProjectedGradientIterative");
+        
+        long timeStart = currentTimeMilliseconds();
+        stepCount++;
+        std::cout << "=== Iteration " << stepCount << " ===" << std::endl;
+        std::cout << "Using iterative Hs projected gradient method..." << std::endl;
+        UpdateEnergies();
+
+        // Assemble sum of L2 differentials of all energies involved
+        // (including tangent-point energy)
+        Eigen::MatrixXd l2diff, gradientProj;
+        l2diff.setZero(mesh->nVertices(), 3);
+        gradientProj.setZero(mesh->nVertices(), 3);
+        AssembleGradients(l2diff);
+        double gNorm = l2diff.norm();
+
+        std::unique_ptr<Hs::HsMetric> hs = GetHsMetric();
+        printSolveInfo(hs->newtonConstraints.size());
+
+        Vector3 shift{0, 0, 0};
+        if (allowBarycenterShift)
+        {
+            shift = averageOfMatrixRows(geom, mesh, l2diff);
+            std::cout << "Average shift of L2 diff = " << shift << std::endl;
+        }
+
+        Hs::ProjectConstrainedHsIterativeMat(*hs, l2diff, gradientProj);
+
+        if (allowBarycenterShift)
+        {
+            addShiftToMatrixRows(gradientProj, mesh->nVertices(), shift);
+        }
+
+        VertexIndices inds = mesh->getVertexIndices();
+
+        double gProjNorm = gradientProj.norm();
+        // Measure dot product of search direction with original gradient direction
+        double gradDot = (l2diff.transpose() * gradientProj).trace() / (gNorm * gProjNorm);
+
+        // Guess a step size
+        // double initGuess = prevStep * 1.25;
+        double initGuess = guessStepSize(gProjNorm);
+
+        std::cout << "  * Initial step size guess = " << initGuess << std::endl;
+
+        // Take the step using line search
+        LineSearch search(mesh, geom, energies);
+        double delta = search.BacktrackingLineSearch(gradientProj, initGuess, gradDot);
+
+        // Constraint projection
+        if (schurConstraints.size() > 0)
+        {
+            // hs->ResetSchurComplement();
+            std::cout << "  Projecting Newton constraints..." << std::endl;
+            Hs::ProjectSchurConstraints<Hs::IterativeInverse>(*hs, 1);
+        }
+        if (allowBarycenterShift)
+        {
+            // The barycenter goes wherever it wants.
+            // Assumes no pin constraints; free barycenter isn't meant to be used with pins.
+        }
+        else
+        {
+            hs->ProjectSimpleConstraints();
+        }
+
+        incrementSchurConstraints();
+        geom->refreshQuantities();
+
+        long timeEnd = currentTimeMilliseconds();
+        std::cout << "  Total time for gradient step = " << (timeEnd - timeStart) << " ms" << std::endl;
+        
+        ptoc("SurfaceFlow::StepProjectedGradientIterative");
+    }
+    
 } // namespace rsurfaces

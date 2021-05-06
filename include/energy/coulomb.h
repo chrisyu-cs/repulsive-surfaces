@@ -24,6 +24,7 @@ namespace rsurfaces
         TPEKernel *kernel;
         OptimizedClusterTree *root;
         double theta;
+        double weight = 1.;
         double energyAtVertex(OptimizedClusterTree *node, GCVertex v);
         Vector3 gradientAtVertex(OptimizedClusterTree *node, GCVertex v);
     };

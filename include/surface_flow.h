@@ -26,6 +26,7 @@ namespace rsurfaces
         void StepProjectedGradientExact();
         void StepProjectedGradient();
         void StepProjectedGradientIterative();
+        void StepProjectedGradientHenrik();
         void StepH1LBFGS();
         void StepBQN();
         void StepH1ProjGrad();

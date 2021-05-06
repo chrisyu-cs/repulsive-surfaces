@@ -37,9 +37,8 @@ namespace rsurfaces
         void requireMeanCurvatureVectors();
         
     private:
+        double weight = 1.;
         Eigen::MatrixXd H;
         Eigen::VectorXd H_squared;
-        double weight;
-        
     }; // WillmoreEnergy
 } // namespace rsurfaces
