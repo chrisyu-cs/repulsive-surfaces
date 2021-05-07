@@ -22,7 +22,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STR
 
   # using Clang (linux or apple) or GCC
   message("Using clang/gcc compiler flags")
-  SET(BASE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Werror -Xpreprocessor -fopenmp")
+  SET(BASE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Werror -Xpreprocessor -fopenmp ")
   SET(DISABLED_WARNINGS " -Wno-unknown-warning-option -Wno-pass-failed -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-copy -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field -Wno-range-loop-analysis -Wno-macro-redefined -Wno-writable-strings")
   #SET(BASE_CXX_FLAGS "-std=c++11 -Wall -Wextra -Xpreprocessor -fopenmp -gline-tables-only -gcolumn-info")
   #SET(DISABLED_WARNINGS " -Wno-unknown-warning-option -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -Wno-deprecated-copy -Wno-deprecated-declarations -Wno-missing-braces -Wno-unused-private-field -Wno-range-loop-analysis  -Wno-macro-redefined, -Wno-writable-strings")
@@ -176,23 +176,19 @@ else()
     message(WARNING "Intel TBB not found")
 endif()
 
-add_library(rsurf "${SRCS}")
-target_include_directories(rsurf PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
-target_link_libraries(rsurf geometry-central polyscope OpenMP::OpenMP_CXX)
+
+
+# To change the name of your executable, change "gc_project" in the lines below to whatever you want
+add_executable(rsurfaces "${SRCS}" "${SRCS1}")
+target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
+target_link_libraries(rsurfaces geometry-central polyscope OpenMP::OpenMP_CXX)
 
 if(MKL_FOUND)
-    target_link_libraries(rsurf "-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lpthread -lm -ldl")
+    target_link_libraries(rsurfaces "-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lpthread -lm -ldl")
 endif()
 
 if(TBB_FOUND)
-    target_link_libraries(rsurf "-ltbb")
+    target_link_libraries(rsurfaces "-ltbb")
 endif()
 
-target_include_directories(rsurf PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include")
-
-
-add_executable( rsurfaces "${SRCS1}" )
-target_link_libraries( rsurfaces rsurf )
-    
-add_executable( runtest "${SRCS2}" )
-target_link_libraries( runtest rsurf )
+target_include_directories(rsurfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include")
