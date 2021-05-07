@@ -71,7 +71,8 @@ namespace rsurfaces
             triplets.push_back(Triplet(faceRow + 2, i3, M_face(2, 2)));
         }
 
-        inline Eigen::SparseMatrix<double> BuildDfOperator(const MeshPtr &mesh, const GeomPtr &geom)
+        template <typename MeshPtrT>
+        inline Eigen::SparseMatrix<double> BuildDfOperator(const MeshPtrT &mesh, const GeomPtr &geom)
         {
             ptic("BuildDfOperator");
             

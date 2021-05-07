@@ -20,7 +20,8 @@
 namespace rsurfaces
 {
 
-    inline OptimizedClusterTree * CreateOptimizedBVH_Hybrid(MeshPtr &mesh, GeomPtr &geom)
+    template <typename MeshPtrT>
+    inline OptimizedClusterTree * CreateOptimizedBVH_Hybrid(MeshPtrT &mesh, GeomPtr &geom)
     {
         geom->requireFaceAreas();
         geom->requireFaceNormals();
@@ -136,7 +137,8 @@ namespace rsurfaces
         );
     } // CreateOptimizedBVH
     
-    inline OptimizedClusterTree * CreateOptimizedBVH_Normals(MeshPtr &mesh, GeomPtr &geom)
+    template <typename MeshPtrT>
+    inline OptimizedClusterTree * CreateOptimizedBVH_Normals(MeshPtrT &mesh, GeomPtr &geom)
     {
         geom->requireFaceAreas();
         geom->requireFaceNormals();
@@ -245,7 +247,8 @@ namespace rsurfaces
         );
     } // CreateOptimizedBVH_Normls
 
-    inline void UpdateOptimizedBVH(OptimizedClusterTree * bvh, MeshPtr &mesh, GeomPtr &geom)
+    template <typename MeshPtrT>
+    inline void UpdateOptimizedBVH(OptimizedClusterTree * bvh, MeshPtrT &mesh, GeomPtr &geom)
     {
 //        bvh->UpdateWithNewPositions(mesh, geom);
         
@@ -368,7 +371,8 @@ namespace rsurfaces
         }
     } // UpdateOptimizedBVH
 
-    inline OptimizedClusterTree * CreateOptimizedBVH_Projectors(MeshPtr &mesh, GeomPtr &geom)
+    template <typename MeshPtrT>
+    inline OptimizedClusterTree * CreateOptimizedBVH_Projectors(MeshPtrT &mesh, GeomPtr &geom)
     {
         geom->requireFaceAreas();
         geom->requireFaceNormals();
@@ -480,7 +484,9 @@ namespace rsurfaces
         );
     } // CreateOptimizedBVH_Projectors
 
-    inline OptimizedClusterTree * CreateOptimizedBVH(MeshPtr &mesh, GeomPtr &geom)
+
+    template <typename MeshPtrT>
+    inline OptimizedClusterTree * CreateOptimizedBVH(MeshPtrT &mesh, GeomPtr &geom)
     {
 #ifdef USE_NORMALS_ONLY
         wprint("CreateOptimizedBVH: effectively using CreateOptimizedBVH_Normals. This is likely to cause errors in the far field interaction matrix");

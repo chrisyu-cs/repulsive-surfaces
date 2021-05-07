@@ -47,3 +47,6 @@ tags
 *.exe
 *.out
 *.app
+
+Profile.tsv
+imgui.ini

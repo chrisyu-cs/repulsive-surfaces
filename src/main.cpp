@@ -1643,10 +1643,10 @@ namespace rsurfaces
 
     void MainApp::AddObstacle(std::string filename, double weight, bool recenter, bool asPointCloud)
     {
-        MeshUPtr obstacleMesh;
+        std::unique_ptr<surface::SurfaceMesh> obstacleMesh;
         GeomUPtr obstacleGeometry;
         // Load mesh
-        std::tie(obstacleMesh, obstacleGeometry) = readMesh(filename);
+        std::tie(obstacleMesh, obstacleGeometry) = readNonManifoldMesh(filename);
 
         obstacleGeometry->requireVertexDualAreas();
         obstacleGeometry->requireVertexNormals();
@@ -1674,7 +1674,7 @@ namespace rsurfaces
                                                                             obstacleMesh->getFaceVertexList(), polyscopePermutations(*obstacleMesh));
         }
 
-        MeshPtr sharedObsMesh = std::move(obstacleMesh);
+        std::unique_ptr<surface::SurfaceMesh> sharedObsMesh = std::move(obstacleMesh);
         GeomPtr sharedObsGeom = std::move(obstacleGeometry);
 
         SurfaceEnergy *obstacleEnergy = 0;

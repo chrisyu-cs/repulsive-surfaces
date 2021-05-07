@@ -37,6 +37,12 @@ namespace rsurfaces
         return surface::readManifoldSurfaceMesh(filename, type);
     };
 
+    inline std::tuple<std::unique_ptr<surface::SurfaceMesh>, GeomUPtr>
+    readNonManifoldMesh(std::string filename, std::string type = "")
+    {
+        return surface::readSurfaceMesh(filename, type);
+    };
+
     //    // if MeshUPtr == std::unique_ptr<surface::SurfaceMesh>
     //    inline std::tuple<MeshUPtr, GeomUPtr>
     //    readParameterizedMesh(std::string filename, std::string type = "")
