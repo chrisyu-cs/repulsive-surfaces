@@ -35,8 +35,5 @@ namespace rsurfaces {
 
         // In some cases, we might require positions to be modified externally
         VertexDataWrapper originalPositions;
-
-    private:
-        double weight;
     };
 }

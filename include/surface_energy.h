@@ -70,8 +70,6 @@ namespace rsurfaces
     protected:
         MeshPtr mesh = 0;
         GeomPtr geom = 0;
-        
-    private:
         double weight = 1.;
     };
 } // namespace rsurfaces

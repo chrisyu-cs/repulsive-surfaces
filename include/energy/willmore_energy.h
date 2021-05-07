@@ -39,7 +39,6 @@ namespace rsurfaces
     private:
         Eigen::MatrixXd H;
         Eigen::VectorXd H_squared;
-        double weight;
         
     }; // WillmoreEnergy
 } // namespace rsurfaces
