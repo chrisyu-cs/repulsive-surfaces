@@ -52,7 +52,7 @@ namespace rsurfaces
 
         void TakeOptimizationStep(bool remeshAfter, bool showAreaRatios);
         void AddObstacle(std::string filename, double weight, bool recenter, bool asPointCloud);
-        void AddPotential(scene::PotentialType pType, double weight);
+        void AddPotential(scene::PotentialType pType, double weight, double targetValue);
         void AddImplicitBarrier(scene::ImplicitBarrierData &implicitBarrier);
 
         MeshPtr mesh;

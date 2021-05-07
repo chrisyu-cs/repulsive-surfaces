@@ -1766,7 +1766,7 @@ namespace rsurfaces
         }
     }
 
-    void MainApp::AddPotential(scene::PotentialType pType, double weight)
+    void MainApp::AddPotential(scene::PotentialType pType, double weight, double targetValue)
     {
         switch (pType)
         {
@@ -1792,7 +1792,7 @@ namespace rsurfaces
         }
         case scene::PotentialType::BoundaryLength:
         {
-            BoundaryLengthPenalty *errorPotential = new BoundaryLengthPenalty(mesh, geom, weight);
+            BoundaryLengthPenalty *errorPotential = new BoundaryLengthPenalty(mesh, geom, weight, targetValue);
             flow->AddAdditionalEnergy(errorPotential);
             break;
         }
@@ -2229,6 +2229,9 @@ MeshAndEnergy initTPEOnMesh(std::string meshFile, double alpha, double beta)
 
     TPEKernel *tpe = new rsurfaces::TPEKernel(meshShared, geomShared, alpha, beta);
 
+    std::cout << "Initial mesh area = " << totalArea(geomShared, meshShared) << std::endl;
+    std::cout << "Initial mesh volume = " << totalVolume(geomShared, meshShared) << std::endl;
+
     return MeshAndEnergy{tpe, psMesh, meshShared, geomShared, (hasUVs) ? uvShared : 0, mesh_name};
 }
 
@@ -2528,7 +2531,7 @@ int main(int argc, char **argv)
 
     for (scene::PotentialData &p : data.potentials)
     {
-        MainApp::instance->AddPotential(p.type, p.weight);
+        MainApp::instance->AddPotential(p.type, p.weight, p.targetValue);
     }
     for (scene::ObstacleData &obs : data.obstacles)
     {

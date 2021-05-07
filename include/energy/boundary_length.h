@@ -8,7 +8,7 @@ namespace rsurfaces
     class BoundaryLengthPenalty : public SurfaceEnergy
     {
         public:
-        BoundaryLengthPenalty(MeshPtr mesh_, GeomPtr geom_, double weight_);
+        BoundaryLengthPenalty(MeshPtr mesh_, GeomPtr geom_, double weight_, double targetValue_ = 0.);
 
         virtual ~BoundaryLengthPenalty() {}
 
@@ -30,6 +30,11 @@ namespace rsurfaces
         // Return the separation parameter for this energy.
         // Return 0 if this energy doesn't do hierarchical approximation.
         virtual double GetTheta();
+
+        private:
+        double targetValue;
+
+        double currentLengthDeviation();
     };
 
 }

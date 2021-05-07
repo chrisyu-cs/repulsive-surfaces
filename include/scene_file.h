@@ -38,6 +38,7 @@ namespace rsurfaces
         {
             PotentialType type;
             double weight;
+            double targetValue;
         };
 
         struct ConstraintData
