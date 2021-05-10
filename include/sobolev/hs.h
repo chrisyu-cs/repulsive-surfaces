@@ -199,7 +199,7 @@ namespace rsurfaces
                     if (disableNearField)
                     {
                         settings.near_lo_modifier = 0.;
-                        settings.far_lo_modifier = 0.;
+                        //settings.far_lo_modifier = 0.;
                         std::cout << "    * Low-order near-field interactions in metric BCT are disabled." << std::endl;
                     }
                     optBCT = CreateOptimizedBCTFromBVH(bvh, exps.x, exps.y, bh_theta, weight, settings);
