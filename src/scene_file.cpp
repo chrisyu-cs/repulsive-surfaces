@@ -91,6 +91,10 @@ namespace rsurfaces
             {
                 return GradientMethod::Willmore;
             }
+            else if (name == "l2")
+            {
+                return GradientMethod::L2Projected;
+            }
             else
             {
                 throw std::runtime_error("Unknown method name " + name);
