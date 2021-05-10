@@ -36,7 +36,6 @@ namespace rsurfaces
        BVHSettings settings_
     )
     {
-        print("A");
         ptic("OptimizedClusterTree::OptimizedClusterTree");
         
         primitive_count = primitive_count_;

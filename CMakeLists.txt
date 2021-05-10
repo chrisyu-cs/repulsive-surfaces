@@ -136,24 +136,32 @@ set(SRCS
   src/optimized_bct_types.cpp
   src/optimized_bct.cpp
   src/optimized_cluster_tree.cpp
+  src/consistency_helpers.cpp
     # add any other source files here
 )
 
 set(SRCS1
   src/main.cpp
-    # add any other source files here
 )
 
 set(SRCS2
   src/main2.cpp
-    # add any other source files here
 )
 
+set(consistency_SRCS
+  src/main_consistency.cpp
+)
+
+set(remesh_SRCS
+  src/main_remesh.cpp
+)
 
 find_package(OpenMP REQUIRED)
 
 find_package(MKL REQUIRED)
 find_package(TBB REQUIRED)
+
+find_package(Boost REQUIRED)
 
 if(MKL_FOUND)
     message("Intel MKL libraries found: ${MKL_LIBRARY}")
@@ -176,18 +184,36 @@ else()
     message(WARNING "Intel TBB not found")
 endif()
 
+if(Boost_FOUND)
+  if(Boost_LIBRARY_DIR)
+    MESSAGE( STATUS "Boost_LIBRARY_DIR not empty using it: ${Boost_LIBRARY_DIR}" )
+  elseif(BOOST_LIBRARYDIR)
+      MESSAGE( STATUS "Boost_LIBRARY_DIR empty, but BOOST_LIBRARYDIR is set. Setting Boost_LIBRARY_DIR to: ${BOOST_LIBRARYDIR}" )
+      set(Boost_LIBRARY_DIR ${BOOST_LIBRARYDIR})
+  elseif(Boost_LIBRARY_DIRS)
+      MESSAGE( STATUS "Boost_LIBRARY_DIR empty, but Boost_LIBRARY_DIRS is set. Setting Boost_LIBRARY_DIR to: ${Boost_LIBRARY_DIRS}" )
+      set(Boost_LIBRARY_DIR ${Boost_LIBRARY_DIRS})
+  else()
+    MESSAGE( WARNING "Boost_LIBRARY_DIR empty, BOOST_LIBRARYDIR empty, Boost_LIBRARY_DIR_RELEASE empty: might miss libraries at linking" )
+  endif()
+  include_directories(${Boost_INCLUDE_DIR})
+  link_directories(${Boost_LIBRARY_DIR})
+  message("Boost libraries: ${Boost_LIBRARY}")
+  message("Boost include directories: ${Boost_INCLUDE_DIR}")
+  message("Boost library directories: ${Boost_LIBRARY_DIR}")
+else()
+  MESSAGE( STATUS "Boost was not found!")
+endif()
+
 add_library(rsurf "${SRCS}")
 target_include_directories(rsurf PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 target_link_libraries(rsurf geometry-central polyscope OpenMP::OpenMP_CXX)
-
 if(MKL_FOUND)
     target_link_libraries(rsurf "-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lpthread -lm -ldl")
 endif()
-
 if(TBB_FOUND)
     target_link_libraries(rsurf "-ltbb")
 endif()
-
 target_include_directories(rsurf PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmultigrid/include")
 
 
@@ -196,3 +222,11 @@ target_link_libraries( rsurfaces rsurf )
     
 add_executable( runtest "${SRCS2}" )
 target_link_libraries( runtest rsurf )
+
+add_executable( consistency "${consistency_SRCS}" )
+target_link_libraries( consistency rsurf "-lboost_system-mt -lboost_filesystem-mt" )
+target_include_directories( consistency PUBLIC "${Boost_INCLUDE_DIRS}" )
+
+add_executable( remesh "${remesh_SRCS}" )
+target_link_libraries( remesh rsurf  "-lboost_system-mt -lboost_filesystem-mt" )
+target_include_directories(remesh PUBLIC "${Boost_INCLUDE_DIRS}" )
