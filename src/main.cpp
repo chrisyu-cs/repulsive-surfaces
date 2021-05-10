@@ -2410,7 +2410,7 @@ int main(int argc, char **argv)
     args::ArgumentParser parser("geometry-central & Polyscope example project");
     args::Positional<std::string> inputFilename(parser, "mesh", "A mesh file.");
     args::ValueFlag<double> thetaFlag(parser, "Theta", "Theta value for Barnes-Hut approximation; 0 means exact.", args::Matcher{'t', "theta"});
-    args::ValueFlag<std::string> mult_alg_Flag(parser, "mult_alg", "Algorithm for the near field matrix-vector product. Possible values are \"Hybrid\" (default) and MKL_CSR (maybe more robust).", {"mult_alg"});
+    args::ValueFlag<std::string> mult_alg_Flag(parser, "mult_alg", "Algorithm for the near field matrix-vector product. Possible values are \"Hybrid\" (default) and \"MKL_CSR\" (maybe more robust).", {"mult_alg"});
     args::ValueFlagList<std::string> obstacleFiles(parser, "obstacles", "Obstacles to add", {'o'});
     args::Flag autologFlag(parser, "autolog", "Automatically start the flow, log performance, and exit when done.", {"autolog"});
     args::Flag coulombFlag(parser, "coulomb", "Use a coulomb energy instead of the tangent-point energy.", {"coulomb"});
@@ -2465,24 +2465,30 @@ int main(int argc, char **argv)
         std::cout << "Defaulting to " << MainApp::defaultNumThreads << " threads." << std::endl;
     }
     
+
     if ( mult_alg_Flag )
     {
-        std::string s = "CSR_MKL";
-        if( args::get(mult_alg_Flag) == s )
+        std::string s = args::get(mult_alg_Flag);
+        if( s.compare("MKL_CSR") == 0 )
         {
             BCTDefaultSettings.mult_alg = NearFieldMultiplicationAlgorithm::MKL_CSR;
-            std::cout << "Using MKL_CSR for near field matrix-vector product." << std::endl;
+            std::cout << "Using \"MKL_CSR\" for near field matrix-vector product." << std::endl;
+        }
+        else if( s.compare("Hybrid") == 0 )
+        {
+            BCTDefaultSettings.mult_alg = NearFieldMultiplicationAlgorithm::Hybrid;
+            std::cout << "Using \"Hybrid\" for near field matrix-vector product." << std::endl;
         }
         else
         {
             BCTDefaultSettings.mult_alg = NearFieldMultiplicationAlgorithm::Hybrid;
-            std::cout << "Using Hybrid for near field matrix-vector product." << std::endl;
+            std::cout << "Unknown method \"" + s + "\". Using default value \"Hybrid\" for near field matrix-vector product." << std::endl;
         }
     }
     else
     {
         BCTDefaultSettings.mult_alg = NearFieldMultiplicationAlgorithm::Hybrid;
-        std::cout << "Using Hybrid for near field matrix-vector product." << std::endl;
+        std::cout << "Using default value \"Hybrid\" for near field matrix-vector product." << std::endl;
     }
 
     double theta = 0.5;
