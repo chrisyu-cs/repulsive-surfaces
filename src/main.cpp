@@ -40,6 +40,9 @@ using namespace geometrycentral::surface;
 namespace rsurfaces
 {
 
+    int MainApp::specifiedNumThreads;
+    int MainApp::defaultNumThreads;
+
     MainApp *MainApp::instance = 0;
 
     MainApp::MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow *flow_, polyscope::SurfaceMesh *psMesh_, std::string meshName_)
@@ -64,10 +67,11 @@ namespace rsurfaces
 
     void MainApp::logPerformanceLine()
     {
-        if (!referenceEnergy)
-        {
-            referenceEnergy = new TPEnergyAllPairs(kernel->mesh, kernel->geom, kernel->alpha, kernel->beta);
-        }
+        // Regardless of thread setting, use multithreaded for the all-pairs energy
+        omp_set_num_threads(defaultNumThreads);
+
+        std::cout << "Evaluating all-pairs energy using " << defaultNumThreads << " threads" << std::endl;
+        referenceEnergy = new TPEnergyAllPairs(kernel->mesh, kernel->geom, kernel->alpha, kernel->beta);
         referenceEnergy->Update();
 
         geom->refreshQuantities();
@@ -77,6 +81,12 @@ namespace rsurfaces
         std::cout << numSteps << ", " << timeSpentSoFar << ", " << currentEnergy << ", " << mesh->nFaces() << std::endl;
         outfile << numSteps << ", " << timeSpentSoFar << ", " << currentEnergy << ", " << mesh->nFaces() << std::endl;
         outfile.close();
+
+        delete referenceEnergy;
+
+        omp_set_num_threads(specifiedNumThreads);
+        std::cout << "Switched back to " << specifiedNumThreads << " threads for flow" << std::endl;
+
     }
 
     void MainApp::TakeOptimizationStep(bool remeshAfter, bool showAreaRatios)
@@ -2438,17 +2448,20 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
+    MainApp::defaultNumThreads = omp_get_max_threads() / 2 + 2;
+
     if (threadFlag)
     {
         int nThreads = args::get(threadFlag);
         std::cout << "Using " << nThreads << " threads as specified." << std::endl;
         omp_set_num_threads(nThreads);
+        MainApp::specifiedNumThreads = nThreads;
     }
     else
     {
-        int default_threads = omp_get_max_threads() / 2 + 2;
-        omp_set_num_threads(default_threads);
-        std::cout << "Defaulting to " << default_threads << " threads." << std::endl;
+        omp_set_num_threads(MainApp::defaultNumThreads);
+        MainApp::specifiedNumThreads = MainApp::defaultNumThreads;
+        std::cout << "Defaulting to " << MainApp::defaultNumThreads << " threads." << std::endl;
     }
 
     double theta = 0.5;
