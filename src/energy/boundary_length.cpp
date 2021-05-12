@@ -3,6 +3,8 @@
 
 namespace rsurfaces
 {
+   const bool useSquaredLength = false;
+
     BoundaryLengthPenalty::BoundaryLengthPenalty(MeshPtr mesh_, GeomPtr geom_, double weight_, double targetValue_)
     {
         weight = weight_;
@@ -35,7 +37,15 @@ namespace rsurfaces
     double BoundaryLengthPenalty::Value()
     {
         double deviation = currentLengthDeviation();
-        return weight * deviation * deviation;
+
+        if( useSquaredLength )
+        {
+           return weight * deviation * deviation;
+        }
+        else
+        {
+           return deviation;
+        }
     }
 
     void BoundaryLengthPenalty::Differential(Eigen::MatrixXd &output)
@@ -53,7 +63,16 @@ namespace rsurfaces
                 GCVertex v2 = e.secondVertex();
 
                 Vector3 awayFromFirst = (geom->inputVertexPositions[v2] - geom->inputVertexPositions[v1]).normalize();
-                Vector3 deriv = 2 * deviation * awayFromFirst;
+
+                Vector3 deriv;
+                if( useSquaredLength )
+                {
+                   deriv = 2 * deviation * awayFromFirst;
+                }
+                else
+                {
+                   deriv = awayFromFirst;
+                }
 
                 // Gradient wants to make the edge longer at both vertices.
                 MatrixUtils::addToRow(output, inds[v2], weight * deriv);
