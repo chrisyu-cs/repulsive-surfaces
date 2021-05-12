@@ -47,6 +47,7 @@ namespace rsurfaces
             ConstraintType type;
             double targetMultiplier;
             long numIterations;
+            double targetAddition;
         };
 
         struct ObstacleData

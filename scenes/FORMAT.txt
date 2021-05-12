@@ -15,8 +15,8 @@ A good default choice for alpha and beta is (6, 12).
 Add constraints:
 
 	constrain barycenter
-	constrain area [growth multiplier] [growth iterations]
-	constrain volume [growth multiplier] [growth iterations]
+	constrain area [growth multiplier] [growth iterations] [growth addition]
+	constrain volume [growth multiplier] [growth iterations] [growth addition]
 	constrain vertices <vertex 1> [vertex 2] [vertex 3] [...]
 
 The "growth multiplier" specifies how much the area or volume of the mesh
@@ -26,6 +26,13 @@ the growth happens. So, for example,
 	constrain area 3 200
 
 means grow the total surface area by 3x over the course of 200 iterations.
+The optional fourth parameter is a scalar that is added to the target value.
+So, using
+
+	constrain area 3 200 1.5
+
+will cause the total surface area to grow to (3A + 1.5) over 200 iterations,
+where A is the initial surface area.
 
 A barycenter constraint should basically always be used.
 
