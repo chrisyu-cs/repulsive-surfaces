@@ -76,7 +76,7 @@ namespace rsurfaces
 
     double LineSearch::BacktrackingLineSearch(Eigen::MatrixXd &gradient, double initGuess, double gradDot, bool negativeIsForward)
     {
-        double delta = initGuess * 2;
+        double delta = initGuess;
         SaveCurrentPositions();
 
         // Gather some initial data
