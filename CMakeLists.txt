@@ -72,6 +72,7 @@ add_subdirectory(deps/polyscope)
 
 set(SRCS
   src/energy/boundary_length.cpp
+  src/energy/boundary_curvature.cpp
   src/energy/coulomb.cpp
   src/energy/implicit_attractor.cpp
   src/energy/implicit_obstacle.cpp

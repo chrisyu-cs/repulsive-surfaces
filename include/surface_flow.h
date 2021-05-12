@@ -53,6 +53,8 @@ namespace rsurfaces
             {
                 double initVal = c->getTargetValue();
                 double change = multiplier * initVal - initVal;
+                // XXX use this if you want to set the value, rather than a multiplier:
+                // double change = multiplier - initVal;
                 stepSize = change / iterations;
             }
             schurConstraints.push_back(ConstraintPack{c, stepSize, iterations});

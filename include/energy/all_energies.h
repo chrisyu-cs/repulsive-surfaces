@@ -2,6 +2,7 @@
 
 #include "energy/squared_error.h"
 #include "energy/boundary_length.h"
+#include "energy/boundary_curvature.h"
 #include "energy/total_area_potential.h"
 #include "energy/total_volume_potential.h"
 #include "energy/soft_area_constraint.h"

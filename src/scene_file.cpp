@@ -170,6 +170,11 @@ namespace rsurfaces
                     data.potentials.push_back(PotentialData{PotentialType::BoundaryLength, weight});
                     cout << "  * Adding boundary length potential (weight " << weight << ")" << endl;
                 }
+                if (parts[1] == "boundary_curvature")
+                {
+                    data.potentials.push_back(PotentialData{PotentialType::BoundaryCurvature, weight});
+                    cout << "  * Adding boundary curvature potential (weight " << weight << ")" << endl;
+                }
                 else if (parts[1] == "area")
                 {
                     data.potentials.push_back(PotentialData{PotentialType::Area, weight});

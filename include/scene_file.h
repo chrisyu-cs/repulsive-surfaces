@@ -27,6 +27,7 @@ namespace rsurfaces
         {
             SquaredError,
             BoundaryLength,
+            BoundaryCurvature,
             Area,
             Volume,
             SoftAreaConstraint,

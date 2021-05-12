@@ -1798,6 +1798,12 @@ namespace rsurfaces
             flow->AddAdditionalEnergy(errorPotential);
             break;
         }
+        case scene::PotentialType::BoundaryCurvature:
+        {
+            BoundaryCurvaturePenalty *errorPotential = new BoundaryCurvaturePenalty(mesh, geom, weight);
+            flow->AddAdditionalEnergy(errorPotential);
+            break;
+        }
         case scene::PotentialType::SoftAreaConstraint:
         {
             SoftAreaConstraint *softArea = new SoftAreaConstraint(mesh, geom, weight);
