@@ -30,27 +30,32 @@ namespace rsurfaces
     {
         return surface::readParameterizedManifoldSurfaceMesh(filename, type);
     };
-    
+
     inline std::tuple<MeshUPtr, GeomUPtr>
     readMesh(std::string filename, std::string type = "")
     {
         return surface::readManifoldSurfaceMesh(filename, type);
     };
-    
-//    // if MeshUPtr == std::unique_ptr<surface::SurfaceMesh>
-//    inline std::tuple<MeshUPtr, GeomUPtr>
-//    readParameterizedMesh(std::string filename, std::string type = "")
-//    {
-//        return surface::readSurfaceMesh(filename, type);
-//    };
-//
-//    inline std::tuple<MeshUPtr, GeomUPtr, std::unique_ptr<CornerData<Vector2>>>
-//    readParameterizeMesh(std::string filename, std::string type = "")
-//    {
-//        return surface::readParameterizedSurfaceMesh(filename, type);
-//    };
-    
-    
+
+    inline std::tuple<std::unique_ptr<surface::SurfaceMesh>, GeomUPtr>
+    readNonManifoldMesh(std::string filename, std::string type = "")
+    {
+        return surface::readSurfaceMesh(filename, type);
+    };
+
+    //    // if MeshUPtr == std::unique_ptr<surface::SurfaceMesh>
+    //    inline std::tuple<MeshUPtr, GeomUPtr>
+    //    readParameterizedMesh(std::string filename, std::string type = "")
+    //    {
+    //        return surface::readSurfaceMesh(filename, type);
+    //    };
+    //
+    //    inline std::tuple<MeshUPtr, GeomUPtr, std::unique_ptr<CornerData<Vector2>>>
+    //    readParameterizeMesh(std::string filename, std::string type = "")
+    //    {
+    //        return surface::readParameterizedSurfaceMesh(filename, type);
+    //    };
+
     class BVHNode6D;
 
     struct MassPoint
@@ -83,6 +88,13 @@ namespace rsurfaces
         Vector3 minCoords;
         Vector3 maxCoords;
         size_t elementID;
+    };
+
+    struct VertexPinData
+    {
+        size_t vertID;
+        Vector3 offset;
+        size_t iterations;
     };
 
 } // namespace rsurfaces

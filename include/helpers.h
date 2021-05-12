@@ -311,7 +311,8 @@ namespace rsurfaces
         return dot(cross(v1, v2), v3) / 6;
     }
 
-    inline double totalVolume(GeomPtr const &geom, MeshPtr const &mesh)
+    template <typename MeshPtrT>
+    inline double totalVolume(GeomPtr const &geom, MeshPtrT const &mesh)
     {
         double area = 0;
         for (GCFace f : mesh->faces())

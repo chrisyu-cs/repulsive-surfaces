@@ -40,6 +40,9 @@ using namespace geometrycentral::surface;
 namespace rsurfaces
 {
 
+    int MainApp::specifiedNumThreads;
+    int MainApp::defaultNumThreads;
+
     MainApp *MainApp::instance = 0;
 
     MainApp::MainApp(MeshPtr mesh_, GeomPtr geom_, SurfaceFlow *flow_, polyscope::SurfaceMesh *psMesh_, std::string meshName_)
@@ -64,10 +67,11 @@ namespace rsurfaces
 
     void MainApp::logPerformanceLine()
     {
-        if (!referenceEnergy)
-        {
-            referenceEnergy = new TPEnergyAllPairs(kernel->mesh, kernel->geom, kernel->alpha, kernel->beta);
-        }
+        // Regardless of thread setting, use multithreaded for the all-pairs energy
+        omp_set_num_threads(defaultNumThreads);
+
+        std::cout << "Evaluating all-pairs energy using " << defaultNumThreads << " threads" << std::endl;
+        referenceEnergy = new TPEnergyAllPairs(kernel->mesh, kernel->geom, kernel->alpha, kernel->beta);
         referenceEnergy->Update();
 
         geom->refreshQuantities();
@@ -77,6 +81,12 @@ namespace rsurfaces
         std::cout << numSteps << ", " << timeSpentSoFar << ", " << currentEnergy << ", " << mesh->nFaces() << std::endl;
         outfile << numSteps << ", " << timeSpentSoFar << ", " << currentEnergy << ", " << mesh->nFaces() << std::endl;
         outfile.close();
+
+        delete referenceEnergy;
+
+        omp_set_num_threads(specifiedNumThreads);
+        std::cout << "Switched back to " << specifiedNumThreads << " threads for flow" << std::endl;
+
     }
 
     void MainApp::TakeOptimizationStep(bool remeshAfter, bool showAreaRatios)
@@ -537,8 +547,6 @@ namespace rsurfaces
         auto mesh = rsurfaces::MainApp::instance->mesh;
         auto geom = rsurfaces::MainApp::instance->geom;
 
-        OptimizedClusterTreeOptions::use_old_prepost = false;
-        OptimizedClusterTreeOptions::tree_perc_alg = TreePercolationAlgorithm::Chunks;
 
         OptimizedClusterTree *bvh = CreateOptimizedBVH(mesh, geom);
         BCTPtr bct = CreateOptimizedBCTFromBVH(bvh, alpha, beta, chi);
@@ -1643,10 +1651,10 @@ namespace rsurfaces
 
     void MainApp::AddObstacle(std::string filename, double weight, bool recenter, bool asPointCloud)
     {
-        MeshUPtr obstacleMesh;
+        std::unique_ptr<surface::SurfaceMesh> obstacleMesh;
         GeomUPtr obstacleGeometry;
         // Load mesh
-        std::tie(obstacleMesh, obstacleGeometry) = readMesh(filename);
+        std::tie(obstacleMesh, obstacleGeometry) = readNonManifoldMesh(filename);
 
         obstacleGeometry->requireVertexDualAreas();
         obstacleGeometry->requireVertexNormals();
@@ -1674,7 +1682,7 @@ namespace rsurfaces
                                                                             obstacleMesh->getFaceVertexList(), polyscopePermutations(*obstacleMesh));
         }
 
-        MeshPtr sharedObsMesh = std::move(obstacleMesh);
+        std::unique_ptr<surface::SurfaceMesh> sharedObsMesh = std::move(obstacleMesh);
         GeomPtr sharedObsGeom = std::move(obstacleGeometry);
 
         SurfaceEnergy *obstacleEnergy = 0;
@@ -1768,7 +1776,7 @@ namespace rsurfaces
         }
     }
 
-    void MainApp::AddPotential(scene::PotentialType pType, double weight)
+    void MainApp::AddPotential(scene::PotentialType pType, double weight, double targetValue)
     {
         switch (pType)
         {
@@ -1794,7 +1802,7 @@ namespace rsurfaces
         }
         case scene::PotentialType::BoundaryLength:
         {
-            BoundaryLengthPenalty *errorPotential = new BoundaryLengthPenalty(mesh, geom, weight);
+            BoundaryLengthPenalty *errorPotential = new BoundaryLengthPenalty(mesh, geom, weight, targetValue);
             flow->AddAdditionalEnergy(errorPotential);
             break;
         }
@@ -2237,6 +2245,9 @@ MeshAndEnergy initTPEOnMesh(std::string meshFile, double alpha, double beta)
 
     TPEKernel *tpe = new rsurfaces::TPEKernel(meshShared, geomShared, alpha, beta);
 
+    std::cout << "Initial mesh area = " << totalArea(geomShared, meshShared) << std::endl;
+    std::cout << "Initial mesh volume = " << totalVolume(geomShared, meshShared) << std::endl;
+
     return MeshAndEnergy{tpe, psMesh, meshShared, geomShared, (hasUVs) ? uvShared : 0, mesh_name};
 }
 
@@ -2405,6 +2416,7 @@ int main(int argc, char **argv)
     args::ArgumentParser parser("geometry-central & Polyscope example project");
     args::Positional<std::string> inputFilename(parser, "mesh", "A mesh file.");
     args::ValueFlag<double> thetaFlag(parser, "Theta", "Theta value for Barnes-Hut approximation; 0 means exact.", args::Matcher{'t', "theta"});
+    args::ValueFlag<std::string> mult_alg_Flag(parser, "mult_alg", "Algorithm for the near field matrix-vector product. Possible values are \"Hybrid\" (default) and \"MKL_CSR\" (maybe more robust).", {"mult_alg"});
     args::ValueFlagList<std::string> obstacleFiles(parser, "obstacles", "Obstacles to add", {'o'});
     args::Flag autologFlag(parser, "autolog", "Automatically start the flow, log performance, and exit when done.", {"autolog"});
     args::Flag coulombFlag(parser, "coulomb", "Use a coulomb energy instead of the tangent-point energy.", {"coulomb"});
@@ -2443,17 +2455,46 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
+    MainApp::defaultNumThreads = omp_get_max_threads() / 2 + 2;
+
     if (threadFlag)
     {
         int nThreads = args::get(threadFlag);
         std::cout << "Using " << nThreads << " threads as specified." << std::endl;
         omp_set_num_threads(nThreads);
+        MainApp::specifiedNumThreads = nThreads;
     }
     else
     {
-        int default_threads = omp_get_max_threads() / 2 + 2;
-        omp_set_num_threads(default_threads);
-        std::cout << "Defaulting to " << default_threads << " threads." << std::endl;
+        omp_set_num_threads(MainApp::defaultNumThreads);
+        MainApp::specifiedNumThreads = MainApp::defaultNumThreads;
+        std::cout << "Defaulting to " << MainApp::defaultNumThreads << " threads." << std::endl;
+    }
+    
+
+    if ( mult_alg_Flag )
+    {
+        std::string s = args::get(mult_alg_Flag);
+        if( s.compare("MKL_CSR") == 0 )
+        {
+            BCTDefaultSettings.mult_alg = NearFieldMultiplicationAlgorithm::MKL_CSR;
+            std::cout << "Using \"MKL_CSR\" for near field matrix-vector product." << std::endl;
+        }
+        else if( s.compare("Hybrid") == 0 )
+        {
+            BCTDefaultSettings.mult_alg = NearFieldMultiplicationAlgorithm::Hybrid;
+            std::cout << "Using \"Hybrid\" for near field matrix-vector product." << std::endl;
+        }
+        else
+        {
+            BCTDefaultSettings.mult_alg = NearFieldMultiplicationAlgorithm::Hybrid;
+            std::cout << "Unknown method \"" + s + "\". Using default value \"Hybrid\" for near field matrix-vector product." << std::endl;
+        }
+    }
+    else
+    {
+        BCTDefaultSettings.mult_alg = NearFieldMultiplicationAlgorithm::Hybrid;
+        std::cout << "Using default value \"Hybrid\" for near field matrix-vector product." << std::endl;
     }
 
     double theta = 0.5;
@@ -2536,7 +2577,7 @@ int main(int argc, char **argv)
 
     for (scene::PotentialData &p : data.potentials)
     {
-        MainApp::instance->AddPotential(p.type, p.weight);
+        MainApp::instance->AddPotential(p.type, p.weight, p.targetValue);
     }
     for (scene::ObstacleData &obs : data.obstacles)
     {

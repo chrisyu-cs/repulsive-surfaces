@@ -15,7 +15,8 @@ namespace rsurfaces
     class TPObstacleBarnesHut0 : public SurfaceEnergy
     {
     public:
-        TPObstacleBarnesHut0(MeshPtr mesh_, GeomPtr geom_, SurfaceEnergy *bvhSharedFrom_, MeshPtr &obsMesh, GeomPtr &obsGeom,
+        template <typename MeshPtrT>
+        TPObstacleBarnesHut0(MeshPtr mesh_, GeomPtr geom_, SurfaceEnergy *bvhSharedFrom_, MeshPtrT &obsMesh, GeomPtr &obsGeom,
                              mreal alpha_, mreal beta_, mreal theta_, mreal weight_ = 1.)
         {
             mesh = mesh_;
@@ -70,7 +71,6 @@ namespace rsurfaces
     private:
         mreal alpha = 6.;
         mreal beta = 12.;
-        mreal weight = 1.;
         mreal theta = 0.5;
 
         SurfaceEnergy * bvhSharedFrom;

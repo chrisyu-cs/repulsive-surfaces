@@ -55,6 +55,11 @@ namespace rsurfaces
         {
             return 0;
         }
+        
+        virtual double GetWeight()
+        {
+            return weight;
+        }
 
         // Add the metric term associated with this energy term, if applicable.
         // If no special metric term is needed, does nothing.
@@ -65,5 +70,6 @@ namespace rsurfaces
     protected:
         MeshPtr mesh = 0;
         GeomPtr geom = 0;
+        double weight = 1.;
     };
 } // namespace rsurfaces

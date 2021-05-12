@@ -17,7 +17,6 @@ namespace rsurfaces
         virtual double GetTheta();
 
         private:
-        double weight;
         double power;
         std::unique_ptr<ImplicitSurface> surface;
     };

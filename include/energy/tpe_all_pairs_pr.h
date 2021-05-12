@@ -82,8 +82,6 @@ namespace rsurfaces
         
         template<typename T1, typename T2>
         mreal DEnergy(T1 alpha, T2 betahalf);
-
-        mreal weight = 1.;
         
     }; // TPEnergyMultipole0
 

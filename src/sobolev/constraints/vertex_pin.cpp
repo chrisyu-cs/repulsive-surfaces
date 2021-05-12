@@ -6,12 +6,31 @@ namespace rsurfaces
     {
         VertexPinConstraint::VertexPinConstraint(const MeshPtr &mesh, const GeomPtr &geom) {}
 
-        void VertexPinConstraint::pinVertices(const MeshPtr &mesh, const GeomPtr &geom, std::vector<size_t> &indices_)
+        void VertexPinConstraint::pinVertices(const MeshPtr &mesh, const GeomPtr &geom, std::vector<size_t> &pinData)
         {
-            for (size_t i = 0; i < indices_.size(); i++)
+            for (size_t i = 0; i < pinData.size(); i++)
             {
-                indices.push_back(indices_[i]);
-                initPositions.push_back(geom->inputVertexPositions[mesh->vertex(indices_[i])]);
+                indices.push_back(pinData[i]);
+                initPositions.push_back(geom->inputVertexPositions[mesh->vertex(pinData[i])]);
+            }
+        }
+
+        void VertexPinConstraint::pinVertices(const MeshPtr &mesh, const GeomPtr &geom, std::vector<VertexPinData> &pinData)
+        {
+            for (size_t i = 0; i < pinData.size(); i++)
+            {
+                indices.push_back(pinData[i].vertID);
+                initPositions.push_back(geom->inputVertexPositions[mesh->vertex(pinData[i].vertID)]);
+
+                if (pinData[i].iterations == 0)
+                {
+                    offsets.push_back(PinOffset{Vector3{0, 0, 0}, 0});
+                }
+                else
+                {
+                    Vector3 offsetStep = pinData[i].offset / pinData[i].iterations;
+                    offsets.push_back(PinOffset{offsetStep, pinData[i].iterations});
+                }
             }
         }
 
@@ -22,7 +41,6 @@ namespace rsurfaces
                 initPositions[i] = geom->inputVertexPositions[mesh->vertex(indices[i])];
             }
         }
-
 
         void VertexPinConstraint::addTriplets(std::vector<Triplet> &triplets, const MeshPtr &mesh, const GeomPtr &geom, int baseRow)
         {
@@ -69,6 +87,12 @@ namespace rsurfaces
             {
                 GCVertex v_i = mesh->vertex(indices[i]);
                 geom->inputVertexPositions[v_i] = initPositions[i];
+
+                if (offsets[i].numIterations > 0)
+                {
+                    initPositions[i] += offsets[i].offsetStep;
+                    offsets[i].numIterations--;
+                }
             }
         }
 

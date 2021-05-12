@@ -91,6 +91,10 @@ namespace rsurfaces
             {
                 return GradientMethod::Willmore;
             }
+            else if (name == "l2")
+            {
+                return GradientMethod::L2Projected;
+            }
             else
             {
                 throw std::runtime_error("Unknown method name " + name);
@@ -156,19 +160,24 @@ namespace rsurfaces
             else if (parts[0] == "minimize")
             {
                 double weight = 1;
+                double targetValue = 0;
                 if (parts.size() >= 3)
                 {
                     weight = stod(parts[2]);
+                    if (parts.size() >= 4)
+                    {
+                        targetValue = stod(parts[3]);
+                    }
                 }
                 if (parts[1] == "squared_error")
                 {
-                    data.potentials.push_back(PotentialData{PotentialType::SquaredError, weight});
+                    data.potentials.push_back(PotentialData{PotentialType::SquaredError, weight, targetValue});
                     cout << "  * Adding squared error potential (weight " << weight << ")" << endl;
                 }
                 if (parts[1] == "boundary_length")
                 {
-                    data.potentials.push_back(PotentialData{PotentialType::BoundaryLength, weight});
-                    cout << "  * Adding boundary length potential (weight " << weight << ")" << endl;
+                    data.potentials.push_back(PotentialData{PotentialType::BoundaryLength, weight, targetValue});
+                    cout << "  * Adding boundary length potential (weight " << weight << ", target value = " << targetValue << ")" << endl;
                 }
                 if (parts[1] == "boundary_curvature")
                 {
@@ -177,27 +186,27 @@ namespace rsurfaces
                 }
                 else if (parts[1] == "area")
                 {
-                    data.potentials.push_back(PotentialData{PotentialType::Area, weight});
+                    data.potentials.push_back(PotentialData{PotentialType::Area, weight, targetValue});
                     cout << "  * Adding area potential (weight " << weight << ")" << endl;
                 }
                 else if (parts[1] == "volume")
                 {
-                    data.potentials.push_back(PotentialData{PotentialType::Volume, weight});
+                    data.potentials.push_back(PotentialData{PotentialType::Volume, weight, targetValue});
                     cout << "  * Adding volume potential (weight " << weight << ")" << endl;
                 }
                 else if (parts[1] == "area_deviation")
                 {
-                    data.potentials.push_back(PotentialData{PotentialType::SoftAreaConstraint, weight});
+                    data.potentials.push_back(PotentialData{PotentialType::SoftAreaConstraint, weight, targetValue});
                     cout << "  * Adding soft area potential (weight " << weight << ")" << endl;
                 }
                 else if (parts[1] == "volume_deviation")
                 {
-                    data.potentials.push_back(PotentialData{PotentialType::SoftVolumeConstraint, weight});
+                    data.potentials.push_back(PotentialData{PotentialType::SoftVolumeConstraint, weight, targetValue});
                     cout << "  * Adding soft volume potential (weight " << weight << ")" << endl;
                 }
                 else if (parts[1] == "willmore")
                 {
-                    data.potentials.push_back(PotentialData{PotentialType::Willmore, weight});
+                    data.potentials.push_back(PotentialData{PotentialType::Willmore, weight, targetValue});
                     cout << "  * Adding Willmore energy term (weight " << weight << ")" << endl;
                 }
             }
@@ -229,10 +238,37 @@ namespace rsurfaces
                 {
                     std::cout << "WARNING: Vertex pins currently do not work with splits or collapses." << std::endl;
                     std::cout << "Make sure to change the remeshing mode to \"smooth + flip\"." << std::endl;
-                    for (size_t i = 2; i < parts.size(); i++)
+                    size_t i = 2;
+                    bool hasMove = false;
+                    size_t pinsStart = data.vertexPins.size();
+
+                    for (i = 2; i < parts.size(); i++)
                     {
+                        if (parts[i] == "move")
+                        {
+                            hasMove = true;
+                            break;
+                        }
                         size_t pin = stoul(parts[i]);
-                        data.vertexPins.push_back(pin);
+                        data.vertexPins.push_back(VertexPinData{pin, Vector3{0, 0, 0}, 0});
+                    }
+
+                    if (hasMove)
+                    {
+                        double offX = stod(parts[i+1]);
+                        double offY = stod(parts[i+2]); 
+                        double offZ = stod(parts[i+3]); 
+                        size_t iters = stoul(parts[i+4]);
+                        Vector3 pinOff{offX, offY, offZ};
+
+                        std::cout << "Setting offset for pins " << pinsStart << " - " << data.vertexPins.size()
+                            << " to " << pinOff << " over " << iters << " iterations" << std::endl;
+
+                        for (size_t j = pinsStart; j < data.vertexPins.size(); j++)
+                        {
+                            data.vertexPins[j].offset = pinOff;
+                            data.vertexPins[j].iterations = iters;
+                        }
                     }
                 }
 
