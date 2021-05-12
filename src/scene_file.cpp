@@ -231,7 +231,7 @@ namespace rsurfaces
             }
             else if (parts[0] == "constrain")
             {
-                ConstraintData consData{getConstraintType(parts[1]), 1, 0};
+                ConstraintData consData{getConstraintType(parts[1]), 1, 0, 0};
 
                 // Get the list of vertices specified to be pinned
                 if (consData.type == ConstraintType::VertexPins)
@@ -283,12 +283,17 @@ namespace rsurfaces
                     // }
                 }
 
-                else if (parts.size() == 4)
+                else if (parts.size() >= 4)
                 {
                     consData.targetMultiplier = stod(parts[2]);
                     consData.numIterations = stoi(parts[3]);
-                    cout << "  * Adding " << nameOfConstraint(consData.type) << " constraint, growing "
-                         << consData.targetMultiplier << "x over " << consData.numIterations
+                    if (parts.size() >= 5)
+                    {
+                        consData.targetAddition = stod(parts[4]);
+                    }
+
+                    cout << "  * Adding " << nameOfConstraint(consData.type) << " constraint, going to "
+                         << consData.targetMultiplier << "x + " << consData.targetAddition << " over " << consData.numIterations
                          << " iterations" << endl;
                 }
                 else

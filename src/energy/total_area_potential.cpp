@@ -14,7 +14,8 @@ namespace rsurfaces
     // Returns the current value of the energy.
     double TotalAreaPotential::Value()
     {
-        return weight * totalArea(geom, mesh);
+        double a = totalArea(geom, mesh);
+        return weight * a * a;
     }
 
     // Returns the current differential of the energy, stored in the given
@@ -23,6 +24,8 @@ namespace rsurfaces
     void TotalAreaPotential::Differential(Eigen::MatrixXd &output)
     {
         VertexIndices inds = mesh->getVertexIndices();
+        double a = totalArea(geom, mesh);
+
         for (size_t i = 0; i < mesh->nVertices(); i++)
         {
             GCVertex v_i = mesh->vertex(i);
@@ -33,7 +36,7 @@ namespace rsurfaces
             {
                 sumDerivs += SurfaceDerivs::triangleAreaWrtVertex(geom, f, v_i);
             }
-            MatrixUtils::addToRow(output, inds[v_i], weight * sumDerivs);
+            MatrixUtils::addToRow(output, inds[v_i], weight * a * sumDerivs);
         }
     }
 

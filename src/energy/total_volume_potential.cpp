@@ -14,7 +14,8 @@ namespace rsurfaces
     // Returns the current value of the energy.
     double TotalVolumePotential::Value()
     {
-        return weight * totalVolume(geom, mesh);
+        double v = totalVolume(geom, mesh);
+        return weight * v * v;
     }
 
     // Returns the current differential of the energy, stored in the given
@@ -22,13 +23,14 @@ namespace rsurfaces
     // respect to the corresponding vertex.
     void TotalVolumePotential::Differential(Eigen::MatrixXd &output)
     {
+        double v = totalVolume(geom, mesh);
         VertexIndices inds = mesh->getVertexIndices();
         for (size_t i = 0; i < mesh->nVertices(); i++)
         {
             GCVertex v_i = mesh->vertex(i);
-            // Derivative of local volume is just the area weighted normal
-            Vector3 deriv_v = areaWeightedNormal(geom, v_i);
-            MatrixUtils::addToRow(output, inds[v_i], weight * deriv_v);
+            Vector3 deriv_v =  areaWeightedNormal(geom, v_i);
+            // Derivative of V^2 = V * (deriv V) = V * (area normal)
+            MatrixUtils::addToRow(output, inds[v_i], weight * v * deriv_v);
         }
     }
 

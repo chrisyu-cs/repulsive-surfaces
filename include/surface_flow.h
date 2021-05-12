@@ -45,16 +45,16 @@ namespace rsurfaces
         double evaluateEnergy();
 
         template <typename Constraint>
-        Constraint *addSchurConstraint(MeshPtr &mesh, GeomPtr &geom, double multiplier, long iterations)
+        Constraint *addSchurConstraint(MeshPtr &mesh, GeomPtr &geom, double multiplier, long iterations, double add = 0)
         {
             Constraint *c = new Constraint(mesh, geom);
             double stepSize = 0;
             if (iterations > 0)
             {
                 double initVal = c->getTargetValue();
-                double change = multiplier * initVal - initVal;
-                // XXX use this if you want to set the value, rather than a multiplier:
-                // double change = multiplier - initVal;
+                double target = multiplier * initVal + add;
+                double change = target - initVal;
+                std::cout << "Target value for constraint is " << target << " (initial = " << initVal << ")" << std::endl;
                 stepSize = change / iterations;
             }
             schurConstraints.push_back(ConstraintPack{c, stepSize, iterations});

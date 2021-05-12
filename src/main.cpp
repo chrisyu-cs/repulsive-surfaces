@@ -2306,10 +2306,10 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::sce
             flow->addSimpleConstraint<Constraints::BarycenterConstraint3X>(m.mesh, m.geom);
             break;
         case scene::ConstraintType::TotalArea:
-            flow->addSchurConstraint<Constraints::TotalAreaConstraint>(m.mesh, m.geom, data.targetMultiplier, data.numIterations);
+            flow->addSchurConstraint<Constraints::TotalAreaConstraint>(m.mesh, m.geom, data.targetMultiplier, data.numIterations, data.targetAddition);
             break;
         case scene::ConstraintType::TotalVolume:
-            flow->addSchurConstraint<Constraints::TotalVolumeConstraint>(m.mesh, m.geom, data.targetMultiplier, data.numIterations);
+            flow->addSchurConstraint<Constraints::TotalVolumeConstraint>(m.mesh, m.geom, data.targetMultiplier, data.numIterations, data.targetAddition);
             break;
 
         case scene::ConstraintType::BoundaryPins:
@@ -2402,9 +2402,9 @@ rsurfaces::scene::SceneData defaultScene(std::string meshName)
     data.meshName = meshName;
     data.alpha = 6;
     data.beta = 12;
-    data.constraints = std::vector<ConstraintData>({ConstraintData{scene::ConstraintType::Barycenter, 1, 0},
-                                                    ConstraintData{scene::ConstraintType::TotalArea, 1, 0},
-                                                    ConstraintData{scene::ConstraintType::TotalVolume, 1, 0}});
+    data.constraints = std::vector<ConstraintData>({ConstraintData{scene::ConstraintType::Barycenter, 1, 0, 0},
+                                                    ConstraintData{scene::ConstraintType::TotalArea, 1, 0, 0},
+                                                    ConstraintData{scene::ConstraintType::TotalVolume, 1, 0, 0}});
     return data;
 }
 
