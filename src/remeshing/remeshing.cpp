@@ -523,6 +523,21 @@ namespace rsurfaces
             // return flatLength;
         }
 
+        // returns true if at least one of the
+        // edges of f is on the domain boundary
+        bool onBoundary( Face f )
+        {
+           for( Halfedge h : f.adjacentHalfedges() )
+           {
+              if( !h.twin().isInterior() )
+              {
+                 return true;
+              }
+           }
+
+           return false;
+        }
+
         void smoothByCircumcenter(MeshPtr const &mesh, GeomPtr const &geometry)
         {
             geometry->requireFaceAreas();
@@ -537,11 +552,21 @@ namespace rsurfaces
                     //double totalD = 0;
                     for (Face f : v.adjacentFaces())
                     {
-                        // add the circumcenter weighted by face area to the update direction
-                        Vector3 circum = findCircumcenter(geometry, f);
+                        // add the center weighted by face area to the update direction
+                        Vector3 center;
+
+                        if( onBoundary(f) )
+                        {
+                           center = findBarycenter(geometry, f);
+                        }
+                        else
+                        {
+                           center = findCircumcenter(geometry, f);
+                        }
+
                         //double D = 1/findFaceTargetL(mesh, geometry, f, 1, 0.1);
                         //D = D*D;
-                        updateDirection += geometry->faceArea(f) * (circum - geometry->inputVertexPositions[v]);
+                        updateDirection += geometry->faceArea(f) * (center - geometry->inputVertexPositions[v]);
                         //totalD += geometry->faceArea(f) * D;
                     }
                     //std::cerr<<updateDirection<<std::endl;
