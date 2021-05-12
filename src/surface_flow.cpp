@@ -75,7 +75,7 @@ namespace rsurfaces
         AssembleGradients(l2diff);
 
         double initGuess = guessStepSize(l2diff.norm());
-        LineSearch search(mesh, geom, energies);
+        LineSearch search(mesh, geom, energies, maxStepSize);
         search.BacktrackingLineSearch(l2diff, initGuess, 1);
     }
 
@@ -115,7 +115,7 @@ namespace rsurfaces
         MatrixUtils::ColumnIntoMatrix(l2col, l2diff);
 
         double initGuess = guessStepSize(l2diff.norm());
-        LineSearch search(mesh, geom, energies);
+        LineSearch search(mesh, geom, energies, maxStepSize);
         search.BacktrackingLineSearch(l2diff, initGuess, 1);
         
         // Constraint projection
@@ -209,7 +209,7 @@ namespace rsurfaces
         std::cout << "  * Initial step size guess = " << initGuess << std::endl;
 
         // Take the step using line search
-        LineSearch search(mesh, geom, energies);
+        LineSearch search(mesh, geom, energies, maxStepSize);
         search.BacktrackingLineSearch(gradientProj, initGuess, gradDot);
         geom->refreshQuantities();
 
@@ -306,7 +306,7 @@ namespace rsurfaces
         std::cout << "  * Initial step size guess = " << initGuess << std::endl;
 
         // Take the step using line search
-        LineSearch search(mesh, geom, energies);
+        LineSearch search(mesh, geom, energies, maxStepSize);
         double delta = search.BacktrackingLineSearch(gradientProj, initGuess, gradDot);
 
         if (schurConstraints.size() > 0)
@@ -381,7 +381,7 @@ namespace rsurfaces
         std::cout << "  * Initial step size guess = " << initGuess << std::endl;
 
         // Take the step using line search
-        LineSearch search(mesh, geom, energies);
+        LineSearch search(mesh, geom, energies, maxStepSize);
         double delta = search.BacktrackingLineSearch(gradientProj, initGuess, gradDot);
 
         // Constraint projection
@@ -506,7 +506,7 @@ namespace rsurfaces
         double initGuess = guessStepSize(gProjNorm);
         std::cout << "  * Initial step size guess = " << initGuess << std::endl;
         // Take the step using line search
-        LineSearch search(mesh, geom, energies);
+        LineSearch search(mesh, geom, energies, maxStepSize);
         double delta = search.BacktrackingLineSearch(gradientProj, initGuess, gradDot);
 
         // Do corrective constraint projection by reusing the H1 metric
@@ -604,7 +604,7 @@ namespace rsurfaces
         double initGuess = guessStepSize(gProjNorm);
         std::cout << "  * Initial step size guess = " << initGuess << std::endl;
         // Take the step using line search
-        LineSearch search(mesh, geom, energies);
+        LineSearch search(mesh, geom, energies, maxStepSize);
         double delta = search.BacktrackingLineSearch(gradientProj, initGuess, gradDot);
 
         // Make sure pins don't drift
@@ -666,7 +666,7 @@ namespace rsurfaces
         double gradDot = (l2diffvec.dot(lbfgs->direction())) / (gNorm * gProjNorm);
         std::cout << "  * Dot product = " << gradDot << std::endl;
 
-        LineSearch search(mesh, geom, energies);
+        LineSearch search(mesh, geom, energies, maxStepSize);
         // Take the step using line search
         double initGuess = guessStepSize(gProjNorm);
         double delta = search.BacktrackingLineSearch(projected, initGuess, fmax(0, gradDot));
@@ -736,7 +736,7 @@ namespace rsurfaces
         double gradDot = (l2diffvec.dot(lbfgs->direction())) / (gNorm * gProjNorm);
         std::cout << "  * Dot product = " << gradDot << std::endl;
 
-        LineSearch search(mesh, geom, energies);
+        LineSearch search(mesh, geom, energies, maxStepSize);
         // Take the step using line search
         double initGuess = guessStepSize(gProjNorm);
         double delta = search.BacktrackingLineSearch(projected, initGuess, fmax(0, gradDot));
@@ -804,7 +804,7 @@ namespace rsurfaces
         double gradDot = (l2diff.transpose() * gradientProj).trace() / (gNorm * gProjNorm);
         double initGuess = guessStepSize(gProjNorm);
         std::cout << "  * Initial step size guess = " << initGuess << std::endl;
-        LineSearch search(mesh, geom, energies);
+        LineSearch search(mesh, geom, energies, maxStepSize);
         double delta = search.BacktrackingLineSearch(gradientProj, initGuess, gradDot);
 
         // Do corrective constraint projection by reusing the metric

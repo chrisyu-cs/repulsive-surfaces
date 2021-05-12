@@ -5,8 +5,8 @@
 
 namespace rsurfaces
 {
-    LineSearch::LineSearch(MeshPtr mesh_, GeomPtr geom_, std::vector<SurfaceEnergy*> energies_)
-    : energies(energies_)
+    LineSearch::LineSearch(MeshPtr mesh_, GeomPtr geom_, std::vector<SurfaceEnergy*> energies_, double maxStep_)
+    : energies(energies_), maxStep(maxStep_)
     {
         mesh = mesh_;
         geom = geom_;
@@ -113,6 +113,15 @@ namespace rsurfaces
                 std::cout << "  * Energy: " << initialEnergy << " -> " << nextEnergy << std::endl;
                 break;
             }
+        }
+
+        // If the best step is bigger than a maximum step requested by the user,
+        // take only the maximum requested step.
+        if( maxStep > 0. && delta > maxStep )
+        {
+           delta = maxStep;
+           double signedStep = (negativeIsForward) ? -delta : delta;
+           SetGradientStep(gradient, signedStep);
         }
 
         if (delta <= LS_STEP_THRESHOLD)

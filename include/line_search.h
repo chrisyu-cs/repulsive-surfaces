@@ -28,7 +28,7 @@ namespace rsurfaces
     class LineSearch
     {
         public:
-        LineSearch(MeshPtr mesh_, GeomPtr geom_, std::vector<SurfaceEnergy*> energies_);
+        LineSearch(MeshPtr mesh_, GeomPtr geom_, std::vector<SurfaceEnergy*> energies_, double maxStep_=-1.);
         double BacktrackingLineSearch(Eigen::MatrixXd &gradient, double initGuess, double gradDot, bool negativeIsForward = true);
         
         private:
@@ -36,6 +36,7 @@ namespace rsurfaces
         GeomPtr geom;
         std::vector<SurfaceEnergy*> energies;
         Eigen::MatrixXd origPositions;
+        double maxStep;
 
         void SaveCurrentPositions();
         void RestorePositions();

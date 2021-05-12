@@ -1917,6 +1917,8 @@ bool uiNormalizeView = false;
 bool remesh = true;
 bool changeTopo = false;
 bool areaRatios = false;
+bool limitStep = false;
+float maxStep = -1.;
 
 int partIndex = 4475;
 
@@ -2037,6 +2039,11 @@ void customCallback()
         rsurfaces::MainApp::instance->updateMeshPositions();
     }
     ImGui::PopItemWidth();
+
+    ImGui::Checkbox("Limit step size", &limitStep);
+    ImGui::SliderFloat( "Max step size", &maxStep, 0.001, 0.1 );
+    rsurfaces::MainApp::instance->flow->maxStepSize = limitStep ? maxStep : -1.;
+
     if (ImGui::Button("Take 1 step", ImVec2{ITEM_WIDTH, 0}) || run)
     {
         MainApp::instance->TakeOptimizationStep(remesh, areaRatios);

@@ -99,6 +99,10 @@ namespace rsurfaces
         bool verticesMutated;
         bool disableNearField;
 
+        // if this value is positive, the flow will not
+        // take steps larger than the given value
+        double maxStepSize = -1.;
+
     private:
         std::vector<SurfaceEnergy *> energies;
         MeshPtr mesh;
