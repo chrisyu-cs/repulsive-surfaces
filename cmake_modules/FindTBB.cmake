@@ -61,7 +61,7 @@ FIND_PATH (TBB_ROOT_DIR
         ENV TBB22_INSTALL_DIR
         ENV TBB21_INSTALL_DIR
         ENV TBB_ROOT_DIR
-        /opt/intel/oneapi/tbb/latest/include
+        /opt/intel/oneapi/tbb/latest
         /opt/intel/tbb
   DOC "TBB root directory")
 
