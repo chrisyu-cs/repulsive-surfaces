@@ -194,7 +194,7 @@ find_package(OpenMP REQUIRED)
 set(MKL_THREAD_LAYER "Intel OpenMP" CACHE STRING "The thread layer to choose for MKL")
 find_package(MKL REQUIRED)
 find_package(TBB REQUIRED)
-FIND_PACKAGE( Boost 1.70 COMPONENTS program_options filesystem REQUIRED )
+FIND_PACKAGE( Boost 1.40 COMPONENTS program_options filesystem REQUIRED )
 
 if(MKL_Shared_FOUND)
     print_target_properties(MKL::Shared)
