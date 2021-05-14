@@ -2003,7 +2003,7 @@ void customCallback()
 
     const remeshing::FlippingMode fModes[] = {remeshing::FlippingMode::Delaunay,
                                               remeshing::FlippingMode::Degree};
-
+    
     selectFromDropdown("Remeshing mode", rModes, IM_ARRAYSIZE(rModes), MainApp::instance->remesher.remeshingMode);
     selectFromDropdown("Smoothing mode", sModes, IM_ARRAYSIZE(sModes), MainApp::instance->remesher.smoothingMode);
     selectFromDropdown("Flipping mode", fModes, IM_ARRAYSIZE(fModes), MainApp::instance->remesher.flippingMode);

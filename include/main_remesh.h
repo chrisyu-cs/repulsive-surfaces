@@ -4,8 +4,6 @@
 #include "geometrycentral/surface/meshio.h"
 #include "geometrycentral/surface/vertex_position_geometry.h"
 
-//#include <boost/program_options.hpp>
-//namespace po = boost::program_options;
 #include "../deps/polyscope/deps/args/args/args.hxx"
 
 #include <omp.h>
@@ -30,13 +28,13 @@
 #include "bct_constructors.h"
 
 #include "helpers.h"
-#include "obj_writer.h"
 
 #include "energy/all_energies.h"
 
 #include "consistency_helpers.h"
 
+
 namespace rsurfaces
 {
- 
+    
 } // namespace rsurfaces
