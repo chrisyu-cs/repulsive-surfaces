@@ -50,7 +50,7 @@ struct ConsistencyTest
     
     void process()
     {
-            outfile << "***" << "\t" <<  title << std::endl;
+            outfile << "***" << "\t" <<  title << "\t" << true_energy_value << std::endl;
             outfile
                 << "Max edge length" << "\t"
                 << "theta" << "\t"
@@ -195,19 +195,19 @@ int main(int arg_count, char* arg_vec[])
             ss >> token;
             if (token == "\"TrueEnergyValue\"") {
                 ss >> test.true_energy_value;
-                std::cout << token << " = " << test.true_energy_value << std::endl;
+//                std::cout << token << " = " << test.true_energy_value << std::endl;
             } else if (token == "\"MaxEdgeLength\"") {
                 ss >> test.max_edge_length;
-                std::cout << token << " = " << test.max_edge_length << std::endl;
+//                std::cout << token << " = " << test.max_edge_length << std::endl;
             } else if (token == "\"MeanEdgeLength\"") {
                 ss >> test.mean_edge_length;
-                std::cout << token << " = " << test.mean_edge_length << std::endl;
+//                std::cout << token << " = " << test.mean_edge_length << std::endl;
             } else if (token == "\"MedianEdgeLength\"") {
                 ss >> test.median_edge_length;
-                std::cout << token << " = " << test.median_edge_length << std::endl;
+//                std::cout << token << " = " << test.median_edge_length << std::endl;
             } else if (token == "\"TriangleCount\"") {
                 ss >> test.triangle_count;
-                std::cout << token << " = " << test.triangle_count << std::endl;
+//                std::cout << token << " = " << test.triangle_count << std::endl;
             }
         }
         in.close();
