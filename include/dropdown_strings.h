@@ -49,6 +49,8 @@ namespace rsurfaces
         {
         case remeshing::RemeshingMode::FlipOnly:
             return "Flip only";
+        case remeshing::RemeshingMode::SmoothOnly:
+            return "Smooth only";
         case remeshing::RemeshingMode::SmoothAndFlip:
             return "Smooth + flip";
         case remeshing::RemeshingMode::SmoothFlipAndCollapse:

@@ -1750,6 +1750,15 @@ namespace rsurfaces
             implSurface = new ImplicitSphere(radius, center);
         }
         break;
+        case scene::ImplicitType::Cylinder:
+        {
+            double radius = barrierData.parameters[0];
+            Vector3 center{barrierData.parameters[1], barrierData.parameters[2], barrierData.parameters[3]};
+            Vector3 axis{barrierData.parameters[4], barrierData.parameters[5], barrierData.parameters[6]};
+            std::cout << "Constructing implicit cylinder with radius " << radius << ", center " << center << ", axis " << axis << std::endl;
+            implSurface = new ImplicitCylinder(radius, center, axis);
+        }
+        break;
         default:
         {
             throw std::runtime_error("Unimplemented implicit surface type.");
@@ -2013,6 +2022,7 @@ void customCallback()
     ImGui::Checkbox("Dynamic remeshing", &remesh);
 
     const remeshing::RemeshingMode rModes[] = {remeshing::RemeshingMode::FlipOnly,
+                                               remeshing::RemeshingMode::SmoothOnly,
                                                remeshing::RemeshingMode::SmoothAndFlip,
                                                remeshing::RemeshingMode::SmoothFlipAndCollapse};
 
@@ -2182,6 +2192,10 @@ MeshAndEnergy initTPEOnMesh(std::string meshFile, double alpha, double beta)
                                                                     u_geometry->inputVertexPositions, u_mesh->getFaceVertexList(),
                                                                     polyscopePermutations(*u_mesh));
 
+    psMesh->setSurfaceColor( glm::vec3( 222/255., 192/255., 130/255. ) );
+    psMesh->setEdgeColor( glm::vec3( 156/255., 133/255., 84/255. ) );
+    psMesh->setEdgeWidth( 1.5 );
+    psMesh->setSmoothShade( true );
     MeshPtr meshShared = std::move(u_mesh);
     GeomPtr geomShared = std::move(u_geometry);
     UVDataPtr uvShared = std::move(uvs);
