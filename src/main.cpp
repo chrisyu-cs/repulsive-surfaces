@@ -2128,64 +2128,6 @@ void customCallback()
         MainApp::instance->reregisterMesh();
     }
     ImGui::EndGroup();
-
-    // testing stuff
-
-    ImGui::Text("Testing stuff");
-
-    ImGui::BeginGroup();
-    ImGui::InputInt("partIndex", &partIndex);
-    if (ImGui::Button("Test collapse edge"))
-    {
-        remeshing::testCollapseEdge(MainApp::instance->mesh, MainApp::instance->geom, partIndex);
-        MainApp::instance->reregisterMesh();
-    }
-    if (ImGui::Button("Test stuff"))
-    {
-        remeshing::testStuff(MainApp::instance->mesh, MainApp::instance->geom, partIndex);
-        //      MainApp::instance->mesh->validateConnectivity();
-        //      MainApp::instance->mesh->compress();
-        MainApp::instance->reregisterMesh();
-    }
-
-    if (ImGui::Button("Test stuff 2"))
-    {
-        remeshing::testStuff2(MainApp::instance->mesh, MainApp::instance->geom, MainApp::instance->geomOrig);
-        MainApp::instance->reregisterMesh();
-    }
-
-    if (ImGui::Button("Show Vertex"))
-    {
-        remeshing::showEdge(MainApp::instance->mesh, MainApp::instance->geom, partIndex);
-        MainApp::instance->reregisterMesh();
-    }
-    if (ImGui::Button("Validate"))
-    {
-        MainApp::instance->mesh->validateConnectivity();
-    }
-
-    if (ImGui::Button("Test vertex"))
-    {
-        remeshing::testVertex(MainApp::instance->mesh, MainApp::instance->geom, partIndex);
-        //      MainApp::instance->mesh->validateConnectivity();
-        //      MainApp::instance->mesh->compress();
-        MainApp::instance->reregisterMesh();
-    }
-    if (ImGui::Button("Test edge"))
-    {
-        remeshing::testEdge(MainApp::instance->mesh, MainApp::instance->geom, partIndex);
-        //      MainApp::instance->mesh->validateConnectivity();
-        //      MainApp::instance->mesh->compress();
-        MainApp::instance->reregisterMesh();
-    }
-    if (ImGui::Button("Test face"))
-    {
-        remeshing::testFace(MainApp::instance->mesh, MainApp::instance->geom, partIndex);
-        //      MainApp::instance->mesh->validateConnectivity();
-        //      MainApp::instance->mesh->compress();
-        MainApp::instance->reregisterMesh();
-    }
-    ImGui::EndGroup();
 }
 
 struct MeshAndEnergy

@@ -64,6 +64,15 @@ will add the term 1000 * (mesh total area) to the objective.
 
 ==============================================================================
 
+Add obstacles:
+
+	obstacle <obstacle mesh OBJ> [weight]
+
+Adds a mesh as a static obstacle, exerting a repulsive potential on
+the optimization mesh without moving on its own.
+
+==============================================================================
+
 Implicit barriers:
 
 	implicit <surface name> <repel | attract> <power> <weight> <specific parameters>
@@ -125,3 +134,10 @@ tangent-point energy with Willmore energy and use H2 flow.
 Logs the performance of the method, with per-iteration runtimes and energy
 values dumped line-by-line to the specified CSV file. The path is also
 relative to the scene file.
+
+	autotarget_volume [number]
+
+If a volume constraint with growth/shrinkage is being used, AND a mesh
+obstacle has been registered, then this replaces the target volume of
+the constraint with (number * volume(obstacle)).
+ 
