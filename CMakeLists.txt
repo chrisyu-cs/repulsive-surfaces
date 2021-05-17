@@ -178,8 +178,8 @@ set(SRCS1
   src/main.cpp
 )
 
-set(SRCS2
-  src/main2.cpp
+set(runtest_SRCS
+  src/main_runtest.cpp
 )
 
 set(consistency_SRCS
@@ -260,7 +260,7 @@ target_include_directories(rsurf PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/libgmu
 add_executable( rsurfaces "${SRCS1}" )
 target_link_libraries( rsurfaces rsurf )
     
-add_executable( runtest "${SRCS2}" )
+add_executable( runtest "${runtest_SRCS}" )
 target_link_libraries( runtest rsurf )
 
 add_executable( consistency "${consistency_SRCS}" )

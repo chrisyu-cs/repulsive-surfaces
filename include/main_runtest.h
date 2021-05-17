@@ -62,8 +62,10 @@ namespace rsurfaces
         MeshPtr mesh1;
         GeomPtr geom1;
         
-        std::shared_ptr<TPPointCloudObstacleBarnesHut0> tp_o_pc;
-        std::shared_ptr<TPPointNormalCloudObstacleBarnesHut0> tp_o_pnc;
+//        std::shared_ptr<TPEnergyBarnesHut0> tp_e;
+//        std::shared_ptr<TPObstacleBarnesHut0> tp_o;
+//        std::shared_ptr<TPPointCloudObstacleBarnesHut0> tp_o_pc;
+//        std::shared_ptr<TPPointNormalCloudObstacleBarnesHut0> tp_o_pnc;
         
         Eigen::MatrixXd U;
         Eigen::MatrixXd V;
@@ -944,6 +946,186 @@ namespace rsurfaces
             valprint("bct->S->buffer_size",bct->S->buffer_dim);
             
             ptoc("TestBatch");
+        }
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        void TestDerivatives()
+        {
+            //        OptimizedClusterTree *bvh1 = CreateOptimizedBVH(mesh1, geom1);
+            
+            auto tp_e = std::make_shared<TPEnergyBarnesHut0>(mesh1, geom1, alpha, beta, theta, weight);
+
+            tp_e->GetBVH()->settings.tree_perc_alg = tree_perc_alg;
+            
+            MeshUPtr u_o_mesh;
+            GeomUPtr u_o_geom;
+            std::tie(u_o_mesh, u_o_geom) = readMesh("../scenes/LungGrowing/sphere.obj");
+            MeshPtr o_mesh = std::move(u_o_mesh);
+            GeomPtr o_geom = std::move(u_o_geom);
+            
+            mint n = o_mesh->nFaces();
+            o_geom->requireFaceNormals();
+            o_geom->requireFaceAreas();
+            FaceIndices fInds = o_mesh->getFaceIndices();
+            VertexIndices vInds = o_mesh->getVertexIndices();
+            
+            Eigen::MatrixXd pt_coords(n, 3);
+            Eigen::MatrixXd pt_normals(n, 3);
+            Eigen::VectorXd pt_weights(n);
+
+
+            mreal athird = 1./3.;
+            for (auto face : o_mesh->faces())
+            {
+                int i = fInds[face];
+                GCHalfedge he = face.halfedge();
+                int i0 = vInds[he.vertex()];
+                int i1 = vInds[he.next().vertex()];
+                int i2 = vInds[he.next().next().vertex()];
+                Vector3 p1 = o_geom->inputVertexPositions[i0];
+                Vector3 p2 = o_geom->inputVertexPositions[i1];
+                Vector3 p3 = o_geom->inputVertexPositions[i2];
+                pt_weights(i) = o_geom->faceAreas[face];
+                pt_coords( i, 0) = athird * (p1.x + p2.x + p3.x);
+                pt_coords( i, 1) = athird * (p1.y + p2.y + p3.y);
+                pt_coords( i, 2) = athird * (p1.z + p2.z + p3.z);
+                pt_normals(i,0) = o_geom->faceNormals[face].x;
+                pt_normals(i,1) = o_geom->faceNormals[face].y;
+                pt_normals(i,2) = o_geom->faceNormals[face].z;
+            }
+            
+            
+            auto tp_o = std::make_shared<TPObstacleBarnesHut0>(mesh1, geom1, tp_e.get(), o_mesh, o_geom, alpha, beta, theta, weight);
+            
+            auto tp_o_pc = std::make_shared<TPPointCloudObstacleBarnesHut0>(mesh1, geom1, tp_e.get(), pt_weights, pt_coords, alpha, beta, theta, weight);
+
+            mint vertex_count1 = mesh1->nVertices();
+            std::default_random_engine re{static_cast<unsigned int>(time(0))};
+            std::uniform_real_distribution<double> unif(-1.,1.);
+//            std::default_random_engine re;
+
+            auto V = Eigen::MatrixXd(vertex_count1, 3);
+            for( mint i = 0; i < vertex_count1; ++i )
+            {
+                V(i,0) = unif(re);
+                V(i,1) = unif(re);
+                V(i,2) = unif(re);
+            }
+            
+            mreal E_11 = tp_e->Value();
+            auto DE_11 = Eigen::MatrixXd(vertex_count1, 3);
+            tp_e->Differential(DE_11);
+            
+            mreal E_12 = tp_o->Value();
+            auto DE_12 = Eigen::MatrixXd(vertex_count1, 3);
+            DE_12.setZero();
+            tp_o->Differential(DE_12);
+            
+            mreal E_12_pc = tp_o_pc->Value();
+            auto DE_12_pc = Eigen::MatrixXd(vertex_count1, 3);
+            DE_12_pc.setZero();
+            tp_o_pc->Differential(DE_12_pc);
+            
+            
+            mreal slope_e = (V.transpose()*DE_11).trace();
+            mreal slope_o = (V.transpose()*DE_12).trace();
+            mreal slope_o_pc = (V.transpose()*DE_12_pc).trace();
+            
+//            valprint("TPEnergyBarnesHut0", tp_e->Value() );
+//            valprint("TPObstacleBarnesHut0", tp_o->Value() );
+//            valprint("TPPointCloudObstacleBarnesHut0", tp_o_pc->Value() );
+            
+            
+            GeomPtr geom0 = geom1->copy();
+            geom0->requireVertexPositions();
+            geom0->requireVertexNormals();
+
+            int w = 32;
+            std::cout << std::endl;
+            std::cout << "Derivative test. The follow table shows expected rates of convergence. Ideally, each entry is close to 2." << std::endl;
+            std::cout << std::endl;
+            std::cout << std::setw(w) << "TPEnergyBarnesHut0" << " " << std::setw(w) << "TPObstacleBarnesHut0" << " " << std::setw(w) << "TPPointCloudObstacleBarnesHut0" << std::endl;
+            mreal t = 1.;
+            
+            mreal new_e;
+            mreal new_o;
+            mreal new_o_pc;
+            
+            mreal old_e = 0.;
+            mreal old_o = 0.;
+            mreal old_o_pc = 0.;
+            
+            for( mint k = 0; k<10; ++k)
+            {
+                t *= 0.1;
+                
+                old_e = new_e;
+                old_o = new_o;
+                old_o_pc = new_o_pc;
+                
+                surface::VertexData<size_t> indices = mesh1->getVertexIndices();
+                for (GCVertex v : mesh1->vertices())
+                {
+                    size_t ind_v = indices[v];
+                    geom1->inputVertexPositions[v][0] = geom0->inputVertexPositions[v][0] + t * V(ind_v,0);
+                    geom1->inputVertexPositions[v][1] = geom0->inputVertexPositions[v][1] + t * V(ind_v,1);
+                    geom1->inputVertexPositions[v][2] = geom0->inputVertexPositions[v][2] + t * V(ind_v,2);
+                }
+                geom1->refreshQuantities();
+                
+                tp_e->Update();
+                tp_o->Update();
+                tp_o_pc->Update();
+                
+                new_e = std::log10(std::abs(tp_e->Value() - E_11 - t * slope_e));
+                new_o = std::log10(std::abs(tp_o->Value() - E_12 - t * slope_o));
+                new_o_pc = std::log10(std::abs(tp_o_pc->Value() - E_12_pc - t * slope_o_pc));
+                
+                if( k > 0)
+                {
+                std::cout   << std::setw(w) << old_e - new_e << " "
+                            << std::setw(w) << old_o - new_o << " "
+                            << std::setw(w) << old_o_pc - new_o_pc << std::endl;
+                }
+                
+            }
+            
+            
+//            std::shared_ptr<OptimizedBlockClusterTree> bct11;
+//
+//            print("Multiply MKL CSR");
+//            ptic("Multiply MKL CSR");
+//
+//            BCTSettings settings;
+//
+//            settings.mult_alg = NearFieldMultiplicationAlgorithm::MKL_CSR;
+//            bct11 = std::make_shared<OptimizedBlockClusterTree>(tp_e->GetBVH(), tp_e->GetBVH(), alpha, beta, chi, weight, settings);
+//            for( mint k = 0; k < 20; ++k)
+//            {
+//                ptic("Multiply Fractional");
+//                bct11->Multiply(V,U,BCTKernelType::FractionalOnly);
+//                ptoc("Multiply Fractional");
+//
+//                ptic("Multiply HighOrder");
+//                bct11->Multiply(V,U,BCTKernelType::HighOrder);
+//                ptoc("Multiply HighOrder");
+//
+//                ptic("Multiply LowOrder");
+//                bct11->Multiply(V,U,BCTKernelType::LowOrder);
+//                ptoc("Multiply LowOrder");
+//            }
+//            ptoc("Multiply MKL CSR");
         }
         
     }; // Benchmarker

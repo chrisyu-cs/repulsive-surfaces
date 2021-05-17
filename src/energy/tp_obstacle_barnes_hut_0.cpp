@@ -14,7 +14,6 @@ namespace rsurfaces
         mint nthreads = bvh->thread_count;
         
         mreal sum = 0.;
-
         {
             auto S = bvh;
             auto T = o_bvh;
@@ -182,7 +181,8 @@ namespace rsurfaces
                 sum += local_sum;
             }
         }
-
+        
+        if( two_sided )
         {
             auto S = o_bvh;
             auto T = bvh;
@@ -607,6 +607,7 @@ namespace rsurfaces
             }
         }
 
+        if( two_sided )
         {
             auto S = o_bvh;
             auto T = bvh;
@@ -844,7 +845,7 @@ namespace rsurfaces
         ptic("TPObstacleBarnesHut0::Value");
         
         mreal value = 0.;
-        
+
         bvh = bvhSharedFrom->GetBVH();
         if (!bvh)
         {
@@ -862,9 +863,9 @@ namespace rsurfaces
             mreal real_betahalf = beta / 2;
             value = weight * Energy(real_alpha, real_betahalf);
         }
-        
+
         ptoc("TPObstacleBarnesHut0::Value");
-        
+
         return value;
     } // Value
 

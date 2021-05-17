@@ -29,7 +29,7 @@ namespace rsurfaces
                 eprint("TPPointCloudObstacleBarnesHut0: Number of positions vectors and number of weights does not coincide. Aborting.");
                 return;
             }
-
+            
             mint primitive_count = pt_positions.rows();
             mint dim = 3;
             mint primitive_length = 1;
@@ -45,7 +45,7 @@ namespace rsurfaces
                 P_far[ far_dim * i + 2] = pt_positions(i,1);
                 P_far[ far_dim * i + 3] = pt_positions(i,2);
             }
-
+            
             mreal * P_near = nullptr;
             mreal * P_coords = nullptr;
             mint near_dim = bvhSharedFrom->GetBVH()->near_dim;
@@ -59,7 +59,7 @@ namespace rsurfaces
                 P_near[ near_dim * i + 2] = P_coords[ dim * i + 1] = pt_positions(i,1);
                 P_near[ near_dim * i + 3] = P_coords[ dim * i + 2] = pt_positions(i,2);
             }
-
+            
             mint * idx = nullptr;
             mint * idxdim = nullptr;
             mreal * ones = nullptr;
@@ -97,7 +97,7 @@ namespace rsurfaces
                 DiffOp,            // the first-order differential operator belonging to the hi order term of the metric
                 AvOp               // the zeroth-order differential operator belonging to the lo order term of the metric
             );
-            
+
             safe_free( P_far );
             safe_free( P_near );
             safe_free( P_coords );
@@ -114,7 +114,7 @@ namespace rsurfaces
 
             mreal intpart;
             use_int = (std::modf(alpha, &intpart) == 0.0) && (std::modf(beta / 2, &intpart) == 0.0);
-            
+
             Update();
         }
 
@@ -138,11 +138,11 @@ namespace rsurfaces
         // involve building a new BVH for Barnes-Hut energies, for instance.
         virtual void Update();
 
-        // Get the mesh associated with this energy.
-        virtual MeshPtr GetMesh();
+//        // Get the mesh associated with this energy.
+//        virtual MeshPtr GetMesh();
 
-        // Get the geometry associated with this geometry.
-        virtual GeomPtr GetGeom();
+//        // Get the geometry associated with this geometry.
+//        virtual GeomPtr GetGeom();
 
         // Get the exponents of this energy; only applies to tangent-point energies.
         virtual Vector2 GetExponents();

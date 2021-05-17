@@ -1,4 +1,4 @@
-#include "main2.h"
+#include "main_runtest.h"
 
 using namespace rsurfaces;
 using namespace geometrycentral;
@@ -165,13 +165,16 @@ int main(int arg_count, char* arg_vec[])
     
     BM.Prepare();
 
+    BM.TestDerivatives();
+    
+    
     
 //    BM.TestMultiply();
 //    BM.TestMKLOptimize();
 //    BM.TestVBSR();
 //    BM.TestHybrid();
 
-    BM.TestBatch();
+//    BM.TestBatch();
 
 //    BM.TestPrePost();
     

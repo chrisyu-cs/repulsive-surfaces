@@ -80,8 +80,8 @@ namespace rsurfaces
                 
                 mreal h2 = std::max(r2l, C_r2[C]);
                 
-                mreal R2 = SquaredBoxMinDistance( xmin1,      xmin2,      xmin3,      xmax1,      xmax2,      xmax3,
-                                                  C_ymin1[C], C_ymin2[C], C_ymin3[C], C_ymax1[C], C_ymax2[C], C_ymax3[C]);
+                mreal R2 = SquaredBoxMinDistance( xmin1,     xmin2,     xmin3,     xmax1,     xmax2,     xmax3,
+                                                  C_min1[C], C_min2[C], C_min3[C], C_max1[C], C_max2[C], C_max3[C]);
 
                 if( h2 < theta2 * R2 )
                 {
@@ -262,8 +262,8 @@ namespace rsurfaces
                 
                 mreal h2 = std::max(r2l, C_r2[C]);
                 
-                mreal R2 = SquaredBoxMinDistance( xmin1,      xmin2,      xmin3,      xmax1,      xmax2,      xmax3,
-                                                  C_ymin1[C], C_ymin2[C], C_ymin3[C], C_ymax1[C], C_ymax2[C], C_ymax3[C]);
+                mreal R2 = SquaredBoxMinDistance( xmin1,     xmin2,     xmin3,     xmax1,     xmax2,     xmax3,
+                                                  C_min1[C], C_min2[C], C_min3[C], C_max1[C], C_max2[C], C_max3[C]);
 
                 if( h2 < theta2 * R2 )
                 {

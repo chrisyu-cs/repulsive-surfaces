@@ -16,7 +16,7 @@ namespace rsurfaces
     {
     public:
         TPObstacleBarnesHut0(MeshPtr mesh_, GeomPtr geom_, SurfaceEnergy *bvhSharedFrom_, MeshPtr &obsMesh, GeomPtr &obsGeom,
-                             mreal alpha_, mreal beta_, mreal theta_, mreal weight_ = 1.)
+                             mreal alpha_, mreal beta_, mreal theta_, mreal weight_ = 1., bool two_sided_ = true )
         {
             mesh = mesh_;
             geom = geom_;
@@ -27,9 +27,15 @@ namespace rsurfaces
             beta = beta_;
             theta = theta_;
             weight = weight_;
-
+            two_sided = two_sided_;
+            
             mreal intpart;
             use_int = (std::modf(alpha, &intpart) == 0.0) && (std::modf(beta / 2, &intpart) == 0.0);
+            
+            if(!two_sided)
+            {
+                wprint(" in TPObstacleBarnesHut0: two_sided == false");
+            }
             
             Update();
         }
@@ -72,6 +78,8 @@ namespace rsurfaces
         mreal beta = 12.;
         mreal weight = 1.;
         mreal theta = 0.5;
+        
+        bool two_sided = true;
 
         SurfaceEnergy * bvhSharedFrom;
         OptimizedClusterTree * bvh = nullptr;
