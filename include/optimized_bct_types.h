@@ -1057,8 +1057,6 @@ namespace rsurfaces
     // The cost of the k-th thread goes from job no job_ptr[k] to job no job_ptr[k+1] (as always in C/C++, job_ptr[k+1] points _after_ the last job.
     void BalanceWorkLoad( mint job_count, mint * job_acc_costs, mint thread_count, mint * & job_ptr );
     
-    
-    
     enum class TreePercolationAlgorithm
     {
         Tasks,
@@ -1074,5 +1072,20 @@ namespace rsurfaces
         VBSR
     };
     
+    #pragma omp declare simd
+    inline mreal SquaredBoxMinDistance( mreal xmin1, mreal xmin2, mreal xmin3, mreal xmax1, mreal xmax2, mreal xmax3,
+                                        mreal ymin1, mreal ymin2, mreal ymin3, mreal ymax1, mreal ymax2, mreal ymax3  )
+    {
+        // Compute squared distance between boxes.
+        // Inpired by https://gamedev.stackexchange.com/questions/154036/efficient-minimum-distance-between-two-axis-aligned-squares
+
+        mreal d1 = mymax(0., mymax(xmin1, ymin1) - mymin(xmax1, ymax1));
+        mreal d2 = mymax(0., mymax(xmin2, ymin2) - mymin(xmax2, ymax2));
+        mreal d3 = mymax(0., mymax(xmin3, ymin3) - mymin(xmax3, ymax3));
+
+        return d1 * d1 + d2 * d2 + d3 * d3;
+    }
+    
 } // namespace rsurfaces
+
 

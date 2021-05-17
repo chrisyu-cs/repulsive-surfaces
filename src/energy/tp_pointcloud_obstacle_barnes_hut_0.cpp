@@ -99,23 +99,9 @@ namespace rsurfaces
                 stack->pop_back();
 
                 mreal h2 = std::max(r2l, C_yr2[C]);
-
-                // Compute squared distance between bounding boxes.
-                // Inpired by https://gamedev.stackexchange.com/questions/154036/efficient-minimum-distance-between-two-axis-aligned-squares
-
-                mreal ymin1 = C_ymin1[C];
-                mreal ymin2 = C_ymin2[C];
-                mreal ymin3 = C_ymin3[C];
-
-                mreal ymax1 = C_ymax1[C];
-                mreal ymax2 = C_ymax2[C];
-                mreal ymax3 = C_ymax3[C];
-
-                mreal d1 = mymax(0., mymax(xmin1, ymin1) - mymin(xmax1, ymax1));
-                mreal d2 = mymax(0., mymax(xmin2, ymin2) - mymin(xmax2, ymax2));
-                mreal d3 = mymax(0., mymax(xmin3, ymin3) - mymin(xmax3, ymax3));
-
-                mreal R2 = d1 * d1 + d2 * d2 + d3 * d3;
+                
+                mreal R2 = SquaredBoxMinDistance( xmin1,      xmin2,      xmin3,      xmax1,      xmax2,      xmax3,
+                                                  C_ymin1[C], C_ymin2[C], C_ymin3[C], C_ymax1[C], C_ymax2[C], C_ymax3[C]);
 
                 if (h2 < theta2 * R2)
                 {
@@ -299,23 +285,9 @@ namespace rsurfaces
                 stack->pop_back();
 
                 mreal h2 = std::max(r2l, C_yr2[C]);
-
-                // Compute squared distance between bounding boxes.
-                // Inpired by https://gamedev.stackexchange.com/questions/154036/efficient-minimum-distance-between-two-axis-aligned-squares
-
-                mreal ymin1 = C_ymin1[C];
-                mreal ymin2 = C_ymin2[C];
-                mreal ymin3 = C_ymin3[C];
-
-                mreal ymax1 = C_ymax1[C];
-                mreal ymax2 = C_ymax2[C];
-                mreal ymax3 = C_ymax3[C];
-
-                mreal d1 = mymax(0., mymax(xmin1, ymin1) - mymin(xmax1, ymax1));
-                mreal d2 = mymax(0., mymax(xmin2, ymin2) - mymin(xmax2, ymax2));
-                mreal d3 = mymax(0., mymax(xmin3, ymin3) - mymin(xmax3, ymax3));
-
-                mreal R2 = d1 * d1 + d2 * d2 + d3 * d3;
+                
+                mreal R2 = SquaredBoxMinDistance( xmin1,      xmin2,      xmin3,      xmax1,      xmax2,      xmax3,
+                                                  C_ymin1[C], C_ymin2[C], C_ymin3[C], C_ymax1[C], C_ymax2[C], C_ymax3[C]);
 
                 if (h2 < theta2 * R2)
                 {

@@ -83,22 +83,8 @@ namespace rsurfaces
                 
                 mreal h2 = std::max(r2l, C_r2[C]);
                 
-                // Compute squared distance between bounding boxes.
-                // Inpired by https://gamedev.stackexchange.com/questions/154036/efficient-minimum-distance-between-two-axis-aligned-squares
-                
-                mreal ymin1 = C_min1[C];
-                mreal ymin2 = C_min2[C];
-                mreal ymin3 = C_min3[C];
-                
-                mreal ymax1 = C_max1[C];
-                mreal ymax2 = C_max2[C];
-                mreal ymax3 = C_max3[C];
-                
-                mreal d1 = mymax( 0., mymax(xmin1, ymin1) - mymin(xmax1, ymax1) );
-                mreal d2 = mymax( 0., mymax(xmin2, ymin2) - mymin(xmax2, ymax2) );
-                mreal d3 = mymax( 0., mymax(xmin3, ymin3) - mymin(xmax3, ymax3) );
-                
-                mreal R2 = d1 * d1 + d2 * d2 + d3 * d3;
+                mreal R2 = SquaredBoxMinDistance( xmin1,      xmin2,      xmin3,      xmax1,      xmax2,      xmax3,
+                                                  C_ymin1[C], C_ymin2[C], C_ymin3[C], C_ymax1[C], C_ymax2[C], C_ymax3[C]);
 
                 if( h2 < theta2 * R2 )
                 {
@@ -277,22 +263,8 @@ namespace rsurfaces
                 
                 mreal h2 = std::max(r2l, C_r2[C]);
                 
-                // Compute squared distance between bounding boxes.
-                // Inpired by https://gamedev.stackexchange.com/questions/154036/efficient-minimum-distance-between-two-axis-aligned-squares
-                
-                mreal ymin1 = C_min1[C];
-                mreal ymin2 = C_min2[C];
-                mreal ymin3 = C_min3[C];
-                
-                mreal ymax1 = C_max1[C];
-                mreal ymax2 = C_max2[C];
-                mreal ymax3 = C_max3[C];
-                
-                mreal d1 = mymax( 0., mymax(xmin1, ymin1) - mymin(xmax1, ymax1) );
-                mreal d2 = mymax( 0., mymax(xmin2, ymin2) - mymin(xmax2, ymax2) );
-                mreal d3 = mymax( 0., mymax(xmin3, ymin3) - mymin(xmax3, ymax3) );
-                
-                mreal R2 = d1 * d1 + d2 * d2 + d3 * d3;
+                mreal R2 = SquaredBoxMinDistance( xmin1,      xmin2,      xmin3,      xmax1,      xmax2,      xmax3,
+                                                  C_ymin1[C], C_ymin2[C], C_ymin3[C], C_ymax1[C], C_ymax2[C], C_ymax3[C]);
 
                 if( h2 < theta2 * R2 )
                 {
@@ -302,6 +274,7 @@ namespace rsurfaces
                     mreal y3 = C_X3[C];
                     
                     mreal local_sum = 0.;
+                    
                     for( mint i = i_begin; i < i_end; ++i )
                     {
                         mreal a  = P_A [i];
