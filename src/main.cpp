@@ -2246,6 +2246,8 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::sce
     Constraints::VertexPinConstraint *pinC = 0;
     Constraints::VertexNormalConstraint *normC = 0;
 
+    std::vector<Vector3> pinLocations;
+
     for (scene::ConstraintData &data : scene.constraints)
     {
         switch (data.type)
@@ -2290,6 +2292,11 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::sce
             }
             // Add the specified vertices as pins
             pinC->pinVertices(m.mesh, m.geom, scene.vertexPins);
+            for (VertexPinData &pinData : scene.vertexPins)
+            {
+                Vector3 pos = m.geom->inputVertexPositions[pinData.vertID];
+                pinLocations.push_back(pos);
+            }
             // Clear the data vector so that we don't add anything twice
             scene.vertexPins.clear();
             kernelRemoved = true;
@@ -2338,6 +2345,11 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::sce
     {
         // std::cout << "Auto-adding barycenter constraint to eliminate constant kernel of Laplacian" << std::endl;
         // flow->addSimpleConstraint<Constraints::BarycenterConstraint3X>(m.mesh, m.geom);
+    }
+
+    if (pinLocations.size() > 0)
+    {
+        polyscope::registerPointCloud("pinned vertices", pinLocations);
     }
 
     return flow;
