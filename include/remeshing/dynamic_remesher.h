@@ -15,6 +15,7 @@ namespace rsurfaces
         enum class RemeshingMode
         {
             FlipOnly,
+            SmoothOnly,
             SmoothAndFlip,
             SmoothFlipAndCollapse
         };

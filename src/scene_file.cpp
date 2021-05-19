@@ -331,6 +331,10 @@ namespace rsurfaces
                 {
                     implData.type = ImplicitType::Sphere;
                 }
+                else if (parts[1] == "cylinder")
+                {
+                    implData.type = ImplicitType::Cylinder;
+                }
                 else if (parts[1] == "torus")
                 {
                     implData.type = ImplicitType::Torus;

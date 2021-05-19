@@ -1,0 +1,9 @@
+repel_mesh start_fine.obj 6 12
+constrain barycenter
+allow_barycenter_shift
+constrain area
+implicit cylinder repel 2 .1 0.075 0 0 0 0 0 1
+implicit plane attract 2 20 0 0 0 -.11 0 .99
+#minimize willmore 1
+iteration_limit 4000
+

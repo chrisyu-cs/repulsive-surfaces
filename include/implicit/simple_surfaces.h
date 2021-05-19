@@ -17,6 +17,21 @@ namespace rsurfaces
         Vector3 center;
     };
 
+    // infinite cylinder of radius r centered at c along axis u
+    class ImplicitCylinder : public ImplicitSurface {
+        public:
+        ImplicitCylinder(double r, Vector3 c, Vector3 u);
+        virtual double SignedDistance(Vector3 point);
+        virtual Vector3 GradientOfDistance(Vector3 point);
+        virtual double BoundingDiameter();
+        virtual Vector3 BoundingCenter();
+
+        private:
+        double radius;
+        Vector3 center;
+        Vector3 axis;
+    };
+
     class ImplicitTorus : public ImplicitSurface {
         public:
         ImplicitTorus(double major, double minor, Vector3 c);

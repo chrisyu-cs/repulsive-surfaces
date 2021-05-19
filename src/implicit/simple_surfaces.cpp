@@ -26,6 +26,38 @@ namespace rsurfaces
     }
     // ============================================================
 
+    // ========== Infinite implicit cylinder of radius r centered at c along axis u ==========
+
+    ImplicitCylinder::ImplicitCylinder(double r, Vector3 c, Vector3 u) {
+        radius = r;
+        center = c;
+        axis = u.unit();
+    }
+
+    double ImplicitCylinder::SignedDistance(Vector3 point) {
+        Vector3 p = point-center;
+        p -= dot(p,axis)*axis;
+        return p.norm() - radius;
+    }
+
+    Vector3 ImplicitCylinder::GradientOfDistance(Vector3 point) {
+
+        Vector3 p = point-center;
+        p -= dot(p,axis)*axis;
+        if( p.norm() < radius )
+           -p.unit();
+        return p.unit();
+    }
+
+    double ImplicitCylinder::BoundingDiameter() {
+        return radius * 10.;
+    }
+
+    Vector3 ImplicitCylinder::BoundingCenter() {
+        return center;
+    }
+    // ============================================================
+
     // ========== Implicit torus of variable radii ==========
 
     ImplicitTorus::ImplicitTorus(double major, double minor, Vector3 c) {

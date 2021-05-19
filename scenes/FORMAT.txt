@@ -80,7 +80,7 @@ Implicit barriers:
 Sets up an implicit surface as either an obstacle or an attractor. Obstacles
 repel other surfaces, while attractors attract other surfaces.
 
-Valid names for the first parameter are "sphere", "torus", and "plane".
+Valid names for the first parameter are "sphere", "cylinder", "torus", and "plane".
 
 The second parameter must be either "repel" or "attract", and will result
 in an obstacle or an attractor, respectively.
@@ -94,6 +94,7 @@ Specific parameters depend on the chosen implicit surface. All parameters are
 numbers, which will be parsed as doubles. Currently, the parameters are:
 
 	sphere: <radius> <center x> <center y> <center z>
+	cylinder: <radius> <center x> <center y> <center z> <axis x> <axis y> <axis z>
 	torus: <major radius> <minor radius> <center x> <center y> <center z>
 	plane: <point x> <point y> <point z> <normal x> <normal y> <normal z>
 

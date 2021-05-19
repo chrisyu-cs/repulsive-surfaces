@@ -61,6 +61,7 @@ namespace rsurfaces
         enum class ImplicitType
         {
             Sphere,
+            Cylinder,
             Torus,
             Plane
         };

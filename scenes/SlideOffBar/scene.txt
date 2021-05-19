@@ -1,0 +1,10 @@
+repel_mesh SlideOffBar5.obj 6 12
+constrain barycenter
+allow_barycenter_shift
+constrain area
+# implicit cylinder repel 2 1 0.1 0 0 0 0 0 1
+implicit torus repel 2 1 .8 0.1 0 0 0
+#implicit plane attract 2 100 0 0 .2 0 0 1
+#minimize willmore 1
+iteration_limit 4000
+
