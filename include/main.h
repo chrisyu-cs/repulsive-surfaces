@@ -13,6 +13,7 @@
 
 #include <mkl.h>
 #include "optimized_bct.h"
+#include "cut_off_bct.h"
 #include "energy/willmore_energy.h"
 #include "energy/tpe_multipole_0.h"
 #include "energy/tpe_barnes_hut_0.h"
@@ -44,6 +45,7 @@ namespace rsurfaces
         void TestUpdate();
         void TestObstacle0();
         void TestBarnesHut0();
+        void TestCutOff();
         void PlotGradients();
         void Scale2x();
         void TestNormalDeriv();

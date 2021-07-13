@@ -1,5 +1,5 @@
 
-#include "energy/tp_obstacle_multipole_0.h"
+#include "energy/tp_obstacle_cut_off.h"
 
 namespace rsurfaces
 {
@@ -81,9 +81,9 @@ namespace rsurfaces
                         mreal r2 = v1 * v1 + v2 * v2 + v3 * v3 ;
                         
                         mreal mollifier = (1.- r2 * squared_inv_cut_off);
-                        mollifier = mollifier * mollifier;
+                        mreal mollifier2 = mollifier * mollifier;
                         
-                        mreal en = mollifier * ( mypow( fabs(rCosPhi), alpha ) + mypow( fabs(rCosPsi), alpha) ) * mypow( r2, minus_betahalf );
+                        mreal en = mollifier2 * ( mypow( fabs(rCosPhi), alpha ) + mypow( fabs(rCosPsi), alpha) ) * mypow( r2, minus_betahalf );
                         
                         
                         i_sum += en * B[j];
@@ -195,7 +195,7 @@ namespace rsurfaces
                         mreal r2      = v1 * v1 + v2 * v2 + v3 * v3;
                         
                         mreal mollifier = (1.- r2 * squared_inv_cut_off);
-                        mollifier = mollifier * mollifier;
+                        mreal mollifier2 = mollifier * mollifier;
                         
                         mreal rBetaMinus2 = mypow( r2, minus_betahalf_minus_1 );
                         mreal rBeta = rBetaMinus2 * r2;
@@ -208,20 +208,22 @@ namespace rsurfaces
                         
                         
                         mreal Num = rCosPhiAlpha + rCosPsiAlpha;
-                        mreal factor0 = rBeta * alpha;
-                        mreal density = rBeta * Num;
+                        mreal factor0 = mollifier2 * rBeta * alpha;
+                        mreal density = mollifier2 * rBeta * Num;
                         sum += a * b * density;
                         
                         mreal F = factor0 * rCosPhiAlphaMinus1;
                         mreal G = factor0 * rCosPsiAlphaMinus1;
-                        mreal H = beta * rBetaMinus2 * Num;
+                        mreal H = mollifier2 * beta * rBetaMinus2 * Num;
                         
                         mreal bF = b * F;
                         mreal aG = a * G;
                         
-                        mreal Z1 = ( - n1 * F - m1 * G + v1 * H );
-                        mreal Z2 = ( - n2 * F - m2 * G + v2 * H );
-                        mreal Z3 = ( - n3 * F - m3 * G + v3 * H );
+                        mreal dmollifier2 = 4. * mollifier * squared_inv_cut_off * rBeta * Num;
+                        
+                        mreal Z1 = ( - n1 * F - m1 * G + v1 * H ) + dmollifier2 * v1;
+                        mreal Z2 = ( - n2 * F - m2 * G + v2 * H ) + dmollifier2 * v2;
+                        mreal Z3 = ( - n3 * F - m3 * G + v3 * H ) + dmollifier2 * v3;
                         
                         da += b * (
                                    density

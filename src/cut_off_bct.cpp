@@ -1,9 +1,7 @@
-#include "optimized_bct.h"
+#include "cut_off_bct.h"
 
 namespace rsurfaces
 {
-    CutBCTSettings BCTDefaultSettings = BCTSettings();
-    
     CutOffBlockClusterTree::CutOffBlockClusterTree(OptimizedClusterTree* S_, OptimizedClusterTree* T_, const mreal alpha_, const mreal beta_, const mreal cut_off_, mreal weight_, BCTSettings settings_)
     {
         ptic("CutOffBlockClusterTree::CutOffBlockClusterTree");
@@ -59,28 +57,24 @@ namespace rsurfaces
         if( !block_clusters_initialized )
         {
             ptic("RequireBlockClusters");
-            auto thread_sep_idx = A_Vector<A_Deque<mint>>(tree_thread_count);
-            auto thread_sep_jdx = A_Vector<A_Deque<mint>>(tree_thread_count);
             
             auto thread_nonsep_idx = A_Vector<A_Deque<mint>>(tree_thread_count);
             auto thread_nonsep_jdx = A_Vector<A_Deque<mint>>(tree_thread_count);
             
             ptic("SplitBlockCluster");
             
-            #pragma omp parallel num_threads(tree_thread_count) shared(thread_sep_idx, thread_sep_jdx, thread_nonsep_idx, thread_nonsep_jdx)
+            #pragma omp parallel num_threads(tree_thread_count) shared(thread_nonsep_idx, thread_nonsep_jdx)
             {
                 #pragma omp single nowait
                 {
-                    SplitBlockCluster(thread_sep_idx, thread_sep_jdx, thread_nonsep_idx, thread_nonsep_jdx, 0, 0, tree_thread_count);
+                    SplitBlockCluster(thread_nonsep_idx, thread_nonsep_jdx, 0, 0, tree_thread_count);
                 }
             }
             
-            mint sep_blockcluster_count = 0;
             mint nonsep_blockcluster_count = 0;
             
             for (mint thread = 0; thread < tree_thread_count; ++thread)
             {
-                sep_blockcluster_count += thread_sep_idx[thread].size();
                 nonsep_blockcluster_count += thread_nonsep_idx[thread].size();
             }
             
@@ -163,7 +157,7 @@ namespace rsurfaces
                             SplitBlockCluster(nsep_i, nsep_j, lefti, rightj, spawncount + (remainder > 2));
                             #pragma omp task final(free_thread_count < 1) firstprivate(righti, rightj, spawncount, remainder) shared(nsep_i, nsep_j)
                             SplitBlockCluster(nsep_i, nsep_j, righti, rightj, spawncount);
-                            //                    #pragma omp taskwait
+                            #pragma omp taskwait
                         }
                         else
                         {
@@ -181,7 +175,7 @@ namespace rsurfaces
                             SplitBlockCluster(nsep_i, nsep_j, lefti, rightj, spawncount + (remainder > 2));
                             #pragma omp task final(free_thread_count < 1) firstprivate(righti, rightj, spawncount) shared(nsep_i, nsep_j)
                             SplitBlockCluster(nsep_i, nsep_j, righti, rightj, spawncount);
-                            //                    #pragma omp taskwait
+                            #pragma omp taskwait
                         }
                     }
                     else
@@ -194,7 +188,7 @@ namespace rsurfaces
                             SplitBlockCluster(nsep_i, nsep_j, lefti, j, free_thread_count / 2);
                             #pragma omp task final(free_thread_count < 1) firstprivate(righti) shared(nsep_i, nsep_j)
                             SplitBlockCluster(nsep_i, nsep_j, righti, j, free_thread_count - free_thread_count / 2);
-                            //                    #pragma omp taskwait
+                            #pragma omp taskwait
                         }
                         else //scorei < scorej
                         {
@@ -203,7 +197,7 @@ namespace rsurfaces
                             SplitBlockCluster(nsep_i, nsep_j, i, leftj, free_thread_count / 2);
                             #pragma omp task final(free_thread_count < 1) firstprivate(rightj) shared(nsep_i, nsep_j)
                             SplitBlockCluster(nsep_i, nsep_j, i, rightj, free_thread_count - free_thread_count / 2);
-                            //                    #pragma omp taskwait
+                            #pragma omp taskwait
                         }
                     }
                 }

@@ -83,6 +83,7 @@ set(SRCS
   src/energy/tpe_kernel.cpp
   src/energy/squared_error.cpp
   src/energy/willmore_energy.cpp
+  src/energy/tpe_cut_off.cpp
   src/energy/tpe_multipole_0.cpp
   src/energy/tpe_multipole_nl_0.cpp
   src/energy/tpe_multipole_pr_0.cpp
@@ -90,6 +91,7 @@ set(SRCS
   src/energy/tpe_barnes_hut_pr_0.cpp
   src/energy/tpe_all_pairs.cpp
   src/energy/tpe_all_pairs_pr.cpp
+  src/energy/tp_obstacle_cut_off.cpp
   src/energy/tp_obstacle_multipole_0.cpp
   src/energy/tp_obstacle_multipole_nl_0.cpp
   src/energy/tp_obstacle_multipole_pr_0.cpp
@@ -135,8 +137,9 @@ set(SRCS
   src/surface_flow.cpp
   src/derivative_assembler.cpp
   src/optimized_bct_types.cpp
-  src/optimized_bct.cpp
   src/optimized_cluster_tree.cpp
+  src/optimized_bct.cpp
+  src/cut_off_bct.cpp
     # add any other source files here
 )
 

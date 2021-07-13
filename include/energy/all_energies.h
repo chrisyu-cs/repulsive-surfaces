@@ -11,6 +11,7 @@
 #include "energy/implicit_obstacle.h"
 #include "energy/willmore_energy.h"
 
+#include "energy/tpe_cut_off.h"
 #include "energy/tpe_multipole_0.h"
 #include "energy/tpe_multipole_nl_0.h"
 #include "energy/tpe_multipole_pr_0.h"
@@ -19,6 +20,7 @@
 #include "energy/tpe_all_pairs.h"
 #include "energy/tpe_all_pairs_pr.h"
 
+#include "energy/tp_obstacle_cut_off.h"
 #include "energy/tp_obstacle_multipole_0.h"
 #include "energy/tp_obstacle_multipole_nl_0.h"
 #include "energy/tp_obstacle_multipole_pr_0.h"

@@ -1604,6 +1604,130 @@ namespace rsurfaces
         }
 
     } // TestBarnesHut0
+    
+    void MainApp::TestCutOff()
+    {
+        int threads;
+#pragma omp parallel
+        {
+            threads = omp_get_num_threads();
+        }
+        ClearProfile("./TestObstacle0_" + std::to_string(threads) + ".tsv");
+
+        std::cout << std::setprecision(8);
+        std::cout << "\n  =====                   =====  " << std::endl;
+        std::cout << "=======    TestCutOff     =======" << std::endl;
+        std::cout << "  =====                   =====  " << std::endl;
+        std::cout << "\n"
+                  << std::endl;
+
+        double alpha = 6.;
+        double beta = 12.;
+        double weight = 1.;
+        //        double theta = MainApp::instance->bh_theta;
+        double theta = 0.25;
+        double cut_off = 1.;
+        //        double chi = 0.8 * theta;
+
+        // mesh1 and geom1 represent the movable surface
+        auto mesh1 = rsurfaces::MainApp::instance->mesh;
+        auto geom1 = rsurfaces::MainApp::instance->geom;
+
+        // Load obstacle
+        //        std::string filename = "../scenes/Bunny/bunny-10p.obj";
+        std::string filename = "../scenes/Bunny/bunny.obj";
+        MeshUPtr umesh;
+        GeomUPtr ugeom;
+        std::tie(umesh, ugeom) = readMesh(filename);
+        ugeom->requireVertexDualAreas();
+        ugeom->requireVertexNormals();
+        std::string mesh_name = polyscope::guessNiceNameFromPath(filename);
+        polyscope::SurfaceMesh *psMesh = polyscope::registerSurfaceMesh(mesh_name, ugeom->inputVertexPositions, umesh->getFaceVertexList(), polyscopePermutations(*umesh));
+        // mesh2 and geom2 represent the pinned obstacle
+        MeshPtr mesh2 = std::move(umesh);
+        std::shared_ptr<VertexPositionGeometry> geom2 = std::move(ugeom);
+
+        mint primitive_count1 = mesh1->nVertices();
+        mint primitive_count2 = mesh2->nVertices();
+
+        tic("Create bvh1");
+        OptimizedClusterTree *bvh1 = CreateOptimizedBVH(mesh1, geom1);
+        toc("Create bvh1");
+        tic("Create bvh2");
+        OptimizedClusterTree *bvh2 = CreateOptimizedBVH(mesh2, geom2);
+        toc("Create bvh2");
+
+        tic("Create bct11");
+        auto bct11 = std::make_shared<CutOffBlockClusterTree>( bvh1, bvh1, alpha, beta, cut_off );
+        toc("Create bct11");
+        
+        tic("Create bct12");
+        auto bct12 = std::make_shared<CutOffBlockClusterTree>( bvh1, bvh2, alpha, beta, cut_off );
+        toc("Create bct12");
+
+        tic("Create bct22");
+        auto bct22 = std::make_shared<CutOffBlockClusterTree>( bvh2, bvh2, alpha, beta, cut_off );
+        toc("Create bct22");
+
+        bct11->PrintStats();
+        bct12->PrintStats();
+        bct22->PrintStats();
+
+//        // The joint bct of the union of mesh1 and mesh2 can be written in block matrix for as
+//        //  bct = {
+//        //            { bct11, bct12 },
+//        //            { bct21, bct22 }
+//        //        },
+//        // where bct11 and bct22 are the instances of OptimizedBlockClusterTree of mesh1 and mesh2, respectively, bct12 is cross interaction OptimizedBlockClusterTree of mesh1 and mesh2, and bct21 is the transpose of bct12.
+//        // However, the according matrix (on the space of dofs on the primitives) would be
+//        //  A   = {
+//        //            { A11 + diag( A12 * one2 ) , A12                      },
+//        //            { A21                      , A22 + diag( A21 * one1 ) }
+//        //        },
+//        // where one1 and one2 are all-1-vectors on the primitives of mesh1 and mesh2, respectively.
+//        // OptimizedBlockClusterTree::AddObstacleCorrection is supposed to compute diag( A12 * one2 ) and to add it to the diagonal of A11.
+//        // Afterwards, bct1->Multiply will also multiply with the metric contribution of the obstacle.
+//        tic("Modifying bct11 to include the terms with respect to the obstacle.");
+//        bct11->AddObstacleCorrection(bct12.get());
+//        bct11_nl->AddObstacleCorrection(bct12_nl.get());
+//        bct11_pr->AddObstacleCorrection(bct12_pr.get());
+//        toc("Modifying bct11 to include the terms with respect to the obstacle.");
+//
+        mint energy_count = 1;
+
+        // the self-interaction energy of mesh1
+        auto tpe_co_11 = std::make_shared<TPEnergyCutOff>(mesh1, geom1, bct11.get(), alpha, beta, weight);
+
+        auto tpe_co_12 = std::make_shared<TPObstacleCutOff>(mesh1, geom1, bct12.get(), alpha, beta, weight);
+
+        auto tpe_co_22 = std::make_shared<TPEnergyCutOff>(mesh2, geom2, bct22.get(), alpha, beta, weight);
+        
+        
+        
+        
+        
+        
+        Eigen::MatrixXd DE_co_11(primitive_count1, 3);
+        Eigen::MatrixXd DE_co_12(primitive_count1, 3);
+        Eigen::MatrixXd DE_co_22(primitive_count2, 3);
+        
+        std::cout << "TPEnergyCutOff energy 11 = "   << tpe_co_11->Value() << std::endl;
+        DE_co_11.setZero();
+        tpe_co_11->Differential(DE_co_11);
+        
+        std::cout << "TPObstacleCutOff energy 12 = " << tpe_co_12->Value() << std::endl;
+        DE_co_12.setZero();
+        tpe_co_12->Differential(DE_co_12);
+
+        std::cout << "TPEnergyCutOff energy 22 = "   << tpe_co_22->Value() << std::endl;
+        DE_co_22.setZero();
+        tpe_co_22->Differential(DE_co_22);
+        
+
+        delete bvh1;
+        delete bvh2;
+
+    } // TestCutOff
 
     void MainApp::TestWillmore()
     {
@@ -2097,6 +2221,11 @@ void customCallback()
     if (ImGui::Button("Test Willmore", ImVec2{ITEM_WIDTH, 0}))
     {
         MainApp::instance->TestWillmore();
+    }
+    
+    if (ImGui::Button("Test CutOff", ImVec2{ITEM_WIDTH, 0}))
+    {
+        MainApp::instance->TestCutOff();
     }
 
     ImGui::SameLine(ITEM_WIDTH, 2 * INDENT);
