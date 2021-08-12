@@ -2,7 +2,7 @@
 
 #define EIGEN_NO_DEBUG
 #define MKL_DIRECT_CALL_SEQ_JIT
-#define PROFILING
+//#define PROFILING
 
 #define CACHE_LINE_WIDTH 64    // length of cache line measured in bytes
 #define CACHE_LINE_LENGHT 8    // length of cache line measured in number of doubles
