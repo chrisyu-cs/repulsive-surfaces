@@ -2291,6 +2291,9 @@ rsurfaces::SurfaceFlow *setUpFlow(MeshAndEnergy &m, double theta, rsurfaces::sce
                 if (v.isBoundary())
                 {
                     boundaryInds.push_back(inds[v]);
+
+                    Vector3 pos = m.geom->inputVertexPositions[v];
+                    pinLocations.push_back(pos);
                 }
             }
             pinC->pinVertices(m.mesh, m.geom, boundaryInds);

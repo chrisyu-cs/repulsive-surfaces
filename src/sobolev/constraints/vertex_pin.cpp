@@ -12,6 +12,7 @@ namespace rsurfaces
             {
                 indices.push_back(pinData[i]);
                 initPositions.push_back(geom->inputVertexPositions[mesh->vertex(pinData[i])]);
+                offsets.push_back(PinOffset{Vector3{0, 0, 0}, 0});
             }
         }
 
