@@ -32,9 +32,10 @@ cd build
 cmake ..
 make -j4
 ```
-We highly recommend using Clang to build the project. <s>Building with GCC/G++ is possible, but will require a different set of warnings to be suppressed.</s>
+We used Clang to compile the codebase during development, but GCC/G++ should also work, though depending on the version it may emit some different warnings.
 
 The code can then be run:
 ```
-./bin/rsurfaces path/to/mesh.obj
+./bin/rsurfaces path/to/scene.txt
 ```
+The executable can also be invoked directly on a mesh OBJ, which will initialize an energy with some default settings. But complex scenes such as those shown in the paper should be defined using a scene file. For instructions on how to set up a scene file, see `scenes/FORMAT.txt`. Example scenes can also be found in the subdirectories in `scenes/`.
