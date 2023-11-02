@@ -1,5 +1,5 @@
 # Repulsive Surfaces
-Christopher Yu, Henrik Schumacher, Keenan Crane
+Christopher Yu, Caleb Brakensiek, Henrik Schumacher, Keenan Crane
 
 ## Quick setup instructions
 
