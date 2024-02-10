@@ -6,11 +6,11 @@ Christopher Yu, Caleb Brakensiek, Henrik Schumacher, Keenan Crane
 First, clone the project and all its dependencies:
 either via https (password login)
 ```
-git clone --recursive https://github.com/icethrush/repulsive-surfaces.git
+git clone --recursive https://github.com/chrisyu-cs/repulsive-surfaces.git
 ```
 or via ssh (passwordless login -- needs ssh keys to be set up with github)
 ```
-git clone --recursive git@github.com:icethrush/repulsive-surfaces.git
+git clone --recursive git@github.com:chrisyu-cs/repulsive-surfaces.git
 ```
 
 If the recursive flag was not used to clone, then one can also get the dependencies by running:
@@ -36,6 +36,6 @@ We used Clang to compile the codebase during development, but GCC/G++ should als
 
 The code can then be run:
 ```
-./bin/rsurfaces path/to/scene.txt
+./bin/rsurfaces path/to/scene.txt --threads 1
 ```
-The executable can also be invoked directly on a mesh OBJ, which will initialize an energy with some default settings. But complex scenes such as those shown in the paper should be defined using a scene file. For instructions on how to set up a scene file, see `scenes/FORMAT.txt`. Example scenes can also be found in the subdirectories in `scenes/`.
+The executable can also be invoked directly on a mesh OBJ, which will initialize an energy with some default settings. But complex scenes such as those shown in the paper should be defined using a scene file. For instructions on how to set up a scene file, see `scenes/FORMAT.txt`. Example scenes can also be found in the subdirectories in `scenes/`. I recommend adding the `--threads 1` flag to run the program singlethreaded, as there appear to be some concurrency issues that can cause problems when running multithreaded on some platforms.
